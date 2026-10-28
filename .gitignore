@@ -1,0 +1,8 @@
+# build outputs (rebuilt by build.js / build-desktop.sh)
+dist/hse-linux
+desktop/index.html
+# local test data and screenshots
+*.hg
+test/out/
+node_modules/
+__pycache__/

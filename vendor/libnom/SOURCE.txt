@@ -1,0 +1,2 @@
+Files from zencq/libNOM.map (mapping_*.json) and zencq/libNOM.io (hashed_technology.bin), GPL-3.0.
+Update mapping_mbincompiler.json from libNOM.map when the game adds new save keys.

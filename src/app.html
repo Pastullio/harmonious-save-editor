@@ -1,0 +1,1220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Harmonious Save Editor</title>
+<!--@@APP@@-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void: #120e1c; --hull: #1b1527; --plate: #251d34; --plate-2: #2f2642; --line: #3d3254; --line-2: #54476f;
+  --ink: #efe8f8; --dim: #a69abb; --faint: #7a6e90;
+  --gold: #f0b84a; --gold-ink: #2a1c00;
+  --cls-c: #6fa88a; --cls-b: #5a9be0; --cls-a: #a77be0; --cls-s: #f0b84a;
+  --substance: #e08a5a; --product: #5a9be0; --technology: #4fc1b0;
+  --danger: #ef6b73; --ok: #67c58f;
+  --r-sm: 4px; --r: 8px;
+  --display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--void); color: var(--ink); font: 15px/1.5 var(--body); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; letter-spacing: .01em; }
+h1 { font-size: 30px; line-height: 1.15; }
+h2 { font-size: 22px; line-height: 1.2; }
+h3 { font-size: 17px; line-height: 1.3; }
+p { margin: 0 0 .8em; max-width: 68ch; }
+a { color: var(--gold); }
+.dim { color: var(--dim); }
+.mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13px; }
+.hidden { display: none !important; }
+
+/* controls */
+.btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line-2); background: var(--plate); padding: 7px 14px; border-radius: var(--r-sm); cursor: pointer; font-weight: 700; font-size: 14px; }
+.btn:hover { background: var(--plate-2); border-color: var(--dim); }
+.btn.primary { background: var(--gold); color: var(--gold-ink); border-color: var(--gold); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.primary:disabled { opacity: .45; cursor: default; filter: none; }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--dim); }
+.btn.ghost:hover { color: var(--ink); background: var(--plate); }
+.btn.danger { color: var(--danger); }
+.btn.small { padding: 4px 10px; font-size: 13px; }
+.field { display: grid; gap: 4px; }
+.field > span { font-size: 13px; color: var(--dim); }
+.input, select.input { background: var(--void); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 7px 10px; min-width: 0; width: 100%; }
+.input:focus { border-color: var(--gold); outline: none; }
+.input.num { font-family: var(--display); font-size: 18px; font-weight: 600; letter-spacing: .02em; }
+
+/* ---------------- landing */
+#landing { min-height: 100%; display: grid; place-items: center; padding: 32px 16px; }
+.landing-inner { width: min(760px, 100%); }
+.wordmark { font-family: var(--display); font-weight: 700; font-size: clamp(40px, 7vw, 68px); line-height: .95; letter-spacing: -.01em; margin-bottom: 18px; }
+.wordmark small { display: block; font-size: .34em; letter-spacing: .02em; color: var(--dim); font-weight: 500; margin-top: 10px; }
+.portal { display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px; margin: 0 0 28px; max-width: 420px; }
+.portal i { aspect-ratio: 1; border: 1px solid var(--line); border-radius: 2px; }
+.portal i.on { background: var(--gold); border-color: var(--gold); }
+.open-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 24px 0; }
+.open-card { border: 1px solid var(--line); background: var(--hull); border-radius: var(--r); padding: 18px; display: grid; gap: 10px; align-content: start; }
+.open-card p { font-size: 14px; color: var(--dim); margin: 0; }
+.drop { border: 1.5px dashed var(--line-2); border-radius: var(--r); padding: 16px; text-align: center; color: var(--dim); font-size: 14px; cursor: pointer; }
+.drop.over { border-color: var(--gold); color: var(--ink); background: var(--plate); }
+.where { border-left: 3px solid var(--gold); padding: 4px 0 4px 14px; font-size: 14px; color: var(--dim); }
+.where code { color: var(--ink); background: var(--plate); padding: 1px 6px; border-radius: 3px; user-select: all; }
+.slot-list { display: grid; gap: 8px; margin-top: 18px; }
+.slot-row { display: grid; grid-template-columns: 54px 1fr auto; gap: 14px; align-items: center; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r); background: var(--hull); cursor: pointer; text-align: left; width: 100%; }
+.slot-row:hover { border-color: var(--gold); }
+.slot-row .n { font-family: var(--display); font-size: 22px; color: var(--gold); text-align: center; }
+.slot-row .t { font-weight: 700; }
+.slot-row .s { color: var(--dim); font-size: 13px; }
+.err { color: var(--danger); font-size: 14px; white-space: pre-line; }
+body.is-app .open-grid, body.is-app .where { display: none; }
+.app-where { font-size: 14px; color: var(--dim); margin: 22px 0 12px; }
+.app-where code { color: var(--ink); background: var(--plate); padding: 1px 6px; border-radius: 3px; }
+.acct-list { display: flex; gap: 8px; flex-wrap: wrap; }
+.other-folder { margin-top: 18px; font-size: 14px; }
+.other-folder summary { cursor: pointer; color: var(--dim); }
+.other-folder summary:hover { color: var(--ink); }
+.other-folder form { margin-top: 10px; }
+.drop[aria-busy="true"] { border-color: var(--gold); color: var(--ink); }
+
+/* ---------------- app shell */
+#app { display: grid; grid-template-columns: 236px 1fr; height: 100%; }
+#side { background: var(--hull); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.save-card { padding: 18px 16px 14px; border-bottom: 1px solid var(--line); }
+.save-card .name { font-family: var(--display); font-size: 18px; font-weight: 600; line-height: 1.2; word-break: break-word; }
+.save-card .meta { font-size: 13px; color: var(--dim); margin-top: 4px; }
+.ctx { margin-top: 10px; }
+nav { padding: 10px 8px; overflow: auto; flex: 1; }
+nav button { display: flex; width: 100%; align-items: center; justify-content: space-between; text-align: left; background: none; border: 0; padding: 8px 10px; border-radius: var(--r-sm); cursor: pointer; color: var(--dim); font-weight: 700; }
+nav button:hover { color: var(--ink); background: var(--plate); }
+nav button[aria-current="page"] { color: var(--ink); background: var(--plate-2); box-shadow: inset 3px 0 0 var(--gold); }
+nav .count { font-family: var(--display); font-size: 12px; color: var(--faint); }
+.side-foot { border-top: 1px solid var(--line); padding: 14px 16px; display: grid; gap: 8px; }
+.side-foot .status { font-size: 13px; color: var(--dim); min-height: 20px; }
+.side-foot .status.dirty { color: var(--gold); }
+#main { overflow: auto; min-width: 0; }
+.page { padding: 28px 32px 64px; max-width: 1280px; }
+.page-head { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; justify-content: space-between; margin-bottom: 22px; }
+.page-head p { margin: 6px 0 0; color: var(--dim); }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* overview */
+.currencies { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 28px; }
+.cur { border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; background: var(--hull); display: grid; gap: 8px; }
+.cur .lbl { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; }
+.cur .lbl span { color: var(--faint); font-size: 12px; font-weight: 400; }
+.cur .quick { display: flex; gap: 6px; flex-wrap: wrap; }
+.facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; margin-bottom: 28px; }
+.facts div { background: var(--hull); padding: 12px 14px; }
+.facts b { display: block; font-family: var(--display); font-size: 17px; font-weight: 600; }
+.facts span { font-size: 13px; color: var(--dim); }
+.panel { border: 1px solid var(--line); border-radius: var(--r); background: var(--hull); padding: 18px; margin-bottom: 20px; }
+.panel h3 { margin-bottom: 10px; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+.row > .field { flex: 1 1 220px; }
+
+/* owned things (ships, tools, exocraft) */
+.picker { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.pick { border: 1px solid var(--line); background: var(--hull); border-radius: var(--r-sm); padding: 8px 12px; cursor: pointer; text-align: left; display: grid; gap: 0; min-width: 140px; }
+.pick:hover { border-color: var(--line-2); }
+.pick[aria-pressed="true"] { border-color: var(--gold); background: var(--plate); }
+.pick .pn { font-weight: 700; }
+.pick .ps { font-size: 12px; color: var(--dim); }
+.badge { display: inline-block; font-family: var(--display); font-weight: 700; font-size: 12px; line-height: 1; padding: 3px 6px; border-radius: 3px; color: var(--void); }
+.cls-C { background: var(--cls-c); } .cls-B { background: var(--cls-b); } .cls-A { background: var(--cls-a); } .cls-S { background: var(--cls-s); }
+
+/* ---------------- inventory grid: the centrepiece */
+.inv { margin-bottom: 30px; }
+.inv-head { display: flex; gap: 10px 16px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.inv-head h3 { margin-right: auto; display: flex; gap: 10px; align-items: center; }
+.inv-head .cap { font-size: 13px; color: var(--dim); }
+.inv-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+.inv-wrap > div { min-width: 0; }
+.grid { display: grid; gap: 5px; grid-template-columns: repeat(var(--w), minmax(46px, 72px)); }
+.cell { position: relative; aspect-ratio: 1; border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--hull); cursor: pointer; padding: 0; overflow: hidden; display: grid; place-items: center; }
+.cell.locked { background: repeating-linear-gradient(135deg, transparent 0 5px, rgba(255,255,255,.03) 5px 6px); border-style: dashed; border-color: #2d2540; cursor: pointer; }
+.cell:hover { border-color: var(--dim); }
+.cell.sel { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+.cell.has { background: var(--plate); border-color: var(--line-2); }
+.cell.t-Substance { box-shadow: inset 0 3px 0 var(--substance); }
+.cell.t-Product { box-shadow: inset 0 3px 0 var(--product); }
+.cell.t-Technology { box-shadow: inset 0 3px 0 var(--technology); }
+.cell.damaged::after { content: ""; position: absolute; inset: 0; border: 2px solid var(--danger); border-radius: var(--r-sm); pointer-events: none; }
+.cell img { width: 74%; height: 74%; object-fit: contain; pointer-events: none; }
+.cell .lbl { font-family: var(--display); font-weight: 600; font-size: 10px; line-height: 1.1; text-align: center; padding: 6px 3px 12px; word-break: break-all; color: var(--ink); pointer-events: none; }
+.cell .amt { position: absolute; right: 3px; bottom: 6px; font-family: var(--display); font-size: 11px; font-weight: 700; text-shadow: 0 1px 2px #000; pointer-events: none; }
+.cell .fill { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--gold); pointer-events: none; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--dim); margin-top: 10px; }
+.legend i { display: inline-block; width: 10px; height: 3px; vertical-align: middle; margin-right: 5px; }
+
+.inspector { position: sticky; top: 16px; border: 1px solid var(--line); border-radius: var(--r); background: var(--hull); padding: 16px; display: grid; gap: 12px; }
+.inspector .title { font-family: var(--display); font-size: 17px; font-weight: 600; line-height: 1.2; }
+.inspector .sub { font-size: 13px; color: var(--dim); margin-top: 2px; }
+.inspector .head { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: center; }
+.inspector .head .ico { width: 56px; height: 56px; border-radius: var(--r-sm); background: var(--plate); display: grid; place-items: center; overflow: hidden; }
+.inspector .head.noico { grid-template-columns: 1fr; } .inspector .head.noico .ico { display: none; }
+.inspector .head .ico img { width: 90%; height: 90%; object-fit: contain; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.chk { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.results { max-height: 220px; overflow: auto; border: 1px solid var(--line); border-radius: var(--r-sm); }
+.results button { display: grid; grid-template-columns: 28px 1fr; gap: 8px; align-items: center; width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 5px 8px; cursor: pointer; font-size: 13px; }
+.results button:hover { background: var(--plate); }
+.results img { width: 28px; height: 28px; object-fit: contain; }
+
+/* ---------------- raw data explorer */
+.crumbs { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; margin-bottom: 12px; font-size: 14px; }
+.crumbs button { background: none; border: 0; color: var(--gold); cursor: pointer; padding: 2px 4px; border-radius: 3px; }
+.crumbs button:hover { background: var(--plate); }
+.crumbs .sep { color: var(--faint); }
+.tree { border: 1px solid var(--line); border-radius: var(--r); background: var(--hull); font-size: 14px; }
+.node { border-bottom: 1px solid #2a2239; }
+.node:last-child { border-bottom: 0; }
+.nrow { display: grid; grid-template-columns: 22px minmax(140px, 34%) 1fr; gap: 8px; align-items: center; padding: 4px 10px; min-height: 34px; }
+.nrow:hover { background: var(--plate); }
+.tog { background: none; border: 0; color: var(--dim); cursor: pointer; width: 22px; height: 22px; padding: 0; }
+.k { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.k .o { color: var(--faint); font-size: 12px; margin-left: 6px; }
+.v { min-width: 0; display: flex; gap: 8px; align-items: center; }
+.v .input { padding: 3px 8px; }
+.v .summary { color: var(--dim); font-size: 13px; }
+.v .open { background: none; border: 0; color: var(--gold); cursor: pointer; font-size: 13px; padding: 0; }
+.kids { padding-left: 18px; border-left: 1px solid var(--line); margin-left: 20px; }
+.tag { font-size: 11px; color: var(--faint); border: 1px solid var(--line); border-radius: 3px; padding: 0 5px; }
+.search-hits { display: grid; gap: 2px; margin: 10px 0 18px; max-height: 320px; overflow: auto; }
+.search-hits button { text-align: left; background: var(--hull); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 6px 10px; cursor: pointer; font-size: 13px; display: grid; gap: 2px; }
+.search-hits button:hover { border-color: var(--gold); }
+
+/* toast + modal */
+#toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); opacity: 0; background: var(--plate-2); border: 1px solid var(--line-2); padding: 10px 16px; border-radius: var(--r); transition: .2s; pointer-events: none; z-index: 20; max-width: 90vw; }
+#toast.show { opacity: 1; transform: translateX(-50%); }
+#toast.bad { border-color: var(--danger); }
+dialog { background: var(--hull); color: var(--ink); border: 1px solid var(--line-2); border-radius: var(--r); padding: 22px; max-width: 520px; width: calc(100% - 32px); }
+dialog::backdrop { background: rgba(8, 5, 14, .7); }
+dialog p { color: var(--dim); }
+dialog .acts { display: flex; justify-content: end; gap: 8px; margin-top: 18px; }
+
+@media (max-width: 1100px) { .inv-wrap { grid-template-columns: minmax(0, 1fr); } .inspector { position: static; } }
+@media (max-width: 760px) {
+  #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; height: auto; min-height: 100%; }
+  #side { border-right: 0; border-bottom: 1px solid var(--line); }
+  nav { display: flex; overflow-x: auto; padding: 6px 8px; }
+  nav button { white-space: nowrap; width: auto; }
+  nav .count { display: none; }
+  .page { padding: 20px 16px 48px; }
+  .currencies, .open-grid { grid-template-columns: 1fr; }
+  .grid { grid-template-columns: repeat(var(--w), minmax(0, 1fr)); gap: 3px; }
+  .nrow { grid-template-columns: 22px 1fr; } .nrow .v { grid-column: 2; }
+  .cell .lbl { font-size: 8px; padding: 2px 1px 9px; } .cell .amt { font-size: 9px; right: 2px; bottom: 4px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<section id="landing">
+  <div class="landing-inner">
+    <div class="portal" aria-hidden="true" id="portalArt"></div>
+    <div class="wordmark">Harmonious<br>Save Editor<small>for No Man's Sky on Steam and GOG</small></div>
+    <p class="dim" id="intro">Edit units, inventories, ships and multi-tools, or any value in the raw save. Everything happens in this browser tab; your save never leaves your computer.</p>
+
+    <div id="appLanding" class="hidden">
+      <div class="app-where" id="appWhere"></div>
+      <div class="acct-list" id="acctList"></div>
+      <details class="other-folder"><summary>Use a different folder</summary>
+        <form class="row" id="otherForm"><label class="field"><span>Folder that holds save.hg and mf_save.hg (GOG, a copy, or a backup)</span><input class="input mono" id="otherPath" placeholder="C:\Users\you\AppData\Roaming\HelloGames\NMS\DefaultUser"></label><button class="btn">Open folder</button></form>
+      </details>
+    </div>
+    <div class="open-grid">
+      <div class="open-card">
+        <h3>Open your save files</h3>
+        <p>In your <span class="mono">st_…</span> save folder, press Ctrl+A to select everything, then open. You can also drag the whole <span class="mono">st_…</span> folder here. Edited files come back as downloads to copy into that folder.</p>
+        <label class="drop" id="drop" tabindex="0">Drop files or the st_… folder here, or click to choose<input type="file" id="filePick" multiple hidden></label>
+      </div>
+      <div class="open-card">
+        <h3>Or edit a copied folder in place</h3>
+        <p>Chrome won't open folders inside AppData. If you copy your <span class="mono">st_…</span> folder somewhere else, the editor can save straight into that copy, keeping a backup of each file it replaces.</p>
+        <button class="btn" id="openFolder">Choose a folder</button>
+      </div>
+    </div>
+
+    <div class="where">Steam saves live in <code>%APPDATA%\HelloGames\NMS\st_&lt;your Steam ID&gt;</code>. Press Win+R and paste <code>%APPDATA%\HelloGames\NMS</code> to get there. On GOG the last folder is <code>DefaultUser</code>. Close the game before copying edited files back.</div>
+    <p class="err" id="landingErr" role="alert"></p>
+    <div class="slot-list" id="slotList"></div>
+  </div>
+</section>
+
+<div id="app" class="hidden">
+  <aside id="side">
+    <div class="save-card">
+      <div class="name" id="saveName">—</div>
+      <div class="meta" id="saveMeta"></div>
+      <div class="ctx hidden" id="ctxWrap"><select class="input" id="ctxSel" aria-label="Game context"></select></div>
+    </div>
+    <nav id="nav" aria-label="Sections"></nav>
+    <div class="side-foot">
+      <div class="status" id="status" aria-live="polite">No changes</div>
+      <button class="btn primary" id="saveBtn" disabled>Save to game</button>
+      <button class="btn ghost small" id="closeBtn">Open a different save</button>
+      <button class="btn ghost small hidden" id="backupsBtn">Show backups</button>
+    </div>
+  </aside>
+  <main id="main"><div class="page" id="page"></div></main>
+</div>
+
+<div id="toast" role="status"></div>
+<dialog id="dlg"><h3 id="dlgTitle"></h3><div id="dlgBody"></div><div class="acts" id="dlgActs"></div></dialog>
+
+<script>
+/*@@CODEC@@*/
+</script>
+<script>
+/*@@MAPPING@@*/
+</script>
+<script>
+'use strict';
+const C = NMSCodec;
+const { Num, Str } = C;
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// ------------------------------------------------------------------ key mapping
+const OBF2NAME = MAPPING.save;
+const NAME2OBF = {};
+for (const [o, n] of Object.entries(OBF2NAME)) if (!(n in NAME2OBF)) NAME2OBF[n] = o;
+const nameOf = (k) => OBF2NAME[k] || k;
+
+// ------------------------------------------------------------------ state
+const S = {
+  save: null,        // decoded save from codec
+  src: null,         // { kind: 'dir', dir, dataName, metaName } | { kind: 'files', dataName, metaName }
+  obf: true,         // keys in this save are obfuscated
+  ctx: null,         // which context map holds PlayerStateData
+  dirty: false,
+  section: 'overview',
+  pick: {},          // selected ship / tool / vehicle index per section
+  sel: null,         // { inv, x, y }
+  raw: { path: [], q: '', hits: null, open: new Set(), page: {} },
+  db: null,          // item database (optional)
+};
+
+// accessors that work for both obfuscated and plaintext saves
+function kOf(m, name) { if (!(m instanceof Map)) return null; const o = NAME2OBF[name]; if (o && m.has(o)) return o; if (m.has(name)) return name; return null; }
+function g(m, ...names) { let v = m; for (const n of names) { if (!(v instanceof Map)) return undefined; const k = kOf(v, n); if (k == null) return undefined; v = v.get(k); } return v; }
+function keyFor(name) { return S.obf && NAME2OBF[name] ? NAME2OBF[name] : name; }
+function set(m, name, val) { const k = kOf(m, name) ?? keyFor(name); m.set(k, val); markDirty(); }
+const num = (v) => (v == null ? 0 : Number(v instanceof Num ? v.raw : v));
+const str = (v) => (v == null ? '' : String(v));
+const N = (n) => new Num(String(n));
+
+function ps() { return g(S.ctx, 'PlayerStateData'); }
+function common() { return g(S.save.json, 'CommonStateData'); }
+
+function markDirty() { S.dirty = true; updateStatus(); }
+function updateStatus() {
+  const st = $('#status');
+  st.textContent = S.dirty ? 'Unsaved changes' : 'No changes';
+  st.classList.toggle('dirty', S.dirty);
+  $('#saveBtn').disabled = !S.dirty;
+  $('#saveBtn').textContent = S.src && (S.src.kind === 'dir' || S.src.kind === 'app') ? 'Save to game' : 'Download edited files';
+}
+let toastT;
+function toast(msg, bad) { const t = $('#toast'); t.textContent = msg; t.classList.toggle('bad', !!bad); t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), bad ? 6000 : 2600); }
+
+function dialog(title, bodyHtml, actions) {
+  return new Promise((resolve) => {
+    const d = $('#dlg'); $('#dlgTitle').textContent = title; $('#dlgBody').innerHTML = bodyHtml;
+    const acts = $('#dlgActs'); acts.innerHTML = '';
+    actions.forEach(([label, value, cls]) => { const b = document.createElement('button'); b.className = 'btn ' + (cls || ''); b.textContent = label; b.onclick = () => { d.close(); resolve(value); }; acts.appendChild(b); });
+    d.onclose = () => resolve(d.returnValue === '' ? null : null);
+    d.showModal();
+  });
+}
+
+// ------------------------------------------------------------------ landing art: a portal address
+(function () {
+  const p = $('#portalArt'); const on = [1, 4, 5, 9, 10, 14];
+  for (let i = 0; i < 16; i++) { const e = document.createElement('i'); if (on.includes(i)) e.className = 'on'; p.appendChild(e); }
+})();
+
+// ------------------------------------------------------------------ opening saves
+new MutationObserver(() => { const el = $('#landingErr'); if (el.textContent) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); toast(el.textContent.split('\n')[0], true); } })
+  .observe($('#landingErr'), { childList: true, characterData: true, subtree: true });
+function reportError(e) {
+  const msg = (e && (e.message || e.reason && e.reason.message)) || String(e);
+  if (!$('#landing').classList.contains('hidden')) $('#landingErr').textContent = 'Something went wrong: ' + msg; else toast('Something went wrong: ' + msg, true);
+}
+window.addEventListener('error', (e) => reportError(e.error || e.message));
+window.addEventListener('unhandledrejection', (e) => reportError(e.reason));
+const DROP_LABEL = 'Drop files or the st_… folder here, or click to choose';
+function busy(text) { const n = drop.firstChild; n.textContent = text || DROP_LABEL; drop.setAttribute('aria-busy', text ? 'true' : 'false'); }
+const tick = () => new Promise((r) => setTimeout(r, 30)); // let the page repaint before heavy work
+const hex = (u, n = 16) => [...u.subarray(0, n)].map((b) => b.toString(16).padStart(2, '0')).join(' ');
+const SAVE_RE = /^save(\d*)\.hg$/i;
+function slotLabel(name) { const m = name.match(SAVE_RE); const n = m[1] ? parseInt(m[1], 10) : 1; return { slot: Math.ceil(n / 2), kind: n % 2 ? 'auto' : 'manual', n }; }
+
+$('#openFolder').onclick = async () => {
+  $('#landingErr').textContent = '';
+  if (!window.showDirectoryPicker) { $('#landingErr').textContent = 'This browser cannot open folders. Use Chrome or Edge, or drop the two files instead.'; return; }
+  let dir;
+  try { dir = await showDirectoryPicker({ id: 'nms-saves', mode: 'readwrite' }); } catch (e) { if (e.name !== 'AbortError') $('#landingErr').textContent = e.message; return; }
+  await listFolder(dir);
+};
+
+// A "pool" is the set of candidate files, from a folder handle or from picked/dropped files:
+// Map(lowercased name → { name, read(): Promise<Uint8Array>, mtime }).
+async function listFolder(dir) {
+  const pool = new Map();
+  for await (const [name, h] of dir.entries()) if (h.kind === 'file') {
+    const f = await h.getFile();
+    pool.set(name.toLowerCase(), { name: h.name, mtime: f.lastModified, read: async () => new Uint8Array(await (await h.getFile()).arrayBuffer()) });
+  }
+  if (![...pool.keys()].some((n) => SAVE_RE.test(n))) {
+    const sub = [];
+    for await (const [name, h] of dir.entries()) if (h.kind === 'directory' && /^(st_\d+|defaultuser)$/i.test(name)) sub.push([name, h]);
+    if (sub.length === 1) return listFolder(sub[0][1]);
+    $('#landingErr').textContent = sub.length ? 'Pick one of the account folders inside: ' + sub.map((s) => s[0]).join(', ') : 'No saveN.hg files in that folder. Pick the st_… folder that holds them.';
+    $('#slotList').innerHTML = '';
+    return;
+  }
+  return showSlots(pool, (r) => ({ kind: 'dir', dir, dataName: r.name, metaName: r.metaName }));
+}
+
+async function showSlots(pool, makeSrc) {
+  const list = $('#slotList'); list.innerHTML = '';
+  const saves = [...pool.keys()].filter((n) => SAVE_RE.test(n)).sort((a, b) => slotLabel(a).n - slotLabel(b).n);
+  const rows = [];
+  for (const key of saves) {
+    const d = pool.get(key), m = pool.get('mf_' + key);
+    let info = null, err = '';
+    try { if (m) info = C.parseMeta(C.decryptMeta(await m.read(), C.slotFromName(key)).words); else err = 'meta file missing'; }
+    catch (e) { err = e.message; }
+    rows.push({ name: d.name, metaName: m ? m.name : null, d, m, info, err, mtime: d.mtime });
+  }
+  const open = async (r) => {
+    let data = null, meta = null;
+    try {
+      if (!r.m && !(await dialog('Meta file missing', '<p>Without <span class="mono">mf_' + esc(r.name) + '</span> the game will reject the edited save. Open it anyway, read-only?</p>', [['Cancel', false, 'ghost'], ['Open read-only', true]]))) return;
+      busy('Opening ' + r.name + '…'); await tick();
+      data = await r.d.read(); meta = r.m ? await r.m.read() : null;
+      await tick();
+      openSave(data, meta, r.name, makeSrc(r));
+    } catch (e) {
+      $('#landingErr').textContent = 'Could not open ' + r.name + ': ' + e.message
+        + '\nDetails to share: data ' + (data ? data.length + ' bytes, starts ' + hex(data) : 'not read') + '; meta ' + (meta ? meta.length + ' bytes' : 'none');
+    } finally { busy(); }
+  };
+  if (rows.length === 1 && !S.appNoAutoOpen) return open(rows[0]);
+  rows.sort((a, b) => ((b.info && b.info.timestamp) || b.mtime / 1000) - ((a.info && a.info.timestamp) || a.mtime / 1000));
+  list.innerHTML = '<h3>Choose a save</h3><p class="dim" style="font-size:14px">Newest first. Each slot keeps an auto save and a manual save.</p>' + rows.map((r, i) => {
+    const sl = slotLabel(r.name);
+    const when = new Date(((r.info && r.info.timestamp) || r.mtime / 1000) * 1000).toLocaleString();
+    const title = (r.info && r.info.saveName) || 'Slot ' + sl.slot;
+    const sub = [(r.info && r.info.saveSummary) || '', sl.kind === 'auto' ? 'Auto save' : 'Manual save', when, r.info ? fmtPlay(r.info.totalPlayTime) : ''].filter(Boolean).join(', ');
+    return `<button class="slot-row" data-i="${i}"><span class="n">${sl.slot}</span><span><span class="t">${esc(title)}</span><br><span class="s">${esc(sub)}</span>${r.err ? `<br><span class="err">${esc(r.err)}</span>` : ''}</span><span class="mono dim">${esc(r.name)}</span></button>`;
+  }).join('');
+  list.querySelectorAll('.slot-row').forEach((b) => b.onclick = () => open(rows[+b.dataset.i]));
+  list.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function fmtPlay(sec) { sec = Number(sec) || 0; const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60); return h + 'h ' + m + 'm played'; }
+
+const drop = $('#drop');
+drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+// Drops anywhere on the landing page count, so a near-miss doesn't make the browser open the file.
+const landing = $('#landing');
+landing.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+landing.addEventListener('dragleave', (e) => { if (!landing.contains(e.relatedTarget)) drop.classList.remove('over'); });
+landing.addEventListener('drop', async (e) => {
+  e.preventDefault(); drop.classList.remove('over');
+  const entries = [...e.dataTransfer.items].map((it) => it.webkitGetAsEntry && it.webkitGetAsEntry()).filter(Boolean);
+  const plain = [...e.dataTransfer.files];
+  busy('Reading files…'); await tick();
+  try {
+    let files = [];
+    let folderBlocked = false;
+    if (entries.length) { try { files = await filesFromEntries(entries); } catch (err) { folderBlocked = entries.some((en) => en.isDirectory); } }
+    if (!files.length) { files = plain; if (entries.some((en) => en.isDirectory)) folderBlocked = true; }
+    await handleFiles(files, folderBlocked);
+  } catch (err) { reportError(err); } finally { busy(); }
+});
+drop.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#filePick').click(); } });
+$('#filePick').onchange = async (e) => {
+  const files = [...e.target.files]; e.target.value = '';
+  busy('Reading ' + files.length + ' files…'); await tick();
+  try { await handleFiles(files); } catch (err) { reportError(err); } finally { busy(); }
+};
+
+// Walk dropped folders (e.g. the whole st_… folder, or the NMS folder above it) a few levels deep.
+async function filesFromEntries(entries, depth = 0) {
+  const out = [];
+  for (const en of entries) {
+    if (en.isFile) out.push(await new Promise((res, rej) => en.file(res, rej)));
+    else if (en.isDirectory && depth < 3 && !/^(_editor_backups|cache)$/i.test(en.name)) {
+      const reader = en.createReader(); let batch;
+      do { batch = await new Promise((res, rej) => reader.readEntries(res, rej)); out.push(...(await filesFromEntries(batch, depth + 1))); } while (batch.length);
+    }
+  }
+  return out;
+}
+
+async function handleFiles(files, folderBlocked) {
+  $('#landingErr').textContent = '';
+  const pool = new Map();
+  for (const f of files) {
+    const k = f.name.toLowerCase();
+    if (SAVE_RE.test(k) || /^mf_save\d*\.hg$/.test(k)) {
+      if (pool.has(k) && pool.get(k).mtime >= f.lastModified) continue; // several st_ folders: keep the newest
+      pool.set(k, { name: f.name, mtime: f.lastModified, read: async () => new Uint8Array(await f.arrayBuffer()) });
+    }
+  }
+  if (![...pool.keys()].some((n) => SAVE_RE.test(n))) {
+    $('#slotList').innerHTML = '';
+    if (folderBlocked || files.some((f) => /^(st_\d+|defaultuser|nms)$/i.test(f.name))) {
+      $('#landingErr').textContent = 'Chrome won\'t let the page look inside a dropped AppData folder. Click the box instead, open your st_… folder in the file window, press Ctrl+A and choose Open.';
+      return;
+    }
+    const names = files.slice(0, 6).map((f) => f.name).join(', ') + (files.length > 6 ? ', …' : '');
+    $('#landingErr').textContent = files.length
+      ? `None of these are save files: ${names}. Open the st_… folder inside %APPDATA%\\HelloGames\\NMS and pick the save.hg / mf_save.hg files there (Ctrl+A picks them all).`
+      : 'Nothing came through with that drop. Try clicking the box and choosing the files instead.';
+    $('#slotList').innerHTML = '';
+    return;
+  }
+  return showSlots(pool, (r) => ({ kind: 'files', dataName: r.name, metaName: r.metaName }));
+}
+
+function openSave(data, meta, name, src) {
+  const t0 = performance.now();
+  const save = C.readSave(data, meta, name);
+  S.save = save; S.src = src; S.dirty = false; S.pick = {}; S.sel = null;
+  S.raw = { path: [], q: '', hits: null, open: new Set(), page: {} };
+  const root = save.json;
+  if (!(root instanceof Map)) throw new Error('Save content is not a JSON object');
+  S.obf = !root.has('Version') && !root.has('PlayerStateData') && !root.has('CommonStateData');
+  // context: Omega layout has BaseContext / ExpeditionContext, older saves keep PlayerStateData at the root
+  const ctxSel = $('#ctxSel'); ctxSel.innerHTML = '';
+  const ctxs = [];
+  for (const nm of ['BaseContext', 'ExpeditionContext']) { const c = g(root, nm); if (c instanceof Map && g(c, 'PlayerStateData')) ctxs.push([nm, c]); }
+  if (ctxs.length) {
+    const active = str(g(root, 'ActiveContext'));
+    const want = active === 'Season' ? 'ExpeditionContext' : 'BaseContext';
+    S.ctx = (ctxs.find((c) => c[0] === want) || ctxs[0])[1];
+    ctxs.forEach(([nm]) => { const o = document.createElement('option'); o.value = nm; o.textContent = nm === 'BaseContext' ? 'Main game' : 'Expedition'; if (g(root, nm) === S.ctx) o.selected = true; ctxSel.appendChild(o); });
+    $('#ctxWrap').classList.toggle('hidden', ctxs.length < 2);
+  } else { S.ctx = root; $('#ctxWrap').classList.add('hidden'); }
+  if (!(ps() instanceof Map)) throw new Error('No PlayerStateData found — is this a save file?');
+  $('#landing').classList.add('hidden'); $('#app').classList.remove('hidden');
+  renderSide(); go('overview');
+  toast('Loaded ' + name + ' in ' + Math.round(performance.now() - t0) + ' ms' + (meta ? '' : ' (read-only: no meta file)'));
+}
+$('#ctxSel').onchange = (e) => { S.ctx = g(S.save.json, e.target.value); S.pick = {}; S.sel = null; renderSide(); render(); };
+
+$('#closeBtn').onclick = async () => {
+  if (S.dirty && !(await dialog('Discard changes?', '<p>Your edits to this save have not been written yet.</p>', [['Keep editing', false, 'ghost'], ['Discard', true, 'danger']]))) return;
+  S.save = null; $('#app').classList.add('hidden'); $('#landing').classList.remove('hidden');
+  if (APP && S.appAcct) appListAccount(S.appAcct);
+};
+window.addEventListener('beforeunload', (e) => { if (S.dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+// ------------------------------------------------------------------ writing
+$('#saveBtn').onclick = async () => {
+  if (!S.save.meta) { toast('This save was opened without its meta file, so it cannot be written.', true); return; }
+  const saveName = str(g(common() || ps(), 'SaveName'));
+  let out;
+  const btn = $('#saveBtn'); btn.disabled = true; btn.textContent = 'Preparing files…'; await tick();
+  try {
+    try { out = C.writeSave(S.save, { saveName: S.save.meta.info.saveName != null ? saveName : undefined }); }
+    catch (e) { toast('Could not encode the save: ' + e.message, true); return; }
+    // self-check: the bytes we are about to write must decode back to the same JSON
+    try {
+      const back = C.readSave(out.data, out.meta, S.src.dataName);
+      if (C.stringifyJSON(back.json) !== C.stringifyJSON(S.save.json)) throw new Error('round-trip mismatch');
+    } catch (e) { toast('Safety check failed, nothing was written: ' + e.message, true); return; }
+  } finally { updateStatus(); }
+
+  if (S.src.kind === 'app') return appWrite(out);
+  if (S.src.kind === 'dir') {
+    const ok = await dialog('Write to your save folder?', `<p>This replaces <span class="mono">${esc(S.src.dataName)}</span> and <span class="mono">${esc(S.src.metaName)}</span>. The current files are copied to <span class="mono">_editor_backups</span> first. Make sure No Man's Sky is closed.</p>`, [['Cancel', false, 'ghost'], ['Save', true, 'primary']]);
+    if (!ok) return;
+    try {
+      const dir = S.src.dir;
+      if ((await dir.queryPermission({ mode: 'readwrite' })) !== 'granted' && (await dir.requestPermission({ mode: 'readwrite' })) !== 'granted') throw new Error('write permission was not granted');
+      const bak = await (await dir.getDirectoryHandle('_editor_backups', { create: true })).getDirectoryHandle(stamp() + '_' + S.src.dataName.replace(/\.hg$/i, ''), { create: true });
+      for (const n of [S.src.dataName, S.src.metaName]) {
+        const src = await (await dir.getFileHandle(n)).getFile();
+        await writeFile(bak, n, new Uint8Array(await src.arrayBuffer()));
+      }
+      await writeFile(dir, S.src.dataName, out.data);
+      await writeFile(dir, S.src.metaName, out.meta);
+      S.save.meta = C.readSave(out.data, out.meta, S.src.dataName).meta;
+      S.dirty = false; updateStatus(); renderSide();
+      toast('Saved. Backup in _editor_backups.');
+    } catch (e) { toast('Save failed: ' + e.message, true); }
+  } else {
+    download(out.data, S.src.dataName); setTimeout(() => download(out.meta, S.src.metaName), 400);
+    S.save.meta = C.readSave(out.data, out.meta, S.src.dataName).meta;
+    S.dirty = false; updateStatus();
+    dialog('Two files downloaded', `<p>Copy <span class="mono">${esc(S.src.dataName)}</span> and <span class="mono">${esc(S.src.metaName)}</span> into your save folder, replacing the old pair. Keep a copy of the originals until you have loaded the save in game.</p>`, [['Done', true, 'primary']]);
+  }
+};
+async function writeFile(dir, name, bytes) { const w = await (await dir.getFileHandle(name, { create: true })).createWritable(); await w.write(bytes); await w.close(); }
+function stamp() { const d = new Date(), p = (n) => String(n).padStart(2, '0'); return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()); }
+function download(bytes, name) { const u = URL.createObjectURL(new Blob([bytes])); const a = document.createElement('a'); a.href = u; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(u), 5000); }
+
+// ------------------------------------------------------------------ navigation
+const SECTIONS = [
+  ['overview', 'Overview'], ['exosuit', 'Exosuit'], ['ships', 'Starships'], ['tools', 'Multi-tools'],
+  ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['storage', 'Storage'], ['items', 'Item names'], ['raw', 'Raw data'],
+];
+function renderSide() {
+  const p = ps(), m = S.save.meta && S.save.meta.info;
+  $('#saveName').textContent = str(g(common() || p, 'SaveName')) || (m && m.saveName) || S.src.dataName;
+  const bits = [S.src.dataName];
+  if (m) bits.push(fmtPlay(num(g(common() || p, 'TotalPlayTime')) || m.totalPlayTime));
+  $('#saveMeta').textContent = bits.join(', ');
+  const counts = { ships: ships().length, tools: tools().length, storage: storageInvs().length };
+  $('#nav').innerHTML = SECTIONS.map(([id, label]) => `<button data-s="${id}" ${S.section === id ? 'aria-current="page"' : ''}>${label}${counts[id] != null ? `<span class="count">${counts[id]}</span>` : ''}</button>`).join('');
+  $('#nav').querySelectorAll('button').forEach((b) => b.onclick = () => go(b.dataset.s));
+  updateStatus();
+}
+function go(section) {
+  S.section = section; S.sel = null;
+  $('#nav').querySelectorAll('button').forEach((b) => { if (b.dataset.s === section) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  render(); $('#main').scrollTop = 0;
+}
+function render() { const f = PAGES[S.section]; $('#page').innerHTML = ''; f($('#page')); }
+
+// ------------------------------------------------------------------ owned things
+const isInv = (v) => v instanceof Map && Array.isArray(g(v, 'Slots')) && Array.isArray(g(v, 'ValidSlotIndices'));
+function ships() { return (g(ps(), 'ShipOwnership') || []).map((s, i) => ({ s, i })).filter(({ s }) => str(g(s, 'Resource', 'Filename'))); }
+function tools() { return (g(ps(), 'Multitools') || []).map((s, i) => ({ s, i })).filter(({ s }) => { const sd = g(s, 'Seed'); return (Array.isArray(sd) && sd[0] === true) || (g(s, 'Store', 'Slots') || []).length; }); }
+function vehicles() { return (g(ps(), 'VehicleOwnership') || []).map((s, i) => ({ s, i })).filter(({ s }) => str(g(s, 'Resource', 'Filename')) || (g(s, 'Inventory', 'Slots') || []).length); }
+const COVERED = new Set(['Inventory', 'Inventory_TechOnly', 'Inventory_Cargo', 'FreighterInventory', 'FreighterInventory_TechOnly', 'FreighterInventory_Cargo']);
+function storageInvs() {
+  const out = []; const p = ps();
+  for (const [k, v] of p) { const n = nameOf(k); if (!COVERED.has(n) && isInv(v)) out.push({ name: n, inv: v }); }
+  const order = (n) => { const m = n.match(/^Chest(\d+)Inventory$/); return m ? +m[1] : 100; };
+  return out.sort((a, b) => order(a.name) - order(b.name) || a.name.localeCompare(b.name));
+}
+function prettyInvName(n) {
+  const m = n.match(/^Chest(\d+)Inventory$/); if (m) return 'Storage container ' + (+m[1] - 1);
+  return n.replace(/Inventory$/, '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ').trim() || n;
+}
+function modelName(path) { const f = str(path).split('/').pop() || ''; return f.replace(/\.SCENE\.MBIN$/i, '').replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()); }
+
+// ------------------------------------------------------------------ pages
+const PAGES = {};
+
+PAGES.overview = (el) => {
+  const p = ps(), cm = common();
+  const cur = [['Units', 'Units'], ['Nanites', 'Nanites'], ['Quicksilver', 'Specials']];
+  el.innerHTML = `
+    <div class="page-head"><div><h1>Overview</h1><p>Currencies and the save's name as it appears in the load menu.</p></div></div>
+    <div class="currencies">${cur.map(([label, key]) => `
+      <div class="cur"><div class="lbl">${label}<span>max 4,294,967,295</span></div>
+        <input class="input num" inputmode="numeric" data-cur="${key}" value="${num(g(p, key))}" aria-label="${label}">
+        <div class="quick"><button class="btn small" data-add="${key}" data-n="1000000">+1M</button><button class="btn small" data-add="${key}" data-n="100000000">+100M</button><button class="btn small" data-add="${key}" data-n="max">Max</button></div></div>`).join('')}
+    </div>
+    <div class="panel"><h3>Save name</h3><div class="row">
+      <label class="field"><span>Shown in the game's load screen</span><input class="input" id="nameIn" maxlength="42" value="${esc(str(g(cm || p, 'SaveName')))}"></label>
+    </div></div>
+    <div class="facts" id="facts"></div>
+    <div class="panel"><h3>Quick fixes</h3><p class="dim">Applies to every inventory in this context: exosuit, ships, multi-tools, freighter, exocraft and storage.</p>
+      <div class="toolbar"><button class="btn" id="repairAll">Repair all technology</button><button class="btn" id="rechargeAll">Recharge all technology</button><button class="btn" id="refillAll">Fill every stack</button></div></div>`;
+  const facts = [];
+  const pt = num(g(cm || p, 'TotalPlayTime')); if (pt) facts.push([fmtPlay(pt).replace(' played', ''), 'Play time']);
+  facts.push([ships().length, 'Starships'], [tools().length, 'Multi-tools'], [(g(p, 'PersistentPlayerBases') || []).length, 'Bases']);
+  const ver = num(g(S.save.json, 'Version')); if (ver) facts.push([ver, 'Save version']);
+  if (S.save.meta) facts.push([S.save.meta.info.length === 432 ? 'Worlds Part II' : S.save.meta.info.length === 384 ? 'Worlds Part I' : 'Waypoint era', 'Meta format']);
+  $('#facts', el).innerHTML = facts.map(([b, s]) => `<div><b>${esc(b)}</b><span>${s}</span></div>`).join('');
+  el.querySelectorAll('[data-cur]').forEach((inp) => inp.onchange = () => { const v = clampU32(inp.value); inp.value = v; set(p, inp.dataset.cur, N(v)); });
+  el.querySelectorAll('[data-add]').forEach((b) => b.onclick = () => {
+    const inp = el.querySelector(`[data-cur="${b.dataset.add}"]`);
+    const v = b.dataset.n === 'max' ? 4294967295 : clampU32(num(inp.value) + +b.dataset.n);
+    inp.value = v; set(p, b.dataset.add, N(v));
+  });
+  $('#nameIn', el).onchange = (e) => { const tgt = cm && kOf(cm, 'SaveName') != null ? cm : p; set(tgt, 'SaveName', e.target.value); renderSide(); };
+  const all = () => allInvs();
+  $('#repairAll', el).onclick = () => { let n = 0; all().forEach((inv) => slotsOf(inv).forEach((s) => { if (repair(s)) n++; })); toast(n + ' items repaired'); };
+  $('#rechargeAll', el).onclick = () => { let n = 0; all().forEach((inv) => slotsOf(inv).forEach((s) => { if (typeOf(s) === 'Technology' && refill(s)) n++; })); toast(n + ' technologies recharged'); };
+  $('#refillAll', el).onclick = () => { let n = 0; all().forEach((inv) => slotsOf(inv).forEach((s) => { if (typeOf(s) !== 'Technology' && refill(s)) n++; })); toast(n + ' stacks filled'); };
+};
+const clampU32 = (v) => Math.max(0, Math.min(4294967295, Math.floor(Number(String(v).replace(/[^\d.]/g, '')) || 0)));
+
+function allInvs() {
+  const p = ps(), out = [];
+  for (const n of COVERED) { const v = g(p, n); if (isInv(v)) out.push(v); }
+  ships().forEach(({ s }) => ['Inventory', 'Inventory_TechOnly', 'Inventory_Cargo'].forEach((n) => { const v = g(s, n); if (isInv(v)) out.push(v); }));
+  tools().forEach(({ s }) => { const v = g(s, 'Store'); if (isInv(v)) out.push(v); });
+  vehicles().forEach(({ s }) => ['Inventory', 'Inventory_TechOnly'].forEach((n) => { const v = g(s, n); if (isInv(v)) out.push(v); }));
+  storageInvs().forEach(({ inv }) => out.push(inv));
+  return [...new Set(out)];
+}
+
+PAGES.exosuit = (el) => {
+  const p = ps();
+  el.innerHTML = `<div class="page-head"><div><h1>Exosuit</h1><p>General, technology and cargo inventories.</p></div></div>`;
+  invBlock(el, g(p, 'Inventory'), 'General');
+  invBlock(el, g(p, 'Inventory_TechOnly'), 'Technology');
+  invBlock(el, g(p, 'Inventory_Cargo'), 'Cargo');
+};
+
+function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, nameKey }) {
+  el.innerHTML = `<div class="page-head"><div><h1>${title}</h1><p>${intro}</p></div></div>`;
+  if (!list.length) { el.insertAdjacentHTML('beforeend', '<p class="dim">Nothing owned here yet.</p>'); return; }
+  const primary = primaryKey ? num(g(ps(), primaryKey)) : -1;
+  if (S.pick[key] == null || !list.some((x) => x.i === S.pick[key])) S.pick[key] = (list.find((x) => x.i === primary) || list[0]).i;
+  const pick = document.createElement('div'); pick.className = 'picker';
+  pick.innerHTML = list.map(({ s, i }) => `<button class="pick" data-i="${i}" aria-pressed="${i === S.pick[key]}"><span class="pn">${esc(label(s, i))}${i === primary ? ' <span class="dim">(current)</span>' : ''}</span><span class="ps">${esc(sub(s, i))}</span></button>`).join('');
+  el.appendChild(pick);
+  pick.querySelectorAll('.pick').forEach((b) => b.onclick = () => { S.pick[key] = +b.dataset.i; S.sel = null; render(); });
+  const cur = list.find((x) => x.i === S.pick[key]).s;
+  if (nameKey) {
+    const panel = document.createElement('div'); panel.className = 'panel';
+    panel.innerHTML = `<div class="row"><label class="field"><span>Name</span><input class="input" value="${esc(str(g(cur, nameKey)))}" maxlength="42"></label>${seedField(cur)}</div>`;
+    el.appendChild(panel);
+    panel.querySelector('input').onchange = (e) => { set(cur, nameKey, e.target.value); renderSide(); };
+    wireSeed(panel, cur);
+  }
+  invs(cur).forEach(([inv, t]) => invBlock(el, inv, t));
+}
+function seedOf(s) { const sd = g(s, 'Resource', 'Seed') || g(s, 'Seed'); return Array.isArray(sd) ? sd : null; }
+function seedField(s) { const sd = seedOf(s); return sd ? `<label class="field"><span>Seed (changes the look; keep a backup)</span><input class="input mono" data-seed value="${esc(str(sd[1]))}" pattern="0x[0-9A-Fa-f]{1,16}"></label>` : ''; }
+function wireSeed(panel, s) {
+  const inp = panel.querySelector('[data-seed]'); if (!inp) return;
+  inp.onchange = () => { const v = inp.value.trim(); if (!/^0x[0-9A-Fa-f]{1,16}$/.test(v)) { toast('Seeds look like 0x followed by up to 16 hex digits.', true); inp.value = str(seedOf(s)[1]); return; } seedOf(s)[1] = v.toUpperCase().replace(/^0X/, '0x'); markDirty(); };
+}
+
+PAGES.ships = (el) => ownedPage(el, {
+  title: 'Starships', intro: 'Rename ships, change seeds, and manage each ship\'s inventories.', list: ships(), key: 'ship', primaryKey: 'PrimaryShip', nameKey: 'Name',
+  label: (s, i) => str(g(s, 'Name')) || 'Ship ' + (i + 1), sub: (s) => [modelName(g(s, 'Resource', 'Filename')), invClass(g(s, 'Inventory'))].filter(Boolean).join(', ') + ' class',
+  invs: (s) => [[g(s, 'Inventory'), 'General'], [g(s, 'Inventory_TechOnly'), 'Technology'], [g(s, 'Inventory_Cargo'), 'Cargo']],
+});
+PAGES.tools = (el) => ownedPage(el, {
+  title: 'Multi-tools', intro: 'Each multi-tool has a single store for its technology.', list: tools(), key: 'tool', primaryKey: 'ActiveMultioolIndex', nameKey: 'Name',
+  label: (s, i) => str(g(s, 'Name')) || 'Multi-tool ' + (i + 1), sub: (s) => (invClass(g(s, 'Store')) || '?') + ' class',
+  invs: (s) => [[g(s, 'Store'), 'Technology']],
+});
+PAGES.vehicles = (el) => ownedPage(el, {
+  title: 'Exocraft', intro: 'Cargo and technology for each exocraft you have summoned.', list: vehicles(), key: 'veh', primaryKey: 'PrimaryVehicle',
+  label: (s, i) => str(g(s, 'Name')) || modelName(g(s, 'Resource', 'Filename')) || 'Exocraft ' + (i + 1), sub: (s, i) => 'Bay ' + (i + 1),
+  invs: (s) => [[g(s, 'Inventory'), 'Cargo'], [g(s, 'Inventory_TechOnly'), 'Technology']],
+});
+PAGES.freighter = (el) => {
+  const p = ps();
+  el.innerHTML = `<div class="page-head"><div><h1>Freighter</h1><p>The capital ship's own inventories. Frigates and base parts are in Raw data for now.</p></div></div>`;
+  if (kOf(p, 'PlayerFreighterName') != null) {
+    const panel = document.createElement('div'); panel.className = 'panel';
+    panel.innerHTML = `<div class="row"><label class="field"><span>Freighter name</span><input class="input" maxlength="42" value="${esc(str(g(p, 'PlayerFreighterName')))}"></label></div>`;
+    panel.querySelector('input').onchange = (e) => set(p, 'PlayerFreighterName', e.target.value);
+    el.appendChild(panel);
+  }
+  invBlock(el, g(p, 'FreighterInventory'), 'General');
+  invBlock(el, g(p, 'FreighterInventory_TechOnly'), 'Technology');
+  invBlock(el, g(p, 'FreighterInventory_Cargo'), 'Cargo');
+};
+PAGES.storage = (el) => {
+  el.innerHTML = `<div class="page-head"><div><h1>Storage</h1><p>Base storage containers and other standalone inventories found in this save.</p></div></div>`;
+  const list = storageInvs();
+  if (!list.length) el.insertAdjacentHTML('beforeend', '<p class="dim">No storage inventories in this save.</p>');
+  list.forEach(({ name, inv }) => invBlock(el, inv, prettyInvName(name)));
+};
+
+// ------------------------------------------------------------------ inventory model
+const slotsOf = (inv) => (isInv(inv) ? g(inv, 'Slots') : []);
+const typeOf = (s) => str(g(s, 'Type', 'InventoryType'));
+const idOf = (s) => str(g(s, 'Id'));
+const posOf = (s) => [num(g(s, 'Index', 'X')), num(g(s, 'Index', 'Y'))];
+function invClass(inv) { return isInv(inv) ? str(g(inv, 'Class', 'InventoryClass')) : ''; }
+function isRaw(id) { return /[\uF780-\uF7FF]/.test(id); }
+function plural(n, one, many) { return n.toLocaleString() + ' ' + (n === 1 ? one : many || one + 's'); }
+function hexOf(id) { return [...C.encodeText(id)].map((b) => (b >= 32 && b < 127 ? String.fromCharCode(b) : '\\x' + b.toString(16).padStart(2, '0').toUpperCase())).join(''); }
+function idLabel(id) {
+  if (isRaw(id)) return 'Hashed tech';
+  return id.replace(/^\^/, '');
+}
+function repair(s) {
+  let ch = false;
+  if (kOf(s, 'DamageFactor') != null && num(g(s, 'DamageFactor')) !== 0) { set(s, 'DamageFactor', N('0.0')); ch = true; }
+  if (kOf(s, 'FullyInstalled') != null && g(s, 'FullyInstalled') !== true) { set(s, 'FullyInstalled', true); ch = true; }
+  return ch;
+}
+function refill(s) { const mx = num(g(s, 'MaxAmount')), a = num(g(s, 'Amount')); if (mx > 0 && a >= 0 && a !== mx) { set(s, 'Amount', N(mx)); return true; } return false; }
+function validSet(inv) { const s = new Set(); (g(inv, 'ValidSlotIndices') || []).forEach((v) => s.add(num(g(v, 'X')) + ',' + num(g(v, 'Y')))); return s; }
+function coord(x, y) { const m = new Map(); m.set(keyFor('X'), N(x)); m.set(keyFor('Y'), N(y)); return m; }
+function slotAt(inv, x, y) { return slotsOf(inv).find((s) => { const [a, b] = posOf(s); return a === x && b === y; }); }
+
+function newSlot(inv, x, y, { id, type, amount, max }) {
+  const proto = slotsOf(inv)[0];
+  const s = new Map();
+  const put = (name, v) => s.set(keyFor(name), v);
+  if (proto) { // follow the key order the game used in this inventory
+    for (const k of proto.keys()) {
+      const n = nameOf(k);
+      if (n === 'Type') { const t = new Map(); t.set(keyFor('InventoryType'), type); s.set(k, t); }
+      else if (n === 'Id') s.set(k, id);
+      else if (n === 'Amount') s.set(k, N(amount));
+      else if (n === 'MaxAmount') s.set(k, N(max));
+      else if (n === 'DamageFactor') s.set(k, N('0.0'));
+      else if (n === 'FullyInstalled') s.set(k, true);
+      else if (n === 'Index') s.set(k, coord(x, y));
+      else if (n === 'AddedAutomatically') s.set(k, false);
+      else s.set(k, cloneJSON(proto.get(k)));
+    }
+  } else {
+    const t = new Map(); t.set(keyFor('InventoryType'), type);
+    put('Type', t); put('Id', id); put('Amount', N(amount)); put('MaxAmount', N(max)); put('DamageFactor', N('0.0'));
+    put('FullyInstalled', true); put('Index', coord(x, y)); put('AddedAutomatically', false);
+  }
+  slotsOf(inv).push(s); markDirty(); return s;
+}
+function cloneJSON(v) { if (v instanceof Map) { const m = new Map(); for (const [k, x] of v) m.set(k, cloneJSON(x)); return m; } if (Array.isArray(v)) return v.map(cloneJSON); return v; }
+
+function invBlock(el, inv, title) {
+  if (!isInv(inv)) return;
+  const w = Math.max(1, num(g(inv, 'Width'))), h = Math.max(1, num(g(inv, 'Height')));
+  const valid = validSet(inv);
+  const items = new Map(); slotsOf(inv).forEach((s) => { const [x, y] = posOf(s); items.set(x + ',' + y, s); });
+  const cls = invClass(inv);
+  const block = document.createElement('section'); block.className = 'inv';
+  const selHere = S.sel && S.sel.inv === inv;
+  let cells = '';
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const key = x + ',' + y, s = items.get(key), ok = valid.has(key);
+    const sel = selHere && S.sel.x === x && S.sel.y === y ? ' sel' : '';
+    if (!s) { cells += `<button class="cell${ok ? '' : ' locked'}${sel}" data-x="${x}" data-y="${y}" aria-label="${ok ? 'Empty slot' : 'Locked slot'} ${x + 1},${y + 1}"></button>`; continue; }
+    const id = idOf(s), t = typeOf(s), info = dbItem(id);
+    const amt = num(g(s, 'Amount')), mx = num(g(s, 'MaxAmount'));
+    const dmg = num(g(s, 'DamageFactor')) > 0 || g(s, 'FullyInstalled') === false;
+    const pct = mx > 0 && amt >= 0 ? Math.min(100, (amt / mx) * 100) : 0;
+    const name = info ? info.name : idLabel(id);
+    cells += `<button class="cell has t-${esc(t)}${dmg ? ' damaged' : ''}${sel}" data-x="${x}" data-y="${y}" title="${esc(name)}${t !== 'Technology' ? ' ×' + amt : ''}" aria-label="${esc(name)}">`
+      + (info && info.icon ? `<img data-icon="${esc(info.icon)}" alt="">` : `<span class="lbl">${esc(name)}</span>`)
+      + (t !== 'Technology' && amt > 0 ? `<span class="amt">${amt > 9999 ? Math.round(amt / 1000) + 'k' : amt}</span>` : '')
+      + (pct ? `<span class="fill" style="width:${pct}%"></span>` : '') + '</button>';
+  }
+  block.innerHTML = `<div class="inv-head"><h3>${esc(title)} ${cls ? `<span class="badge cls-${esc(cls)}">${esc(cls)}</span>` : ''}</h3>
+      <span class="cap">${plural(items.size, 'item')}, ${valid.size} of ${w * h} slots unlocked</span>
+      <div class="toolbar">
+        <button class="btn small" data-act="unlock">Unlock all slots</button>
+        <button class="btn small" data-act="refill">Fill stacks</button>
+        <button class="btn small" data-act="repair">Repair</button>
+        <button class="btn small ghost" data-act="settings">Size and class</button>
+      </div></div>
+    <div class="inv-wrap"><div><div class="grid" style="--w:${w}">${cells}</div>
+      <div class="legend"><span><i style="background:var(--substance)"></i>Substance</span><span><i style="background:var(--product)"></i>Product</span><span><i style="background:var(--technology)"></i>Technology</span><span><i style="background:var(--danger)"></i>Damaged</span><span><i style="background:var(--gold)"></i>Stack or charge level</span></div></div>
+      <div class="insp-slot"></div></div>`;
+  el.appendChild(block);
+  loadIcons(block);
+  block.querySelector('.grid').onclick = (e) => {
+    const c = e.target.closest('.cell'); if (!c) return;
+    S.sel = { inv, x: +c.dataset.x, y: +c.dataset.y };
+    document.querySelectorAll('.cell.sel').forEach((n) => n.classList.remove('sel'));
+    document.querySelectorAll('.insp-slot').forEach((n) => { n.innerHTML = ''; });
+    c.classList.add('sel');
+    inspector(block.querySelector('.insp-slot'), inv, S.sel.x, S.sel.y, () => rerenderBlock(block, inv, title));
+  };
+  block.querySelectorAll('[data-act]').forEach((b) => b.onclick = async () => {
+    const a = b.dataset.act;
+    if (a === 'unlock') {
+      const arr = g(inv, 'ValidSlotIndices'); const have = validSet(inv); let n = 0;
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (!have.has(x + ',' + y)) { arr.push(coord(x, y)); n++; }
+      if (n) markDirty(); toast(n ? n + ' slots unlocked' : 'All slots already unlocked');
+    }
+    if (a === 'refill') { let n = 0; slotsOf(inv).forEach((s) => { if (refill(s)) n++; }); toast(n + ' stacks filled'); }
+    if (a === 'repair') { let n = 0; slotsOf(inv).forEach((s) => { if (repair(s)) n++; }); toast(n + ' items repaired'); }
+    if (a === 'settings') { await invSettings(inv); }
+    rerenderBlock(block, inv, title);
+  });
+  if (selHere) inspector(block.querySelector('.insp-slot'), inv, S.sel.x, S.sel.y, () => rerenderBlock(block, inv, title));
+}
+function rerenderBlock(block, inv, title) { const tmp = document.createElement('div'); invBlock(tmp, inv, title); block.replaceWith(tmp.firstElementChild); }
+
+async function invSettings(inv) {
+  const w = num(g(inv, 'Width')), h = num(g(inv, 'Height')), cls = invClass(inv);
+  const body = `<p>The game's own limits are 10 × 12 for cargo, 10 × 6 for technology and 10 × 5 for base storage. Larger sizes may break the inventory screen.</p>
+    <div class="two"><label class="field"><span>Width</span><input class="input" id="iw" type="number" min="1" max="20" value="${w}"></label><label class="field"><span>Height</span><input class="input" id="ih" type="number" min="1" max="20" value="${h}"></label></div>
+    ${cls ? `<label class="field" style="margin-top:10px"><span>Class</span><select class="input" id="ic">${['C', 'B', 'A', 'S'].map((c) => `<option ${c === cls ? 'selected' : ''}>${c}</option>`).join('')}</select></label>` : ''}`;
+  const ok = await dialog('Inventory size and class', body, [['Cancel', false, 'ghost'], ['Apply', true, 'primary']]);
+  if (!ok) return;
+  const nw = Math.max(1, Math.min(20, +$('#iw').value | 0)), nh = Math.max(1, Math.min(20, +$('#ih').value | 0));
+  if (nw !== w) set(inv, 'Width', N(nw)); if (nh !== h) set(inv, 'Height', N(nh));
+  if (cls && $('#ic').value !== cls) set(g(inv, 'Class'), 'InventoryClass', $('#ic').value);
+}
+
+function inspector(box, inv, x, y, rerender) {
+  const s = slotAt(inv, x, y);
+  const valid = validSet(inv).has(x + ',' + y);
+  box.innerHTML = '';
+  const panel = document.createElement('div'); panel.className = 'inspector';
+  box.appendChild(panel);
+  if (!valid && !s) {
+    panel.innerHTML = `<div class="title">Locked slot</div><p class="dim" style="margin:0">Column ${x + 1}, row ${y + 1}. Unlock it to place items here.</p><button class="btn" id="unl">Unlock this slot</button>`;
+    panel.querySelector('#unl').onclick = () => { g(inv, 'ValidSlotIndices').push(coord(x, y)); markDirty(); rerender(); };
+    return;
+  }
+  if (!s) { addForm(panel, inv, x, y, rerender); return; }
+  const id = idOf(s), t = typeOf(s), info = dbItem(id);
+  const hasDmg = kOf(s, 'DamageFactor') != null;
+  panel.innerHTML = `
+    <div class="head${info && info.icon ? '' : ' noico'}"><div class="ico">${info && info.icon ? `<img data-icon="${esc(info.icon)}" alt="">` : ''}</div>
+      <div><div class="title">${esc(info ? info.name : idLabel(id))}</div><div class="sub">${esc(t)}${info && info.sub ? ', ' + esc(info.sub) : ''}</div></div></div>
+    ${isRaw(id) ? `<div class="field"><span>Item ID (stored as raw bytes; kept as-is)</span><span class="mono">${esc(hexOf(id))}</span></div>` : `<label class="field"><span>Item ID</span><input class="input mono" id="sId" value="${esc(id)}"></label>`}
+    <div class="two"><label class="field"><span>${t === 'Technology' ? 'Charge' : 'Amount'}</span><input class="input" id="sAmt" type="number" value="${num(g(s, 'Amount'))}"></label>
+      <label class="field"><span>Max</span><input class="input" id="sMax" type="number" value="${num(g(s, 'MaxAmount'))}"></label></div>
+    <label class="field"><span>Type</span><select class="input" id="sType">${['Substance', 'Product', 'Technology'].map((o) => `<option ${o === t ? 'selected' : ''}>${o}</option>`).join('')}</select></label>
+    ${hasDmg ? `<div class="two"><label class="field"><span>Damage (0 to 1)</span><input class="input" id="sDmg" type="number" step="0.05" min="0" max="1" value="${num(g(s, 'DamageFactor'))}"></label>
+      <label class="chk" style="align-self:end;padding-bottom:8px"><input type="checkbox" id="sInst" ${g(s, 'FullyInstalled') !== false ? 'checked' : ''}> Installed</label></div>` : ''}
+    <div class="toolbar"><button class="btn small" id="sFill">${t === 'Technology' ? 'Recharge' : 'Fill stack'}</button>${hasDmg ? '<button class="btn small" id="sFix">Repair</button>' : ''}<button class="btn small danger" id="sDel">Remove</button></div>
+    <p class="dim mono" style="margin:0">Slot ${x + 1}, ${y + 1}</p>`;
+  loadIcons(panel);
+  const on = (sel, fn) => { const e = panel.querySelector(sel); if (e) e.onchange = fn; };
+  on('#sId', (e) => { const v = e.target.value.trim(); if (!v) return; set(s, 'Id', v.startsWith('^') ? v : '^' + v); rerender(); });
+  on('#sAmt', (e) => { set(s, 'Amount', N(Math.trunc(+e.target.value || 0))); rerender(); });
+  on('#sMax', (e) => { set(s, 'MaxAmount', N(Math.max(0, Math.trunc(+e.target.value || 0)))); rerender(); });
+  on('#sType', (e) => { set(g(s, 'Type'), 'InventoryType', e.target.value); rerender(); });
+  on('#sDmg', (e) => { const v = Math.max(0, Math.min(1, +e.target.value || 0)); set(s, 'DamageFactor', N(v === 0 ? '0.0' : String(v))); rerender(); });
+  on('#sInst', (e) => { set(s, 'FullyInstalled', e.target.checked); rerender(); });
+  panel.querySelector('#sFill').onclick = () => { refill(s); rerender(); };
+  const fx = panel.querySelector('#sFix'); if (fx) fx.onclick = () => { repair(s); rerender(); };
+  panel.querySelector('#sDel').onclick = () => { const arr = slotsOf(inv); arr.splice(arr.indexOf(s), 1); markDirty(); rerender(); };
+}
+
+const DEFAULTS = { Substance: [9999, 9999], Product: [10, 10], Technology: [100, 100] };
+function addForm(panel, inv, x, y, rerender) {
+  const techOnly = slotsOf(inv).length > 0 && slotsOf(inv).every((s) => typeOf(s) === 'Technology');
+  panel.innerHTML = `<div class="title">Empty slot</div>
+    ${S.db ? `<label class="field"><span>Find an item by name</span><input class="input" id="aQ" placeholder="e.g. Chromatic Metal, Pulse Engine"></label><div class="results hidden" id="aRes"></div>`
+           : `<p class="dim" style="margin:0;font-size:14px">Type an item ID such as <span class="mono">FUEL1</span>. Load item names to search by name instead.</p>`}
+    <label class="field"><span>Item ID</span><input class="input mono" id="aId" placeholder="^FUEL1"></label>
+    <label class="field"><span>Type</span><select class="input" id="aType">${['Substance', 'Product', 'Technology'].map((o) => `<option ${o === (techOnly ? 'Technology' : 'Substance') ? 'selected' : ''}>${o}</option>`).join('')}</select></label>
+    <div class="two"><label class="field"><span>Amount</span><input class="input" id="aAmt" type="number"></label><label class="field"><span>Max</span><input class="input" id="aMax" type="number"></label></div>
+    <button class="btn primary" id="aAdd">Add to slot</button>`;
+  const setDefaults = () => { const d = DEFAULTS[$('#aType', panel).value]; $('#aAmt', panel).value = d[0]; $('#aMax', panel).value = d[1]; };
+  setDefaults();
+  $('#aType', panel).onchange = setDefaults;
+  if (S.db) {
+    const q = $('#aQ', panel), res = $('#aRes', panel);
+    q.oninput = () => {
+      const t = q.value.trim().toLowerCase(); if (t.length < 2) { res.classList.add('hidden'); return; }
+      const hits = S.db.list.filter((it) => !it.hashed && (it.name.toLowerCase().includes(t) || it.id.toLowerCase().includes(t))).slice(0, 40);
+      res.classList.remove('hidden');
+      res.innerHTML = hits.map((it) => `<button data-id="${esc(it.id)}">${it.icon ? `<img data-icon="${esc(it.icon)}" alt="">` : '<span></span>'}<span>${esc(it.name)} <span class="dim mono">${esc(it.id)}</span></span></button>`).join('') || '<p class="dim" style="padding:8px;margin:0">No matches</p>';
+      loadIcons(res);
+      res.querySelectorAll('button').forEach((b) => b.onclick = () => {
+        const it = S.db.byId.get(b.dataset.id);
+        $('#aId', panel).value = it.id; $('#aType', panel).value = it.type; setDefaults(); res.classList.add('hidden'); q.value = it.name;
+      });
+    };
+  }
+  $('#aAdd', panel).onclick = () => {
+    let id = $('#aId', panel).value.trim(); if (!id) { toast('Enter an item ID first.', true); return; }
+    if (!id.startsWith('^')) id = '^' + id.toUpperCase();
+    newSlot(inv, x, y, { id, type: $('#aType', panel).value, amount: Math.trunc(+$('#aAmt', panel).value || 1), max: Math.trunc(+$('#aMax', panel).value || 1) });
+    rerender();
+  };
+}
+
+// ------------------------------------------------------------------ optional item database (from the user's own Goatfungus jar)
+const IDB = { open() { return new Promise((res, rej) => { const r = indexedDB.open('harmonious-save-editor', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
+  async get(k) { const db = await this.open(); return new Promise((res) => { const r = db.transaction('kv').objectStore('kv').get(k); r.onsuccess = () => res(r.result); r.onerror = () => res(undefined); }); },
+  async put(k, v) { const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = () => rej(t.error); }); },
+  async del(k) { const db = await this.open(); return new Promise((res) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').delete(k); t.oncomplete = res; }); } };
+
+function zipIndex(buf) {
+  const u8 = new Uint8Array(buf), dv = new DataView(buf);
+  let eocd = -1; for (let i = u8.length - 22; i >= Math.max(0, u8.length - 66000); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) throw new Error('not a zip/jar file');
+  const count = dv.getUint16(eocd + 10, true); let p = dv.getUint32(eocd + 16, true);
+  const entries = new Map(); const td = new TextDecoder();
+  for (let i = 0; i < count; i++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true), nlen = dv.getUint16(p + 28, true), xlen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true), lho = dv.getUint32(p + 42, true);
+    entries.set(td.decode(u8.subarray(p + 46, p + 46 + nlen)), { method, csize, lho });
+    p += 46 + nlen + xlen + clen;
+  }
+  return { u8, dv, entries };
+}
+async function zipRead(z, name) {
+  const e = z.entries.get(name); if (!e) return null;
+  const start = e.lho + 30 + z.dv.getUint16(e.lho + 26, true) + z.dv.getUint16(e.lho + 28, true);
+  const raw = z.u8.subarray(start, start + e.csize);
+  if (e.method === 0) return raw;
+  const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+async function loadDbFromJar(buf) {
+  const z = zipIndex(buf);
+  const xmlBytes = await zipRead(z, 'nomanssave/db/items.xml');
+  if (!xmlBytes) throw new Error('items.xml not found inside that file');
+  const doc = new DOMParser().parseFromString(new TextDecoder().decode(xmlBytes), 'text/xml');
+  const typeFor = { substance: 'Substance', product: 'Product', techbox: 'Product', technology: 'Technology' };
+  const list = [];
+  for (const el of doc.querySelectorAll('substance, product, technology, techbox')) {
+    const type = typeFor[el.tagName]; const id = el.getAttribute('id'); if (!type || !id) continue;
+    list.push({ id, name: el.getAttribute('name') || '', type, icon: el.getAttribute('icon') || '', sub: el.getAttribute('subtitle') || '', template: el.getAttribute('template') || '', parent: (el.parentElement && el.parentElement.getAttribute('name')) || '' });
+  }
+  const byId = new Map(list.map((it) => [it.id, it]));
+  // tech packs are stored in saves as raw bytes; give them a readable name from their template and icon
+  for (const it of list) if (!it.name) {
+    const t = byId.get(it.template);
+    const kind = it.icon.replace(/\.png$/i, '').split('-').pop().replace(/_/g, ' ').toLowerCase();
+    const tn = t && t.name ? t.name : 'Tech pack';
+    it.name = it.parent && tn.includes('%NAME%') ? tn.replace('%NAME%', it.parent) : tn.replace('%NAME%', '').trim() + (kind ? ' (' + kind + ')' : '');
+    it.hashed = /^\^[0-9A-F]{12}$/.test(it.id);
+  }
+  for (const it of list) if (!it.name) it.name = it.id;
+  S.db = { list, byId, zip: z, icons: new Map() };
+}
+function dbItem(id) {
+  if (!S.db || !id) return null;
+  if (isRaw(id)) { const hex = [...C.encodeText(id.split('#')[0].replace(/^\^/, ''))].map((b) => b.toString(16).padStart(2, '0')).join('').toUpperCase(); return S.db.byId.get('^' + hex) || null; }
+  return S.db.byId.get(id) || S.db.byId.get(id.split('#')[0]) || null;
+}
+async function iconUrl(name) {
+  const db = S.db; if (!db) return null;
+  if (db.icons.has(name)) return db.icons.get(name);
+  const p = (async () => { const b = await zipRead(db.zip, 'nomanssave/icons/' + name); return b ? URL.createObjectURL(new Blob([b], { type: 'image/png' })) : null; })();
+  db.icons.set(name, p); return p;
+}
+function loadIcons(root) { if (!S.db) return; root.querySelectorAll('img[data-icon]').forEach(async (img) => { const u = await iconUrl(img.dataset.icon); if (u) img.src = u; else img.remove(); }); }
+
+(async () => { try { const buf = await IDB.get('jar'); if (buf) await loadDbFromJar(buf); } catch (_) { /* no cached database */ } })();
+
+PAGES.items = (el) => {
+  el.innerHTML = `<div class="page-head"><div><h1>Item names and icons</h1>
+    <p>The editor works with raw item IDs. To see names and icons, and to search items by name, point it at your own copy of Goatfungus's <span class="mono">NMSSaveEditor.jar</span>. It is read in this tab and remembered for next time.</p></div></div>
+    <div class="panel">${S.db ? `<h3>${S.db.list.length.toLocaleString()} items loaded</h3><p class="dim">Names and icons now show in every inventory.</p><button class="btn" id="dbForget">Forget item database</button>`
+      : `<h3>No item database yet</h3><p class="dim">Choose <span class="mono">NMSSaveEditor.jar</span> from the folder where you keep that editor.</p><label class="btn primary">Choose NMSSaveEditor.jar<input type="file" id="jarPick" accept=".jar,.zip" hidden></label>`}
+    <p class="err" id="dbErr"></p></div>`;
+  const pick = $('#jarPick', el);
+  if (pick) pick.onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try { const buf = await f.arrayBuffer(); await loadDbFromJar(buf); try { await IDB.put('jar', buf); } catch (_) {} toast(S.db.list.length + ' items loaded'); render(); }
+    catch (err) { $('#dbErr', el).textContent = 'Could not read that file: ' + err.message; }
+  };
+  const fg = $('#dbForget', el); if (fg) fg.onclick = async () => { await IDB.del('jar'); S.db = null; render(); };
+};
+
+// ------------------------------------------------------------------ raw data explorer
+const PAGE_SIZE = 200;
+function at(path) { let v = S.save.json; for (const k of path) v = v instanceof Map ? v.get(k) : v[k]; return v; }
+function kind(v) { if (v instanceof Map) return 'object'; if (Array.isArray(v)) return 'array'; if (v instanceof Num) return 'number'; if (typeof v === 'string' || v instanceof Str) return 'string'; if (typeof v === 'boolean') return 'bool'; return 'null'; }
+function summary(v) { const k = kind(v); if (k === 'object') return v.size + ' fields'; if (k === 'array') return v.length + ' items'; return ''; }
+
+PAGES.raw = (el) => {
+  const r = S.raw;
+  el.innerHTML = `<div class="page-head"><div><h1>Raw data</h1><p>Every value in the save. Names are translated from the game's short keys; the original key is shown beside each one.</p></div>
+    <div class="toolbar"><button class="btn small" id="exp">Export JSON</button><label class="btn small">Import JSON<input type="file" id="imp" accept=".json" hidden></label></div></div>
+    <form class="row" id="sf" role="search"><label class="field"><span>Search keys and values</span><input class="input" id="sq" value="${esc(r.q)}" placeholder="e.g. Nanites, ^ANTIMATTER, Roamer"></label><button class="btn">Search</button></form>
+    <div id="hits"></div><div class="crumbs" id="crumbs"></div><div class="tree" id="tree"></div>`;
+  $('#sf', el).onsubmit = (e) => { e.preventDefault(); r.q = $('#sq', el).value.trim(); r.hits = r.q ? search(r.q) : null; drawHits(); };
+  $('#exp', el).onclick = () => download(new TextEncoder().encode(C.stringifyJSON(S.save.json, '  ')), S.src.dataName.replace(/\.hg$/i, '') + '.json');
+  $('#imp', el).onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try {
+      const v = C.parseJSON(C.decodeText(new Uint8Array(await f.arrayBuffer())).text);
+      if (!(v instanceof Map)) throw new Error('top level is not an object');
+      if (!(await dialog('Replace the whole save?', '<p>Everything in this save will be replaced by the imported JSON.</p>', [['Cancel', false, 'ghost'], ['Replace', true, 'danger']]))) return;
+      const src = S.src, meta = S.save.meta, compressed = S.save.compressed;
+      S.save = { ...S.save, json: v, meta, compressed }; S.src = src;
+      openAfterImport(); markDirty(); toast('JSON imported');
+    } catch (err) { toast('Import failed: ' + err.message, true); }
+  };
+  drawHits(); drawTree();
+  function drawHits() {
+    const h = $('#hits', el);
+    if (!r.hits) { h.innerHTML = ''; return; }
+    h.innerHTML = `<p class="dim" style="margin:8px 0 0">${r.hits.length >= 300 ? 'First 300 matches' : plural(r.hits.length, 'match', 'matches')}</p><div class="search-hits">${r.hits.map((hit, i) => `<button data-i="${i}"><span>${esc(pathLabel(hit.path))}</span><span class="dim mono">${esc(hit.preview)}</span></button>`).join('')}</div>`;
+    h.querySelectorAll('button').forEach((b) => b.onclick = () => { const hit = r.hits[+b.dataset.i]; r.path = hit.path.slice(0, -1); r.focusKey = hit.path[hit.path.length - 1]; drawTree(); });
+  }
+  function drawTree() {
+    const cr = $('#crumbs', el);
+    const parts = [['Save', []]]; r.path.forEach((k, i) => parts.push([typeof k === 'number' ? '[' + k + ']' : nameOf(k), r.path.slice(0, i + 1)]));
+    cr.innerHTML = parts.map(([l], i) => (i ? '<span class="sep">/</span>' : '') + `<button data-i="${i}">${esc(l)}</button>`).join('');
+    cr.querySelectorAll('button').forEach((b) => b.onclick = () => { r.path = parts[+b.dataset.i][1]; r.focusKey = null; drawTree(); });
+    const tree = $('#tree', el); tree.innerHTML = '';
+    const v = at(r.path);
+    tree.appendChild(children(v, r.path));
+    if (r.focusKey != null) { const n = tree.querySelector(`[data-key="${CSS.escape(String(r.focusKey))}"]`); if (n) { n.scrollIntoView({ block: 'center' }); n.style.background = 'var(--plate-2)'; } }
+  }
+  function children(v, path) {
+    const frag = document.createDocumentFragment();
+    const entries = v instanceof Map ? [...v.keys()] : v.map((_, i) => i);
+    const pk = path.join('\u0001'); const lim = r.page[pk] || PAGE_SIZE;
+    entries.slice(0, lim).forEach((k) => frag.appendChild(nodeEl(v, k, path.concat([k]))));
+    if (entries.length > lim) frag.appendChild(more(v, path, entries, lim));
+    return frag;
+  }
+  function more(v, path, entries, lim) { const b = document.createElement('button'); b.className = 'btn small ghost'; b.style.margin = '8px'; b.textContent = 'Show more (' + (entries.length - lim) + ' left)'; b.onclick = () => { r.page[path.join('\u0001')] = lim + PAGE_SIZE; const f = document.createDocumentFragment(); entries.slice(lim, lim + PAGE_SIZE).forEach((k2) => f.appendChild(nodeEl(v, k2, path.concat([k2])))); if (entries.length > lim + PAGE_SIZE) f.appendChild(more(v, path, entries, lim + PAGE_SIZE)); b.replaceWith(f); }; return b; }
+  function nodeEl(parent, k, path) {
+    const v = parent instanceof Map ? parent.get(k) : parent[k];
+    const kd = kind(v), container = kd === 'object' || kd === 'array';
+    const node = document.createElement('div'); node.className = 'node'; node.dataset.key = String(k);
+    const label = typeof k === 'number' ? `<span class="dim">[${k}]</span>` : esc(nameOf(k)) + (OBF2NAME[k] ? `<span class="o mono">${esc(k)}</span>` : '');
+    const pk = path.join('\u0001'); const open = S.raw.open.has(pk);
+    node.innerHTML = `<div class="nrow"><span>${container ? `<button class="tog" aria-expanded="${open}" aria-label="Expand">${open ? '▾' : '▸'}</button>` : ''}</span><span class="k" title="${esc(typeof k === 'number' ? '' : nameOf(k))}">${label}</span><span class="v"></span></div>`;
+    const vbox = node.querySelector('.v');
+    if (container) {
+      vbox.innerHTML = `<span class="summary">${summary(v)}</span><button class="open">Open</button>`;
+      vbox.querySelector('.open').onclick = () => { S.raw.path = path; S.raw.focusKey = null; drawTree(); };
+      const tog = node.querySelector('.tog');
+      const kids = document.createElement('div'); kids.className = 'kids';
+      if (open) { kids.appendChild(children(v, path)); node.appendChild(kids); }
+      tog.onclick = () => {
+        if (S.raw.open.has(pk)) { S.raw.open.delete(pk); kids.remove(); tog.textContent = '▸'; tog.setAttribute('aria-expanded', 'false'); }
+        else { S.raw.open.add(pk); kids.innerHTML = ''; kids.appendChild(children(v, path)); node.appendChild(kids); tog.textContent = '▾'; tog.setAttribute('aria-expanded', 'true'); }
+      };
+    } else vbox.appendChild(editor(parent, k, v, kd));
+    return node;
+  }
+};
+function openAfterImport() {
+  const root = S.save.json;
+  const c = g(root, 'BaseContext'); S.ctx = c instanceof Map && g(c, 'PlayerStateData') ? c : root;
+  renderSide(); render();
+}
+function editor(parent, k, v, kd) {
+  const wrap = document.createElement('span'); wrap.style.cssText = 'display:flex;gap:8px;align-items:center;min-width:0;flex:1';
+  const put = (nv) => { if (parent instanceof Map) parent.set(k, nv); else parent[k] = nv; markDirty(); };
+  if (kd === 'bool') {
+    wrap.innerHTML = `<label class="chk"><input type="checkbox" ${v ? 'checked' : ''}> ${v ? 'true' : 'false'}</label>`;
+    const cb = wrap.querySelector('input'); cb.onchange = () => { put(cb.checked); cb.nextSibling.textContent = ' ' + cb.checked; };
+  } else if (kd === 'null') wrap.innerHTML = '<span class="dim">null</span>';
+  else {
+    const s = String(v); const raw = kd === 'string' && /[\uF780-\uF7FF]/.test(s);
+    if (raw) { wrap.innerHTML = `<span class="tag">binary</span><span class="dim mono">${esc(idLabel(s))}</span>`; return wrap; }
+    const multi = /[\r\n]/.test(s);
+    wrap.innerHTML = multi ? `<textarea class="input" rows="3" aria-label="Value">${esc(s)}</textarea>` : `<input class="input ${kd === 'number' ? 'mono' : ''}" value="${esc(s)}" aria-label="Value">${kd === 'number' ? '<span class="tag">number</span>' : ''}`;
+    const inp = wrap.querySelector('input, textarea');
+    inp.onchange = () => {
+      if (kd === 'number') {
+        const t = inp.value.trim();
+        if (!/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(t)) { toast('That is not a number; value unchanged.', true); inp.value = s; return; }
+        put(new Num(t));
+      } else put(inp.value);
+    };
+  }
+  return wrap;
+}
+function pathLabel(path) { return path.map((k) => (typeof k === 'number' ? '[' + k + ']' : nameOf(k))).join(' / ').replace(/ \/ \[/g, '['); }
+function search(q) {
+  const hits = [], ql = q.toLowerCase(), path = [];
+  const LIMIT = 300;
+  (function walk(v) {
+    if (hits.length >= LIMIT) return;
+    if (v instanceof Map) {
+      for (const [k, x] of v) {
+        path.push(k);
+        const nm = nameOf(k).toLowerCase();
+        if (nm.includes(ql) || k.toLowerCase() === ql) hits.push({ path: path.slice(), preview: preview(x) });
+        else if (!(x instanceof Map) && !Array.isArray(x) && x != null && String(x).toLowerCase().includes(ql)) hits.push({ path: path.slice(), preview: preview(x) });
+        if (x instanceof Map || Array.isArray(x)) walk(x);
+        path.pop(); if (hits.length >= LIMIT) return;
+      }
+    } else if (Array.isArray(v)) {
+      for (let i = 0; i < v.length; i++) {
+        const x = v[i]; path.push(i);
+        if (!(x instanceof Map) && !Array.isArray(x) && x != null && String(x).toLowerCase().includes(ql)) hits.push({ path: path.slice(), preview: preview(x) });
+        if (x instanceof Map || Array.isArray(x)) walk(x);
+        path.pop(); if (hits.length >= LIMIT) return;
+      }
+    }
+  })(S.save.json);
+  return hits;
+}
+function preview(x) { const k = kind(x); if (k === 'object' || k === 'array') return summary(x); const s = String(x); return /[\uF780-\uF7FF]/.test(s) ? idLabel(s) : s.length > 80 ? s.slice(0, 80) + '…' : s; }
+
+// ------------------------------------------------------------------ desktop app mode
+// When this page is served by the Harmonious Save Editor app, window.NMS_APP holds a per-run token
+// and the app reads and writes the save folder directly (Chrome's AppData block doesn't apply).
+const APP = window.NMS_APP || null;
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { 'X-Token': APP.token, ...(opts.headers || {}) } });
+  if (!r.ok) { const t = await r.text().catch(() => ''); throw new Error(t || r.status + ' ' + r.statusText); }
+  return r;
+}
+const fmtWhen = (ms) => new Date(ms).toLocaleString();
+
+async function appInit() {
+  document.body.classList.add('is-app');
+  $('#appLanding').classList.remove('hidden');
+  $('#backupsBtn').classList.remove('hidden');
+  $('.wordmark small').textContent = "for No Man's Sky, reading your saves directly";
+  $('#intro').textContent = "Edit units, inventories, ships and multi-tools, or any value in the raw save. Before a save is replaced, the old files are copied to a backups folder.";
+  const ping = () => api('/api/ping', { method: 'POST' }).catch(() => {});
+  ping(); setInterval(ping, 5000);
+  addEventListener('pagehide', () => navigator.sendBeacon('/api/bye?t=' + encodeURIComponent(APP.token)));
+  $('#backupsBtn').onclick = () => api('/api/reveal?what=backups', { method: 'POST' }).catch((e) => toast(e.message, true));
+  $('#otherForm').onsubmit = (e) => { e.preventDefault(); const p = $('#otherPath').value.trim().replace(/^"|"$/g, ''); if (p) appListAccount({ name: p.split(/[\\/]/).filter(Boolean).pop() || p, path: p }); };
+  await appLoadRoots();
+}
+
+async function appLoadRoots() {
+  $('#landingErr').textContent = '';
+  let info;
+  try { info = await (await api('/api/roots')).json(); } catch (e) { $('#landingErr').textContent = 'Could not look for saves: ' + e.message; return; }
+  S.appInfo = info;
+  const accts = info.roots.flatMap((r) => r.accounts);
+  const where = info.roots.map((r) => `<code>${esc(r.path)}</code>${r.exists ? '' : ' (not found)'}`).join(' and ');
+  $('#appWhere').innerHTML = accts.length ? `Saves found in ${where}.` : `No saves found in ${where}. If yours are somewhere else, use a different folder below.`;
+  const box = $('#acctList'); box.innerHTML = '';
+  if (accts.length > 1) {
+    box.innerHTML = accts.map((a, i) => `<button class="pick" data-i="${i}" aria-pressed="false"><span class="pn">${esc(a.label)}</span><span class="ps">${a.saves} saves, last played ${esc(fmtWhen(a.newest))}</span></button>`).join('');
+    box.querySelectorAll('.pick').forEach((b) => b.onclick = () => appListAccount(accts[+b.dataset.i]));
+  }
+  if (!accts.length) { $('.other-folder').open = true; $('#slotList').innerHTML = ''; return; }
+  const newest = accts.reduce((a, b) => (b.newest > a.newest ? b : a));
+  await appListAccount(newest);
+}
+
+async function appListAccount(acct) {
+  $('#landingErr').textContent = '';
+  S.appAcct = acct;
+  $('#acctList').querySelectorAll('.pick').forEach((b, i) => b.setAttribute('aria-pressed', String(S.appInfo && S.appInfo.roots.flatMap((r) => r.accounts)[i] === acct)));
+  let files;
+  try { files = await (await api('/api/list?dir=' + encodeURIComponent(acct.path))).json(); }
+  catch (e) { $('#landingErr').textContent = 'Could not read ' + acct.path + ': ' + e.message; $('#slotList').innerHTML = ''; return; }
+  const pool = new Map();
+  for (const f of files) pool.set(f.name.toLowerCase(), {
+    name: f.name, mtime: f.mtime,
+    read: async () => new Uint8Array(await (await api('/api/read?dir=' + encodeURIComponent(acct.path) + '&name=' + encodeURIComponent(f.name))).arrayBuffer()),
+  });
+  if (![...pool.keys()].some((n) => SAVE_RE.test(n))) { $('#landingErr').textContent = 'No save.hg files in ' + acct.path + '.'; $('#slotList').innerHTML = ''; return; }
+  S.appNoAutoOpen = true;
+  await showSlots(pool, (r) => ({ kind: 'app', dir: acct.path, dataName: r.name, metaName: r.metaName }));
+}
+
+async function appWrite(out) {
+  let running = false;
+  try { running = (await (await api('/api/game-running')).json()).running; } catch (_) { /* unknown: treat as not running */ }
+  const body = `<p>This replaces <span class="mono">${esc(S.src.dataName)}</span> and <span class="mono">${esc(S.src.metaName)}</span> in your save folder. The current pair is copied to the backups folder first.</p>`
+    + (running ? `<p class="err">No Man's Sky is running. It will overwrite these changes the next time it saves. Quit the game to the desktop first.</p>` : '')
+    + `<p>If Steam asks about a cloud conflict next time you start the game, choose the local files.</p>`;
+  const ok = await dialog(running ? 'The game is still running' : 'Save to your game?', body, [['Cancel', false, 'ghost'], [running ? 'Save anyway' : 'Save', true, running ? 'danger' : 'primary']]);
+  if (!ok) return;
+  const btn = $('#saveBtn'); btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const fd = new FormData();
+    fd.append('dir', S.src.dir); fd.append('dataName', S.src.dataName); fd.append('metaName', S.src.metaName);
+    fd.append('data', new Blob([out.data]), S.src.dataName); fd.append('meta', new Blob([out.meta]), S.src.metaName);
+    const res = await (await api('/api/write', { method: 'POST', body: fd })).json();
+    S.save.meta = C.readSave(out.data, out.meta, S.src.dataName).meta;
+    S.dirty = false; renderSide();
+    toast('Saved. The previous files are in backups\\' + res.backupName);
+  } catch (e) { toast('Save failed, your files were not changed: ' + e.message, true); }
+  finally { updateStatus(); }
+}
+
+if (APP) appInit();
+</script>
+</body>
+</html>
