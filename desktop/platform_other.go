@@ -42,6 +42,28 @@ func openWindow(url, profile string) error {
 	return exec.Command("xdg-open", url).Start()
 }
 
+func hideWindow(cmd *exec.Cmd) {}
+
+func blenderConfigDirs() []string {
+	home, _ := os.UserHomeDir()
+	if runtime.GOOS == "darwin" {
+		return []string{filepath.Join(home, "Library", "Application Support", "Blender")}
+	}
+	return []string{filepath.Join(home, ".config", "blender")}
+}
+
+func findBlender() string {
+	if p := os.Getenv("HSE_BLENDER"); p != "" {
+		return p
+	}
+	for _, c := range []string{"blender", "/Applications/Blender.app/Contents/MacOS/Blender", "/snap/bin/blender"} {
+		if p, err := exec.LookPath(c); err == nil {
+			return p
+		}
+	}
+	return ""
+}
+
 func gameRunning() bool { return exec.Command("pgrep", "-f", "NMS.exe").Run() == nil }
 
 func reveal(path string) error {

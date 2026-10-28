@@ -856,9 +856,11 @@ function paintStaff(ctx, W, tint) {
 }
 
 // corvette hologram: every part plotted in 3D from its saved position and scale
+function corvetteBase(slot) {
+  return (g(ps(), 'PersistentPlayerBases') || []).find((b) => str(g(b, 'BaseType', 'PersistentBaseTypes')) === 'PlayerShipBase' && num(g(b, 'UserData')) === slot) || null;
+}
 function corvetteParts(slot) {
-  for (const b of g(ps(), 'PersistentPlayerBases') || []) {
-    if (str(g(b, 'BaseType', 'PersistentBaseTypes')) !== 'PlayerShipBase' || num(g(b, 'UserData')) !== slot) continue;
+  for (const b of [corvetteBase(slot)].filter(Boolean)) {
     const objs = g(b, 'Objects') || [];
     const pts = new Float32Array(objs.length * 4), ori = new Float32Array(objs.length * 6); let n = 0;
     let lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
@@ -934,10 +936,19 @@ function coverItems() {
 function paintCover(canvas, it, angle) {
   const W = canvas.width, ctx = canvas.getContext('2d'), tint = (CLASS_TINT[it.cls] || [79, 193, 176]).join(',');
   paintNebula(ctx, W, it.key);
+  if (it.renderImg) { paintRender(ctx, W, it.renderImg); paintBadge(ctx, W, it.cls, null); return; }
   if (it.holo) paintHologram(ctx, W, it.holo, tint, angle != null ? angle : -.65);
   else if (it.kind === 'tool') { if (it.tool === 'staff') paintStaff(ctx, W, tint); else paintShape(ctx, W, TOOL_SHAPES[it.tool] || TOOL_SHAPES.pistol, tint, false, -.12); }
   else paintShape(ctx, W, SHIP_SHAPES[it.type] || SHIP_SHAPES.Starship, tint, true, 0);
   paintBadge(ctx, W, it.cls, null);
+}
+
+function paintRender(ctx, W, img) {
+  // the render has a transparent background; fit it inside the cover with a little room, plus a soft glow below
+  const m = W * .04, k = Math.min((W - 2 * m) / img.width, (W - 2 * m) / img.height), w = img.width * k, h = img.height * k;
+  const gr = ctx.createRadialGradient(W / 2, W * .62, 0, W / 2, W * .62, W * .5);
+  gr.addColorStop(0, 'rgba(160,190,255,.12)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, W);
+  ctx.drawImage(img, (W - w) / 2, (W - h) / 2, w, h);
 }
 
 // custom cover images (screenshots) — kept per browser profile
@@ -991,11 +1002,11 @@ function CoverFlow(host, items, opts) {
   function go(i) { i = Math.max(0, Math.min(items.length - 1, i)); if (i === cur) return; const prev = cur; cur = i; if (items[prev] && items[prev].holo && !items[prev].custom) paintCover(els[prev].querySelector('canvas'), items[prev]); layout(); opts.onChange && opts.onChange(cur); }
   function spin() {
     cancelAnimationFrame(raf);
-    const it = items[cur]; if (!it || !it.holo || REDUCED) return;
+    const it = items[cur]; if (!it || !it.holo || it.renderImg || REDUCED) return;
     let last = performance.now();
     const tick = (t) => {
       if (!root.isConnected) return;
-      const cv = els[cur] && els[cur].querySelector('canvas'); if (!cv || items[cur].custom) return;
+      const cv = els[cur] && els[cur].querySelector('canvas'); if (!cv || items[cur].custom || items[cur].renderImg) return;
       angle += (t - last) * .00035; last = t; paintCover(cv, items[cur], angle);
       raf = requestAnimationFrame(tick);
     };
@@ -1025,6 +1036,17 @@ function CoverFlow(host, items, opts) {
   stage.addEventListener('dragover', (e) => { if ([...e.dataTransfer.items].some((x) => x.kind === 'file')) { e.preventDefault(); e.stopPropagation(); stage.classList.add('drop-over'); } });
   stage.addEventListener('dragleave', () => stage.classList.remove('drop-over'));
   stage.addEventListener('drop', async (e) => { e.preventDefault(); e.stopPropagation(); stage.classList.remove('drop-over'); const f = e.dataTransfer.files[0]; if (f && await setCustomCover(items[cur].key, f)) { api.refresh(); toast('Cover set for ' + items[cur].name); } });
+  const onRender = (e) => {
+    if (!root.isConnected) { document.removeEventListener('cover-render', onRender); return; }
+    items.forEach((it, i) => {
+      if (it.key !== e.detail.key) return;
+      it.renderImg = e.detail.img;
+      const cv = els[i].querySelector('canvas'); if (cv && !it.custom) paintCover(cv, it);
+      if (i === cur) { caption(); spin(); opts.onChange && opts.onChange(cur); }
+    });
+  };
+  document.addEventListener('cover-render', onRender);
+  items.forEach((it) => { if (it.kind === 'corvette') loadRender(it); });
   layout();
   const api = {
     get index() { return cur; }, go, focus: () => stage.focus(),
@@ -1039,7 +1061,8 @@ PAGES.hangar = (el) => {
   const groups = [['all', 'All', all], ['corvette', 'Corvettes', all.filter((x) => x.kind === 'corvette')], ['ship', 'Starships', all.filter((x) => x.kind === 'ship')], ['tool', 'Multi-tools', all.filter((x) => x.kind === 'tool')]];
   S.hangar = S.hangar || { filter: 'all', key: null };
   let list = (groups.find((gr) => gr[0] === S.hangar.filter) || groups[0])[2];
-  el.innerHTML = `<div class="page-head"><div><h1>Hangar</h1><p>Scroll, drag or use the arrow keys. Click the centre cover to open its loadout, or drop a screenshot on it to use as its cover.</p></div></div><div id="cfHost"></div><div class="panel" id="hangarDetail"></div>`;
+  el.innerHTML = `<div class="page-head"><div><h1>Hangar</h1><p>Scroll, drag or use the arrow keys. Click the centre cover to open its loadout, or drop a screenshot on it to use as its cover.</p></div>
+    ${APP ? '<div class="toolbar"><button class="btn" id="renderAll">Render all corvettes</button><button class="btn ghost" id="renderCfg">Render settings</button></div>' : ''}</div><div id="cfHost"></div><div class="panel" id="hangarDetail"></div>`;
   const chips = `<div class="cf-chips">${groups.map(([id, label, l]) => `<button class="chip" data-f="${id}" aria-pressed="${S.hangar.filter === id}">${label}<span class="n">${l.length}</span></button>`).join('')}</div>`;
   const start = Math.max(0, list.findIndex((x) => x.key === S.hangar.key));
   const big = Math.max(180, Math.min(340, Math.round((($('#main').clientWidth || 1000) - 80) / 3.6)));
@@ -1055,13 +1078,96 @@ PAGES.hangar = (el) => {
     if (it.holo) stats.push([it.holo.objs.toLocaleString(), 'Build parts']);
     stats.push([it.current ? 'Yes' : 'No', it.kind === 'tool' ? 'Equipped' : 'Current ship']);
     box.innerHTML = `<div class="hangar-detail"><div><h2 style="margin-bottom:10px">${esc(it.name)}</h2><div class="stats">${stats.map(([b, s]) => `<div><b>${esc(b)}</b><span>${s}</span></div>`).join('')}</div></div>
-      <div class="acts"><button class="btn primary" id="hOpen">Open loadout</button><label class="btn">Set cover image<input type="file" accept="image/*" id="hCover" hidden></label>${it.custom ? '<button class="btn ghost" id="hReset">Use generated cover</button>' : ''}</div></div>`;
+      <div class="acts"><button class="btn primary" id="hOpen">Open loadout</button>${APP && it.kind === 'corvette' ? `<button class="btn" id="hRender">${it.renderImg ? 'Render again' : 'Render with Blender'}</button>` : ''}<label class="btn">Set cover image<input type="file" accept="image/*" id="hCover" hidden></label>${it.custom ? '<button class="btn ghost" id="hReset">Use generated cover</button>' : ''}</div></div>
+      <p class="dim" id="renderState" style="margin:10px 0 0;font-size:14px" aria-live="polite"></p>`;
     $('#hOpen', box).onclick = () => openLoadout(it);
     $('#hCover', box).onchange = async (e) => { const f = e.target.files[0]; if (f && await setCustomCover(it.key, f)) { flow.refresh(); setTimeout(detail, 50); toast('Cover set for ' + it.name); } };
     const rs = $('#hReset', box); if (rs) rs.onclick = async () => { if (await setCustomCover(it.key, null)) { flow.refresh(); setTimeout(detail, 50); } };
+    const rb = $('#hRender', box);
+    if (rb) rb.onclick = async () => {
+      const st = $('#renderState', box); rb.disabled = true;
+      const say = (t) => { if (st.isConnected) st.textContent = t; };
+      try {
+        await renderCorvette(it, !!it.renderImg, (state) => say(state === 'queued' ? 'Waiting for Blender…' : 'Blender is rendering ' + it.name + '. This usually takes 10 to 60 seconds.'));
+        say(''); toast(it.name + ' rendered');
+      } catch (e) { say(e.message); toast('Render failed: ' + e.message, true); }
+      finally { if (rb.isConnected) rb.disabled = false; }
+    };
   }
   detail(); flow.focus();
+  const ra = $('#renderAll', el), rc = $('#renderCfg', el);
+  if (rc) rc.onclick = renderSettingsDialog;
+  if (ra) ra.onclick = async () => {
+    const setup = await renderSetup().catch(() => null);
+    if (!setup || !setup.ready) { renderSettingsDialog(); return; }
+    const todo = all.filter((x) => x.kind === 'corvette');
+    ra.disabled = true; let done = 0, failed = 0;
+    for (const it of todo) {
+      ra.textContent = `Rendering ${done + failed + 1} of ${todo.length}…`;
+      try { await renderCorvette(it, false); done++; } catch (e) { failed++; console.warn(e); }
+    }
+    if (ra.isConnected) { ra.disabled = false; ra.textContent = 'Render all corvettes'; }
+    toast(failed ? `${done} rendered, ${failed} failed. Open a corvette and choose Render with Blender to see why.` : `${done} corvettes rendered`, !!failed);
+  };
 };
+// ------------------------------------------------------------------ corvette renders (desktop app + Blender + Charon Forge)
+const renderImgs = new Map(); // build hash -> loaded Image, or null when there's no render yet
+async function buildPayload(it) {
+  if (it._payload) return it._payload;
+  const base = corvetteBase(it.i); if (!base) return null;
+  const plain = (v) => { if (v instanceof Map) { const m = new Map(); for (const [k, x] of v) m.set(nameOf(k), plain(x)); return m; } if (Array.isArray(v)) return v.map(plain); return v; };
+  const doc = new Map([['Objects', plain(g(base, 'Objects') || [])], ['BaseVersion', g(base, 'BaseVersion') != null ? g(base, 'BaseVersion') : N(8)]]);
+  const text = C.stringifyJSON(doc);
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)));
+  const key = [...digest.subarray(0, 16)].map((x) => x.toString(16).padStart(2, '0')).join('');
+  it._payload = { key, text }; return it._payload;
+}
+async function fetchRender(hash) {
+  try {
+    const r = await fetch('/api/cover?key=' + hash, { headers: { 'X-Token': APP.token } });
+    if (!r.ok) return null;
+    const url = URL.createObjectURL(await r.blob());
+    const img = new Image(); img.src = url; await img.decode(); return img;
+  } catch (_) { return null; }
+}
+async function loadRender(it) {
+  if (!APP || it.kind !== 'corvette' || !window.crypto || !crypto.subtle) return;
+  const p = await buildPayload(it); if (!p) return;
+  it.renderKey = p.key;
+  if (!renderImgs.has(p.key)) renderImgs.set(p.key, fetchRender(p.key));
+  const img = await renderImgs.get(p.key);
+  if (img) document.dispatchEvent(new CustomEvent('cover-render', { detail: { key: it.key, img } }));
+}
+async function renderCorvette(it, force, onState) {
+  const p = await buildPayload(it); if (!p) throw new Error('No build found for ' + it.name);
+  let st = await (await api('/api/render?key=' + p.key + (force ? '&force=1' : ''), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: p.text })).json();
+  while (st.state === 'queued' || st.state === 'running') {
+    onState && onState(st.state);
+    await new Promise((r) => setTimeout(r, 1500));
+    st = await (await api('/api/render-status?key=' + p.key)).json();
+  }
+  if (st.state !== 'done') throw new Error(st.error || 'The render did not finish');
+  renderImgs.set(p.key, fetchRender(p.key));
+  const img = await renderImgs.get(p.key);
+  if (img) document.dispatchEvent(new CustomEvent('cover-render', { detail: { key: it.key, img } }));
+  return img;
+}
+async function renderSetup() { return (await api('/api/render-setup')).json(); }
+async function renderSettingsDialog() {
+  let s; try { s = await renderSetup(); } catch (e) { toast(e.message, true); return; }
+  const ok = await dialog('Corvette renders', `<p>Covers are rendered by your own Blender with Charon Forge's part models. Leave a box empty to find it automatically.</p>
+    <label class="field"><span>Blender (blender.exe)${s.blender ? ', found: ' + esc(s.blender) : ', not found'}</span><input class="input mono" id="rsB" value="${esc(s.blenderSet || '')}" placeholder="C:\\Program Files\\Blender Foundation\\Blender 5.0\\blender.exe"></label>
+    <label class="field" style="margin-top:10px"><span>Charon Forge folder${s.charon ? ', found: ' + esc(s.charon) : ', not found'}</span><input class="input mono" id="rsC" value="${esc(s.charonSet || '')}" placeholder="...\\Blender\\5.0\\extensions\\user_default"></label>
+    <div class="two" style="margin-top:10px"><label class="field"><span>Size (pixels)</span><input class="input" id="rsS" type="number" min="256" max="2048" value="${s.size}"></label><label class="field"><span>Quality (samples)</span><input class="input" id="rsQ" type="number" min="4" max="512" value="${s.samples}"></label></div>`,
+    [['Cancel', false, 'ghost'], ['Save', true, 'primary']]);
+  if (!ok) return;
+  try {
+    const r = await (await api('/api/render-setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ blender: $('#rsB').value, charon: $('#rsC').value, size: +$('#rsS').value, samples: +$('#rsQ').value }) })).json();
+    toast(r.ready ? 'Render settings saved' : 'Saved, but Blender or Charon Forge still wasn\'t found', !r.ready);
+  } catch (e) { toast(e.message, true); }
+  if (S.section === 'hangar') render();
+}
+
 function openLoadout(it) {
   if (it.kind === 'tool') { S.pick.tool = it.i; go('tools'); } else { S.pick.ship = it.i; go('ships'); }
 }

@@ -85,6 +85,10 @@ func main() {
 	mux.HandleFunc("/api/write", handleWrite)
 	mux.HandleFunc("/api/game-running", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, map[string]bool{"running": gameRunning()}) })
 	mux.HandleFunc("/api/reveal", handleReveal)
+	mux.HandleFunc("/api/render-setup", handleRenderSetup)
+	mux.HandleFunc("/api/render", handleRender)
+	mux.HandleFunc("/api/render-status", handleRenderStatus)
+	mux.HandleFunc("/api/cover", handleCover)
 
 	srv := &http.Server{Handler: guard(addr, mux), ReadHeaderTimeout: 10 * time.Second}
 	go func() {
@@ -141,7 +145,7 @@ func guard(addr string, next http.Handler) http.Handler {
 				return
 			}
 		}
-		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Cache-Control", "no-store") // /api/cover overrides this once it has an image to send
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		next.ServeHTTP(w, r)
 	})

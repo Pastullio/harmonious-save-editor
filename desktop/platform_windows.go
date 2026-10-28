@@ -24,6 +24,39 @@ func appDataDir() string {
 	return filepath.Join(base, "HarmoniousSaveEditor")
 }
 
+func hideWindow(cmd *exec.Cmd) { hidden(cmd) }
+
+// blenderConfigDirs is where Blender keeps per-version settings and extensions.
+func blenderConfigDirs() []string {
+	return []string{filepath.Join(os.Getenv("APPDATA"), "Blender Foundation", "Blender")}
+}
+
+// findBlender looks in the standard install, the Microsoft Store and Steam locations; newest version first.
+func findBlender() string {
+	var found []string
+	for _, env := range []string{"ProgramFiles", "ProgramFiles(x86)"} {
+		if base := os.Getenv(env); base != "" {
+			m, _ := filepath.Glob(filepath.Join(base, "Blender Foundation", "Blender*", "blender.exe"))
+			found = append(found, m...)
+			found = append(found, filepath.Join(base, "Steam", "steamapps", "common", "Blender", "blender.exe"))
+		}
+	}
+	if la := os.Getenv("LOCALAPPDATA"); la != "" {
+		m, _ := filepath.Glob(filepath.Join(la, "Microsoft", "WindowsApps", "blender*.exe"))
+		found = append(found, m...)
+	}
+	newestFirst(found)
+	for _, f := range found {
+		if fileExists(f) {
+			return f
+		}
+	}
+	if p, err := exec.LookPath("blender"); err == nil {
+		return p
+	}
+	return ""
+}
+
 func hidden(cmd *exec.Cmd) *exec.Cmd {
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000} // CREATE_NO_WINDOW
 	return cmd
