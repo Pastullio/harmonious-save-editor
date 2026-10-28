@@ -24,6 +24,7 @@ python3 test/make_fixture.py <dir>          # synthetic save3.hg + mf_save3.hg
 node test/test_codec.js <dir>               # codec vs python-lz4 and a literal libNOM port
 node test/test_ui.js <dir> <shots>          # e2e in headless Chromium (Playwright at /opt/npm-tools)
 node test/test_folder.js <dir>              # browser folder mode, mocked File System Access API
+REAL_SAVE_DIR=<dir> node test/test_real.js   # byte-identical round trip of a real save (save.hg + mf_save.hg); skips if absent
 ```
 `test_ui.js` reports one expected failure ("no page errors") when Google Fonts can't load offline.
 

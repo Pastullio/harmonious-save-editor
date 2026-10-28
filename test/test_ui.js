@@ -34,7 +34,7 @@ const fx = process.argv[2], shots = process.argv[3];
   // ships page
   await page.click('nav button[data-s="ships"]');
   await page.screenshot({ path: shots + '/04-ships.png' });
-  await page.click('.pick >> nth=2');
+  await page.focus('.cf-stage'); await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowRight'); await page.waitForTimeout(500);
   await page.fill('.panel input >> nth=0', 'Trimaxion'); await page.dispatchEvent('.panel input >> nth=0', 'change');
   // storage / items / freighter / tools render without errors
   for (const s of ['tools', 'freighter', 'vehicles', 'storage', 'items']) await page.click(`nav button[data-s="${s}"]`);

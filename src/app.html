@@ -200,6 +200,40 @@ dialog::backdrop { background: rgba(8, 5, 14, .7); }
 dialog p { color: var(--dim); }
 dialog .acts { display: flex; justify-content: end; gap: 8px; margin-top: 18px; }
 
+/* ---------------- Cover Flow */
+.cf { position: relative; border-radius: var(--r); overflow: hidden; margin-bottom: 22px;
+  background: radial-gradient(120% 70% at 50% 100%, #2a1f3f 0%, #120c1d 45%, #050308 100%); border: 1px solid #2a2140; }
+.cf-stage { position: relative; height: calc(var(--cs) * 1.5); perspective: calc(var(--cs) * 4); perspective-origin: 50% 38%; outline: none; touch-action: pan-y; cursor: grab; user-select: none; }
+.cf-stage:focus-visible { box-shadow: inset 0 0 0 1px rgba(240, 184, 74, .55); }
+.cf-stage.dragging { cursor: grabbing; }
+.cf-stage.drop-over::after { content: "Drop to use as this cover"; position: absolute; inset: 10px; border: 2px dashed var(--gold); border-radius: var(--r); display: grid; place-items: center; color: var(--ink); font-weight: 700; background: rgba(18, 14, 28, .55); pointer-events: none; z-index: 1000; }
+.cf-item { position: absolute; left: 50%; top: calc(var(--cs) * .14); width: var(--cs); height: var(--cs); margin-left: calc(var(--cs) / -2);
+  padding: 0; border: 0; background: none; transform-style: preserve-3d; cursor: pointer;
+  transition: transform .42s cubic-bezier(.2, .7, .2, 1), opacity .3s; will-change: transform;
+  -webkit-box-reflect: below 3px linear-gradient(transparent 58%, rgba(255, 255, 255, .22)); }
+.cf-item canvas, .cf-item img { width: 100%; height: 100%; display: block; border-radius: 3px; object-fit: cover; box-shadow: 0 0 0 1px rgba(255, 255, 255, .08); }
+.cf-item.center canvas, .cf-item.center img { box-shadow: 0 0 0 1px rgba(240, 184, 74, .5), 0 0 40px rgba(240, 184, 74, .18); }
+.cf-item:focus-visible { outline: none; } .cf-item:focus-visible canvas { box-shadow: 0 0 0 3px var(--gold); }
+.cf-caption { position: absolute; left: 0; right: 0; bottom: calc(var(--cs) * .07); text-align: center; pointer-events: none; z-index: 900; }
+.cf-caption .t { font-family: var(--display); font-weight: 700; font-size: calc(var(--cs) * .085); line-height: 1.15; text-shadow: 0 2px 8px #000; }
+.cf-caption .s { color: var(--dim); font-size: 14px; text-shadow: 0 1px 4px #000; }
+.cf-bar { display: flex; align-items: center; gap: 10px; padding: 10px 16px 14px; }
+.cf-bar input[type=range] { flex: 1; accent-color: var(--gold); }
+.cf-bar .arrow { background: rgba(255, 255, 255, .06); border: 1px solid var(--line-2); color: var(--ink); width: 30px; height: 26px; border-radius: 13px; cursor: pointer; font-size: 13px; }
+.cf-bar .arrow:hover { background: rgba(255, 255, 255, .12); }
+.cf-bar .pos { font-family: var(--display); font-size: 13px; color: var(--faint); min-width: 54px; text-align: right; }
+.cf-chips { display: flex; gap: 6px; flex-wrap: wrap; padding: 14px 16px 0; position: relative; z-index: 950; }
+.chip { border: 1px solid var(--line-2); background: rgba(255, 255, 255, .04); border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 700; color: var(--dim); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: var(--gold-ink); }
+.chip .n { font-weight: 400; margin-left: 4px; opacity: .75; }
+.hangar-detail { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 18px; align-items: start; }
+.hangar-detail .stats { display: flex; flex-wrap: wrap; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.hangar-detail .stats div { background: var(--hull); padding: 10px 14px; flex: 1 1 120px; }
+.hangar-detail .stats b { display: block; font-family: var(--display); font-size: 17px; font-weight: 600; }
+.hangar-detail .stats span { font-size: 13px; color: var(--dim); }
+.hangar-detail .acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: end; }
+@media (max-width: 760px) { .hangar-detail { grid-template-columns: 1fr; } .hangar-detail .acts { justify-content: start; } }
+@media (prefers-reduced-motion: reduce) { .cf-item { transition: none; } }
 @media (max-width: 1100px) { .inv-wrap { grid-template-columns: minmax(0, 1fr); } .inspector { position: static; } }
 @media (max-width: 760px) {
   #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; height: auto; min-height: 100%; }
@@ -571,7 +605,7 @@ function download(bytes, name) { const u = URL.createObjectURL(new Blob([bytes])
 
 // ------------------------------------------------------------------ navigation
 const SECTIONS = [
-  ['overview', 'Overview'], ['exosuit', 'Exosuit'], ['ships', 'Starships'], ['tools', 'Multi-tools'],
+  ['overview', 'Overview'], ['hangar', 'Hangar'], ['exosuit', 'Exosuit'], ['ships', 'Starships'], ['tools', 'Multi-tools'],
   ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['storage', 'Storage'], ['items', 'Item names'], ['raw', 'Raw data'],
 ];
 function renderSide() {
@@ -580,7 +614,7 @@ function renderSide() {
   const bits = [S.src.dataName];
   if (m) bits.push(fmtPlay(num(g(common() || p, 'TotalPlayTime')) || m.totalPlayTime));
   $('#saveMeta').textContent = bits.join(', ');
-  const counts = { ships: ships().length, tools: tools().length, storage: storageInvs().length };
+  const counts = { hangar: ships().length + tools().length, ships: ships().length, tools: tools().length, storage: storageInvs().length };
   $('#nav').innerHTML = SECTIONS.map(([id, label]) => `<button data-s="${id}" ${S.section === id ? 'aria-current="page"' : ''}>${label}${counts[id] != null ? `<span class="count">${counts[id]}</span>` : ''}</button>`).join('');
   $('#nav').querySelectorAll('button').forEach((b) => b.onclick = () => go(b.dataset.s));
   updateStatus();
@@ -667,24 +701,37 @@ PAGES.exosuit = (el) => {
   invBlock(el, g(p, 'Inventory_Cargo'), 'Cargo');
 };
 
-function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, nameKey }) {
+function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, nameKey, flow }) {
   el.innerHTML = `<div class="page-head"><div><h1>${title}</h1><p>${intro}</p></div></div>`;
   if (!list.length) { el.insertAdjacentHTML('beforeend', '<p class="dim">Nothing owned here yet.</p>'); return; }
   const primary = primaryKey ? num(g(ps(), primaryKey)) : -1;
   if (S.pick[key] == null || !list.some((x) => x.i === S.pick[key])) S.pick[key] = (list.find((x) => x.i === primary) || list[0]).i;
-  const pick = document.createElement('div'); pick.className = 'picker';
-  pick.innerHTML = list.map(({ s, i }) => `<button class="pick" data-i="${i}" aria-pressed="${i === S.pick[key]}"><span class="pn">${esc(label(s, i))}${i === primary ? ' <span class="dim">(current)</span>' : ''}</span><span class="ps">${esc(sub(s, i))}</span></button>`).join('');
-  el.appendChild(pick);
-  pick.querySelectorAll('.pick').forEach((b) => b.onclick = () => { S.pick[key] = +b.dataset.i; S.sel = null; render(); });
-  const cur = list.find((x) => x.i === S.pick[key]).s;
-  if (nameKey) {
-    const panel = document.createElement('div'); panel.className = 'panel';
-    panel.innerHTML = `<div class="row"><label class="field"><span>Name</span><input class="input" value="${esc(str(g(cur, nameKey)))}" maxlength="42"></label>${seedField(cur)}</div>`;
-    el.appendChild(panel);
-    panel.querySelector('input').onchange = (e) => { set(cur, nameKey, e.target.value); renderSide(); };
-    wireSeed(panel, cur);
+  const ed = document.createElement('div');
+  if (flow) {
+    const items = coverItems().filter((x) => (flow === 'tool' ? x.kind === 'tool' : x.kind !== 'tool'));
+    const host = document.createElement('div'); el.appendChild(host);
+    CoverFlow(host, items, { size: 170, index: Math.max(0, items.findIndex((x) => x.i === S.pick[key])), label: title,
+      onChange: (n) => { S.pick[key] = items[n].i; S.sel = null; editor(); }, onOpen: () => ed.scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth' }) });
+  } else {
+    const pick = document.createElement('div'); pick.className = 'picker';
+    pick.innerHTML = list.map(({ s, i }) => `<button class="pick" data-i="${i}" aria-pressed="${i === S.pick[key]}"><span class="pn">${esc(label(s, i))}${i === primary ? ' <span class="dim">(current)</span>' : ''}</span><span class="ps">${esc(sub(s, i))}</span></button>`).join('');
+    el.appendChild(pick);
+    pick.querySelectorAll('.pick').forEach((b) => b.onclick = () => { S.pick[key] = +b.dataset.i; S.sel = null; render(); });
   }
-  invs(cur).forEach(([inv, t]) => invBlock(el, inv, t));
+  el.appendChild(ed);
+  function editor() {
+    ed.innerHTML = '';
+    const cur = list.find((x) => x.i === S.pick[key]).s;
+    if (nameKey) {
+      const panel = document.createElement('div'); panel.className = 'panel';
+      panel.innerHTML = `<div class="row"><label class="field"><span>Name</span><input class="input" value="${esc(str(g(cur, nameKey)))}" maxlength="42"></label>${seedField(cur)}</div>`;
+      ed.appendChild(panel);
+      panel.querySelector('input').onchange = (e) => { set(cur, nameKey, e.target.value); renderSide(); };
+      wireSeed(panel, cur);
+    }
+    invs(cur).forEach(([inv, t]) => invBlock(ed, inv, t));
+  }
+  editor();
 }
 function seedOf(s) { const sd = g(s, 'Resource', 'Seed') || g(s, 'Seed'); return Array.isArray(sd) ? sd : null; }
 function seedField(s) { const sd = seedOf(s); return sd ? `<label class="field"><span>Seed (changes the look; keep a backup)</span><input class="input mono" data-seed value="${esc(str(sd[1]))}" pattern="0x[0-9A-Fa-f]{1,16}"></label>` : ''; }
@@ -694,12 +741,12 @@ function wireSeed(panel, s) {
 }
 
 PAGES.ships = (el) => ownedPage(el, {
-  title: 'Starships', intro: 'Rename ships, change seeds, and manage each ship\'s inventories.', list: ships(), key: 'ship', primaryKey: 'PrimaryShip', nameKey: 'Name',
+  title: 'Starships', intro: 'Rename ships, change seeds, and manage each ship\'s inventories.', list: ships(), key: 'ship', primaryKey: 'PrimaryShip', nameKey: 'Name', flow: 'ship',
   label: (s, i) => str(g(s, 'Name')) || 'Ship ' + (i + 1), sub: (s) => [modelName(g(s, 'Resource', 'Filename')), invClass(g(s, 'Inventory'))].filter(Boolean).join(', ') + ' class',
   invs: (s) => [[g(s, 'Inventory'), 'General'], [g(s, 'Inventory_TechOnly'), 'Technology'], [g(s, 'Inventory_Cargo'), 'Cargo']],
 });
 PAGES.tools = (el) => ownedPage(el, {
-  title: 'Multi-tools', intro: 'Each multi-tool has a single store for its technology.', list: tools(), key: 'tool', primaryKey: 'ActiveMultioolIndex', nameKey: 'Name',
+  title: 'Multi-tools', intro: 'Each multi-tool has a single store for its technology.', list: tools(), key: 'tool', primaryKey: 'ActiveMultioolIndex', nameKey: 'Name', flow: 'tool',
   label: (s, i) => str(g(s, 'Name')) || 'Multi-tool ' + (i + 1), sub: (s) => (invClass(g(s, 'Store')) || '?') + ' class',
   invs: (s) => [[g(s, 'Store'), 'Technology']],
 });
@@ -708,6 +755,317 @@ PAGES.vehicles = (el) => ownedPage(el, {
   label: (s, i) => str(g(s, 'Name')) || modelName(g(s, 'Resource', 'Filename')) || 'Exocraft ' + (i + 1), sub: (s, i) => 'Bay ' + (i + 1),
   invs: (s) => [[g(s, 'Inventory'), 'Cargo'], [g(s, 'Inventory_TechOnly'), 'Technology']],
 });
+// ------------------------------------------------------------------ Cover Flow: ships, corvettes and multi-tools
+// Covers are drawn from the save: a corvette becomes a hologram of its real part layout, other ships and
+// multi-tools get a type silhouette on a nebula seeded by their own seed. Any cover can be replaced by
+// dropping a screenshot on it (kept in this browser profile, keyed by kind, name and seed).
+const CLASS_TINT = { S: [240, 184, 74], A: [167, 123, 224], B: [90, 155, 224], C: [111, 168, 138] };
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+function shipType(file) {
+  const f = str(file).toUpperCase();
+  if (f.includes('/BIGGS/')) return 'Corvette';
+  if (f.includes('FIGHTERCLASSICGOLD')) return 'Golden Vector';
+  if (f.includes('/FIGHTERS/')) return 'Fighter';
+  if (f.includes('/DROPSHIPS/')) return 'Hauler';
+  if (f.includes('/SCIENTIFIC/')) return 'Explorer';
+  if (f.includes('/SHUTTLE/')) return 'Shuttle';
+  if (f.includes('/S-CLASS/') || f.includes('ROYAL')) return 'Exotic';
+  if (f.includes('SAILSHIP')) return 'Solar';
+  if (f.includes('BIOPARTS') || f.includes('BIOSHIP')) return 'Living ship';
+  if (f.includes('SENTINELSHIP')) return 'Interceptor';
+  return 'Starship';
+}
+function toolType(t) {
+  const f = str(g(t, 'Resource', 'Filename')).toUpperCase();
+  if (f.includes('STAFF')) return { kind: 'staff', label: 'Staff' };
+  if (f.includes('ALIEN')) return { kind: 'alien', label: 'Alien multi-tool' };
+  if (f.includes('ROYAL')) return { kind: 'royal', label: 'Royal multi-tool' };
+  if (f.includes('SENTINEL')) return { kind: 'rifle', label: 'Sentinel multi-tool' };
+  if (f.includes('ATLAS')) return { kind: 'rifle', label: 'Atlas multi-tool' };
+  return g(t, 'IsLarge') === true ? { kind: 'rifle', label: 'Rifle' } : { kind: 'pistol', label: 'Pistol' };
+}
+
+// right-half outlines, nose at (0,-1); mirrored when drawn
+const SHIP_SHAPES = {
+  Fighter: [[0, -1], [.16, -.4], [.9, .3], [.92, .48], [.2, .32], [.24, .72], [.46, .92], [0, .82]],
+  'Golden Vector': [[0, -1], [.12, -.5], [.5, -.05], [.95, .55], [.25, .35], [.3, .8], [0, .7]],
+  Hauler: [[0, -.95], [.28, -.85], [.34, -.3], [.7, -.25], [.72, .55], [.34, .6], [.3, .95], [0, .9]],
+  Explorer: [[0, -1], [.1, -.7], [.14, .2], [.55, .5], [.6, .75], [.14, .62], [.12, .95], [0, .9]],
+  Shuttle: [[0, -.8], [.3, -.72], [.36, -.1], [.62, .05], [.62, .4], [.36, .42], [.32, .8], [0, .82]],
+  Exotic: [[0, -1], [.08, -.5], [.45, -.45], [.62, -.1], [.45, .35], [.12, .4], [.06, .95], [0, .9]],
+  Solar: [[0, -.95], [.12, -.6], [.95, -.15], [.9, .15], [.14, .35], [.18, .8], [0, .9]],
+  'Living ship': [[0, -1], [.2, -.75], [.3, -.3], [.55, -.1], [.85, .3], [.35, .25], [.22, .7], [.3, .98], [0, .8]],
+  Interceptor: [[0, -1], [.12, -.55], [.5, -.75], [.85, -.2], [.4, .05], [.6, .7], [.2, .45], [.1, .9], [0, .75]],
+  Corvette: [[0, -.9], [.25, -.85], [.3, -.4], [.75, -.3], [.78, .2], [.32, .3], [.35, .85], [0, .9]],
+  Starship: [[0, -1], [.16, -.4], [.9, .3], [.92, .48], [.2, .32], [.24, .72], [.46, .92], [0, .82]],
+};
+// full outlines, side view, muzzle to the right
+const TOOL_SHAPES = {
+  pistol: [[-.75, -.3], [-.2, -.42], [.35, -.35], [.55, -.2], [.95, -.16], [.95, .02], [.5, .06], [.25, .18], [-.05, .2], [.05, .75], [-.3, .78], [-.42, .22], [-.8, .1]],
+  rifle: [[-1, -.25], [-.4, -.35], [.2, -.32], [.4, -.18], [1, -.14], [1, .02], [.35, .06], [.1, .15], [-.25, .16], [-.15, .62], [-.45, .65], [-.55, .18], [-1, .1]],
+  alien: [[-.9, 0], [-.5, -.35], [.3, -.3], [.95, 0], [.3, .25], [-.1, .7], [-.35, .65], [-.4, .2]],
+  royal: [[-.8, -.2], [.4, -.3], [.92, -.06], [.92, .06], [.4, .12], [.05, .12], [-.08, .7], [-.4, .7], [-.32, .12], [-.8, .12]],
+};
+
+function paintNebula(ctx, W, key) {
+  const r = rng(hashStr(key));
+  ctx.fillStyle = '#07050c'; ctx.fillRect(0, 0, W, W);
+  for (let i = 0; i < 3; i++) {
+    const hue = Math.floor(r() * 360), x = r() * W, y = r() * W * .8, rad = W * (.45 + r() * .5);
+    const gr = ctx.createRadialGradient(x, y, 0, x, y, rad);
+    gr.addColorStop(0, `hsla(${hue}, 70%, 45%, ${.22 + r() * .18})`); gr.addColorStop(1, 'hsla(0,0%,0%,0)');
+    ctx.fillStyle = gr; ctx.fillRect(0, 0, W, W);
+  }
+  for (let i = 0; i < 90; i++) { const a = r(); ctx.fillStyle = `rgba(255,255,255,${.15 + a * .6})`; const s = a > .95 ? 2 : 1; ctx.fillRect(r() * W, r() * W, s * W / 300, s * W / 300); }
+}
+function paintBadge(ctx, W, cls, label) {
+  if (cls) {
+    const c = CLASS_TINT[cls] || CLASS_TINT.C, s = W * .11, x = W - s - W * .05, y = W * .05;
+    ctx.fillStyle = `rgb(${c})`; ctx.beginPath(); ctx.roundRect(x, y, s, s, s * .18); ctx.fill();
+    ctx.fillStyle = '#120e1c'; ctx.font = `700 ${s * .62}px "Chakra Petch", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(cls, x + s / 2, y + s * .54);
+  }
+  if (label) {
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.font = `600 ${W * .05}px "Chakra Petch", sans-serif`;
+    ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillText(label, W * .055 + 1, W * .94 + 1);
+    ctx.fillStyle = 'rgba(239,232,248,.86)'; ctx.fillText(label, W * .055, W * .94);
+  }
+}
+function paintShape(ctx, W, pts, tint, mirror, rot) {
+  ctx.save(); ctx.translate(W / 2, W * .47); ctx.rotate(rot || 0); const k = W * .34;
+  const all = mirror ? pts.concat(pts.slice(1, -1).reverse().map(([x, y]) => [-x, y])) : pts;
+  ctx.beginPath(); all.forEach(([x, y], i) => (i ? ctx.lineTo(x * k, y * k) : ctx.moveTo(x * k, y * k))); ctx.closePath();
+  const gr = ctx.createLinearGradient(0, -k, 0, k); gr.addColorStop(0, `rgba(${tint},.55)`); gr.addColorStop(1, 'rgba(20,14,32,.9)');
+  ctx.shadowColor = `rgba(${tint},.7)`; ctx.shadowBlur = W * .06; ctx.fillStyle = gr; ctx.fill();
+  ctx.shadowBlur = 0; ctx.lineWidth = Math.max(1.5, W * .008); ctx.strokeStyle = `rgba(${tint},.95)`; ctx.stroke();
+  if (mirror) { ctx.beginPath(); ctx.moveTo(0, -k * .9); ctx.lineTo(0, k * .75); ctx.strokeStyle = `rgba(${tint},.35)`; ctx.lineWidth = Math.max(1, W * .004); ctx.stroke(); }
+  ctx.restore();
+}
+function paintStaff(ctx, W, tint) {
+  ctx.save(); ctx.translate(W / 2, W * .47); ctx.rotate(-.55); const k = W * .36;
+  ctx.shadowColor = `rgba(${tint},.7)`; ctx.shadowBlur = W * .05; ctx.strokeStyle = `rgba(${tint},.95)`; ctx.lineCap = 'round';
+  ctx.lineWidth = W * .028; ctx.beginPath(); ctx.moveTo(0, k * .95); ctx.lineTo(0, -k * .55); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, -k * 1.0); ctx.lineTo(k * .22, -k * .72); ctx.lineTo(0, -k * .44); ctx.lineTo(-k * .22, -k * .72); ctx.closePath();
+  ctx.fillStyle = `rgba(${tint},.55)`; ctx.fill(); ctx.lineWidth = W * .01; ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, -k * .72, k * .07, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+  ctx.restore();
+}
+
+// corvette hologram: every part plotted in 3D from its saved position and scale
+function corvetteParts(slot) {
+  for (const b of g(ps(), 'PersistentPlayerBases') || []) {
+    if (str(g(b, 'BaseType', 'PersistentBaseTypes')) !== 'PlayerShipBase' || num(g(b, 'UserData')) !== slot) continue;
+    const objs = g(b, 'Objects') || [];
+    const pts = new Float32Array(objs.length * 4), ori = new Float32Array(objs.length * 6); let n = 0;
+    let lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
+    for (const o of objs) {
+      const p = g(o, 'Position'), u = g(o, 'Up'); if (!Array.isArray(p) || p.length < 3) continue;
+      const x = num(p[0]), y = num(p[1]), z = num(p[2]); if (![x, y, z].every(Number.isFinite)) continue;
+      const sc = Array.isArray(u) ? Math.hypot(num(u[0]), num(u[1]), num(u[2])) : 1;
+      const at = g(o, 'At'), A = Array.isArray(at) ? [num(at[0]), num(at[1]), num(at[2])] : [0, 0, 1];
+      const U = Array.isArray(u) && sc > 0 ? [num(u[0]) / sc, num(u[1]) / sc, num(u[2]) / sc] : [0, 1, 0];
+      pts[n * 4] = x; pts[n * 4 + 1] = y; pts[n * 4 + 2] = z; pts[n * 4 + 3] = Number.isFinite(sc) && sc > 0 ? Math.min(sc, 6) : 1;
+      // panel axes: At, and Right = Up x At (a part's face lies in that plane for plating and panels)
+      const R = [U[1] * A[2] - U[2] * A[1], U[2] * A[0] - U[0] * A[2], U[0] * A[1] - U[1] * A[0]];
+      ori.set([A[0], A[1], A[2], R[0], R[1], R[2]].map((v) => (Number.isFinite(v) ? v : 0)), n * 6); n++;
+      lo = [Math.min(lo[0], x), Math.min(lo[1], y), Math.min(lo[2], z)]; hi = [Math.max(hi[0], x), Math.max(hi[1], y), Math.max(hi[2], z)];
+    }
+    if (!n) return null;
+    const c = [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2];
+    for (let i = 0; i < n; i++) { pts[i * 4] -= c[0]; pts[i * 4 + 1] -= c[1]; pts[i * 4 + 2] -= c[2]; }
+    let R = 0; for (let i = 0; i < n; i++) R = Math.max(R, Math.hypot(pts[i * 4], pts[i * 4 + 1], pts[i * 4 + 2]));
+    R = R || 1; // bounding-sphere radius, so the build fits the cover from every angle
+    return { pts: pts.subarray(0, n * 4), ori: ori.subarray(0, n * 6), n, R, objs: objs.length };
+  }
+  return null;
+}
+function paintHologram(ctx, W, holo, tint, angle) {
+  const pitch = .78, cx = W / 2, cy = W * .47, k = (W * .4) / holo.R;
+  const cp = Math.cos(pitch), sp = Math.sin(pitch), c = Math.cos(angle), s = Math.sin(angle);
+  const proj = (x, y, z) => { const x1 = x * c - z * s, z1 = x * s + z * c; return [cx + x1 * k, cy - (y * cp - z1 * sp) * k, y * sp + z1 * cp]; };
+  // projector ring under the ship
+  ctx.save(); ctx.translate(cx, W * .78); ctx.scale(1, .32);
+  const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, W * .44); gr.addColorStop(0, `rgba(${tint},.22)`); gr.addColorStop(.75, `rgba(${tint},.05)`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, W * .44, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = `rgba(${tint},.45)`; ctx.lineWidth = W * .005; ctx.beginPath(); ctx.arc(0, 0, W * .38, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  ctx.globalCompositeOperation = 'lighter';
+  const p = holo.pts, o = holo.ori, alpha = Math.min(.2, Math.max(.07, 220 / holo.n));
+  for (let i = 0; i < holo.n; i++) {
+    const x = p[i * 4], y = p[i * 4 + 1], z = p[i * 4 + 2], h = 1.25 * Math.min(p[i * 4 + 3], 4);
+    const ax = o[i * 6] * h, ay = o[i * 6 + 1] * h, az = o[i * 6 + 2] * h, rx = o[i * 6 + 3] * h, ry = o[i * 6 + 4] * h, rz = o[i * 6 + 5] * h;
+    const a1 = proj(x + ax + rx, y + ay + ry, z + az + rz), a2 = proj(x + ax - rx, y + ay - ry, z + az - rz);
+    const a3 = proj(x - ax - rx, y - ay - ry, z - az - rz), a4 = proj(x - ax + rx, y - ay + ry, z - az + rz);
+    const depth = .6 + .4 * Math.max(-1, Math.min(1, (a1[2] + a3[2]) / 2 / holo.R));
+    const area = (h / 1.25) * (h / 1.25); // big, scaled-up parts glow less so they don't wash out the shape
+    ctx.fillStyle = `rgba(${tint},${(alpha * depth / (1 + .35 * (area - 1))).toFixed(3)})`;
+    ctx.beginPath(); ctx.moveTo(a1[0], a1[1]); ctx.lineTo(a2[0], a2[1]); ctx.lineTo(a3[0], a3[1]); ctx.lineTo(a4[0], a4[1]); ctx.closePath(); ctx.fill();
+  }
+  // bright part centres give the hologram its sparkle
+  const dot = Math.max(1, W / 340);
+  for (let i = 0; i < holo.n; i += 2) { const q = proj(p[i * 4], p[i * 4 + 1], p[i * 4 + 2]); ctx.fillStyle = `rgba(255,255,255,${Math.min(.35, alpha * 1.4).toFixed(3)})`; ctx.fillRect(q[0], q[1], dot, dot); }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = 'rgba(255,255,255,.03)'; for (let y = 0; y < W; y += Math.max(3, W / 120)) ctx.fillRect(0, y, W, 1); // scanlines
+}
+
+// one cover item per ship / corvette / multi-tool
+function coverItems() {
+  const out = [];
+  const primary = num(g(ps(), 'PrimaryShip')), activeTool = num(g(ps(), 'ActiveMultioolIndex'));
+  for (const { s, i } of ships()) {
+    const file = g(s, 'Resource', 'Filename'), type = shipType(file), cls = invClass(g(s, 'Inventory')) || '';
+    const holo = type === 'Corvette' ? corvetteParts(i) : null;
+    const name = str(g(s, 'Name')) || type + ' ' + (i + 1), seed = str((seedOf(s) || [])[1]);
+    out.push({ kind: type === 'Corvette' ? 'corvette' : 'ship', i, obj: s, name, type, cls, holo, seed, current: i === primary,
+      key: `ship|${name}|${seed}|${str(file)}`,
+      sub: [type, cls && cls + ' class', holo && holo.objs.toLocaleString() + ' parts', i === primary && 'current ship'].filter(Boolean).join(', ') });
+  }
+  for (const { s, i } of tools()) {
+    const tt = toolType(s), cls = invClass(g(s, 'Store')) || '', name = str(g(s, 'Name')) || tt.label + ' ' + (i + 1), seed = str((seedOf(s) || [])[1]);
+    out.push({ kind: 'tool', i, obj: s, name, type: tt.label, tool: tt.kind, cls, seed, current: i === activeTool,
+      key: `tool|${name}|${seed}|${str(g(s, 'Resource', 'Filename'))}`,
+      sub: [tt.label, cls && cls + ' class', i === activeTool && 'equipped'].filter(Boolean).join(', ') });
+  }
+  return out;
+}
+function paintCover(canvas, it, angle) {
+  const W = canvas.width, ctx = canvas.getContext('2d'), tint = (CLASS_TINT[it.cls] || [79, 193, 176]).join(',');
+  paintNebula(ctx, W, it.key);
+  if (it.holo) paintHologram(ctx, W, it.holo, tint, angle != null ? angle : -.65);
+  else if (it.kind === 'tool') { if (it.tool === 'staff') paintStaff(ctx, W, tint); else paintShape(ctx, W, TOOL_SHAPES[it.tool] || TOOL_SHAPES.pistol, tint, false, -.12); }
+  else paintShape(ctx, W, SHIP_SHAPES[it.type] || SHIP_SHAPES.Starship, tint, true, 0);
+  paintBadge(ctx, W, it.cls, null);
+}
+
+// custom cover images (screenshots) — kept per browser profile
+const coverCache = new Map();
+async function customCover(key) {
+  if (coverCache.has(key)) return coverCache.get(key);
+  let url = null; try { const b = await IDB.get('cover:' + key); if (b) url = URL.createObjectURL(b); } catch (_) {}
+  coverCache.set(key, url); return url;
+}
+async function setCustomCover(key, blob) {
+  if (blob && !/^image\//.test(blob.type)) { toast('That file is not an image.', true); return false; }
+  try { if (blob) await IDB.put('cover:' + key, blob); else await IDB.del('cover:' + key); } catch (e) { toast('Could not store the cover: ' + e.message, true); return false; }
+  const old = coverCache.get(key); if (old) URL.revokeObjectURL(old); coverCache.delete(key); return true;
+}
+
+/** Cover Flow widget. opts: { size, index, onChange(i), onOpen(i), caption } */
+function CoverFlow(host, items, opts) {
+  const size = opts.size || 260;
+  const root = document.createElement('div'); root.className = 'cf'; root.style.setProperty('--cs', size + 'px');
+  root.innerHTML = `${opts.chips || ''}<div class="cf-stage" tabindex="0" role="listbox" aria-label="${esc(opts.label || 'Collection')}" aria-roledescription="cover flow"></div>
+    <div class="cf-bar"><button class="arrow" data-d="-1" aria-label="Previous">◀</button><input type="range" min="0" max="${Math.max(0, items.length - 1)}" value="0" aria-label="Scroll the collection"><button class="arrow" data-d="1" aria-label="Next">▶</button><span class="pos"></span></div>`;
+  host.appendChild(root);
+  const stage = root.querySelector('.cf-stage'), range = root.querySelector('input[type=range]');
+  const cap = document.createElement('div'); cap.className = 'cf-caption'; cap.setAttribute('aria-live', 'polite'); stage.appendChild(cap);
+  const dpr = Math.min(2, window.devicePixelRatio || 1), px = Math.round(size * dpr);
+  let cur = Math.max(0, Math.min(items.length - 1, opts.index || 0)), raf = 0, angle = -.65;
+  const els = items.map((it, i) => {
+    const b = document.createElement('button'); b.className = 'cf-item'; b.setAttribute('role', 'option'); b.tabIndex = -1;
+    b.setAttribute('aria-label', it.name + ', ' + it.sub);
+    const cv = document.createElement('canvas'); cv.width = cv.height = px; b.appendChild(cv); paintCover(cv, it);
+    customCover(it.key).then((url) => { if (url) { const im = new Image(); im.src = url; im.alt = ''; cv.replaceWith(im); it.custom = true; if (i === cur) caption(); } });
+    b.onclick = () => { if (moved) return; if (i === cur) { opts.onOpen && opts.onOpen(cur); } else go(i); };
+    stage.appendChild(b); return b;
+  });
+  function caption() {
+    const it = items[cur]; if (!it) { cap.innerHTML = '<div class="s">Nothing here yet</div>'; return; }
+    cap.innerHTML = `<div class="t">${esc(it.name)}</div><div class="s">${esc(it.sub)}</div>`;
+  }
+  function layout() {
+    const gap = size * .2, first = size * .62;
+    els.forEach((el, i) => {
+      const d = i - cur, a = Math.abs(d), sg = Math.sign(d);
+      el.classList.toggle('center', d === 0); el.setAttribute('aria-selected', String(d === 0));
+      el.style.zIndex = String(500 - a);
+      el.style.opacity = a > 9 ? '0' : '1'; el.style.pointerEvents = a > 9 ? 'none' : '';
+      el.style.transform = d === 0 ? `translate3d(0,0,${size * .25}px)` : `translate3d(${sg * (first + (a - 1) * gap)}px,0,${-size * .35}px) rotateY(${-sg * 68}deg)`;
+    });
+    range.value = cur; root.querySelector('.pos').textContent = items.length ? `${cur + 1} of ${items.length}` : '';
+    caption(); spin();
+  }
+  function go(i) { i = Math.max(0, Math.min(items.length - 1, i)); if (i === cur) return; const prev = cur; cur = i; if (items[prev] && items[prev].holo && !items[prev].custom) paintCover(els[prev].querySelector('canvas'), items[prev]); layout(); opts.onChange && opts.onChange(cur); }
+  function spin() {
+    cancelAnimationFrame(raf);
+    const it = items[cur]; if (!it || !it.holo || REDUCED) return;
+    let last = performance.now();
+    const tick = (t) => {
+      if (!root.isConnected) return;
+      const cv = els[cur] && els[cur].querySelector('canvas'); if (!cv || items[cur].custom) return;
+      angle += (t - last) * .00035; last = t; paintCover(cv, items[cur], angle);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  }
+  // input: wheel, keys, drag, slider, arrows
+  let wheel = 0;
+  stage.addEventListener('wheel', (e) => { const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY; if (!d) return; e.preventDefault(); wheel += d; if (Math.abs(wheel) > 70) { go(cur + Math.sign(wheel)); wheel = 0; } }, { passive: false });
+  stage.addEventListener('keydown', (e) => {
+    const m = { ArrowLeft: -1, ArrowRight: 1, PageUp: -5, PageDown: 5 }[e.key];
+    if (m) { e.preventDefault(); go(cur + m); } else if (e.key === 'Home') { e.preventDefault(); go(0); } else if (e.key === 'End') { e.preventDefault(); go(items.length - 1); }
+    else if (e.key === 'Enter') { e.preventDefault(); opts.onOpen && opts.onOpen(cur); }
+  });
+  // drag: capture the pointer only once it really moves, so plain clicks still reach the covers
+  let dragX = null, dragFrom = 0, moved = false;
+  stage.addEventListener('pointerdown', (e) => { if (e.button !== 0) return; dragX = e.clientX; dragFrom = cur; moved = false; });
+  stage.addEventListener('pointermove', (e) => {
+    if (dragX == null) return;
+    if (!moved && Math.abs(e.clientX - dragX) > 6) { moved = true; stage.classList.add('dragging'); try { stage.setPointerCapture(e.pointerId); } catch (_) {} }
+    if (moved) go(dragFrom + Math.round((dragX - e.clientX) / (size * .32)));
+  });
+  const endDrag = () => { if (dragX == null) return; dragX = null; stage.classList.remove('dragging'); setTimeout(() => { moved = false; }, 0); };
+  stage.addEventListener('pointerup', endDrag); stage.addEventListener('pointercancel', endDrag);
+  range.oninput = () => go(+range.value);
+  root.querySelectorAll('.arrow').forEach((b) => b.onclick = () => go(cur + +b.dataset.d));
+  // drop a screenshot on the stage to make it the centre item's cover
+  stage.addEventListener('dragover', (e) => { if ([...e.dataTransfer.items].some((x) => x.kind === 'file')) { e.preventDefault(); e.stopPropagation(); stage.classList.add('drop-over'); } });
+  stage.addEventListener('dragleave', () => stage.classList.remove('drop-over'));
+  stage.addEventListener('drop', async (e) => { e.preventDefault(); e.stopPropagation(); stage.classList.remove('drop-over'); const f = e.dataTransfer.files[0]; if (f && await setCustomCover(items[cur].key, f)) { api.refresh(); toast('Cover set for ' + items[cur].name); } });
+  layout();
+  const api = {
+    get index() { return cur; }, go, focus: () => stage.focus(),
+    refresh() { const it = items[cur], el = els[cur]; it.custom = false; const cv = document.createElement('canvas'); cv.width = cv.height = px; el.replaceChildren(cv); paintCover(cv, it); customCover(it.key).then((url) => { if (url) { const im = new Image(); im.src = url; im.alt = ''; cv.replaceWith(im); it.custom = true; } else spin(); }); caption(); },
+  };
+  return api;
+}
+
+// ------------------------------------------------------------------ Hangar page
+PAGES.hangar = (el) => {
+  const all = coverItems();
+  const groups = [['all', 'All', all], ['corvette', 'Corvettes', all.filter((x) => x.kind === 'corvette')], ['ship', 'Starships', all.filter((x) => x.kind === 'ship')], ['tool', 'Multi-tools', all.filter((x) => x.kind === 'tool')]];
+  S.hangar = S.hangar || { filter: 'all', key: null };
+  let list = (groups.find((gr) => gr[0] === S.hangar.filter) || groups[0])[2];
+  el.innerHTML = `<div class="page-head"><div><h1>Hangar</h1><p>Scroll, drag or use the arrow keys. Click the centre cover to open its loadout, or drop a screenshot on it to use as its cover.</p></div></div><div id="cfHost"></div><div class="panel" id="hangarDetail"></div>`;
+  const chips = `<div class="cf-chips">${groups.map(([id, label, l]) => `<button class="chip" data-f="${id}" aria-pressed="${S.hangar.filter === id}">${label}<span class="n">${l.length}</span></button>`).join('')}</div>`;
+  const start = Math.max(0, list.findIndex((x) => x.key === S.hangar.key));
+  const big = Math.max(180, Math.min(340, Math.round((($('#main').clientWidth || 1000) - 80) / 3.6)));
+  const flow = CoverFlow($('#cfHost', el), list, { size: big, index: start, label: 'Hangar', chips, onChange: (i) => { S.hangar.key = list[i].key; detail(); }, onOpen: (i) => openLoadout(list[i]) });
+  el.querySelectorAll('.chip').forEach((c) => c.onclick = () => { S.hangar.filter = c.dataset.f; render(); });
+  function detail() {
+    const it = list[flow.index], box = $('#hangarDetail', el);
+    if (!it) { box.innerHTML = '<p class="dim" style="margin:0">Nothing in this group.</p>'; return; }
+    S.hangar.key = it.key;
+    const inv = it.kind === 'tool' ? g(it.obj, 'Store') : g(it.obj, 'Inventory_TechOnly');
+    const stats = [[it.type, 'Type'], [it.cls || '?', 'Class'], [slotsOf(inv).length, 'Tech modules']];
+    if (it.kind !== 'tool') stats.push([slotsOf(g(it.obj, 'Inventory')).length + slotsOf(g(it.obj, 'Inventory_Cargo')).length, 'Items carried']);
+    if (it.holo) stats.push([it.holo.objs.toLocaleString(), 'Build parts']);
+    stats.push([it.current ? 'Yes' : 'No', it.kind === 'tool' ? 'Equipped' : 'Current ship']);
+    box.innerHTML = `<div class="hangar-detail"><div><h2 style="margin-bottom:10px">${esc(it.name)}</h2><div class="stats">${stats.map(([b, s]) => `<div><b>${esc(b)}</b><span>${s}</span></div>`).join('')}</div></div>
+      <div class="acts"><button class="btn primary" id="hOpen">Open loadout</button><label class="btn">Set cover image<input type="file" accept="image/*" id="hCover" hidden></label>${it.custom ? '<button class="btn ghost" id="hReset">Use generated cover</button>' : ''}</div></div>`;
+    $('#hOpen', box).onclick = () => openLoadout(it);
+    $('#hCover', box).onchange = async (e) => { const f = e.target.files[0]; if (f && await setCustomCover(it.key, f)) { flow.refresh(); setTimeout(detail, 50); toast('Cover set for ' + it.name); } };
+    const rs = $('#hReset', box); if (rs) rs.onclick = async () => { if (await setCustomCover(it.key, null)) { flow.refresh(); setTimeout(detail, 50); } };
+  }
+  detail(); flow.focus();
+};
+function openLoadout(it) {
+  if (it.kind === 'tool') { S.pick.tool = it.i; go('tools'); } else { S.pick.ship = it.i; go('ships'); }
+}
+
 PAGES.freighter = (el) => {
   const p = ps();
   el.innerHTML = `<div class="page-head"><div><h1>Freighter</h1><p>The capital ship's own inventories. Frigates and base parts are in Raw data for now.</p></div></div>`;
