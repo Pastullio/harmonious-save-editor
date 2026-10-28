@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Harmonious Save Editor</title>
 <!--@@APP@@-->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>/*@@FONTS@@*/</style>
 <script>try { var t = localStorage.getItem("hse-theme"); if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t); } catch (e) {}</script>
 <style>
 /* Glacial: the Portal Glyph Banner look. Icy light by default, deep teal in dark mode. */
@@ -19,7 +17,7 @@
   --cls-s: #0e8fab; --cls-a: #2f9a7e; --cls-b: #3f74c4; --cls-c: #71878f; --cls-ink: #ffffff;
   --substance: #df7a5e; --product: #3b80c6; --technology: #17a097;
   --danger: #c2403c; --ok: #2c8558;
-  --spark: #d4523f; --spark-hover: #bd4533; --spark-ink: #ffffff; --spark-soft: #fbe3de;
+  --spark: #c8436d; --spark-hover: #b0365d; --spark-ink: #ffffff; --spark-soft: #fbe1ea;
   --shadow: 0 1px 2px rgba(20, 60, 75, .05), 0 10px 30px rgba(20, 60, 75, .07);
   --btn-shadow: 0 8px 18px rgba(11, 111, 132, .28);
   --stage: linear-gradient(180deg, #13849f 0%, #0b5368 52%, #062b37 100%);
@@ -38,7 +36,7 @@
     --cls-s: #3cc3dc; --cls-a: #4fc7a4; --cls-b: #7aa6ef; --cls-c: #8ea4ad; --cls-ink: #052630;
     --substance: #ee8f74; --product: #6aa8e8; --technology: #3cc9bd;
     --danger: #f07c75; --ok: #5ccb93;
-    --spark: #ff8a76; --spark-hover: #ffa392; --spark-ink: #2b0a05; --spark-soft: #3b201e;
+    --spark: #ff7fa6; --spark-hover: #ff9bba; --spark-ink: #2c0613; --spark-soft: #3b1d29;
     --shadow: none; --btn-shadow: 0 8px 20px rgba(60, 195, 220, .18);
     --stage: linear-gradient(180deg, #0c4152 0%, #072630 55%, #03121a 100%);
     color-scheme: dark;
@@ -52,7 +50,7 @@
   --cls-s: #3cc3dc; --cls-a: #4fc7a4; --cls-b: #7aa6ef; --cls-c: #8ea4ad; --cls-ink: #052630;
   --substance: #ee8f74; --product: #6aa8e8; --technology: #3cc9bd;
   --danger: #f07c75; --ok: #5ccb93;
-  --spark: #ff8a76; --spark-hover: #ffa392; --spark-ink: #2b0a05; --spark-soft: #3b201e;
+  --spark: #ff7fa6; --spark-hover: #ff9bba; --spark-ink: #2c0613; --spark-soft: #3b1d29;
   --shadow: none; --btn-shadow: 0 8px 20px rgba(60, 195, 220, .18);
   --stage: linear-gradient(180deg, #0c4152 0%, #072630 55%, #03121a 100%);
   color-scheme: dark;
@@ -318,7 +316,7 @@ dialog.wide { max-width: 1000px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
-/* the warm second colour: amounts worth noticing, and anything waiting to be saved */
+/* the rose second colour: amounts worth noticing, and anything waiting to be saved */
 .input.num { color: var(--spark); font-weight: 500; }
 .facts b, .hangar-detail .stats b { color: var(--spark); }
 .side-foot .status.dirty { color: var(--spark); }

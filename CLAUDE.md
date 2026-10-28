@@ -28,12 +28,11 @@ node test/test_folder.js <dir>              # browser folder mode, mocked File S
 REAL_SAVE_DIR=<dir> node test/test_real.js   # byte-identical round trip of a real save (save.hg + mf_save.hg); skips if absent
 ```
 `test/e2e/test_render.js` renders real corvettes through the app; it needs bpy 4.5 in a Python 3.11 venv (`uv venv -p 3.11 bpyenv && uv pip install -p bpyenv/bin/python "bpy==4.5.*"`), a Charon Forge checkout linked into `~/.config/blender/4.5/extensions/user_default/`, and `HSE_BLENDER` pointing at `test/e2e/fake-blender.sh`.
-`test_ui.js` reports one expected failure ("no page errors") when Google Fonts can't load offline.
 
 ## Rules for changes
 - Never lose data: unedited saves must re-encode to identical JSON; the page re-decodes before every write; the app backs up the pair before replacing it.
 - Edit via the key accessors (`g`, `set`, `kOf`) so obfuscated and plaintext saves both work. New fields get the obfuscated key via `NAME2OBF`.
 - Keep new slots/items in the same key order the game uses (copy from an existing sibling).
 - Owner is on Windows with Steam; Chrome blocks AppData for web pages, so the desktop app is the primary way to use it.
-- Look: "Glacial", matching the owner's Portal Glyph Banner. Tokens live on `:root` in `src/app.html` with a dark set under `prefers-color-scheme` and `[data-theme=dark]`. Never use yellow or purple. The one warm colour is the coral `--spark` (from the traveller art), used only for amounts worth noticing and unsaved changes. Titles and section labels use the banner's wide-tracked uppercase; everything else is sentence case. Jost is the typeface.
+- Look: "Glacial", matching the owner's Portal Glyph Banner. Tokens live on `:root` in `src/app.html` with a dark set under `prefers-color-scheme` and `[data-theme=dark]`. Never use yellow or purple. The one second colour is rose `--spark`, used only for amounts worth noticing and unsaved changes. Titles and section labels use the banner's wide-tracked uppercase; everything else is sentence case. Jost is the typeface, bundled from `vendor/fonts/jost` (SIL OFL) and inlined by `build.js`, so no web fonts are loaded.
 - UI copy: plain, sentence case.

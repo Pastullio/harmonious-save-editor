@@ -18,8 +18,17 @@ const mapping = { version: mb.libMBIN_version, save, account };
 
 let html = fs.readFileSync(path.join(__dirname, 'src/app.html'), 'utf8');
 const codec = fs.readFileSync(path.join(__dirname, 'src/codec.js'), 'utf8');
+// Jost (SIL OFL, vendor/fonts/jost) is inlined so the app looks the same offline
+const RANGES = {
+  latin: 'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD',
+  'latin-ext': 'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF',
+};
+const fonts = [300, 400, 500, 600].flatMap((w) => Object.entries(RANGES).map(([set, range]) => {
+  const data = fs.readFileSync(path.join(__dirname, `vendor/fonts/jost/jost-${set}-${w}-normal.woff2`)).toString('base64');
+  return `@font-face{font-family:"Jost";font-style:normal;font-display:swap;font-weight:${w};src:url(data:font/woff2;base64,${data}) format("woff2");unicode-range:${range}}`;
+})).join('\n');
 const hero = 'data:image/webp;base64,' + fs.readFileSync(path.join(__dirname, 'src/assets/traveller.webp')).toString('base64');
-html = html.replace('@@HERO@@', () => hero).replace('/*@@CODEC@@*/', () => codec).replace('/*@@MAPPING@@*/', () => 'const MAPPING = ' + JSON.stringify(mapping) + ';');
+html = html.replace('/*@@FONTS@@*/', () => fonts).replace('@@HERO@@', () => hero).replace('/*@@CODEC@@*/', () => codec).replace('/*@@MAPPING@@*/', () => 'const MAPPING = ' + JSON.stringify(mapping) + ';');
 fs.mkdirSync(path.join(__dirname, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(__dirname, 'dist/nms-save-editor.html'), html);
 fs.writeFileSync(path.join(__dirname, 'desktop/index.html'), html); // embedded into the desktop app
