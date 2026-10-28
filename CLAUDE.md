@@ -35,4 +35,5 @@ REAL_SAVE_DIR=<dir> node test/test_real.js   # byte-identical round trip of a re
 - Edit via the key accessors (`g`, `set`, `kOf`) so obfuscated and plaintext saves both work. New fields get the obfuscated key via `NAME2OBF`.
 - Keep new slots/items in the same key order the game uses (copy from an existing sibling).
 - Owner is on Windows with Steam; Chrome blocks AppData for web pages, so the desktop app is the primary way to use it.
-- UI copy: plain, sentence case, no ALL-CAPS labels. Palette and type tokens are on `:root` in `src/app.html`.
+- Look: "Glacial", matching the owner's Portal Glyph Banner. Tokens live on `:root` in `src/app.html` with a dark set under `prefers-color-scheme` and `[data-theme=dark]`. Never use yellow or purple. Titles and section labels use the banner's wide-tracked uppercase; everything else is sentence case. Jost is the typeface.
+- UI copy: plain, sentence case.
