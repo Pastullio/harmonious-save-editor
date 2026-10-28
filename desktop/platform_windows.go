@@ -57,6 +57,24 @@ func findBlender() string {
 	return ""
 }
 
+// steamRoots finds Steam's install folder: the registry first, then the usual places.
+func steamRoots() []string {
+	var roots []string
+	if out, err := hidden(exec.Command("reg", "query", `HKCU\Software\Valve\Steam`, "/v", "SteamPath")).Output(); err == nil {
+		for _, line := range strings.Split(string(out), "\n") {
+			if i := strings.Index(line, "REG_SZ"); i >= 0 {
+				roots = append(roots, filepath.Clean(strings.TrimSpace(line[i+len("REG_SZ"):])))
+			}
+		}
+	}
+	for _, env := range []string{"ProgramFiles(x86)", "ProgramFiles"} {
+		if base := os.Getenv(env); base != "" {
+			roots = append(roots, filepath.Join(base, "Steam"))
+		}
+	}
+	return roots
+}
+
 func hidden(cmd *exec.Cmd) *exec.Cmd {
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000} // CREATE_NO_WINDOW
 	return cmd

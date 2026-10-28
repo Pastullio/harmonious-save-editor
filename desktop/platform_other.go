@@ -64,6 +64,17 @@ func findBlender() string {
 	return ""
 }
 
+func steamRoots() []string {
+	if p := os.Getenv("HSE_STEAM"); p != "" {
+		return []string{p}
+	}
+	home, _ := os.UserHomeDir()
+	if runtime.GOOS == "darwin" {
+		return []string{filepath.Join(home, "Library", "Application Support", "Steam")}
+	}
+	return []string{filepath.Join(home, ".steam", "steam"), filepath.Join(home, ".local", "share", "Steam")}
+}
+
 func gameRunning() bool { return exec.Command("pgrep", "-f", "NMS.exe").Run() == nil }
 
 func reveal(path string) error {

@@ -242,6 +242,18 @@ dialog h3 { font-size: 20px; margin-bottom: 8px; }
 dialog p { color: var(--dim); }
 dialog .acts { display: flex; justify-content: end; gap: 8px; margin-top: 20px; }
 
+/* ---------------- cover pictures: screenshot picker and crop */
+dialog.wide { max-width: 1000px; }
+.shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; max-height: 62vh; overflow: auto; padding: 2px; }
+.shots button { padding: 0; border: 2px solid transparent; border-radius: var(--r-sm); overflow: hidden; cursor: pointer; background: var(--well); aspect-ratio: 16 / 9; }
+.shots button:hover, .shots button:focus-visible { border-color: var(--accent); outline: none; }
+.shots img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.crop { display: grid; gap: 14px; justify-items: center; }
+.crop canvas { width: min(440px, 78vw); aspect-ratio: 1; border-radius: var(--r); cursor: grab; touch-action: none; background: #03121a; box-shadow: var(--shadow); }
+.crop canvas:active { cursor: grabbing; }
+.crop .zoom { display: flex; gap: 10px; align-items: center; width: min(440px, 78vw); font-size: 14px; color: var(--dim); }
+.crop .zoom input { flex: 1; }
+
 /* ---------------- Cover Flow (the stage is always night sky, like the banner's Sky preview) */
 .cf { position: relative; border-radius: var(--r-lg); overflow: hidden; margin-bottom: 24px; background: var(--stage); box-shadow: var(--shadow); color: #fff; }
 .cf::before { content: ""; position: absolute; inset: 0; background: radial-gradient(80% 50% at 50% 115%, rgba(120, 220, 240, .22), transparent 70%); pointer-events: none; }
@@ -270,12 +282,12 @@ dialog .acts { display: flex; justify-content: end; gap: 8px; margin-top: 20px; 
 .chip:hover { background: rgba(255, 255, 255, .14); }
 .chip[aria-pressed="true"] { background: #fff; color: #0b5368; }
 .chip .n { font-weight: 400; margin-left: 5px; opacity: .7; font-family: var(--mono); font-size: 12px; }
-.hangar-detail { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: start; }
+.hangar-detail { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
 .hangar-detail .stats { display: flex; flex-wrap: wrap; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
 .hangar-detail .stats div { background: var(--surface); padding: 12px 16px; flex: 1 1 120px; }
 .hangar-detail .stats b { display: block; font-family: var(--display); font-size: 18px; font-weight: 500; }
 .hangar-detail .stats span { font-size: 13px; color: var(--dim); }
-.hangar-detail .acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: end; }
+.hangar-detail .acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: start; }
 @media (max-width: 760px) { .hangar-detail { grid-template-columns: 1fr; } .hangar-detail .acts { justify-content: start; } }
 @media (max-width: 1100px) { .inv-wrap { grid-template-columns: minmax(0, 1fr); } .inspector { position: static; } }
 @media (max-width: 760px) {
@@ -1161,7 +1173,7 @@ function CoverFlow(host, items, opts) {
   // drop a screenshot on the stage to make it the centre item's cover
   stage.addEventListener('dragover', (e) => { if ([...e.dataTransfer.items].some((x) => x.kind === 'file')) { e.preventDefault(); e.stopPropagation(); stage.classList.add('drop-over'); } });
   stage.addEventListener('dragleave', () => stage.classList.remove('drop-over'));
-  stage.addEventListener('drop', async (e) => { e.preventDefault(); e.stopPropagation(); stage.classList.remove('drop-over'); const f = e.dataTransfer.files[0]; if (f && await setCustomCover(items[cur].key, f)) { api.refresh(); toast('Cover set for ' + items[cur].name); } });
+  stage.addEventListener('drop', async (e) => { e.preventDefault(); e.stopPropagation(); stage.classList.remove('drop-over'); const f = e.dataTransfer.files[0]; if (f && await chooseCover(items[cur], f)) api.refresh(); });
   const onRender = (e) => {
     if (!root.isConnected) { document.removeEventListener('cover-render', onRender); return; }
     items.forEach((it, i) => {
@@ -1184,14 +1196,98 @@ function CoverFlow(host, items, opts) {
   return api;
 }
 
+// ------------------------------------------------------------------ choosing a cover picture
+// A dialog with custom content. wire(body, finish) sets up its controls; finish(value) closes it.
+function customDialog({ title, html, wide, actions, wire }) {
+  return new Promise((resolve) => {
+    const d = $('#dlg'); let done = false;
+    const finish = (v) => { if (done) return; done = true; if (d.open) d.close(); d.classList.remove('wide'); resolve(v); };
+    d.classList.toggle('wide', !!wide);
+    $('#dlgTitle').textContent = title; $('#dlgBody').innerHTML = html;
+    const acts = $('#dlgActs'); acts.innerHTML = '';
+    (actions || [['Cancel', null, 'ghost']]).forEach(([label, value, cls]) => {
+      const b = document.createElement('button'); b.className = 'btn ' + (cls || ''); b.textContent = label;
+      b.onclick = () => finish(typeof value === 'function' ? value() : value); acts.appendChild(b);
+    });
+    d.onclose = () => finish(null);
+    if (wire) wire($('#dlgBody'), finish);
+    d.showModal();
+  });
+}
+
+// pan and zoom a picture inside a square, then export a 1024 px cover
+async function cropImage(blob) {
+  let bmp; try { bmp = await createImageBitmap(blob); } catch (_) { toast('That file could not be read as an image.', true); return null; }
+  const V = 880, base = Math.max(V / bmp.width, V / bmp.height);
+  let zoom = 1, cx = bmp.width / 2, cy = bmp.height / 2; // image point at the centre of the square
+  let cv;
+  const draw = () => {
+    const sc = base * zoom, half = V / 2 / sc;
+    cx = Math.max(half, Math.min(bmp.width - half, cx)); cy = Math.max(half, Math.min(bmp.height - half, cy));
+    const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, V, V);
+    ctx.drawImage(bmp, cx - half, cy - half, half * 2, half * 2, 0, 0, V, V);
+  };
+  const out = await customDialog({
+    title: 'Frame the cover', wide: false,
+    html: `<div class="crop"><canvas width="${V}" height="${V}" aria-label="Drag to move the picture"></canvas>
+      <label class="zoom"><span>Zoom</span><input type="range" min="1" max="4" step="0.01" value="1" aria-label="Zoom"></label>
+      <p class="dim" style="margin:0;font-size:14px">Drag to move the picture. The square is exactly what the cover shows.</p></div>`,
+    actions: [['Cancel', null, 'ghost'], ['Use as cover', () => 'ok', 'primary']],
+    wire(body) {
+      cv = body.querySelector('canvas'); const zr = body.querySelector('input[type=range]');
+      let drag = null;
+      cv.addEventListener('pointerdown', (e) => { drag = [e.clientX, e.clientY, cx, cy]; cv.setPointerCapture(e.pointerId); });
+      cv.addEventListener('pointermove', (e) => { if (!drag) return; const k = (V / cv.clientWidth) / (base * zoom); cx = drag[2] - (e.clientX - drag[0]) * k; cy = drag[3] - (e.clientY - drag[1]) * k; draw(); });
+      cv.addEventListener('pointerup', () => { drag = null; });
+      cv.addEventListener('wheel', (e) => { e.preventDefault(); zoom = Math.max(1, Math.min(4, zoom * (e.deltaY < 0 ? 1.08 : 1 / 1.08))); zr.value = zoom; draw(); }, { passive: false });
+      zr.oninput = () => { zoom = +zr.value; draw(); };
+      draw();
+    },
+  });
+  if (out !== 'ok') { bmp.close && bmp.close(); return null; }
+  const O = 1024, oc = document.createElement('canvas'); oc.width = oc.height = O;
+  const sc = base * zoom, half = V / 2 / sc;
+  oc.getContext('2d').drawImage(bmp, cx - half, cy - half, half * 2, half * 2, 0, 0, O, O);
+  bmp.close && bmp.close();
+  return new Promise((res) => oc.toBlob(res, 'image/jpeg', .92));
+}
+
+function steamIdOfSave() { const m = (S.src && (S.src.dir || '')).match(/st_(\d{17})/i); return m ? m[1] : ''; }
+async function pickScreenshot() {
+  const account = steamIdOfSave();
+  let res; try { res = await (await api('/api/screenshots?account=' + account)).json(); } catch (e) { toast(e.message, true); return null; }
+  const src = (sh, thumb) => `/api/screenshot?account=${account}&d=${sh.d}&name=${encodeURIComponent(sh.name)}${thumb ? '&thumb=1' : ''}&t=${encodeURIComponent(APP.token)}`;
+  if (!res.shots.length) {
+    await dialog('No screenshots found', `<p>${res.dirs.length ? 'Looked in ' + res.dirs.map((d) => `<span class="mono">${esc(d)}</span>`).join(' and ') + '.' : 'Steam\'s screenshot folder for No Man\'s Sky wasn\'t found.'}</p>
+      <p>Take a photo-mode shot in No Man's Sky with Steam's screenshot key (F12 by default), or set a screenshot folder in Cover settings.</p>`, [['OK', true, 'primary']]);
+    return null;
+  }
+  const pick = await customDialog({
+    title: 'Choose a screenshot', wide: true,
+    html: `<p class="dim">Your No Man's Sky screenshots, newest first.</p><div class="shots">${res.shots.map((sh, i) => `<button data-i="${i}" title="${esc(new Date(sh.mtime).toLocaleString())}"><img loading="lazy" alt="Screenshot from ${esc(new Date(sh.mtime).toLocaleDateString())}" src="${src(sh, true)}"></button>`).join('')}</div>`,
+    wire(body, finish) { body.querySelectorAll('.shots button').forEach((b) => b.onclick = () => finish(res.shots[+b.dataset.i])); },
+  });
+  if (!pick) return null;
+  const r = await fetch(src(pick, false)); if (!r.ok) { toast('Could not open that screenshot.', true); return null; }
+  return r.blob();
+}
+
+/** Crop a picture and make it this item's cover. Returns true when a cover was set. */
+async function chooseCover(it, blob) {
+  if (!blob) return false;
+  const cropped = await cropImage(blob); if (!cropped) return false;
+  if (!(await setCustomCover(it.key, cropped))) return false;
+  toast('Cover set for ' + it.name); return true;
+}
+
 // ------------------------------------------------------------------ Hangar page
 PAGES.hangar = (el) => {
   const all = coverItems();
   const groups = [['all', 'All', all], ['corvette', 'Corvettes', all.filter((x) => x.kind === 'corvette')], ['ship', 'Starships', all.filter((x) => x.kind === 'ship')], ['tool', 'Multi-tools', all.filter((x) => x.kind === 'tool')]];
   S.hangar = S.hangar || { filter: 'all', key: null };
   let list = (groups.find((gr) => gr[0] === S.hangar.filter) || groups[0])[2];
-  el.innerHTML = `<div class="page-head"><div><h1>Hangar</h1><p>Scroll, drag or use the arrow keys. Click the centre cover to open its loadout, or drop a screenshot on it to use as its cover.</p></div>
-    ${APP ? '<div class="toolbar"><button class="btn" id="renderAll">Render all corvettes</button><button class="btn ghost" id="renderCfg">Render settings</button></div>' : ''}</div><div id="cfHost"></div><div class="panel" id="hangarDetail"></div>`;
+  el.innerHTML = `<div class="page-head"><div><h1>Hangar</h1><p>Scroll, drag or use the arrow keys. Click the centre cover to open its loadout. To change a cover, drop a picture on it or choose one of your screenshots below.</p></div>
+    ${APP ? '<div class="toolbar"><button class="btn" id="renderAll">Render all corvettes</button><button class="btn ghost" id="renderCfg">Cover settings</button></div>' : ''}</div><div id="cfHost"></div><div class="panel" id="hangarDetail"></div>`;
   const chips = `<div class="cf-chips">${groups.map(([id, label, l]) => `<button class="chip" data-f="${id}" aria-pressed="${S.hangar.filter === id}">${label}<span class="n">${l.length}</span></button>`).join('')}</div>`;
   const start = Math.max(0, list.findIndex((x) => x.key === S.hangar.key));
   const big = Math.max(180, Math.min(340, Math.round((($('#main').clientWidth || 1000) - 80) / 3.6)));
@@ -1207,10 +1303,11 @@ PAGES.hangar = (el) => {
     if (it.holo) stats.push([it.holo.objs.toLocaleString(), 'Build parts']);
     stats.push([it.current ? 'Yes' : 'No', it.kind === 'tool' ? 'Equipped' : 'Current ship']);
     box.innerHTML = `<div class="hangar-detail"><div><h2 style="margin-bottom:10px">${esc(it.name)}</h2><div class="stats">${stats.map(([b, s]) => `<div><b>${esc(b)}</b><span>${s}</span></div>`).join('')}</div></div>
-      <div class="acts"><button class="btn primary" id="hOpen">Open loadout</button>${APP && it.kind === 'corvette' ? `<button class="btn" id="hRender">${it.renderImg ? 'Render again' : 'Render with Blender'}</button>` : ''}<label class="btn">Set cover image<input type="file" accept="image/*" id="hCover" hidden></label>${it.custom ? '<button class="btn ghost" id="hReset">Use generated cover</button>' : ''}</div></div>
+      <div class="acts"><button class="btn primary" id="hOpen">Open loadout</button>${APP && it.kind === 'corvette' ? `<button class="btn" id="hRender">${it.renderImg ? 'Render again' : 'Render with Blender'}</button>` : ''}${APP ? '<button class="btn" id="hShot">Choose a screenshot</button>' : ''}<label class="btn">Use an image file<input type="file" accept="image/*" id="hCover" hidden></label>${it.custom ? '<button class="btn ghost" id="hReset">Use generated cover</button>' : ''}</div></div>
       <p class="dim" id="renderState" style="margin:10px 0 0;font-size:14px" aria-live="polite"></p>`;
     $('#hOpen', box).onclick = () => openLoadout(it);
-    $('#hCover', box).onchange = async (e) => { const f = e.target.files[0]; if (f && await setCustomCover(it.key, f)) { flow.refresh(); setTimeout(detail, 50); toast('Cover set for ' + it.name); } };
+    $('#hCover', box).onchange = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (f && await chooseCover(it, f)) { flow.refresh(); setTimeout(detail, 50); } };
+    const hs = $('#hShot', box); if (hs) hs.onclick = async () => { const b = await pickScreenshot(); if (b && await chooseCover(it, b)) { flow.refresh(); setTimeout(detail, 50); } };
     const rs = $('#hReset', box); if (rs) rs.onclick = async () => { if (await setCustomCover(it.key, null)) { flow.refresh(); setTimeout(detail, 50); } };
     const rb = $('#hRender', box);
     if (rb) rb.onclick = async () => {
@@ -1284,14 +1381,15 @@ async function renderCorvette(it, force, onState) {
 async function renderSetup() { return (await api('/api/render-setup')).json(); }
 async function renderSettingsDialog() {
   let s; try { s = await renderSetup(); } catch (e) { toast(e.message, true); return; }
-  const ok = await dialog('Corvette renders', `<p>Covers are rendered by your own Blender with Charon Forge's part models. Leave a box empty to find it automatically.</p>
+  const ok = await dialog('Cover settings', `<p>Corvettes are rendered by your own Blender with Charon Forge's part models. Leave a box empty to find it automatically.</p>
     <label class="field"><span>Blender (blender.exe)${s.blender ? ', found: ' + esc(s.blender) : ', not found'}</span><input class="input mono" id="rsB" value="${esc(s.blenderSet || '')}" placeholder="C:\\Program Files\\Blender Foundation\\Blender 5.0\\blender.exe"></label>
     <label class="field" style="margin-top:10px"><span>Charon Forge folder${s.charon ? ', found: ' + esc(s.charon) : ', not found'}</span><input class="input mono" id="rsC" value="${esc(s.charonSet || '')}" placeholder="...\\Blender\\5.0\\extensions\\user_default"></label>
+    <label class="field" style="margin-top:10px"><span>Screenshot folder (optional; Steam's No Man's Sky folder is used anyway)</span><input class="input mono" id="rsSh" value="${esc(s.shots || '')}" placeholder="D:\\Pictures\\No Man's Sky"></label>
     <div class="two" style="margin-top:10px"><label class="field"><span>Size (pixels)</span><input class="input" id="rsS" type="number" min="256" max="2048" value="${s.size}"></label><label class="field"><span>Quality (samples)</span><input class="input" id="rsQ" type="number" min="4" max="512" value="${s.samples}"></label></div>`,
     [['Cancel', false, 'ghost'], ['Save', true, 'primary']]);
   if (!ok) return;
   try {
-    const r = await (await api('/api/render-setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ blender: $('#rsB').value, charon: $('#rsC').value, size: +$('#rsS').value, samples: +$('#rsQ').value }) })).json();
+    const r = await (await api('/api/render-setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ blender: $('#rsB').value, charon: $('#rsC').value, shots: $('#rsSh').value, size: +$('#rsS').value, samples: +$('#rsQ').value }) })).json();
     toast(r.ready ? 'Render settings saved' : 'Saved, but Blender or Charon Forge still wasn\'t found', !r.ready);
   } catch (e) { toast(e.message, true); }
   if (S.section === 'hangar') render();

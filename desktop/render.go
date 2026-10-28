@@ -34,6 +34,7 @@ type renderSettings struct {
 	Charon  string `json:"charon"` // folder that contains the charon_forge package
 	Size    int    `json:"size"`
 	Samples int    `json:"samples"`
+	Shots   string `json:"shots"` // optional folder of screenshots to pick covers from
 }
 
 type renderJob struct {
@@ -187,13 +188,13 @@ func handleRenderSetup(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "bad settings", http.StatusBadRequest)
 			return
 		}
-		in.Blender, in.Charon = strings.Trim(in.Blender, `" `), strings.Trim(in.Charon, `" `)
+		in.Blender, in.Charon, in.Shots = strings.Trim(in.Blender, `" `), strings.Trim(in.Charon, `" `), strings.Trim(in.Shots, `" `)
 		// accept the charon_forge folder itself as well as its parent
 		if strings.EqualFold(filepath.Base(in.Charon), "charon_forge") {
 			in.Charon = filepath.Dir(in.Charon)
 		}
 		renderMu.Lock()
-		settings.Blender, settings.Charon = in.Blender, in.Charon
+		settings.Blender, settings.Charon, settings.Shots = in.Blender, in.Charon, in.Shots
 		if in.Size >= 256 && in.Size <= 2048 {
 			settings.Size = in.Size
 		}
@@ -213,7 +214,7 @@ func handleRenderSetup(w http.ResponseWriter, r *http.Request) {
 	renderMu.Unlock()
 	writeJSON(w, map[string]any{
 		"blender": blender, "charon": charon, "ready": blender != "" && charon != "",
-		"blenderSet": s.Blender, "charonSet": s.Charon, "size": s.Size, "samples": s.Samples,
+		"blenderSet": s.Blender, "charonSet": s.Charon, "size": s.Size, "samples": s.Samples, "shots": s.Shots,
 	})
 }
 

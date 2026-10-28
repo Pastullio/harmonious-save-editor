@@ -89,6 +89,8 @@ func main() {
 	mux.HandleFunc("/api/render", handleRender)
 	mux.HandleFunc("/api/render-status", handleRenderStatus)
 	mux.HandleFunc("/api/cover", handleCover)
+	mux.HandleFunc("/api/screenshots", handleScreenshots)
+	mux.HandleFunc("/api/screenshot", handleScreenshot)
 
 	srv := &http.Server{Handler: guard(addr, mux), ReadHeaderTimeout: 10 * time.Second}
 	go func() {
