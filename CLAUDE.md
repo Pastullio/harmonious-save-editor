@@ -7,6 +7,7 @@ No Man's Sky save editor for Steam/GOG PC saves (Frontiers 3.60+). Owner: Pastul
 - `src/app.html` — the whole editor UI (vanilla JS, no framework). `build.js` inlines the codec and the key mapping into it.
 - `desktop/` — Go app (stdlib only) that serves the page on 127.0.0.1 with a per-run token and an API to list/read/write save pairs. Windows build is the main deliverable.
 - `vendor/libnom/` — key mapping and hashed-tech list from libNOM.map / libNOM.io. Refresh `mapping_mbincompiler.json` when the game adds keys.
+- `ROADMAP.md` — the owner's wishlist sorted into phases. Check it before starting new work and tick items off as they ship.
 - `dist/` — built outputs: `nms-save-editor.html` (browser version) and `Harmonious Save Editor.exe`.
 
 ## Build
