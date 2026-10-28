@@ -18,7 +18,8 @@ const mapping = { version: mb.libMBIN_version, save, account };
 
 let html = fs.readFileSync(path.join(__dirname, 'src/app.html'), 'utf8');
 const codec = fs.readFileSync(path.join(__dirname, 'src/codec.js'), 'utf8');
-html = html.replace('/*@@CODEC@@*/', () => codec).replace('/*@@MAPPING@@*/', () => 'const MAPPING = ' + JSON.stringify(mapping) + ';');
+const hero = 'data:image/webp;base64,' + fs.readFileSync(path.join(__dirname, 'src/assets/traveller.webp')).toString('base64');
+html = html.replace('@@HERO@@', () => hero).replace('/*@@CODEC@@*/', () => codec).replace('/*@@MAPPING@@*/', () => 'const MAPPING = ' + JSON.stringify(mapping) + ';');
 fs.mkdirSync(path.join(__dirname, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(__dirname, 'dist/nms-save-editor.html'), html);
 fs.writeFileSync(path.join(__dirname, 'desktop/index.html'), html); // embedded into the desktop app

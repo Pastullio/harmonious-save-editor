@@ -91,12 +91,22 @@ input[type=checkbox], input[type=range] { accent-color: var(--accent); }
 
 /* ---------------- landing */
 #landing { min-height: 100%; display: grid; place-items: center; padding: 40px 16px; }
-.landing-inner { width: min(800px, 100%); }
-.wordmark { font-family: var(--display); font-weight: 300; font-size: clamp(30px, 5.4vw, 52px); line-height: 1.1; letter-spacing: .22em; text-transform: uppercase; margin-bottom: 18px; }
-.wordmark small { display: block; font-size: .36em; letter-spacing: .04em; text-transform: none; color: var(--dim); font-weight: 400; margin-top: 12px; }
-.portal { display: grid; grid-template-columns: repeat(16, 1fr); gap: 4px; margin: 0 0 30px; max-width: 420px; }
-.portal i { aspect-ratio: 1; border: 1px solid var(--line-2); border-radius: 4px; }
-.portal i.on { background: var(--accent); border-color: var(--accent); }
+.landing-inner { width: min(1200px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 480px); gap: 24px 56px; align-items: center; }
+.landing-copy { min-width: 0; }
+.wordmark { font-family: var(--display); font-weight: 300; font-size: clamp(30px, 5.4vw, 56px); line-height: 1.1; letter-spacing: .22em; text-transform: uppercase; margin: 0 0 28px; }
+.hero { position: relative; justify-self: center; width: 100%; }
+.hero::before { content: ""; position: absolute; inset: 8% 4% 2%; background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 34%, transparent), transparent); filter: blur(10px); z-index: 0; }
+.hero-art { position: relative; z-index: 1; display: block; width: 100%; height: auto;
+  /* the artwork's soft glow runs to its edges; fade the edges so it melts into the page instead of showing a box */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 9%, #000 91%, transparent), linear-gradient(to bottom, transparent, #000 7%, #000 84%, transparent);
+  -webkit-mask-composite: source-in; mask-image: linear-gradient(to right, transparent, #000 9%, #000 91%, transparent), linear-gradient(to bottom, transparent, #000 7%, #000 84%, transparent);
+  mask-composite: intersect; }
+#landing .slot-list { margin-top: 0; }
+#landing .app-where { margin: 22px 0 6px; font-size: 14px; }
+@media (max-width: 900px) {
+  .landing-inner { grid-template-columns: minmax(0, 1fr); }
+  .hero { order: -1; max-width: 260px; }
+}
 .open-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 26px 0; }
 .open-card { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-lg); padding: 22px; display: grid; gap: 12px; align-content: start; box-shadow: var(--shadow); }
 .open-card p { font-size: 15px; color: var(--dim); margin: 0; }
@@ -311,33 +321,33 @@ dialog.wide { max-width: 1000px; }
 <button class="btn small theme-btn theme-toggle" type="button">Dark mode</button>
 <section id="landing">
   <div class="landing-inner">
-    <div class="portal" aria-hidden="true" id="portalArt"></div>
-    <div class="wordmark">Harmonious<br>Save Editor<small>for No Man's Sky on Steam and GOG</small></div>
-    <p class="dim" id="intro">Edit units, inventories, ships and multi-tools, or any value in the raw save. Everything happens in this browser tab; your save never leaves your computer.</p>
-
-    <div id="appLanding" class="hidden">
-      <div class="app-where" id="appWhere"></div>
+    <div class="landing-copy">
+      <h1 class="wordmark">Harmonious<br>Save Editor</h1>
+      <p class="err" id="landingErr" role="alert"></p>
       <div class="acct-list" id="acctList"></div>
-      <details class="other-folder"><summary>Use a different folder</summary>
-        <form class="row" id="otherForm"><label class="field"><span>Folder that holds save.hg and mf_save.hg (GOG, a copy, or a backup)</span><input class="input mono" id="otherPath" placeholder="C:\Users\you\AppData\Roaming\HelloGames\NMS\DefaultUser"></label><button class="btn">Open folder</button></form>
-      </details>
-    </div>
-    <div class="open-grid">
-      <div class="open-card">
-        <h3>Open your save files</h3>
-        <p>In your <span class="mono">st_…</span> save folder, press Ctrl+A to select everything, then open. You can also drag the whole <span class="mono">st_…</span> folder here. Edited files come back as downloads to copy into that folder.</p>
-        <label class="drop" id="drop" tabindex="0">Drop files or the st_… folder here, or click to choose<input type="file" id="filePick" multiple hidden></label>
-      </div>
-      <div class="open-card">
-        <h3>Or edit a copied folder in place</h3>
-        <p>Chrome won't open folders inside AppData. If you copy your <span class="mono">st_…</span> folder somewhere else, the editor can save straight into that copy, keeping a backup of each file it replaces.</p>
-        <button class="btn" id="openFolder">Choose a folder</button>
-      </div>
-    </div>
+      <div class="slot-list" id="slotList"></div>
 
-    <div class="where">Steam saves live in <code>%APPDATA%\HelloGames\NMS\st_&lt;your Steam ID&gt;</code>. Press Win+R and paste <code>%APPDATA%\HelloGames\NMS</code> to get there. On GOG the last folder is <code>DefaultUser</code>. Close the game before copying edited files back.</div>
-    <p class="err" id="landingErr" role="alert"></p>
-    <div class="slot-list" id="slotList"></div>
+      <div id="appLanding" class="hidden">
+        <div class="app-where" id="appWhere"></div>
+        <details class="other-folder"><summary>Use a different folder</summary>
+          <form class="row" id="otherForm"><label class="field"><span>Folder that holds save.hg and mf_save.hg (GOG, a copy, or a backup)</span><input class="input mono" id="otherPath" placeholder="C:\Users\you\AppData\Roaming\HelloGames\NMS\DefaultUser"></label><button class="btn">Open folder</button></form>
+        </details>
+      </div>
+      <div class="open-grid">
+        <div class="open-card">
+          <h3>Open your save files</h3>
+          <p>In your <span class="mono">st_…</span> save folder, press Ctrl+A to select everything, then open. You can also drag the whole <span class="mono">st_…</span> folder here. Edited files come back as downloads to copy into that folder.</p>
+          <label class="drop" id="drop" tabindex="0">Drop files or the st_… folder here, or click to choose<input type="file" id="filePick" multiple hidden></label>
+        </div>
+        <div class="open-card">
+          <h3>Or edit a copied folder in place</h3>
+          <p>Chrome won't open folders inside AppData. If you copy your <span class="mono">st_…</span> folder somewhere else, the editor can save straight into that copy, keeping a backup of each file it replaces.</p>
+          <button class="btn" id="openFolder">Choose a folder</button>
+        </div>
+      </div>
+      <div class="where">Steam saves live in <code>%APPDATA%\HelloGames\NMS\st_&lt;your Steam ID&gt;</code>. Press Win+R and paste <code>%APPDATA%\HelloGames\NMS</code> to get there. On GOG the last folder is <code>DefaultUser</code>. Close the game before copying edited files back.</div>
+    </div>
+    <div class="hero" aria-hidden="true"><img class="hero-art" src="@@HERO@@" alt=""></div>
   </div>
 </section>
 
@@ -441,11 +451,6 @@ document.addEventListener('click', (e) => {
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncThemeButtons);
 syncThemeButtons();
 
-// ------------------------------------------------------------------ landing art: a portal address
-(function () {
-  const p = $('#portalArt'); const on = [1, 4, 5, 9, 10, 14];
-  for (let i = 0; i < 16; i++) { const e = document.createElement('i'); if (on.includes(i)) e.className = 'on'; p.appendChild(e); }
-})();
 
 // ------------------------------------------------------------------ opening saves
 new MutationObserver(() => { const el = $('#landingErr'); if (el.textContent) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); toast(el.textContent.split('\n')[0], true); } })
@@ -1839,8 +1844,6 @@ async function appInit() {
   document.body.classList.add('is-app');
   $('#appLanding').classList.remove('hidden');
   $('#backupsBtn').classList.remove('hidden');
-  $('.wordmark small').textContent = "for No Man's Sky, reading your saves directly";
-  $('#intro').textContent = "Edit units, inventories, ships and multi-tools, or any value in the raw save. Before a save is replaced, the old files are copied to a backups folder.";
   const ping = () => api('/api/ping', { method: 'POST' }).catch(() => {});
   ping(); setInterval(ping, 5000);
   addEventListener('pagehide', () => navigator.sendBeacon('/api/bye?t=' + encodeURIComponent(APP.token)));
