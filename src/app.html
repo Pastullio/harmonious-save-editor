@@ -703,14 +703,10 @@ const SECTIONS = [
   ['overview', 'Overview'], ['hangar', 'Hangar'], ['exosuit', 'Exosuit'], ['ships', 'Starships'], ['tools', 'Multi-tools'],
   ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['storage', 'Storage'], ['items', 'Item names'], ['raw', 'Raw data'],
 ];
-// Each section's colour (one bright base; light mode darkens it automatically). Swap the scheme to restyle the app.
-const SECTION_SCHEMES = {
-  grouped: { overview: '#2fc3d6', hangar: '#a37bff', ships: '#a37bff', tools: '#a37bff', freighter: '#a37bff', vehicles: '#a37bff', exosuit: '#ff7f87', storage: '#ff7f87', items: '#7fa6ff', raw: '#7fa6ff' },
-  spectrum: { overview: '#2fc3d6', hangar: '#4ea8ff', exosuit: '#7d8bff', ships: '#a37bff', tools: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', storage: '#ff8a70', items: '#3fd9a3', raw: '#8fb3c4' },
-  neon: { overview: '#22d3ee', hangar: '#b65cff', exosuit: '#ff4fa3', ships: '#3d8bff', tools: '#e04dff', freighter: '#14c8b0', vehicles: '#ff7a45', storage: '#2ee59d', items: '#8f6bff', raw: '#38bdf8' },
-};
-let SECTION_SCHEME = 'spectrum';
-const secColor = (id) => (SECTION_SCHEMES[SECTION_SCHEME] || {})[id];
+// Spectrum: each section's colour, sweeping teal through blue, violet, magenta, rose and coral (owner's pick).
+// One bright base per section; light mode darkens it automatically.
+const SECTION_COLORS = { overview: '#2fc3d6', hangar: '#4ea8ff', exosuit: '#7d8bff', ships: '#a37bff', tools: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', storage: '#ff8a70', items: '#3fd9a3', raw: '#8fb3c4' };
+const secColor = (id) => SECTION_COLORS[id];
 function applySection(id) {
   const c = secColor(id);
   document.body.classList.toggle('has-sec', !!c);

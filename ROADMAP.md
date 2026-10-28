@@ -50,6 +50,7 @@ One personal library of ship files outside the game, with three views onto it.
 - [ ] Stretch: render a 3D preview of a corvette from its part list using the Base Builder part models already on your PC
 - [x] Glacial look to match the Portal Glyph Banner: icy light theme, deep-teal dark theme (toggle, remembered), Jost, pill buttons, wide-tracked titles; no yellow or purple anywhere
 - [x] Cover Flow motion: spring physics, 1:1 drag with momentum, continuous trackpad/wheel glide, covers swing smoothly through the centre
+- [x] Neutral text (dark gray / white) with a Spectrum accent per section, chosen by the owner
 - [ ] Graphic-heavy pass across the whole app: item icons everywhere, class colours, ship and tool art, inventory grids as the visual centre
 
 The save file holds no images, so a ship's picture has to come from one of these sources.
