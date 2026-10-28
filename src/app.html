@@ -91,10 +91,10 @@ input[type=checkbox], input[type=range] { accent-color: var(--accent); }
 
 /* ---------------- landing */
 #landing { min-height: 100%; display: grid; place-items: center; padding: 40px 16px; }
-.landing-inner { width: min(1200px, 100%); display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 480px); gap: 24px 56px; align-items: center; }
+.landing-inner { width: min(1200px, 100%); display: grid; grid-template-columns: minmax(280px, 480px) minmax(0, 1fr); gap: 24px 56px; align-items: center; }
 .landing-copy { min-width: 0; }
 .wordmark { font-family: var(--display); font-weight: 300; font-size: clamp(30px, 5.4vw, 56px); line-height: 1.1; letter-spacing: .22em; text-transform: uppercase; margin: 0 0 28px; }
-.hero { position: relative; justify-self: center; width: 100%; }
+.hero { position: relative; justify-self: center; width: 100%; order: -1; } /* artwork on the left */
 .hero::before { content: ""; position: absolute; inset: 8% 4% 2%; background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 34%, transparent), transparent); filter: blur(10px); z-index: 0; }
 .hero-art { position: relative; z-index: 1; display: block; width: 100%; height: auto;
   /* the artwork's soft glow runs to its edges; fade the edges so it melts into the page instead of showing a box */
