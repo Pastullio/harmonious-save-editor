@@ -14,6 +14,7 @@ Open `dist/nms-save-editor.html` in Chrome or Edge. Nothing is uploaded anywhere
 - Corvette builds (Shipwright), a ship collection across saves (Dock Yard), coordinates and warp with portal glyphs
 - Plain editors for bases and settlements, frigates, companions, known technology and recipes, alien words, standing and journey milestones, and difficulty settings
 - Expedition rewards (every past and current one), Twitch drops and platform rewards: unlock all, a whole expedition, or single rewards
+- Cargo: where every stack is, gather an item into one place, consolidate partial stacks with a plan you approve, and drag and drop between slots
 - A find box (Ctrl+K) that jumps to any ship, base, frigate, companion, setting or item in your inventories
 - Any value in the save through the raw data explorer, with search, plus JSON export and import
 

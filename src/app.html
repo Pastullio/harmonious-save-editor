@@ -232,7 +232,7 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .rw-exp { grid-template-columns: auto minmax(0, 1fr); display: grid; gap: 18px; align-items: start; }
 .rw-patch { width: 96px; height: 96px; object-fit: contain; }
 .rw-desc { margin: 6px 0 12px; font-size: 13.5px; }
-.rw-row { grid-template-columns: 20px 28px minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); cursor: pointer; }
+.know-row.rw-row { grid-template-columns: 20px 28px minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); cursor: pointer; }
 .rw-row:hover { background: var(--hover); }
 /* ship slots */
 .slots summary { display: flex; gap: 12px; align-items: center; cursor: pointer; list-style: none; }
@@ -263,6 +263,30 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .slot-issues li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px 10px; align-items: start; padding: 10px 12px; border-radius: var(--r-sm); background: var(--well); }
 .slot-issues li .sw-ic { background: var(--danger); margin-top: 1px; } .slot-issues li .sw-ic::after { content: "!"; }
 .slot-issues .fixes { grid-column: 2; display: flex; gap: 6px; flex-wrap: wrap; }
+/* cargo */
+.cargo-list { border: 1px solid var(--line); border-radius: var(--r); background: var(--field); max-height: 680px; overflow: auto; }
+.cargo-item { border-bottom: 1px solid var(--line); }
+.cargo-row { display: grid; grid-template-columns: 28px minmax(0, 1.2fr) 110px minmax(0, 1.6fr); gap: 10px; align-items: center; width: 100%; padding: 5px 10px; background: none; border: 0; text-align: left; font: inherit; font-size: 13px; color: var(--ink); cursor: pointer; }
+.cargo-row:hover, .cargo-item.open .cargo-row { background: var(--hover); }
+.cargo-row .nm { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cargo-row .tot { text-align: right; }
+.cargo-row .dim { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cargo-row .ic, .tidy-row .ic { width: 28px; height: 28px; display: block; } .cargo-row .ic img, .tidy-row .ic img { width: 28px; height: 28px; object-fit: contain; }
+.cargo-stacks { padding: 6px 12px 12px 48px; display: grid; gap: 4px; background: var(--hover); }
+.cargo-stacks > div:not(.cargo-gather) { display: grid; grid-template-columns: minmax(0, 1.4fr) 110px 150px auto; gap: 10px; align-items: center; font-size: 13px; }
+.cargo-gather { display: flex; gap: 10px; align-items: end; margin-top: 8px; flex-wrap: wrap; } .cargo-gather .field { min-width: 260px; }
+.tidy-top { display: flex; gap: 16px; align-items: end; flex-wrap: wrap; } .tidy-top .field { min-width: 280px; } .tidy-top .check { padding-bottom: 9px; } .tidy-top > .dim { padding-bottom: 9px; font-size: 13px; }
+.tidy-src { margin: 14px 0 4px; } .tidy-src summary { cursor: pointer; font-size: 13.5px; color: var(--dim); }
+.tidy-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px 20px; margin-top: 10px; }
+.tidy-groups > div { display: grid; gap: 2px; align-content: start; } .tidy-groups b { font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); margin-bottom: 4px; } .tidy-groups .check { padding: 2px 0; font-size: 13px; }
+.tidy-h { margin: 18px 0 10px; }
+.tidy-rows { max-height: 520px; }
+.know-row.tidy-row { grid-template-columns: 20px 28px minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr); cursor: pointer; }
+.tidy-row.off { opacity: .55; }
+.tidy-row .warn { color: var(--danger); }
+.tidy-acts { margin-top: 14px; } .tidy-acts .dim { font-size: 12.5px; }
+.cell.dragging { opacity: .4; }
+.cell.drop { box-shadow: 0 0 0 3px var(--accent); }
 /* plain editors */
 .ed-tabs { margin-bottom: 16px; }
 .ed-tabs .n { font-family: var(--mono); letter-spacing: 0; opacity: .7; margin-left: 4px; }
@@ -1178,14 +1202,14 @@ function download(bytes, name) { const u = URL.createObjectURL(new Blob([bytes])
 // ------------------------------------------------------------------ navigation
 const SECTIONS = [
   ['overview', 'Overview'], ['shipwright', 'Shipwright'], ['hangar', 'Hangar'], ['library', 'Dock Yard'], ['exosuit', 'Exosuit'], ['ships', 'Starships'], ['tools', 'Multi-tools'],
-  ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['companions', 'Companions'], ['bases', 'Bases'], ['storage', 'Storage'], ['coords', 'Coordinates'],
+  ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['companions', 'Companions'], ['bases', 'Bases'], ['storage', 'Storage'], ['cargo', 'Cargo'], ['coords', 'Coordinates'],
   ['knowledge', 'Knowledge'], ['rewards', 'Rewards'], ['standing', 'Standing'], ['difficulty', 'Difficulty'], ['items', 'Item names'], ['raw', 'Raw data'],
 ];
 // Spectrum: each section's colour, sweeping teal through blue, violet, magenta, rose and coral (owner's pick);
 // the pages after it are aqua (coordinates), sky, periwinkle and steel (knowledge, standing, difficulty),
 // mint (item names) and slate (raw data).
 // One bright base per section; light mode darkens it automatically.
-const SECTION_COLORS = { overview: '#2fc3d6', shipwright: '#3cb6ea', hangar: '#4ea8ff', library: '#6598ff', exosuit: '#7d8bff', ships: '#a37bff', tools: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', companions: '#ff7690', bases: '#ff8079', storage: '#ff8a70', coords: '#36d6c3', knowledge: '#5ab8f0', rewards: '#7ba2ff', standing: '#9a8cff', difficulty: '#a3b3cf', items: '#3fd9a3', raw: '#8fb3c4' };
+const SECTION_COLORS = { overview: '#2fc3d6', shipwright: '#3cb6ea', hangar: '#4ea8ff', library: '#6598ff', exosuit: '#7d8bff', ships: '#a37bff', tools: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', companions: '#ff7690', bases: '#ff8079', storage: '#ff8a70', cargo: '#ffa086', coords: '#36d6c3', knowledge: '#5ab8f0', rewards: '#7ba2ff', standing: '#9a8cff', difficulty: '#a3b3cf', items: '#3fd9a3', raw: '#8fb3c4' };
 const secColor = (id) => SECTION_COLORS[id];
 function applySection(id) {
   const c = secColor(id);
@@ -2839,6 +2863,7 @@ function invBlock(el, inv, title, peers) {
   el.appendChild(block);
   loadIcons(block);
   watchNames(block.querySelector('.grid.named'));
+  wireDrag(block, inv);
   const showSel = () => {
     document.querySelectorAll('.cell.sel').forEach((n) => n.classList.remove('sel'));
     document.querySelectorAll('.insp-slot').forEach((n) => { n.innerHTML = ''; });
@@ -2938,22 +2963,6 @@ function moveTargets(tech) {
   vehicles().forEach(({ s, i }) => add(g(s, 'Inventory'), exoName(s, i) + ' cargo'));
   storageInvs().forEach(({ name, inv }) => add(inv, prettyInvName(name)));
   return out;
-}
-// move items into the first free unlocked slots of another inventory, in reading order
-function moveSlots(from, picked, [to, toTitle]) {
-  const w = Math.max(1, num(g(to, 'Width'))), used = new Set(slotsOf(to).map((s) => posOf(s).join(',')));
-  const free = [...validSet(to)].filter((k) => !used.has(k)).map((k) => k.split(',').map(Number)).sort((a, b) => (a[1] * w + a[0]) - (b[1] * w + b[0]));
-  const order = [...picked].sort((a, b) => { const [ax, ay] = posOf(a), [bx, by] = posOf(b); return ay - by || ax - bx; });
-  const src = slotsOf(from), dst = slotsOf(to); let n = 0;
-  for (const s of order) {
-    const spot = free.shift(); if (!spot) break;
-    src.splice(src.indexOf(s), 1);
-    const ix = g(s, 'Index'); set(ix, 'X', N(spot[0])); set(ix, 'Y', N(spot[1]));
-    dst.push(s); n++;
-  }
-  if (n) markDirty();
-  toast(n === order.length ? `${plural(n, 'item')} moved to ${toTitle}` : `${n} of ${order.length} moved; ${toTitle} has no more free slots`, n < order.length);
-  S.sel = null; render();
 }
 function closeInspector() {
   S.sel = null;
@@ -3401,7 +3410,7 @@ function predictionHtml(p, s) {
 
 // ------------------------------------------------------------------ Dock Yard (ship library)
 // brand-new sections wear a New badge in the menu until they've been opened once
-const NEW_SECTIONS = { library: 'hse-dockyard-seen', shipwright: 'hse-shipwright-seen', bases: 'hse-bases-seen', companions: 'hse-companions-seen', knowledge: 'hse-knowledge-seen', standing: 'hse-standing-seen', difficulty: 'hse-difficulty-seen', rewards: 'hse-rewards-seen' };
+const NEW_SECTIONS = { library: 'hse-dockyard-seen', shipwright: 'hse-shipwright-seen', bases: 'hse-bases-seen', companions: 'hse-companions-seen', knowledge: 'hse-knowledge-seen', standing: 'hse-standing-seen', difficulty: 'hse-difficulty-seen', rewards: 'hse-rewards-seen', cargo: 'hse-cargo-seen' };
 const seenSection = (id) => { try { return localStorage.getItem(NEW_SECTIONS[id]) === '1'; } catch (_) { return true; } };
 function markSeen(id) { try { localStorage.setItem(NEW_SECTIONS[id], '1'); } catch (_) {} const pill = document.querySelector(`nav [data-s="${id}"] .new-pill`); if (pill) pill.remove(); }
 const dockyardSeen = () => seenSection('library');
@@ -4647,13 +4656,14 @@ const FIND_WORDS = [
   ['rewards', 'Expedition rewards', 'expedition rewards unlock twitch drops platform season quicksilver'], ['rewards', 'Twitch drops', 'twitch drops rewards'],
   ['knowledge', 'Known technology and recipes', 'blueprints recipes technology known learn unlock base parts'], ['knowledge', 'Words', 'words language learn alien'],
   ['companions', 'Companions', 'pets companions creatures eggs trust'], ['bases', 'Bases', 'bases base parts building'], ['bases', 'Settlements', 'settlement settlements overseer'],
+  ['cargo', 'Where is everything', 'cargo where find item stacks gather total inventory'], ['cargo', 'Consolidate stacks', 'consolidate merge stacks tidy sort cargo move gather'],
   ['freighter', 'Frigates', 'frigates fleet expeditions'], ['ships', 'Ship slots', 'ship slots arrange reorder swap move order repair broken corvette build'], ['shipwright', 'Corvette builds', 'corvette build optimizer tune'], ['library', 'Dock Yard', 'dock yard ship library garage storage favourites import nmsship'],
   ['exosuit', 'Exosuit inventory', 'exosuit suit inventory slots supercharge'], ['raw', 'Raw data', 'raw json expert'],
 ];
 function findIndex() {
   const out = [], p = ps();
   const push = (label, sub, kind, go2, extra = '') => out.push({ label, sub, kind, go: go2, hay: (label + ' ' + sub + ' ' + extra).toLowerCase() });
-  for (const [s, l, w] of FIND_WORDS) push(l, (SECTIONS.find(([id]) => id === s) || [, ''])[1], 'Page', () => { if (s === 'knowledge') (S.know || (S.know = { tab: 'tech', q: '', race: 0, wq: '' })).tab = /word/i.test(l) ? 'words' : 'tech'; if (s === 'bases') (S.bases || (S.bases = { tab: 'bases' })).tab = /settle/i.test(l) ? 'settlements' : 'bases'; if (s === 'rewards') (S.rw || (S.rw = { q: '' })).tab = /twitch/i.test(l) ? 'twitch' : 'seasons'; if (s === 'ships') (S.slots || (S.slots = {})).open = true; go(s); if (s === 'freighter') spotlight('#frigates'); if (s === 'ships') spotlight('#shipSlots'); }, w);
+  for (const [s, l, w] of FIND_WORDS) push(l, (SECTIONS.find(([id]) => id === s) || [, ''])[1], 'Page', () => { if (s === 'knowledge') (S.know || (S.know = { tab: 'tech', q: '', race: 0, wq: '' })).tab = /word/i.test(l) ? 'words' : 'tech'; if (s === 'bases') (S.bases || (S.bases = { tab: 'bases' })).tab = /settle/i.test(l) ? 'settlements' : 'bases'; if (s === 'rewards') (S.rw || (S.rw = { q: '' })).tab = /twitch/i.test(l) ? 'twitch' : 'seasons'; if (s === 'cargo' && S.cargo) S.cargo.tab = /consol/i.test(l) ? 'tidy' : 'where'; if (s === 'ships') (S.slots || (S.slots = {})).open = true; go(s); if (s === 'freighter') spotlight('#frigates'); if (s === 'ships') spotlight('#shipSlots'); }, w);
   for (const [id, l] of SECTIONS) push(l, 'Section', 'Page', () => go(id));
   ships().forEach(({ s, i }) => push(str(g(s, 'Name')) || 'Ship ' + (i + 1), 'Starship, ' + modelName(g(s, 'Resource', 'Filename')), 'Ship', () => { S.pick.ship = i; go('ships'); }));
   tools().forEach(({ s, i }) => push(str(g(s, 'Name')) || 'Multi-tool ' + (i + 1), 'Multi-tool', 'Multi-tool', () => { S.pick.tool = i; go('tools'); }));
@@ -4829,6 +4839,200 @@ function rewardsBody(host, A) {
   draw();
   $('#rwQ', panel).oninput = (e) => { W.q = e.target.value; draw(); };
   $('#rwKind', panel).onclick = () => { toast(plural(unlockRewards(key, list.map((r) => r.id)), 'reward') + ' unlocked'); render(); };
+}
+
+// ---------------------------------------------------------------- cargo ops: where everything is, gather, consolidate, drag and drop
+// Only substances and products move between inventories; technology stays where it's installed. A stack's size limit is
+// its own MaxAmount (the game sets it from the difficulty's stack-size setting and the inventory); a new stack takes the
+// limit of a stack of the same item already in the destination, else the one it came from.
+const isCargoItem = (s) => typeOf(s) !== 'Technology';
+function freeSpots(inv) {
+  const w = Math.max(1, num(g(inv, 'Width'))), used = new Set(slotsOf(inv).map((s) => posOf(s).join(',')));
+  return [...validSet(inv)].filter((k) => !used.has(k)).map((k) => k.split(',').map(Number)).sort((a, b) => (a[1] * w + a[0]) - (b[1] * w + b[0]));
+}
+function placeSlot(s, inv, [x, y]) { const ix = g(s, 'Index'); set(ix, 'X', N(x)); set(ix, 'Y', N(y)); slotsOf(inv).push(s); }
+// move a stack into an inventory: top up stacks of the same item first, then the first free slot. Returns how much moved.
+function moveStack(from, s, to, spot) {
+  const id = idOf(s), src = slotsOf(from); let left = num(g(s, 'Amount')), moved = 0;
+  if (isCargoItem(s) && to !== from) for (const d of slotsOf(to)) {
+    if (left <= 0) break;
+    if (idOf(d) !== id) continue;
+    const room = num(g(d, 'MaxAmount')) - num(g(d, 'Amount')); if (room <= 0) continue;
+    const t = Math.min(room, left); set(d, 'Amount', N(num(g(d, 'Amount')) + t)); left -= t; moved += t;
+  }
+  if (left <= 0) { src.splice(src.indexOf(s), 1); markDirty(); return moved; }
+  const place = spot || freeSpots(to)[0];
+  if (!place) { if (moved) { set(s, 'Amount', N(left)); markDirty(); } return moved; }
+  if (moved) set(s, 'Amount', N(left));
+  src.splice(src.indexOf(s), 1); placeSlot(s, to, place); markDirty();
+  return moved + left;
+}
+// replaces the older first-free-slot mover: same-item stacks are topped up first
+function moveSlots(from, picked, [to, toTitle]) {
+  const order = [...picked].sort((a, b) => { const [ax, ay] = posOf(a), [bx, by] = posOf(b); return ay - by || ax - bx; });
+  let whole = 0, part = 0;
+  for (const s of order) { const before = num(g(s, 'Amount')); moveStack(from, s, to); if (!slotsOf(from).includes(s) || slotsOf(to).includes(s)) whole++; else if (num(g(s, 'Amount')) < before) part++; }
+  const stuck = order.length - whole;
+  toast(stuck ? `${whole} of ${order.length} moved${part ? `, ${part} partly` : ''}; ${toTitle} is full` : `${plural(whole, 'item')} moved to ${toTitle}`, !!stuck);
+  S.sel = null; render();
+}
+// every cargo inventory with a label and a way to open it
+function cargoPlaces() {
+  const p = ps(), out = [], add = (inv, label, group, open, special) => { if (isInv(inv)) out.push({ inv, label, group, open, special: !!special }); };
+  const legacy = (o, pre, name, open, group) => { const v = g(o, pre + 'Inventory_Cargo'); if (isInv(v) && slotsOf(v).length) add(v, name + ' old cargo', group, open); };
+  add(g(p, 'Inventory'), 'Exosuit cargo', 'Exosuit', () => go('exosuit')); legacy(p, '', 'Exosuit', () => go('exosuit'), 'Exosuit');
+  ships().forEach(({ s, i }) => { const n = str(g(s, 'Name')) || 'Ship ' + (i + 1), open = () => { S.pick.ship = i; go('ships'); }; add(g(s, 'Inventory'), n + ' cargo', 'Starships', open); legacy(s, '', n, open, 'Starships'); });
+  add(g(p, 'FreighterInventory'), 'Freighter cargo', 'Freighter', () => go('freighter')); legacy(p, 'Freighter', 'Freighter', () => go('freighter'), 'Freighter');
+  vehicles().forEach(({ s, i }) => add(g(s, 'Inventory'), exoName(s, i) + ' cargo', 'Exocraft', () => { S.pick.vehicle = i; go('vehicles'); }));
+  storageInvs().forEach(({ name, inv }) => add(inv, prettyInvName(name), 'Storage', () => { S.pick.storage = name; go('storage'); }, !/^Chest\d+Inventory$/.test(name)));
+  return out;
+}
+// the consolidation plan for one destination: per item, what moves from where, and what the destination ends up with
+function consolidatePlan(dest, sources, { onlyHave, skip }) {
+  const free = freeSpots(dest), plan = [], ids = new Map();
+  const note = (id, inv, s) => { if (!ids.has(id)) ids.set(id, { dst: [], src: [] }); (inv === dest ? ids.get(id).dst : ids.get(id).src).push({ inv, s }); };
+  for (const s of slotsOf(dest)) if (isCargoItem(s)) note(idOf(s), dest, s);
+  for (const pl of sources) if (pl.inv !== dest) for (const s of slotsOf(pl.inv)) if (isCargoItem(s) && num(g(s, 'Amount')) > 0 && num(g(s, 'MaxAmount')) > 0) note(idOf(s), pl.inv, s);
+  const label = new Map(sources.map((x) => [x.inv, x.label]));
+  const rows = [...ids].map(([id, v]) => ({ id, ...v })).filter((r) => (r.src.length && (!onlyHave || r.dst.length)) || r.dst.filter((d) => num(g(d.s, 'Amount')) < num(g(d.s, 'MaxAmount'))).length > 1)
+    .sort((a, b) => (dbItem(a.id) ? dbItem(a.id).name : a.id).localeCompare(dbItem(b.id) ? dbItem(b.id).name : b.id));
+  for (const r of rows) {
+    const max = Math.max(0, ...r.dst.map((d) => num(g(d.s, 'MaxAmount')))) || Math.max(0, ...r.src.map((d) => num(g(d.s, 'MaxAmount'))));
+    if (!(max > 0)) continue;
+    const have = r.dst.reduce((t, d) => t + num(g(d.s, 'Amount')), 0), incoming = r.src.reduce((t, d) => t + num(g(d.s, 'Amount')), 0);
+    const off = skip.has(r.id);
+    // room: the destination's own stacks (refilled to the limit) plus free slots not taken by rows above
+    const ownStacks = r.dst.length, needStacks = Math.ceil((have + incoming) / max);
+    const extra = Math.max(0, Math.min(needStacks - ownStacks, free.length));
+    const cap = (ownStacks + extra) * max, canMove = Math.max(0, Math.min(incoming, cap - have));
+    const merge = ownStacks > Math.ceil((have + canMove) / max);
+    if (!canMove && !merge) continue;   // nothing this row would do
+    const moving = off ? 0 : canMove;
+    const spots = off ? [] : free.splice(0, Math.max(0, Math.min(extra, Math.ceil((have + moving) / max) - ownStacks)));
+    // take from the smallest stacks first, so whole stacks empty out
+    const takes = []; let need = moving;
+    for (const d of [...r.src].sort((a, b) => num(g(a.s, 'Amount')) - num(g(b.s, 'Amount')))) { if (need <= 0) break; const t = Math.min(need, num(g(d.s, 'Amount'))); takes.push({ ...d, take: t }); need -= t; }
+    const total = have + moving, finalStacks = Math.ceil(total / max) || 0;
+    plan.push({ ...r, max, have, incoming, moving, left: off ? 0 : incoming - moving, takes, spots, total, finalStacks, off, from: [...new Set((takes.length ? takes : r.src).map((t) => label.get(t.inv) || '?'))], merge: !off && merge, canMove });
+  }
+  return plan;
+}
+function applyPlan(dest, plan) {
+  let moved = 0, items = 0;
+  for (const r of plan) {
+    if (r.off || (!r.moving && !r.merge)) continue;
+    for (const t of r.takes) { const a = num(g(t.s, 'Amount')) - t.take; if (a <= 0) { const arr = slotsOf(t.inv); arr.splice(arr.indexOf(t.s), 1); } else set(t.s, 'Amount', N(a)); }
+    // the destination: its own stacks first (top to bottom), then new stacks; empty leftovers are removed
+    const own = [...r.dst].sort((a, b) => { const [ax, ay] = posOf(a.s), [bx, by] = posOf(b.s); return ay - by || ax - bx; });
+    let left = r.total;
+    for (const d of own) { const a = Math.min(r.max, left); left -= a; if (a > 0) set(d.s, 'Amount', N(a)); else { const arr = slotsOf(dest); arr.splice(arr.indexOf(d.s), 1); } }
+    const proto = (r.dst[0] || r.takes[0] || {}).s;
+    for (const spot of r.spots) { if (left <= 0) break; const a = Math.min(r.max, left); left -= a; newSlot(dest, spot[0], spot[1], { id: r.id, type: typeOf(proto), amount: a, max: r.max }); }
+    moved += r.moving; items++;
+  }
+  if (items) markDirty();
+  return { moved, items };
+}
+PAGES.cargo = (el) => {
+  const CG = S.cargo || (S.cargo = { tab: 'where', q: '', open: null, dest: null, off: new Set(), skip: new Set(), onlyHave: true });
+  el.innerHTML = `<div class="page-head"><div><h1>Cargo</h1><p>Every stack in every inventory in one place: find where things are, gather them together, and tidy partial stacks into one inventory.</p></div></div>`;
+  const places = cargoPlaces();
+  tabs(el, [['where', 'Where is everything'], ['tidy', 'Consolidate']], CG.tab, (t) => { CG.tab = t; render(); });
+  if (CG.tab === 'where') {
+    // every item, with its total and every stack
+    const all = new Map();
+    for (const pl of places) for (const s of slotsOf(pl.inv)) { if (!isCargoItem(s)) continue; const id = idOf(s); if (!all.has(id)) all.set(id, { id, total: 0, stacks: [] }); const e = all.get(id); e.total += Math.max(0, num(g(s, 'Amount'))); e.stacks.push({ pl, s }); }
+    const nm = (id) => (dbItem(id) || {}).name || idLabel(id);
+    const list = [...all.values()].sort((a, b) => nm(a.id).localeCompare(nm(b.id)));
+    const panel = document.createElement('div'); panel.className = 'panel know'; el.appendChild(panel);
+    panel.innerHTML = `<div class="know-head"><input class="input" type="search" id="cgQ" placeholder="Search items" value="${esc(CG.q)}"><span class="dim" id="cgCount"></span></div><div class="cargo-list" id="cgRows"></div>`;
+    const draw = () => {
+      const q = CG.q.toLowerCase(), hits = list.filter((e) => !q || (nm(e.id) + ' ' + e.id).toLowerCase().includes(q));
+      $('#cgCount', panel).textContent = `${plural(hits.length, 'item')}, ${plural(hits.reduce((t, e) => t + e.stacks.length, 0), 'stack')}`;
+      $('#cgRows', panel).innerHTML = hits.slice(0, 300).map((e) => {
+        const it = dbItem(e.id), openRow = CG.open === e.id, where = [...new Set(e.stacks.map((x) => x.pl.label))];
+        return `<div class="cargo-item${openRow ? ' open' : ''}"><button type="button" class="cargo-row" data-id="${esc(e.id)}"><span class="ic">${it && it.icon ? `<img data-icon="${esc(it.icon)}" alt="">` : ''}</span><span class="nm">${esc(nm(e.id))}</span><span class="mono tot">${e.total.toLocaleString()}</span><span class="dim">${plural(e.stacks.length, 'stack')} in ${esc(where.length > 2 ? where.slice(0, 2).join(', ') + ' and ' + (where.length - 2) + ' more' : where.join(' and '))}</span></button>
+          ${openRow ? `<div class="cargo-stacks">${e.stacks.map((x, k) => { const [sx, sy] = posOf(x.s); return `<div><span>${esc(x.pl.label)}</span><span class="dim">slot ${sx + 1}, ${sy + 1}</span><span class="mono">${num(g(x.s, 'Amount')).toLocaleString()} / ${num(g(x.s, 'MaxAmount')).toLocaleString()}</span><button class="btn small ghost" type="button" data-go="${k}">Show</button></div>`; }).join('')}
+            <div class="cargo-gather"><label class="field"><span>Gather every stack into</span><select class="input" id="cgTo">${places.map((pl, k) => `<option value="${k}">${esc(pl.label)}</option>`).join('')}</select></label><button class="btn primary" type="button" id="cgGather">Gather</button></div></div>` : ''}</div>`;
+      }).join('') + (hits.length > 300 ? `<p class="dim" style="padding:10px">${hits.length - 300} more; search to narrow it down.</p>` : '') || '<p class="dim" style="padding:10px">Nothing matches.</p>';
+      loadIcons($('#cgRows', panel));
+      panel.querySelectorAll('.cargo-row').forEach((b) => b.onclick = () => { CG.open = CG.open === b.dataset.id ? null : b.dataset.id; draw(); });
+      const e = all.get(CG.open);
+      if (e && $('#cgGather', panel)) {
+        panel.querySelectorAll('[data-go]').forEach((b) => b.onclick = () => { const x = e.stacks[+b.dataset.go], [sx, sy] = posOf(x.s); try { localStorage.setItem('hse-invtab', 'all'); } catch (_) {} x.pl.open(); S.sel = { inv: x.pl.inv, keys: new Set([sx + ',' + sy]), anchor: [sx, sy] }; render(); spotlight('.cell.sel'); });
+        const best = places.findIndex((pl) => e.stacks.some((x) => x.pl === pl)); if (best >= 0) $('#cgTo', panel).value = String(best);
+        $('#cgGather', panel).onclick = () => {
+          const to = places[+$('#cgTo', panel).value], before = e.total;
+          const plan = consolidatePlan(to.inv, places, { onlyHave: false, skip: new Set([...all.keys()].filter((id) => id !== e.id)) }).filter((r) => r.id === e.id);
+          const res = applyPlan(to.inv, plan), r = plan[0];
+          toast(r ? `${r.moving.toLocaleString()} gathered into ${to.label}${r.left ? `; ${r.left.toLocaleString()} stayed where they were (no room)` : ''}` : 'Nothing to gather', r && r.left > 0);
+          void res; void before; render();
+        };
+      }
+    };
+    draw();
+    $('#cgQ', panel).oninput = (ev) => { CG.q = ev.target.value; draw(); };
+    return;
+  }
+  // consolidate: one destination, chosen sources, a plan to review
+  if (CG.dest == null || !places[CG.dest]) CG.dest = Math.max(0, places.findIndex((pl) => pl.label === 'Freighter cargo'));
+  const dest = places[CG.dest];
+  const sources = places.filter((pl, k) => k !== CG.dest && !CG.off.has(pl.label) && !pl.special);
+  const plan = consolidatePlan(dest.inv, sources, { onlyHave: CG.onlyHave, skip: CG.skip });
+  const active = plan.filter((r) => !r.off && (r.moving || r.merge));
+  const groups = [...new Set(places.map((pl) => pl.group))];
+  const panel = document.createElement('div'); panel.className = 'panel tidy'; el.appendChild(panel);
+  panel.innerHTML = `<div class="tidy-top"><label class="field"><span>Move into</span><select class="input" id="tdDest">${places.map((pl, k) => `<option value="${k}"${k === CG.dest ? ' selected' : ''}>${esc(pl.label)}</option>`).join('')}</select></label>
+      <label class="check"><input type="checkbox" id="tdHave"${CG.onlyHave ? ' checked' : ''}> Only items it already has</label>
+      <span class="dim">${plural(freeSpots(dest.inv).length, 'free slot')}</span></div>
+    <details class="tidy-src"${CG.srcOpen ? ' open' : ''}><summary>Take from ${plural(sources.length, 'inventory', 'inventories')}</summary><div class="tidy-groups">${groups.map((gr) => `<div><b>${esc(gr)}</b>${places.map((pl, k) => pl.group !== gr || k === CG.dest ? '' : `<label class="check"><input type="checkbox" data-src="${esc(pl.label)}"${!CG.off.has(pl.label) && !pl.special ? ' checked' : ''}${pl.special ? ' disabled title="Special storage that only takes certain items"' : ''}> ${esc(pl.label)}</label>`).join('')}</div>`).join('')}</div></details>
+    <h3 class="tidy-h">The plan</h3>
+    ${plan.length ? `<div class="know-rows tidy-rows">${plan.map((r) => { const it = dbItem(r.id); return `<label class="know-row tidy-row${r.off ? ' off' : ''}"><input type="checkbox" data-skip="${esc(r.id)}"${r.off ? '' : ' checked'}><span class="ic">${it && it.icon ? `<img data-icon="${esc(it.icon)}" alt="">` : ''}</span><span class="nm">${esc(it ? it.name : idLabel(r.id))}</span>
+        <span class="dim">${r.off ? 'Left where it is' : r.moving ? `${r.moving.toLocaleString()} from ${esc(r.from.join(', '))}` : 'Merge its partial stacks'}</span><span class="mono">${r.off ? '' : `${plural(r.finalStacks, 'stack')} of up to ${r.max.toLocaleString()}`}${!r.off && r.left ? `<span class="warn"> · ${r.left.toLocaleString()} won't fit</span>` : ''}</span></label>`; }).join('')}</div>`
+      : '<p class="dim">Nothing to move: no partial stacks to merge and nothing in the other inventories that this one takes.</p>'}
+    <div class="toolbar tidy-acts"><button class="btn primary" type="button" id="tdGo"${active.length ? '' : ' disabled'}>${active.length ? `Consolidate ${plural(active.length, 'item')}` : 'Nothing to do'}</button><span class="dim">Untick anything to leave where it is. Nothing is written to your game until you save.</span></div>`;
+  el.appendChild(panel);
+  loadIcons(panel);
+  $('#tdDest', panel).onchange = (e) => { CG.dest = +e.target.value; CG.skip = new Set(); render(); };
+  $('#tdHave', panel).onchange = (e) => { CG.onlyHave = e.target.checked; render(); };
+  panel.querySelector('.tidy-src').ontoggle = (e) => { CG.srcOpen = e.target.open; };
+  panel.querySelectorAll('[data-src]').forEach((c) => c.onchange = () => { c.checked ? CG.off.delete(c.dataset.src) : CG.off.add(c.dataset.src); render(); });
+  panel.querySelectorAll('[data-skip]').forEach((c) => c.onchange = () => { c.checked ? CG.skip.delete(c.dataset.skip) : CG.skip.add(c.dataset.skip); render(); });
+  $('#tdGo', panel).onclick = () => { const r = applyPlan(dest.inv, plan); CG.skip = new Set(); toast(`${plural(r.items, 'item')} consolidated into ${dest.label}${r.moved ? `, ${r.moved.toLocaleString()} moved` : ''}`); render(); };
+};
+// drag and drop between slots of any grid on the page: same item merges, different items swap, empty slots take it.
+// Technology only moves within its own inventory (rearranging); cargo items move anywhere that isn't a technology store.
+const DRAG = { inv: null, x: 0, y: 0 };
+function dropOnSlot(toInv, x, y) {
+  const fromInv = DRAG.inv; if (!fromInv) return;
+  const s = slotAt(fromInv, DRAG.x, DRAG.y); if (!s) return;
+  if (fromInv === toInv && DRAG.x === x && DRAG.y === y) return;
+  const techStore = (inv) => slotsOf(inv).length > 0 && slotsOf(inv).every((q) => typeOf(q) === 'Technology');
+  if (!isCargoItem(s) && fromInv !== toInv) { toast('Technology stays in its own inventory; drag it within the grid to rearrange.', true); return; }
+  if (isCargoItem(s) && fromInv !== toInv && (techStore(toInv) || moveTargets(true).some(([i]) => i === toInv))) { toast("That's a technology inventory.", true); return; }
+  if (!validSet(toInv).has(x + ',' + y)) { toast('That slot is locked.', true); return; }
+  const t = slotAt(toInv, x, y);
+  if (t && idOf(t) === idOf(s) && isCargoItem(s)) {
+    const room = num(g(t, 'MaxAmount')) - num(g(t, 'Amount')), a = num(g(s, 'Amount')), m = Math.min(room, a);
+    if (m <= 0) { toast('That stack is full.'); return; }
+    set(t, 'Amount', N(num(g(t, 'Amount')) + m)); if (a - m <= 0) { const arr = slotsOf(fromInv); arr.splice(arr.indexOf(s), 1); } else set(s, 'Amount', N(a - m));
+  } else if (t) {
+    if (!isCargoItem(t) && fromInv !== toInv) { toast('Technology stays in its own inventory.', true); return; }
+    const si = g(s, 'Index'), ti = g(t, 'Index');
+    if (fromInv === toInv) { set(si, 'X', N(x)); set(si, 'Y', N(y)); set(ti, 'X', N(DRAG.x)); set(ti, 'Y', N(DRAG.y)); }
+    else { const a = slotsOf(fromInv), b = slotsOf(toInv); a.splice(a.indexOf(s), 1, t); b.splice(b.indexOf(t), 1, s); set(si, 'X', N(x)); set(si, 'Y', N(y)); set(ti, 'X', N(DRAG.x)); set(ti, 'Y', N(DRAG.y)); }
+  } else if (fromInv === toInv) { const si = g(s, 'Index'); set(si, 'X', N(x)); set(si, 'Y', N(y)); }
+  else { const a = slotsOf(fromInv); a.splice(a.indexOf(s), 1); placeSlot(s, toInv, [x, y]); }
+  markDirty(); S.sel = null; DRAG.inv = null; render();
+}
+function wireDrag(block, inv) {
+  block.querySelectorAll('.grid .cell').forEach((c) => {
+    const x = +c.dataset.x, y = +c.dataset.y;
+    if (c.classList.contains('has')) { c.draggable = true; c.ondragstart = (e) => { DRAG.inv = inv; DRAG.x = x; DRAG.y = y; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'slot'); c.classList.add('dragging'); }; c.ondragend = () => { c.classList.remove('dragging'); document.querySelectorAll('.cell.drop').forEach((n) => n.classList.remove('drop')); }; }
+    c.ondragover = (e) => { if (!DRAG.inv) return; e.preventDefault(); c.classList.add('drop'); };
+    c.ondragleave = () => c.classList.remove('drop');
+    c.ondrop = (e) => { if (!DRAG.inv) return; e.preventDefault(); c.classList.remove('drop'); dropOnSlot(inv, x, y); };
+  });
 }
 
 setupFind();

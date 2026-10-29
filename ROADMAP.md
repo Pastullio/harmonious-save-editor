@@ -91,10 +91,11 @@ The save file holds no images, so a ship's picture has to come from one of these
 
 ## Phase 5 — Cargo and Loadout Ops [7]
 
-- [ ] Find an item across every inventory (exosuit, ships, freighter, storage containers, exocraft) and see where every stack is
-- [ ] Consolidate: pick a destination, see the plan, untick anything to leave alone, then apply. Stack limits come from your character's difficulty settings
+- [x] Find an item across every inventory (exosuit, ships, freighter, storage containers, exocraft) and see where every stack is (Cargo page, Where is everything), and gather every stack of it into one inventory
+- [x] Consolidate: pick a destination, see the plan, untick anything to leave alone, then apply. Stack limits are each stack's own limit (the game sets them from the difficulty's stack-size setting)
 - [x] Select several slots (Ctrl-click, Shift-click, Ctrl+A) and fill, repair, remove, unlock or move them to any other inventory in one go
-- [ ] Drag-select and drag-and-drop between inventories
+- [x] Drag and drop between slots of any grids on the same page: same item merges, different items swap, technology only rearranges within its own grid. Moving to another inventory (side panel) now tops up matching stacks first
+- [ ] Drag-select (rubber band) in a grid
 - [x] Rewards page: every expedition reward (past and current, read from the game's tables), Twitch drops and platform rewards; unlock all at once, a whole expedition, or single rewards; saved to `accountdata.hg` with its own button and a backup (the app may now read and write only that pair besides saves)
 
 ## Own item library (so Goatfungus isn't needed)
