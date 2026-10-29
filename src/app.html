@@ -196,6 +196,34 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .tc.loc { padding: 16px 18px; gap: 3px; font-size: 13px; color: var(--dim); }
 .tc.loc .gal { font-family: var(--display); font-weight: 300; font-size: 26px; letter-spacing: .06em; color: var(--ink); line-height: 1.15; margin-top: 4px; }
 .tc.loc .loc-where { color: var(--ink); margin-top: 4px; }
+/* portal glyphs: the owner's Portal Glyph Banner artwork, drawn as masks so they take the text colour */
+.glyph { display: inline-block; width: 1em; height: 1em; background: currentColor; -webkit-mask: var(--g) center / contain no-repeat; mask: var(--g) center / contain no-repeat; font-style: normal; flex: none; }
+.glyph.empty { background: none; -webkit-mask: none; mask: none; border-bottom: 2px solid var(--line-2); border-radius: 0; }
+.glyphs { display: inline-flex; gap: .2em; font-size: 26px; color: var(--ink); align-items: center; }
+.glyphs.small { font-size: 20px; }
+.glyphs.portal-glyphs { font-size: 19px; gap: 2px; margin-top: 4px; }
+.portal-glyphs .glyph { width: 21px; }
+.loc-go { justify-self: start; margin-top: 8px; }
+.here-row { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; }
+.here-row .btn { margin-left: auto; }
+.dest { display: grid; gap: 16px; }
+.dest-glyphs { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px; font-size: clamp(22px, 3.6vw, 40px); color: var(--ink); padding: 14px; border-radius: var(--r-lg); background: var(--well); min-height: 1.6em; align-items: end; justify-items: center; }
+.dest-glyphs .glyph { width: 100%; max-width: 1.1em; }
+.keypad { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
+@media (max-width: 720px) { .keypad { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.keypad button { display: grid; justify-items: center; gap: 4px; padding: 10px 4px 6px; border: 1px solid var(--line); border-radius: var(--r); background: var(--field); color: var(--ink); cursor: pointer; font: inherit; }
+.keypad button:hover { border-color: var(--accent); background: var(--hover); }
+.keypad .glyph { font-size: 30px; }
+.keypad span { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+.dest-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.dest-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 16px; }
+.dest-sum { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-bottom: 8px; }
+.place-facts { margin: 8px 0 0; padding-left: 20px; line-height: 1.6; }
+.place-facts li + li { margin-top: 2px; }
+#destInfo .sub-h { margin: 18px 0 4px; font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+.warp-row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-top: 18px; }
+.warp-row .dim { flex: 1 1 280px; font-size: 13.5px; }
+.bad-hint { color: var(--spark); margin: 0; }
 .portal { display: flex; gap: 2px; flex-wrap: wrap; margin-top: 3px; }
 .portal i { font-style: normal; font-family: var(--mono); font-size: 12px; width: 21px; height: 26px; display: grid; place-items: center; border-radius: 6px; background: var(--well); color: var(--ink); }
 .journey { grid-template-columns: repeat(6, minmax(0, 1fr)); }
@@ -863,11 +891,12 @@ function download(bytes, name) { const u = URL.createObjectURL(new Blob([bytes])
 // ------------------------------------------------------------------ navigation
 const SECTIONS = [
   ['overview', 'Overview'], ['hangar', 'Hangar'], ['exosuit', 'Exosuit'], ['ships', 'Starships'], ['tools', 'Multi-tools'],
-  ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['storage', 'Storage'], ['items', 'Item names'], ['raw', 'Raw data'],
+  ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['storage', 'Storage'], ['coords', 'Coordinates'], ['items', 'Item names'], ['raw', 'Raw data'],
 ];
-// Spectrum: each section's colour, sweeping teal through blue, violet, magenta, rose and coral (owner's pick).
+// Spectrum: each section's colour, sweeping teal through blue, violet, magenta, rose and coral (owner's pick);
+// the tool pages after it are aqua (coordinates), mint (item names) and slate (raw data).
 // One bright base per section; light mode darkens it automatically.
-const SECTION_COLORS = { overview: '#2fc3d6', hangar: '#4ea8ff', exosuit: '#7d8bff', ships: '#a37bff', tools: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', storage: '#ff8a70', items: '#3fd9a3', raw: '#8fb3c4' };
+const SECTION_COLORS = { overview: '#2fc3d6', hangar: '#4ea8ff', exosuit: '#7d8bff', ships: '#a37bff', tools: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', storage: '#ff8a70', coords: '#36d6c3', items: '#3fd9a3', raw: '#8fb3c4' };
 const secColor = (id) => SECTION_COLORS[id];
 function applySection(id) {
   const c = secColor(id);
@@ -965,7 +994,7 @@ PAGES.overview = (el) => {
     <div class="panel"><h3>Save name</h3><div class="row">
       <label class="field"><span>Shown in the game's load screen</span><input class="input" id="nameIn" maxlength="42" value="${esc(str(g(cm || p, 'SaveName')))}"></label>
     </div></div>
-    <div class="facts" id="facts"></div>
+    <div class="place-facts" id="facts"></div>
     <div class="panel"><h3>Quick fixes</h3><p class="dim">Applies to every inventory in this context: exosuit, ships, multi-tools, freighter, exocraft and storage.</p>
       <div class="toolbar"><button class="btn" id="repairAll">Repair all technology</button><button class="btn" id="rechargeAll">Recharge all technology</button><button class="btn" id="refillAll">Fill every stack</button></div></div>`;
   const facts = [];
@@ -999,8 +1028,8 @@ function travellerCards(host, journey) {
     ${tool ? `<button class="tc" id="tcTool"><div class="tc-art"></div><div class="tc-cap"><span class="k">Multi-tool</span><b>${esc(tool.name)}</b><span>${esc(tool.sub.replace(/, equipped$/, ''))}</span></div></button>` : ''}
     <div class="tc loc"><span class="k">Location</span>
       ${loc ? `<b class="gal">${esc(loc.galaxy)}</b><span class="dim">Galaxy ${loc.gi + 1} of 256</span>${where ? `<span class="loc-where">${esc(where)}</span>` : ''}
-      <span class="k sm">Portal code</span><span class="portal">${[...loc.portal].map((c) => `<i>${c}</i>`).join('')}</span>
-      <span class="k sm">Galactic address</span><span class="mono">${loc.galactic}</span>` : '<span class="dim">Not in this save</span>'}</div>`;
+      <span class="k sm">Portal code</span>${glyphRow(loc.portal, 'portal-glyphs')}<span class="portal">${[...loc.portal].map((c) => `<i>${c}</i>`).join('')}</span>
+      <span class="k sm">Galactic address</span><span class="mono">${loc.galactic}</span><button class="link loc-go" type="button" onclick="go('coords')">Coordinates and warp</button>` : '<span class="dim">Not in this save</span>'}</div>`;
   const art = host.querySelector('.portrait .tc-art'), hero = document.querySelector('.hero-art');
   const showMe = () => customCover(me.key).then((url) => { const im = new Image(); im.alt = ''; im.src = url || (hero && hero.src) || ''; im.className = url ? '' : 'default'; art.replaceChildren(im); });
   showMe();
@@ -2852,6 +2881,182 @@ const dbReady = (async () => {
   } catch (_) { /* no item database */ }
   if (S.db && S.save && $('#page')) render(); // a save opened before the list finished loading
 })();
+
+// ------------------------------------------------------------------ coordinates and warp
+// A place is { gi, x, y, z, sys, planet }: galaxy (0-255), voxel X/Z (-2047..2047), Y (-127..127), star system
+// (0-0xFFF) and planet (0-15, 0 = in space). It reads and writes three forms: the 12-glyph portal code
+// (planet, system, Y, Z, X), the galactic address on signal boosters (X+0x7FF:Y+0x7F:Z+0x7FF:system), and the
+// 64-bit number that discovery records and bases use (from the low bits: X 12, Z 12, Y 8, galaxy 8, system 12, planet 4).
+const GLYPH_NAMES = ['Sunset', 'Bird', 'Face', 'Diplo', 'Eclipse', 'Balloon', 'Boat', 'Bug', 'Dragonfly', 'Galaxy', 'Voxel', 'Fish', 'Tent', 'Rocket', 'Tree', 'Atlas'];
+const GLYPH_IMG = [/*@@GLYPHS@@*/];
+const glyph = (d, cls = '') => { const i = parseInt(d, 16); return `<i class="glyph ${cls}" style="--g:url(${GLYPH_IMG[i]})" title="${GLYPH_NAMES[i]} (${d})"></i>`; };
+const glyphRow = (code, cls = '') => `<span class="glyphs ${cls}">${[...code].map((d) => glyph(d)).join('')}</span>`;
+const hexN = (n, d) => (n >>> 0).toString(16).toUpperCase().padStart(d, '0').slice(-d);
+const signed = (v, bits) => (v >= 1 << (bits - 1) ? v - (1 << bits) : v);
+const Place = {
+  fromUA(ua) {
+    const ga = g(ua, 'GalacticAddress'); if (!(ga instanceof Map)) return null;
+    const v = (k) => num(g(ga, k));
+    return { gi: num(g(ua, 'RealityIndex')), x: v('VoxelX'), y: v('VoxelY'), z: v('VoxelZ'), sys: v('SolarSystemIndex'), planet: v('PlanetIndex') };
+  },
+  portal: (p) => hexN(p.planet, 1) + hexN(p.sys, 3) + hexN(p.y & 0xFF, 2) + hexN(p.z & 0xFFF, 3) + hexN(p.x & 0xFFF, 3),
+  galactic: (p) => [hexN(p.x + 0x7FF, 4), hexN(p.y + 0x7F, 4), hexN(p.z + 0x7FF, 4), hexN(p.sys, 4)].join(':'),
+  fromPortal(code, gi) {
+    const c = code.toUpperCase(); if (!/^[0-9A-F]{12}$/.test(c)) return null;
+    const h = (a, b) => parseInt(c.slice(a, b), 16);
+    return { gi, planet: h(0, 1), sys: h(1, 4), y: signed(h(4, 6), 8), z: signed(h(6, 9), 12), x: signed(h(9, 12), 12) };
+  },
+  fromGalactic(text, gi, planet = 0) {
+    const m = text.toUpperCase().match(/([0-9A-F]{4}):([0-9A-F]{4}):([0-9A-F]{4}):([0-9A-F]{4})/); if (!m) return null;
+    const [x, y, z, sys] = m.slice(1).map((s) => parseInt(s, 16));
+    if (x > 0xFFE || y > 0xFE || z > 0xFFE || sys > 0xFFF) return null;
+    return { gi, planet, sys, x: x - 0x7FF, y: y - 0x7F, z: z - 0x7FF };
+  },
+  // discovery records and bases store the address as one number (often bigger than JavaScript's safe integers)
+  fromPacked(v) {
+    let b; try { b = BigInt(v instanceof Num ? v.raw : typeof v === 'string' || v instanceof Str ? String(v) : v); } catch (_) { return null; }
+    const f = (sh, bits) => Number((b >> BigInt(sh)) & ((1n << BigInt(bits)) - 1n));
+    return { x: signed(f(0, 12), 12), z: signed(f(12, 12), 12), y: signed(f(24, 8), 8), gi: f(32, 8), sys: f(40, 12), planet: f(52, 4) };
+  },
+  sameSystem: (a, b) => a && b && a.gi === b.gi && a.x === b.x && a.y === b.y && a.z === b.z && a.sys === b.sys,
+  // anything people paste: a portal code (with spaces, or inside an nmsportals link), or a signal-booster address
+  parse(text, gi, planet) {
+    const t = String(text || '').trim();
+    const ga = Place.fromGalactic(t, gi, planet); if (ga) return ga;
+    const hex = (t.includes('#') ? t.split('#').pop() : t).replace(/[\s:-]/g, '');
+    return Place.fromPortal(hex, gi);
+  },
+};
+// what an address alone tells you: no save data needed
+function placeFacts(p) {
+  const out = [];
+  if (p.sys === 0x79) out.push('Black hole system: its black hole sends you towards the galaxy centre.');
+  else if (p.sys === 0x7A) out.push('Atlas Interface system.');
+  else if (p.sys >= 0x3E8 && p.sys <= 0x429) out.push('Purple star system. Reaching one by warp needs the Atlantid drive.');
+  else if (p.sys > 0x2FF) out.push('System numbers above 2FF are unusual; check the code.');
+  const ly = Math.round(Math.hypot(p.x, p.y, p.z) * 400 / 100) * 100;
+  out.push(`About ${ly.toLocaleString()} light years from the centre of ${GALAXIES[p.gi] || 'the galaxy'}.`);
+  if (p.planet > 6) out.push('Planet numbers go from 1 to 6; ' + p.planet + ' may not exist.');
+  return out;
+}
+// what this save knows about a system: discoveries, bases and teleport destinations there
+function systemKnowledge(p) {
+  const recs = g(S.save.json, 'DiscoveryManagerData', 'DiscoveryData-v1', 'Store', 'Record') || [];
+  const counts = {}, planets = new Set();
+  for (const r of recs) {
+    const at = Place.fromPacked(g(r, 'DD', 'UA')); if (!Place.sameSystem(at, p)) continue;
+    const t = str(g(r, 'DD', 'DT')); counts[t] = (counts[t] || 0) + 1; if (t === 'Planet') planets.add(at.planet);
+  }
+  const places = [];
+  for (const e of g(ps(), 'TeleportEndpoints') || []) {
+    const at = Place.fromUA(g(e, 'UniverseAddress'));
+    if (Place.sameSystem(at, p)) places.push({ name: str(g(e, 'Name')) || 'Unnamed', kind: teleKind(str(g(e, 'TeleporterType'))) });
+  }
+  for (const b of g(ps(), 'PersistentPlayerBases') || []) {
+    const at = Place.fromPacked(g(b, 'GalacticAddress')), name = str(g(b, 'Name'));
+    if (Place.sameSystem(at, p) && name && !places.some((x) => x.name === name)) places.push({ name, kind: 'Base' + (at.planet ? ', planet ' + at.planet : '') });
+  }
+  const here = Place.fromUA(g(ps(), 'UniverseAddress')), fr = Place.fromUA(g(ps(), 'FreighterUniverseAddress'));
+  return { counts, planets: planets.size, places, isHere: Place.sameSystem(here, p), freighter: Place.sameSystem(fr, p) };
+}
+const teleKind = (t) => ({ Spacestation: 'Space station', ExternalBase: 'Base you visited', Base: 'Base', Freighter: 'Freighter' }[t] || t);
+// every named place in the save, for the "Your places" picker
+function knownPlaces() {
+  const out = [], seen = new Set();
+  const add = (name, kind, p) => { if (!p || !name) return; const k = name + '|' + Place.portal(p) + '|' + p.gi; if (seen.has(k)) return; seen.add(k); out.push({ name, kind, p }); };
+  for (const e of g(ps(), 'TeleportEndpoints') || []) add(str(g(e, 'Name')), teleKind(str(g(e, 'TeleporterType'))), Place.fromUA(g(e, 'UniverseAddress')));
+  for (const b of g(ps(), 'PersistentPlayerBases') || []) add(str(g(b, 'Name')), 'Your base', Place.fromPacked(g(b, 'GalacticAddress')));
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+function warpTo(p) {
+  const ctx = ps(), ua = g(ctx, 'UniverseAddress'), prev = g(ctx, 'PreviousUniverseAddress');
+  const write = (target, q) => {
+    set(target, 'RealityIndex', N(q.gi)); const ga = g(target, 'GalacticAddress');
+    set(ga, 'VoxelX', N(q.x)); set(ga, 'VoxelY', N(q.y)); set(ga, 'VoxelZ', N(q.z)); set(ga, 'SolarSystemIndex', N(q.sys)); set(ga, 'PlanetIndex', N(q.planet));
+  };
+  const cur = Place.fromUA(ua);
+  if (prev instanceof Map && cur) write(prev, cur);
+  write(ua, { ...p, planet: 0 });
+  // arrive in your ship, in space, like a warp jump (the same as Goatfungus's coordinate editor)
+  const spawn = g(S.ctx, 'SpawnStateData'); if (spawn instanceof Map && kOf(spawn, 'LastKnownPlayerState') != null) set(spawn, 'LastKnownPlayerState', 'InShip');
+  markDirty();
+}
+
+PAGES.coords = (el) => {
+  const here = Place.fromUA(g(ps(), 'UniverseAddress'));
+  if (!here) { el.innerHTML = '<div class="page-head"><div><h1>Coordinates</h1></div></div><p class="dim">This save has no location.</p>'; return; }
+  const C = S.coords || (S.coords = { p: { ...here }, digits: Place.portal(here) });
+  el.innerHTML = `<div class="page-head"><div><h1>Coordinates</h1><p>Find a place by its portal glyphs or its galactic address, see what your save knows about it, and warp there.</p></div></div>
+    <div class="panel here-card"><h3>You are here</h3>
+      <div class="here-row"><div><b>${esc(GALAXIES[here.gi] || 'Galaxy ' + (here.gi + 1))}</b><span class="dim"> · galaxy ${here.gi + 1} of 256</span></div>
+      ${glyphRow(Place.portal(here), 'small')}<span class="mono">${Place.portal(here)}</span><span class="mono dim">${Place.galactic(here)}</span>
+      <button class="btn small" id="hereUse">Start from here</button></div></div>
+    <div class="panel"><h3>Destination</h3>
+      <div class="dest">
+        <div class="dest-glyphs" id="destGlyphs" aria-label="Portal code as glyphs"></div>
+        <div class="keypad" id="keypad">${GLYPH_NAMES.map((n, i) => `<button type="button" data-d="${hexN(i, 1)}" title="${n}">${glyph(hexN(i, 1))}<span>${hexN(i, 1)}</span></button>`).join('')}</div>
+        <div class="dest-acts"><button class="btn small" id="gBack" type="button">Delete last glyph</button><button class="btn small" id="gClear" type="button">Clear</button></div>
+        <div class="dest-fields">
+          <label class="field"><span>Portal code (12 glyphs, or paste a link)</span><input class="input mono" id="fPortal" maxlength="80" spellcheck="false" autocomplete="off"></label>
+          <label class="field"><span>Galactic address (signal booster)</span><input class="input mono" id="fGal" placeholder="0000:0000:0000:0000" maxlength="40" spellcheck="false" autocomplete="off"></label>
+          <label class="field"><span>Galaxy</span><select class="input" id="fGalaxy">${GALAXIES.map((n, i) => `<option value="${i}">${i + 1}. ${esc(n)}</option>`).join('')}</select></label>
+          <label class="field"><span>Your places</span><select class="input" id="fPlaces"><option value="">Pick a base or station…</option>${knownPlaces().map((k, i) => `<option value="${i}">${esc(k.name)} (${esc(k.kind)}, ${esc(GALAXIES[k.p.gi] || '')})</option>`).join('')}</select></label>
+        </div>
+        <p class="hint bad-hint" id="destErr" hidden></p>
+      </div></div>
+    <div class="panel"><h3>About this system</h3><div id="destInfo"></div></div>`;
+  const places = knownPlaces();
+  const $$ = (s) => el.querySelector(s);
+  const show = (from) => {
+    const full = C.digits.length === 12 && Place.fromPortal(C.digits, C.p.gi);
+    if (full) C.p = full;
+    $$('#destGlyphs').innerHTML = [...Array(12)].map((_, i) => i < C.digits.length ? glyph(C.digits[i]) : '<i class="glyph empty"></i>').join('');
+    if (from !== 'portal') $$('#fPortal').value = C.digits;
+    if (from !== 'gal') $$('#fGal').value = full ? Place.galactic(C.p) : '';
+    $$('#fGalaxy').value = String(C.p.gi);
+    const info = $$('#destInfo');
+    if (!full) { info.innerHTML = `<p class="dim">${C.digits.length ? `${12 - C.digits.length} more glyph${C.digits.length === 11 ? '' : 's'} to go.` : 'Tap glyphs, type a portal code or paste a galactic address.'}</p>`; return; }
+    const p = C.p, k = systemKnowledge(p), facts = placeFacts(p);
+    const c = (t) => k.counts[t] || 0, found = Object.keys(k.counts).length;
+    const bits = [c('Planet') && plural(c('Planet'), 'planet'), c('Animal') && plural(c('Animal'), 'creature'), c('Flora') && plural(c('Flora'), 'plant'), c('Mineral') && plural(c('Mineral'), 'mineral'), c('SpacePoi') && plural(c('SpacePoi'), 'point') + ' of interest', c('SpaceStation') && 'its space station'].filter(Boolean);
+    info.innerHTML = `
+      <div class="dest-sum">${glyphRow(Place.portal(p))}<div><b>${esc(GALAXIES[p.gi])}</b> · <span class="mono">${Place.portal(p)}</span> · <span class="mono">${Place.galactic(p)}</span>${p.planet ? ` · portal on planet ${p.planet}` : ''}</div></div>
+      <ul class="place-facts">
+        ${k.isHere ? '<li><b>You are in this system now.</b></li>' : ''}${k.freighter ? '<li>Your freighter is here.</li>' : ''}
+        ${found ? `<li>You've discovered ${bits.join(', ') || 'this system'} here.</li>` : '<li>You haven\'t discovered anything in this system yet. The game creates its planets, names and resources when someone arrives, so the save has nothing more to show until you go.</li>'}
+        ${facts.map((f) => `<li>${esc(f)}</li>`).join('')}
+      </ul>
+      ${k.places.length ? `<h4 class="sub-h">Places here</h4><ul class="place-facts">${k.places.map((x) => `<li>${esc(x.name)} <span class="dim">(${esc(x.kind)})</span></li>`).join('')}</ul>` : ''}
+      <div class="warp-row"><button class="btn primary" id="warpBtn"${k.isHere ? ' disabled' : ''}>Warp here</button>
+        <span class="dim">You'll load in your ship, in space, in this system. Nothing changes in the game until you press Save to game, and the app backs up the save first.</span></div>`;
+    const wb = $$('#warpBtn');
+    if (wb) wb.onclick = async () => {
+      const ok = await dialog('Warp to this system?', `<p>${glyphRow(Place.portal(p))}</p><p>Your location becomes <span class="mono">${Place.galactic(p)}</span> in ${esc(GALAXIES[p.gi])}. Next time you load this save you'll be in your ship, in space, in that system. Your current location is kept as the previous one.</p><p class="dim">Then press Save to game.</p>`, [['Cancel', false], ['Warp here', true, 'primary']]);
+      if (!ok) return; warpTo(p); toast('Location set. Press Save to game to keep it.'); render();
+    };
+  };
+  const setDigits = (d, from) => { C.digits = d.toUpperCase().replace(/[^0-9A-F]/g, '').slice(0, 12); $$('#destErr').hidden = true; show(from); };
+  $$('#keypad').onclick = (e) => { const b = e.target.closest('button[data-d]'); if (b && C.digits.length < 12) setDigits(C.digits + b.dataset.d); };
+  $$('#gBack').onclick = () => setDigits(C.digits.slice(0, -1));
+  $$('#gClear').onclick = () => setDigits('');
+  $$('#hereUse').onclick = () => { C.p = { ...here }; setDigits(Place.portal(here)); };
+  $$('#fPortal').oninput = (e) => { const v = e.target.value, p = Place.parse(v, C.p.gi, C.p.planet); if (p && /:/.test(v)) { C.p = p; setDigits(Place.portal(p)); } else setDigits((v.includes('#') ? v.split('#').pop() : v), 'portal'); };
+  $$('#fGal').oninput = (e) => {
+    const v = e.target.value.trim(), p = Place.fromGalactic(v, C.p.gi, C.p.planet), err = $$('#destErr');
+    if (p) { C.p = p; setDigits(Place.portal(p), 'gal'); }
+    else if (v.replace(/[^0-9A-F]/gi, '').length >= 16) { err.textContent = 'That galactic address is out of range. The form is XXXX:YYYY:ZZZZ:SSSS.'; err.hidden = false; }
+  };
+  $$('#fGalaxy').onchange = (e) => { C.p = { ...C.p, gi: +e.target.value }; show(); };
+  $$('#fPlaces').onchange = (e) => { const k = places[+e.target.value]; e.target.value = ''; if (!k) return; C.p = { ...k.p }; setDigits(Place.portal(k.p)); };
+  // typing on the keyboard works too: hex digits add glyphs, Backspace removes one
+  el.tabIndex = -1;
+  el.onkeydown = (e) => {
+    if (e.target.closest('input, select, textarea') || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (/^[0-9a-f]$/i.test(e.key) && C.digits.length < 12) { setDigits(C.digits + e.key); e.preventDefault(); }
+    else if (e.key === 'Backspace') { setDigits(C.digits.slice(0, -1)); e.preventDefault(); }
+  };
+  show();
+};
 
 PAGES.items = (el) => {
   const info = S.dbInfo || {}, lib = S.lib || {}, st = (lib.status || {});
