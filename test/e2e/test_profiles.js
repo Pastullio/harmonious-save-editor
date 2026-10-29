@@ -15,9 +15,12 @@ for (const f of ['save.hg', 'mf_save.hg']) fs.copyFileSync(SP + '/real/' + f, AC
   // storage picker
   await p.click('nav button[data-s="storage"]'); await p.waitForTimeout(500);
   ok('storage shows one container', (await p.$$('.inv')).length === 1);
-  await p.click('.store-pick .pick.all'); await p.waitForTimeout(500);
+  await p.click('.store-bar [data-g="all"]'); await p.waitForTimeout(500);
   ok('show all shows every container', (await p.$$('.inv')).length > 10);
-  await p.click('.store-pick .pick >> nth=2'); await p.waitForTimeout(300);
+  await p.click('.store-bar [data-g="all"]'); await p.waitForTimeout(300);
+  await p.selectOption('.store-bar [data-g="other"]', { index: 2 }); await p.waitForTimeout(400);
+  ok('other-storage drop-down picks one', (await p.$$('.inv')).length === 1 && (await p.$eval('.store-bar [data-g="other"]', (s) => s.value)) !== '');
+  await p.selectOption('.store-bar [data-g="chests"]', 'Chest3Inventory'); await p.waitForTimeout(400);
   await p.screenshot({ path: SP + '/shots/c0-storage.png' });
   // ships: select The Cutting Remark
   await p.click('nav button[data-s="ships"]'); await p.waitForTimeout(800);
@@ -73,6 +76,23 @@ for (const f of ['save.hg', 'mf_save.hg']) fs.copyFileSync(SP + '/real/' + f, AC
   await p.click('.prof [data-a="apply"]'); await p.waitForSelector('.prof-opts'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(500);
   ok('multi-tool got the staff tech and stats', await p.evaluate(() => { const a = tools().find(({ s }) => str(g(s, 'Name')) === 'Atlas Sceptre').s, t = g(ps(), 'Multitools')[5]; return slotsOf(g(t, 'Store')).length === slotsOf(g(a, 'Store')).length && statOf(t, 'tool', '^WEAPON_DAMAGE') === statOf(a, 'tool', '^WEAPON_DAMAGE'); }));
   await p.screenshot({ path: SP + '/shots/c4-tool.png' });
+  // freighter details, profile and backup/restore
+  await p.click('nav button[data-s="freighter"]'); await p.waitForTimeout(600);
+  await p.screenshot({ path: SP + '/shots/c5-freighter.png' });
+  await p.fill('[data-stat="^FREI_FLEET"]', '777'); await p.dispatchEvent('[data-stat="^FREI_FLEET"]', 'change');
+  await p.selectOption('[data-k="class"]', 'A'); await p.waitForTimeout(300);
+  ok('freighter class and stat set on all its inventories', await p.evaluate(() => entityInvs(ps(), 'freighter').every((inv) => invClass(inv) === 'A') && statOf(ps(), 'freighter', '^FREI_FLEET') === 777));
+  const [fdl] = await Promise.all([p.waitForEvent('download'), p.click('[data-k="export"]')]);
+  const fpath = SP + '/freighter.json'; await fdl.saveAs(fpath);
+  const fj = JSON.parse(fs.readFileSync(fpath, 'utf8')); ok('freighter backup has inventories and base parts', !!fj.FreighterInventory && Array.isArray(fj.FreighterBase));
+  await p.fill('[data-k="name"]', 'Changed'); await p.dispatchEvent('[data-k="name"]', 'change');
+  const [ffc] = await Promise.all([p.waitForEvent('filechooser'), p.click('label:has([data-k="import"])')]);
+  await ffc.setFiles(fpath); await p.waitForSelector('#dlg[open]'); await p.click('#dlgActs .btn.danger'); await p.waitForTimeout(500);
+  ok('restore brings the name back', await p.evaluate(() => str(g(ps(), 'PlayerFreighterName')) === "Dejah's Pride"));
+  await p.click('[data-k="saveprof"]'); await p.waitForSelector('#profName'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(500);
+  await p.click('[data-k="applyprof"]'); await p.waitForSelector('.prof');
+  ok('freighter profiles listed separately', (await p.$$('.prof')).length === 1);
+  await p.click('#dlgActs .btn.ghost');
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
   await b.close(); proc.kill();
 })();

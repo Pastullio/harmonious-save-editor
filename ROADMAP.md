@@ -33,7 +33,8 @@ Save a ship's or multi-tool's whole fit as a named profile ("S-class corvette lo
 - [x] Profiles are JSON files in the app's profiles folder, so they can be shared; import a profile file from the Apply dialog
 - [x] Preview before applying, with a tick box per part and a warning when the ship types differ
 - [x] Ship and multi-tool details like Goatfungus: type, class, seed with Generate, old colours, base stats, ship health and shield, delete, export and import (a ship file carries its corvette build)
-- [x] Storage page shows one container at a time, or Show all
+- [x] Freighter details like Goatfungus: name, type, class, home and model seeds with Generate, hyperdrive and fleet coordination, base parts count, back up to a file and restore (inventories and the freighter base), plus profiles
+- [x] Storage page: one drop-down for the storage containers, one for everything else, and Show all
 
 ## Phase 2 — Ship library: Hangar, Garage and Testing Facility [3] [5] [6]
 

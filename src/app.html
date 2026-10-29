@@ -203,7 +203,9 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 
 /* owned things (ships, tools, exocraft) */
 .picker { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-.store-pick .pick { min-width: 0; padding: 7px 13px; } .store-pick .pick.all { border-style: dashed; }
+.store-bar { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 320px) auto; gap: 14px; align-items: end; margin-bottom: 22px; }
+.store-bar > .btn { justify-self: start; }
+@media (max-width: 760px) { .store-bar { grid-template-columns: minmax(0, 1fr); } }
 .details-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px 14px; align-items: end; }
 .details-grid .field.wide { grid-column: span 2; }
 .details .sub-h { margin: 20px 0 10px; font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
@@ -1074,9 +1076,11 @@ const SHIP_MODELS = [['Hauler', M + 'DROPSHIPS/DROPSHIP_PROC.SCENE.MBIN'], ['Exp
 const TOOL_MODELS = [['Standard', W + 'MULTITOOL.SCENE.MBIN'], ['Royal', W + 'ROYALMULTITOOL.SCENE.MBIN'], ['Sentinel', W + 'SENTINELMULTITOOL.SCENE.MBIN'], ['Sentinel (B)', W + 'SENTINELMULTITOOLB.SCENE.MBIN'],
   ['Atlas', W + 'ATLASMULTITOOL.SCENE.MBIN'], ['Switch', W + 'SWITCHMULTITOOL.SCENE.MBIN'], ['Staff', W + 'STAFFMULTITOOL.SCENE.MBIN'], ['Atlas Sceptre', W + 'STAFFMULTITOOLATLAS.SCENE.MBIN'],
   ['Pillar of Titan', W + 'STAFFMULTITOOLRUIN.SCENE.MBIN'], ['Basilisk Crown', W + 'STAFFMULTITOOLBONE.SCENE.MBIN'], ['Staff (NPC)', W + 'STAFFNPCMULTITOOL.SCENE.MBIN']];
-const STATS = { ship: [['^SHIP_DAMAGE', 'Damage'], ['^SHIP_SHIELD', 'Shields'], ['^SHIP_HYPERDRIVE', 'Hyperdrive'], ['^SHIP_AGILE', 'Maneuverability']],
+const F = 'MODELS/COMMON/SPACECRAFT/INDUSTRIAL/';
+const FREIGHTER_MODELS = [['Capital', F + 'CAPITALFREIGHTER_PROC.SCENE.MBIN'], ['Regular', F + 'FREIGHTER_PROC.SCENE.MBIN'], ['Small', F + 'FREIGHTERSMALL_PROC.SCENE.MBIN'], ['Tiny', F + 'FREIGHTERTINY_PROC.SCENE.MBIN'], ['Pirate dreadnought', F + 'PIRATEFREIGHTER.SCENE.MBIN']];
+const STATS = { freighter: [['^FREI_HYPERDRIVE', 'Hyperdrive'], ['^FREI_FLEET', 'Fleet coordination']], ship: [['^SHIP_DAMAGE', 'Damage'], ['^SHIP_SHIELD', 'Shields'], ['^SHIP_HYPERDRIVE', 'Hyperdrive'], ['^SHIP_AGILE', 'Maneuverability']],
   tool: [['^WEAPON_DAMAGE', 'Damage'], ['^WEAPON_MINING', 'Mining'], ['^WEAPON_SCAN', 'Scanning']] };
-const entityInvs = (o, kind) => (kind === 'tool' ? [g(o, 'Store')] : [g(o, 'Inventory'), g(o, 'Inventory_TechOnly'), g(o, 'Inventory_Cargo')]).filter(isInv);
+const entityInvs = (o, kind) => (kind === 'tool' ? [g(o, 'Store')] : kind === 'freighter' ? [g(o, 'FreighterInventory'), g(o, 'FreighterInventory_TechOnly'), g(o, 'FreighterInventory_Cargo')] : [g(o, 'Inventory'), g(o, 'Inventory_TechOnly'), g(o, 'Inventory_Cargo')]).filter(isInv);
 function statOf(o, kind, id) { for (const inv of entityInvs(o, kind)) { const e = (g(inv, 'BaseStatValues') || []).find((x) => str(g(x, 'BaseStatID')) === id); if (e) return num(g(e, 'Value')); } return null; }
 function setStat(o, kind, id, v) {
   for (const inv of entityInvs(o, kind)) {
@@ -1149,7 +1153,9 @@ function fromPlain(v) { if (v instanceof Map) { const m = new Map(); for (const 
 const mapOf = (obj) => new Map(Object.entries(obj));
 function downloadText(name, text) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
 const safeFile = (s) => (str(s).replace(/[^\w\- ().,'&+]/g, '').trim() || 'untitled').slice(0, 60);
-const entityName = (o, i, kind) => str(g(o, 'Name')) || (kind === 'ship' ? 'Ship ' : 'Multi-tool ') + (i + 1);
+const entityName = (o, i, kind) => (kind === 'freighter' ? str(g(o, 'PlayerFreighterName')) || 'Freighter' : str(g(o, 'Name')) || (kind === 'ship' ? 'Ship ' : 'Multi-tool ') + (i + 1));
+const kindWord = (kind) => ({ ship: 'ship', tool: 'multi-tool', freighter: 'freighter' }[kind]);
+const freighterType = (p) => (FREIGHTER_MODELS.find(([, f]) => f === str(g(p, 'CurrentFreighter', 'Filename'))) || ['Freighter'])[0];
 function shipBuild(i) { return (g(ps(), 'PersistentPlayerBases') || []).find((b) => str(g(b, 'BaseType', 'PersistentBaseTypes')) === 'PlayerShipBase' && num(g(b, 'UserData')) === i) || null; }
 
 function exportEntity(o, i, kind) {
@@ -1211,14 +1217,14 @@ const Profiles = {
     await IDB.put('profiles', (await this.list()).filter((x) => x.file !== file));
   },
 };
-const profTech = (o, kind) => (kind === 'ship' ? g(o, 'Inventory_TechOnly') : g(o, 'Store'));
-const profCargo = (o, kind) => (kind === 'ship' ? g(o, 'Inventory') : null);
+const profTech = (o, kind) => (kind === 'ship' ? g(o, 'Inventory_TechOnly') : kind === 'freighter' ? g(o, 'FreighterInventory_TechOnly') : g(o, 'Store'));
+const profCargo = (o, kind) => (kind === 'ship' ? g(o, 'Inventory') : kind === 'freighter' ? g(o, 'FreighterInventory') : null);
+const typeLabel = (o, kind) => (kind === 'ship' ? shipType(str(g(o, 'Resource', 'Filename'))) : kind === 'freighter' ? freighterType(o) : toolType(o).label);
 function layoutOf(inv) { const m = new Map(); for (const k of ['Width', 'Height', 'ValidSlotIndices', 'SpecialSlots', 'Slots']) { const v = g(inv, k); if (v !== undefined) m.set(k, toPlain(cloneJSON(v))); } return m; }
 function makeProfile(o, i, kind, name) {
   const doc = mapOf({ Harmonious: mapOf({ kind: 'profile', for: kind, version: N(1), created: new Date().toISOString() }) });
-  const file = str(g(o, 'Resource', 'Filename'));
   doc.set('Name', name); doc.set('Source', entityName(o, i, kind));
-  doc.set('Type', kind === 'ship' ? shipType(file) : toolType(o).label); doc.set('Model', file);
+  doc.set('Type', typeLabel(o, kind)); doc.set('Model', str(kind === 'freighter' ? g(o, 'CurrentFreighter', 'Filename') : g(o, 'Resource', 'Filename')));
   doc.set('Class', invClass(entityInvs(o, kind)[0]) || 'C');
   doc.set('Stats', toPlain(cloneJSON(g(entityInvs(o, kind)[0], 'BaseStatValues') || [])));
   doc.set('Technology', layoutOf(profTech(o, kind)));
@@ -1235,7 +1241,7 @@ const layKeys = (lay) => new Set(((lay && lay.get('ValidSlotIndices')) || []).ma
 
 async function saveProfileDialog(o, i, kind) {
   const def = entityName(o, i, kind) + ' loadout';
-  const ok = await dialog('Save as profile', `<p>Saves this ${kind === 'ship' ? 'ship' : 'multi-tool'}'s class, stats and every technology module in its exact slot${kind === 'ship' ? ', plus the cargo layout' : ''}, so you can put the same fit on another one.</p>
+  const ok = await dialog('Save as profile', `<p>Saves this ${kindWord(kind)}'s class, stats and every technology module in its exact slot${kind !== 'tool' ? ', plus the cargo layout' : ''}, so you can put the same fit on another one.</p>
     <label class="field"><span>Profile name</span><input class="input" id="profName" maxlength="60" value="${esc(def)}"></label>`, [['Cancel', false, 'ghost'], ['Save profile', true, 'primary']]);
   if (!ok) return;
   const name = $('#profName').value.trim() || def;
@@ -1253,7 +1259,7 @@ async function applyProfileDialog(o, i, kind) {
       const d = pf.doc, tech = d.get('Technology');
       return `<div class="prof"><div><b>${esc(pf.name)}</b><span class="dim">${esc([str(d.get('Type')), str(d.get('Class')) + ' class', plural(slotCount(tech), 'module'), 'from ' + str(d.get('Source')), new Date(pf.mtime).toLocaleDateString()].filter(Boolean).join(' · '))}</span></div>
         <span class="prof-acts"><button class="btn small primary" data-a="apply" data-n="${n}">Apply</button><button class="btn small ghost" data-a="export" data-n="${n}">Export</button><button class="btn small ghost danger-text" data-a="del" data-n="${n}">Delete</button></span></div>`;
-    }).join('')}</div>` : `<p>No ${kind === 'ship' ? 'ship' : 'multi-tool'} profiles yet. Open the one whose fit you like and choose <b>Save as profile</b>, or import a profile file someone shared.</p>`;
+    }).join('')}</div>` : `<p>No ${kindWord(kind)} profiles yet. Open the one whose fit you like and choose <b>Save as profile</b>, or import a profile file someone shared.</p>`;
   const pick = $('#dlgBody');
   const onClick = (e) => { const b = e.target.closest('[data-a]'); if (!b) return; chosen = all[+b.dataset.n]; act = b.dataset.a; $('#dlg').close(); };
   pick.addEventListener('click', onClick);
@@ -1264,7 +1270,7 @@ async function applyProfileDialog(o, i, kind) {
     const f = await new Promise((r) => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json,application/json'; inp.onchange = () => r(inp.files[0] || null); inp.click(); });
     if (!f) return; const text = await f.text(), pf = readProfile({ file: f.name, text, mtime: Date.now() });
     if (!pf) { toast("That file isn't a Harmonious profile.", true); return; }
-    if (pf.for !== kind) { toast(`That profile is for a ${pf.for === 'ship' ? 'ship' : 'multi-tool'}.`, true); return; }
+    if (pf.for !== kind) { toast(`That profile is for a ${kindWord(pf.for) || 'different thing'}.`, true); return; }
     await Profiles.save(safeFile(pf.name) + '.json', text); toast(`Profile "${pf.name}" imported`); return applyProfileDialog(o, i, kind);
   }
   if (!chosen) return;
@@ -1279,7 +1285,7 @@ async function applyProfileDialog(o, i, kind) {
 async function previewProfile(pf, o, i, kind) {
   const d = pf.doc, tech = d.get('Technology'), cargo = d.get('Cargo');
   const tgtTech = profTech(o, kind), tgtCargo = profCargo(o, kind), fromCls = invClass(entityInvs(o, kind)[0]) || 'C', toCls = str(d.get('Class'));
-  const tgtType = kind === 'ship' ? shipType(str(g(o, 'Resource', 'Filename'))) : toolType(o).label, srcType = str(d.get('Type'));
+  const tgtType = typeLabel(o, kind), srcType = str(d.get('Type'));
   // cargo items that would fall outside the new layout if the slots change but the items stay
   const newCargo = layKeys(cargo), lost = isInv(tgtCargo) && cargo ? slotsOf(tgtCargo).filter((s) => !newCargo.has(posOf(s).join(','))).length : 0;
   const w = (lay) => num(lay.get('Width')) + ' × ' + num(lay.get('Height'));
@@ -1289,7 +1295,7 @@ async function previewProfile(pf, o, i, kind) {
   ];
   if (cargo && isInv(tgtCargo)) {
     rows.push(['cslots', `Cargo slots: ${validCount(new Map([['ValidSlotIndices', g(tgtCargo, 'ValidSlotIndices') || []]]))} unlocked now, <b>${validCount(cargo)}</b> after${lost ? ` <span class="err">(${plural(lost, 'item')} outside the new layout would be removed)</span>` : ''}`, true]);
-    rows.push(['citems', `Cargo contents: replace this ship's cargo with the profile's ${plural(slotCount(cargo), 'item')}`, false]);
+    rows.push(['citems', `Cargo contents: replace this ${kindWord(kind)}'s cargo with the profile's ${plural(slotCount(cargo), 'item')}`, false]);
   }
   const warn = srcType && srcType !== tgtType ? `<p class="err">This profile came from a ${esc(srcType)}; ${esc(entityName(o, i, kind))} is a ${esc(tgtType)}. Technology made for one type may not work on another.</p>` : '';
   const ok = await dialog(`Apply "${pf.name}"`, `<p>To <b>${esc(entityName(o, i, kind))}</b>. Tick what to change:</p>${warn}
@@ -1923,27 +1929,82 @@ PAGES.freighter = (el) => {
     const row = document.createElement('div'); row.className = 'pic-row'; el.appendChild(row);
     pictureCard(row, { kind: 'ship', type: 'Freighter', name: fname, cls: invClass(g(p, 'FreighterInventory')), key: 'freighter|' + fseed }, 'Freighter');
   }
-  if (kOf(p, 'PlayerFreighterName') != null) {
-    const panel = document.createElement('div'); panel.className = 'panel';
-    panel.innerHTML = `<div class="row"><label class="field"><span>Freighter name</span><input class="input" maxlength="42" value="${esc(str(g(p, 'PlayerFreighterName')))}"></label></div>`;
-    panel.querySelector('input').onchange = (e) => set(p, 'PlayerFreighterName', e.target.value);
-    el.appendChild(panel);
-  }
+  if (isInv(g(p, 'FreighterInventory'))) freighterDetails(el, p);
   invGroup(el, standardInvs(p, 'Freighter'));
 };
+// freighter: name, type, class, home and model seeds, stats, the base built on it, backup and restore
+function freighterBase() { return (g(ps(), 'PersistentPlayerBases') || []).find((b) => str(g(b, 'BaseType', 'PersistentBaseTypes')) === 'FreighterBase') || null; }
+function freighterDetails(el, p) {
+  const cf = g(p, 'CurrentFreighter'), file = str(g(cf, 'Filename')), known = FREIGHTER_MODELS.some(([, f]) => f === file);
+  const home = g(p, 'CurrentFreighterHomeSystemSeed'), model = g(cf, 'Seed'), base = freighterBase();
+  const cls = invClass(g(p, 'FreighterInventory')) || 'C';
+  const seedBox = (k, label, sd) => Array.isArray(sd) ? `<label class="field wide"><span>${label}</span><span class="seed-row"><input class="input mono" data-seed="${k}" value="${esc(str(sd[1]))}"><button class="btn small" type="button" data-gen="${k}">Generate</button></span></label>` : '';
+  const panel = document.createElement('div'); panel.className = 'panel details';
+  panel.innerHTML = `<div class="details-grid">
+      <label class="field wide"><span>Name</span><input class="input" data-k="name" maxlength="42" value="${esc(str(g(p, 'PlayerFreighterName')))}"></label>
+      <label class="field"><span>Type</span><select class="input" data-k="type">${known ? '' : `<option value="${esc(file)}" selected>${esc(modelName(file) || 'Unknown')}</option>`}${FREIGHTER_MODELS.map(([n, f]) => `<option value="${esc(f)}"${f === file ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></label>
+      <label class="field"><span>Class</span><select class="input" data-k="class">${['C', 'B', 'A', 'S'].map((c) => `<option${c === cls ? ' selected' : ''}>${c}</option>`).join('')}</select></label>
+      ${seedBox('home', 'Home seed (the system it belongs to)', home)}${seedBox('model', 'Model seed (changes the look)', model)}
+    </div>
+    <h3 class="sub-h">Base stats</h3>
+    <div class="details-grid">${STATS.freighter.map(([id, label]) => `<label class="field"><span>${label}</span><input class="input mono" inputmode="decimal" data-stat="${id}" value="${fmtStat(statOf(p, 'freighter', id))}"></label>`).join('')}
+      <label class="field"><span>Base parts on board</span><input class="input mono" disabled value="${base ? (g(base, 'Objects') || []).length : 0}"></label></div>
+    <div class="toolbar details-acts">
+      <button class="btn primary" data-k="saveprof">Save as profile</button><button class="btn" data-k="applyprof">Apply a profile</button>
+      <span class="sep"></span>
+      <button class="btn" data-k="export">Back up to a file</button><label class="btn">Restore from a file<input type="file" accept=".json,application/json" data-k="import" hidden></label>
+    </div>`;
+  el.appendChild(panel);
+  const $k = (k) => panel.querySelector(`[data-k="${k}"]`);
+  $k('name').onchange = (e) => set(p, 'PlayerFreighterName', e.target.value);
+  $k('type').onchange = (e) => { set(cf, 'Filename', e.target.value); toast('Type changed. Load the save in the game to see it.'); render(); };
+  $k('class').onchange = (e) => { setClass(p, 'freighter', e.target.value); toast(`Class set to ${e.target.value}`); render(); };
+  for (const [k, sd] of [['home', home], ['model', model]]) {
+    const inp = panel.querySelector(`[data-seed="${k}"]`); if (!inp) continue;
+    const apply = (v) => { if (!/^0x[0-9A-Fa-f]{1,16}$/.test(v)) { toast('Seeds look like 0x followed by up to 16 hex digits.', true); inp.value = str(sd[1]); return; } sd[1] = v.toUpperCase().replace(/^0X/, '0x'); sd[0] = true; inp.value = sd[1]; markDirty(); };
+    inp.onchange = () => apply(inp.value.trim());
+    panel.querySelector(`[data-gen="${k}"]`).onclick = () => apply(k === 'home' ? '0x' + randomSeed().slice(6) : randomSeed());
+  }
+  panel.querySelectorAll('[data-stat]').forEach((inp) => inp.onchange = () => { const v = Number(inp.value); if (!isFinite(v) || v < 0) { toast('Stats are numbers of 0 or more.', true); inp.value = fmtStat(statOf(p, 'freighter', inp.dataset.stat)); return; } setStat(p, 'freighter', inp.dataset.stat, v); });
+  $k('saveprof').onclick = () => saveProfileDialog(p, 0, 'freighter');
+  $k('applyprof').onclick = () => applyProfileDialog(p, 0, 'freighter');
+  $k('export').onclick = () => {
+    const doc = mapOf({ Harmonious: mapOf({ kind: 'freighter', version: N(1), exported: new Date().toISOString() }) });
+    for (const k of ['PlayerFreighterName', 'CurrentFreighter', 'CurrentFreighterHomeSystemSeed', 'FreighterLayout', 'FreighterCargoLayout', 'FreighterInventory', 'FreighterInventory_TechOnly', 'FreighterInventory_Cargo', 'FreighterEngineEffect', 'CurrentFreighterNPC']) { const v = g(p, k); if (v !== undefined) doc.set(k, toPlain(cloneJSON(v))); }
+    const b = freighterBase(); if (b) doc.set('FreighterBase', toPlain(cloneJSON(g(b, 'Objects') || [])));
+    downloadText(safeFile(entityName(p, 0, 'freighter')) + '.freighter.json', C.stringifyJSON(doc)); toast('Freighter backed up to a file');
+  };
+  $k('import').onchange = async (e) => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    let doc; try { doc = C.parseJSON(await f.text()); } catch (er) { toast('That file is not valid JSON: ' + er.message, true); return; }
+    const h = doc instanceof Map && doc.get('Harmonious');
+    if (!(h instanceof Map) || str(h.get('kind')) !== 'freighter') { toast("That file isn't a freighter backup.", true); return; }
+    const parts = Array.isArray(doc.get('FreighterBase')) ? doc.get('FreighterBase').length : 0, b = freighterBase();
+    if (!(await dialog('Restore the freighter?', `<p>Replaces your freighter's name, type, seeds, class, stats and inventories with <b>${esc(str(doc.get('PlayerFreighterName')) || 'the backup')}</b>${parts ? `, and its ${parts} base parts${b ? '' : ' (skipped: there is no freighter base in this save to restore them into)'}` : ''}. Nothing is written to your game until you save.</p>`, [['Cancel', false, 'ghost'], ['Restore', true, 'danger']]))) return;
+    for (const [k, v] of doc) if (k !== 'Harmonious' && k !== 'FreighterBase' && kOf(p, k) != null) set(p, k, fromPlain(v));
+    if (parts && b) set(b, 'Objects', fromPlain(doc.get('FreighterBase')));
+    markDirty(); toast('Freighter restored'); render();
+  };
+}
 PAGES.storage = (el) => {
   el.innerHTML = `<div class="page-head"><div><h1>Storage</h1><p>Base storage containers and other standalone inventories found in this save.</p></div></div>`;
   const list = storageInvs();
   if (!list.length) el.insertAdjacentHTML('beforeend', '<p class="dim">No storage inventories in this save.</p>');
   if (!list.length) return;
-  // one container at a time (default), or everything in one long page
+  // two drop-downs: the numbered storage containers, and everything else (chests on bases, lockers, ...)
+  const chests = list.filter((x) => /^Chest\d+Inventory$/.test(x.name)), other = list.filter((x) => !/^Chest\d+Inventory$/.test(x.name));
   let pick = S.pick.storage; try { pick = pick || localStorage.getItem('hse-storage') || ''; } catch (_) {}
-  if (pick !== 'all' && !list.some((x) => x.name === pick)) pick = list[0].name;
-  const bar = document.createElement('div'); bar.className = 'picker store-pick';
-  bar.innerHTML = list.map(({ name, inv }) => `<button class="pick" data-n="${esc(name)}" aria-pressed="${pick === name}"><span class="pn">${esc(prettyInvName(name))}</span><span class="ps">${plural(slotsOf(inv).length, 'item')}</span></button>`).join('')
-    + `<button class="pick all" data-n="all" aria-pressed="${pick === 'all'}"><span class="pn">Show all</span><span class="ps">${list.length} containers</span></button>`;
+  if (pick !== 'all' && !list.some((x) => x.name === pick)) pick = (chests[0] || list[0]).name;
+  const opt = ({ name, inv }) => `<option value="${esc(name)}"${name === pick ? ' selected' : ''}>${esc(prettyInvName(name))} (${plural(slotsOf(inv).length, 'item')})</option>`;
+  const inChests = chests.some((x) => x.name === pick), inOther = other.some((x) => x.name === pick);
+  const bar = document.createElement('div'); bar.className = 'store-bar';
+  bar.innerHTML = `${chests.length ? `<label class="field"><span>Storage containers</span><select class="input" data-g="chests">${inChests ? '' : '<option value="" selected>Choose a container</option>'}${chests.map(opt).join('')}</select></label>` : ''}
+    ${other.length ? `<label class="field"><span>Other storage</span><select class="input" data-g="other">${inOther ? '' : '<option value="" selected>Choose…</option>'}${other.map(opt).join('')}</select></label>` : ''}
+    <button class="btn${pick === 'all' ? ' primary' : ''}" data-g="all" type="button">${pick === 'all' ? 'Showing all' : 'Show all'}</button>`;
   el.appendChild(bar);
-  bar.onclick = (e) => { const b = e.target.closest('.pick'); if (!b) return; S.pick.storage = b.dataset.n; S.sel = null; try { localStorage.setItem('hse-storage', b.dataset.n); } catch (_) {} render(); };
+  const choose = (v) => { if (!v) return; S.pick.storage = v; S.sel = null; try { localStorage.setItem('hse-storage', v); } catch (_) {} render(); };
+  bar.querySelectorAll('select').forEach((sel) => sel.onchange = () => choose(sel.value));
+  bar.querySelector('[data-g="all"]').onclick = () => choose(pick === 'all' ? (chests[0] || list[0]).name : 'all');
   list.filter((x) => pick === 'all' || x.name === pick).forEach(({ name, inv }) => invBlock(el, inv, prettyInvName(name)));
 };
 
