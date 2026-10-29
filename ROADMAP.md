@@ -47,7 +47,7 @@ One personal library of ship files outside the game, with three views onto it.
 - [x] TAZ's `.nmsship` (a zip of `objects.json`, `so.json` and `ccd.json`; read and written, matching TAZ's BOM + CRLF JSON) and `.so` (a ship entry: put onto an existing corvette, which keeps its name and build); the owner's `.txt` corvette builds. Checked on the owner's Death n Glory files
 - [x] Confirmed against a `.so` written by TAZ itself (owner, 2026-10-29): it reads as a corvette loadout, and our new .so export (Starships and Dock Yard) writes the same format byte for byte
 - [x] Each entry can store a link (Charon, NMA or anywhere) and notes
-- [ ] Pull artwork, author and description from a linked listing
+- [x] Pull artwork, author and description from a linked listing (Dock Yard: "Get art from the link")
 - [x] Search, type and tag filters, tags and favourites
 
 ## Phase 3 — Visuals: Cover Flow and the overall look [2] [9]
@@ -63,16 +63,16 @@ One personal library of ship files outside the game, with three views onto it.
 - [x] Parts picker for procedural models (cockpit, wings, engines, barrels...), remembered per ship; the seed's default is a stable guess, since the game's selection code isn't in its files
 - [ ] Name the parts better than the game's internal labels (e.g. thumbnails per option)
 - [ ] Their look is generated in-game from the seed, so it can't be rendered outside the game; artwork for fixed-look specials (Golden Vector, Atlas Sceptre, Starborn ships) could come from the web later
-- [ ] Artwork from a linked Charon/NMA listing
+- [x] Artwork from a linked Charon/NMA listing
 - [x] Turntable: cover cards (Overview, ship pages, Dock Yard details) turn while hovered and follow a drag
-- [ ] More camera angles per corvette
+- [ ] More camera angles per corvette (left for later: the Blender render takes one fixed view today)
 - [x] Custom covers live on disk in `Dock Yard\Covers` (with `covers.json`); ones the app kept in the browser profile move there by themselves
 - [ ] Stretch: render a 3D preview of a corvette from its part list using the Base Builder part models already on your PC
 - [x] Glacial look to match the Portal Glyph Banner: icy light theme, deep-teal dark theme (toggle, remembered), Jost, pill buttons, wide-tracked titles; no yellow or purple anywhere
 - [x] Cover Flow motion: spring physics, 1:1 drag with momentum, continuous trackpad/wheel glide, covers swing smoothly through the centre
 - [x] Neutral text (dark gray / white) with a Spectrum accent per section, chosen by the owner
 - [x] Item icons and names in every inventory, Goatfungus-style (icon, name, amount/max): the desktop app finds the owner's `NMSSaveEditor.jar` by itself and reads them from it in place
-- [ ] Graphic-heavy pass across the rest of the app: class colours, ship and tool art, inventory grids as the visual centre
+- [x] Graphic-heavy pass across the rest of the app: class colours, ship and tool art, inventory grids as the visual centre (quieter empty slots, lifted filled ones, class badges, one Export menu, section glow behind page titles)
 
 The save file holds no images, so a ship's picture has to come from one of these sources.
 
@@ -83,7 +83,8 @@ The save file holds no images, so a ship's picture has to come from one of these
 - [x] **Shipwright** (our own take on TAZ's optimizer, right under Overview): Tune up puts parts in the priority order TAZ documents (Rockhopper wings, reactors, thrusters/boosters/wings, weapons, shields, landing gear, landing bays, cockpits, everything else; stable, so cockpit and bay order are kept); build check (cockpits, beam-up bay scale ≥ 0.058, order, exact duplicates, builds pointing at the wrong slot); Copy all / Paste all (whole build, Objects or a single part) / Load file / Save as .json or .nmsship; part list with names, groups, search, move and delete; Build JSON with Apply
 - [x] Add corvette / Delete corvette in Shipwright (owner, 2026-10-29): a corvette ship entry copied from one in the save (C class, empty inventories, new seed) plus a starter build of the essentials (reactor, thruster, weapon, landing gear, landing bay, cockpit, walkway, Paragon core) to paste a real build over
 - [x] Ship slot manager (Starships page): swap slots by drag or click, close gaps; a ship's build, colours, customisation, current-ship marker and corvette-workshop link move with it. Repairs: builds pointing at empty, missing or non-corvette slots, several builds on one corvette, corvettes without a build, current ship on an empty slot (the first fix offered never deletes a build)
-- [ ] BBA's `.nmsprefab` and `.nmsbase` (need samples)
+- [x] BBA's `.nmsprefab` (load into Dock Yard/Shipwright, "Add a prefab" on Bases)
+- [ ] BBA's `.nmsbase` (needs a sample)
 - [ ] **Live Blender link**: Ctrl+S in Blender writes the build straight into the chosen corvette in your save. The app runs quietly in the system tray and receives the build from Blender. Drydock (or a tiny companion add-on) sends it on save, so there's no export, copy, paste or load step
 - [ ] Every live update is backed up, so any version can be rolled back
 - [ ] To test early: whether No Man's Sky picks up the new file when you load the save from the main menu, and how Steam Cloud reacts to a file changing outside the game
@@ -103,7 +104,7 @@ The save file holds no images, so a ship's picture has to come from one of these
 
 - [x] "Build item library from your game": reads the owner's No Man's Sky install (HGPAK archives, zstd), the product/substance/technology/procedural tables and English text (MBIN), converts icons (BC7 DDS) to PNG, caches it all in the app folder. Built automatically on first start, rebuilt after a game update. 5,400+ items; names resolve for IDs Goatfungus lacks (e.g. HULK_REACTOR → Fuel Rod)
 - [x] `tools/extract-nms-item-files.bat`: collects the tables, English text, an icon sample and the full pak file list from the owner's install (via HGPAKtool) so the reader can be built against real files
-- [ ] Tech packs stored as hashed IDs still need a mapping (Goatfungus fallback covers them for now)
+- [x] Tech packs stored as hashed IDs get names (`techPackId`, the game's joaat hash)
 - [ ] Goatfungus's jar stays as a fallback
 
 ## Phase 6 — Streamlined editing (no more digging through JSON) [4]
@@ -138,3 +139,4 @@ What these can show is limited by the game: planets are generated by the game it
 - Several corvettes can share one ship seed; the seed doesn't identify a corvette.
 - Ship entries carry an unmapped key `FA8` (an empty array in this save).
 - Builds in this save: Formula1c 509 parts, Yautja Claw 753, The Cutting Remark 2,091, Max 2,921.
+- [x] Other resources in the sidebar (Portal Glyph Banner, Traveller credentials) and a glyph banner link on Coordinates

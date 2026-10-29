@@ -53,7 +53,9 @@ for (const f of ['save.hg', 'mf_save.hg']) fs.copyFileSync(SP + '/real/' + f, AC
   await p.fill('[data-stat="^SHIP_HYPERDRIVE"]', '99.5'); await p.dispatchEvent('[data-stat="^SHIP_HYPERDRIVE"]', 'change');
   await p.click('[data-k="gen"]');
   // export
+  await p.click('[data-k="exportMenu"] summary');   // the ship's exports sit in one menu
   const [dl] = await Promise.all([p.waitForEvent('download'), p.click('[data-k="export"]')]);
+  ok('the export menu closes after picking', !(await p.$('[data-k="exportMenu"][open]')));
   const expPath = SP + '/yautja.ship.json'; await dl.saveAs(expPath);
   ok('export is valid JSON with the ship', JSON.parse(fs.readFileSync(expPath, 'utf8')).Ship.Name === 'Yautja Claw');
   // save to game, then read back

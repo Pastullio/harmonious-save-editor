@@ -40,6 +40,28 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
     ok('a drag box selects a block of slots', n >= 2 && !!(await p.$('.insp-slot .inspector, .insp-slot .bulk, .insp-slot *')));
   } else console.log('SKIP drag box (no empty slots)');
   await p.screenshot({ path: SP + '/shots/qw-band.png' });
+  // technology packs get names: ^UT_PROTECT's pack is ^808497C54986 (checked against Goatfungus's list)
+  ok('tech pack IDs hash like the game', await p.evaluate(() => techPackId('^UT_PROTECT') === '^808497C54986'));
+  // Other resources in the sidebar, and the banner link on Coordinates
+  const res = await p.$$eval('#sideRes a', (x) => x.map((a) => a.href));
+  ok('other resources: glyph banner and credentials', res.some((h) => /portalglyphbanner/.test(h)) && res.some((h) => /harmonious-credentials/.test(h)));
+  await p.evaluate(() => go('coords')); await p.waitForSelector('#gBanner');
+  ok('glyph banner link sits above your places', await p.evaluate(() => { const a = $('#gBanner'), y = [...document.querySelectorAll('label span')].find((h) => /your places/i.test(h.textContent)); return /portalglyphbanner/.test(a.href) && a.target === '_blank' && (!y || (a.compareDocumentPosition(y) & Node.DOCUMENT_POSITION_FOLLOWING)); }));
+  // add a Base Building App prefab to a base
+  const pf = process.argv[3] || SP + '/PC.nmsprefab';
+  if (fs.existsSync(pf)) {
+    await p.evaluate(() => go('bases')); await p.waitForSelector('#bName');
+    const n0 = await p.evaluate(() => g(g(ps(), 'PersistentPlayerBases')[S.bases.pick], 'Objects').length);
+    const want = JSON.parse(fs.readFileSync(pf, 'utf8').replace(/^﻿/, '')).Prefab.length;
+    await p.setInputFiles('#bPrefab', pf); await p.waitForSelector('#dlg[open]'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(300);
+    const r = await p.evaluate(() => { const o = g(g(ps(), 'PersistentPlayerBases')[S.bases.pick], 'Objects'); return { n: o.length, same: [...o[o.length - 1].keys()].slice(0, 3).join() === [...o[0].keys()].slice(0, 3).join(), id: str(g(o[o.length - 1], 'ObjectID')) }; });
+    ok('a prefab adds its parts to the base, in the game\'s key order', r.n === n0 + want && r.same && /^\^/.test(r.id));
+  } else console.log('SKIP prefab (no sample)');
+  // ship exports in one menu
+  await p.evaluate(() => go('ships')); await p.waitForSelector('[data-k="exportMenu"]');
+  await p.click('[data-k="exportMenu"] summary');
+  const [so] = await Promise.all([p.waitForEvent('download'), p.click('[data-k="so"]')]);
+  ok('export menu gives a .so', /\.so$/.test(so.suggestedFilename()) && !(await p.$('[data-k="exportMenu"][open]')));
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
   await b.close(); proc.kill();
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS'); process.exit(fails.length ? 1 : 0);

@@ -15,6 +15,8 @@ Open `dist/nms-save-editor.html` in Chrome or Edge. Nothing is uploaded anywhere
 - Plain editors for bases and settlements, frigates, companions, known technology and recipes, alien words, standing and journey milestones, and difficulty settings
 - Expedition rewards (every past and current one), Twitch drops and platform rewards: unlock all, a whole expedition, or single rewards
 - Cargo: where every stack is, gather an item into one place, consolidate partial stacks with a plan you approve, and drag and drop between slots
+- Base Building App prefabs (`.nmsprefab`): add one to any base, or load it as a build
+- Ship files for TAZ's tools (`.nmsship`, `.so`), and art, author and description pulled from a ship's linked listing
 - A find box (Ctrl+K) that jumps to any ship, base, frigate, companion, setting or item in your inventories
 - Any value in the save through the raw data explorer, with search, plus JSON export and import
 

@@ -15,6 +15,7 @@
   --line: #d3e2e9; --line-2: #b8cfd9;
   --ink: #2b2f33; --dim: #5a6168; --faint: #8b9298;
   --accent: #0b6f84; --accent-hover: #095e70; --accent-ink: #ffffff; --accent-soft: #d6edf3;
+  --lift: 0 1px 3px rgba(20, 40, 60, .10);
   --cls-s: #0e8fab; --cls-a: #2f9a7e; --cls-b: #3f74c4; --cls-c: #71878f; --cls-ink: #ffffff;
   --substance: #df7a5e; --product: #3b80c6; --technology: #17a097;
   --danger: #c2403c; --ok: #2c8558;
@@ -34,6 +35,7 @@
     --line: #1d3845; --line-2: #2a4f5f;
     --ink: #ffffff; --dim: #b4c2c8; --faint: #73858d;
     --accent: #3cc3dc; --accent-hover: #64d3e7; --accent-ink: #052630; --accent-soft: #11394a;
+    --lift: 0 1px 4px rgba(0, 0, 0, .35);
     --cls-s: #3cc3dc; --cls-a: #4fc7a4; --cls-b: #7aa6ef; --cls-c: #8ea4ad; --cls-ink: #052630;
     --substance: #ee8f74; --product: #6aa8e8; --technology: #3cc9bd;
     --danger: #f07c75; --ok: #5ccb93;
@@ -48,6 +50,7 @@
   --line: #1d3845; --line-2: #2a4f5f;
   --ink: #ffffff; --dim: #b4c2c8; --faint: #73858d;
   --accent: #3cc3dc; --accent-hover: #64d3e7; --accent-ink: #052630; --accent-soft: #11394a;
+  --lift: 0 1px 4px rgba(0, 0, 0, .35);
   --cls-s: #3cc3dc; --cls-a: #4fc7a4; --cls-b: #7aa6ef; --cls-c: #8ea4ad; --cls-ink: #052630;
   --substance: #ee8f74; --product: #6aa8e8; --technology: #3cc9bd;
   --danger: #f07c75; --ok: #5ccb93;
@@ -291,6 +294,13 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .band { position: fixed; z-index: 50; pointer-events: none; border: 1.5px solid var(--accent); background: var(--accent-soft); border-radius: 6px; }
 .cell.banded { box-shadow: 0 0 0 2px var(--accent); }
 .pred-share { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; margin-right: 10px; }
+.side-res { padding: 8px 18px 10px; border-top: 1px solid var(--line); display: grid; gap: 2px; }
+.side-res .k { font-size: 10px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--faint); margin-bottom: 2px; }
+.res-link { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 3px 2px; font-size: 13px; color: var(--dim); text-decoration: none; border-radius: 6px; }
+.res-link:hover { color: var(--ink); }
+.res-link svg, .banner-link svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.banner-link { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+.lib-by { display: grid; gap: 2px; margin: 0; font-size: 13.5px; } .lib-by .dim { font-size: 12.5px; }
 /* plain editors */
 .ed-tabs { margin-bottom: 16px; }
 .ed-tabs .n { font-family: var(--mono); letter-spacing: 0; opacity: .7; margin-left: 4px; }
@@ -572,6 +582,14 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .pick .pn { font-weight: 600; }
 .pick .ps { font-size: 11.5px; color: var(--dim); }
 .badge { display: inline-block; font-family: var(--display); font-weight: 600; font-size: 11px; line-height: 1; padding: 4px 7px; border-radius: 6px; color: var(--cls-ink); }
+.badge.big { font-size: 15px; padding: 5px 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
+.inv-head .badge { font-size: 12px; padding: 5px 8px; vertical-align: 2px; }
+.menu { position: relative; display: inline-block; }
+.menu > summary { list-style: none; } .menu > summary::-webkit-details-marker { display: none; }
+.menu-pop { position: absolute; z-index: 30; top: calc(100% + 6px); right: 0; min-width: 300px; padding: 6px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line-2); box-shadow: 0 10px 30px rgba(0, 0, 0, .22); display: grid; gap: 2px; }
+.menu-item { display: grid; gap: 2px; text-align: left; border: 0; background: none; padding: 9px 12px; border-radius: var(--r-sm); cursor: pointer; font: inherit; color: var(--ink); }
+.menu-item:hover, .menu-item:focus-visible { background: var(--hover); }
+.menu-item b { font-weight: 600; font-size: 13.5px; } .menu-item span { font-size: 12.5px; color: var(--dim); }
 .cls-C { background: var(--cls-c); } .cls-B { background: var(--cls-b); } .cls-A { background: var(--cls-a); } .cls-S { background: var(--cls-s); }
 
 /* ---------------- inventory grid */
@@ -598,10 +616,12 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .grid .cell.sel { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
 .legend .hint { margin-left: auto; color: var(--faint); }
 .small-print { font-size: 12px; margin: 0; }
-.cell.has { background: var(--surface); border-color: var(--line-2); }
-.cell.t-Substance { box-shadow: inset 0 3px 0 var(--substance); }
-.cell.t-Product { box-shadow: inset 0 3px 0 var(--product); }
-.cell.t-Technology { box-shadow: inset 0 3px 0 var(--technology); }
+.cell:not(.has):not(.locked) { background: color-mix(in srgb, var(--field) 45%, transparent); border-color: color-mix(in srgb, var(--line) 55%, transparent); }
+.cell.has { background: var(--surface); border-color: var(--line-2); box-shadow: var(--lift); }
+.grid .cell:not(.has):not(.locked):hover { border-color: var(--accent); }
+.cell.t-Substance { box-shadow: inset 0 3px 0 var(--substance), var(--lift); }
+.cell.t-Product { box-shadow: inset 0 3px 0 var(--product), var(--lift); }
+.cell.t-Technology { box-shadow: inset 0 3px 0 var(--technology), var(--lift); }
 .cell.damaged::after { content: ""; position: absolute; inset: 0; border: 2px solid var(--danger); border-radius: var(--r-sm); pointer-events: none; }
 .cell img { width: 74%; height: 74%; object-fit: contain; pointer-events: none; }
 .cell .lbl { font-family: var(--display); font-weight: 500; font-size: 10px; line-height: 1.1; text-align: center; padding: 6px 3px 12px; word-break: break-all; color: var(--ink); pointer-events: none; }
@@ -732,6 +752,7 @@ dialog.wide { max-width: 1000px; }
 .hangar-detail .stats div { background: var(--surface); padding: 12px 16px; flex: 1 1 120px; }
 .hangar-detail .stats b { display: block; font-family: var(--display); font-size: 16px; font-weight: 500; }
 .hangar-detail .stats span { font-size: 11.5px; color: var(--dim); }
+.hangar-detail .stats .badge { display: inline-block; color: var(--cls-ink); font-size: 15px; font-weight: 600; min-width: 26px; text-align: center; }
 .hangar-detail .acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: start; }
 @media (max-width: 760px) { .hangar-detail { grid-template-columns: 1fr; } .hangar-detail .acts { justify-content: start; } }
 @media (max-width: 1100px) { .inspector { position: static; } }
@@ -761,6 +782,8 @@ body.has-sec { --accent: color-mix(in oklab, var(--sec) 80%, #000); --accent-hov
 body.has-sec .panel, body.has-sec .cur, body.has-sec .facts, body.has-sec .tree, body.has-sec .inspector {
   background-image: linear-gradient(var(--accent), var(--accent)); background-size: 100% 3px; background-repeat: no-repeat; }
 body.has-sec .facts { background-color: var(--line); }
+body.has-sec .page-head { position: relative; }
+body.has-sec .page-head::before { content: ""; position: absolute; z-index: -1; inset: -40px -60px -10px -60px; background: radial-gradient(420px 120px at 0% 30%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%); pointer-events: none; }
 body.has-sec .page-head h1::after { content: ""; display: block; width: 46px; height: 3px; border-radius: 2px; background: var(--accent); margin-top: 12px; }
 body.has-sec .grid { background: color-mix(in srgb, var(--accent) 14%, var(--well)); }
 body.has-sec .cf { background: linear-gradient(180deg, color-mix(in oklab, var(--sec) 62%, #062b37) 0%, color-mix(in oklab, var(--sec) 26%, #04161d) 55%, #03121a 100%); }
@@ -817,6 +840,7 @@ nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .
     </div>
     <div class="find" role="search"><input class="input" id="findBox" type="search" placeholder="Find anything" aria-label="Find anything in this save" aria-controls="findRes" aria-expanded="false" autocomplete="off" spellcheck="false"><kbd>Ctrl K</kbd><div class="find-res" id="findRes" role="listbox" hidden></div></div>
     <nav id="nav" aria-label="Sections"></nav>
+    <div class="side-res"><span class="k">Other resources</span><div id="sideRes"></div></div>
     <div class="side-foot">
       <div class="status" id="status" aria-live="polite">No changes</div>
       <button class="btn primary" id="saveBtn" disabled>Save to game</button>
@@ -919,6 +943,11 @@ document.addEventListener('click', (e) => {
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncThemeButtons);
 
 // ------------------------------------------------------------------ about
+// the owner's other No Man's Sky tools, linked from the sidebar and the Coordinates page
+const RESOURCES = [['Portal Glyph Banner', 'https://portalglyphbanner.netlify.app/', 'Turn a portal address into a crisp banner picture'], ['Traveller credentials', 'https://harmonious-credentials.netlify.app/', 'Make your Harmonious traveller card']];
+const EXT_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6 M20 4l-9 9 M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
+function drawResources() { const h = $('#sideRes'); if (h) h.innerHTML = RESOURCES.map(([t, u, d]) => `<a class="res-link" href="${u}" target="_blank" rel="noopener" title="${esc(d)}"><span>${esc(t)}</span>${EXT_ICON}</a>`).join(''); }
+drawResources();
 const LINKS = [['GitHub', 'https://github.com/Pastullio/harmonious-save-editor'], ['Discord', 'https://discord.gg/3PfZfPYDn'], ['YouTube', 'https://www.youtube.com/@PastullioTheHarmonious'], ['Patreon', 'https://www.patreon.com/pastullio'], ['Buy me a coffee', 'https://buymeacoffee.com/pastullio']];
 function aboutDialog() {
   const ver = window.NMS_APP ? 'Desktop app' : 'Browser version';
@@ -1525,7 +1554,10 @@ function entityDetails(ed, o, i, kind) {
       <button class="btn primary" data-k="saveprof">Save as profile</button><button class="btn" data-k="applyprof">Apply a profile</button>
       ${APP && S.lib && S.lib.game ? '<button class="btn" data-k="parts">Choose parts</button>' : ''}
       <span class="sep"></span>
-      ${isShip && APP ? '<button class="btn" data-k="tolib">Save to Dock Yard</button>' : ''}${isShip && shipBuild(i) ? '<button class="btn" data-k="nmsship">Export .nmsship</button>' : ''}${isShip ? '<button class="btn" data-k="so" title="The ship entry alone, as TAZ\'s tools write it">Export .so</button>' : ''}<button class="btn" data-k="export">Export</button><label class="btn">Import<input type="file" accept=".json,application/json" data-k="import" hidden></label>
+      ${isShip && APP ? '<button class="btn" data-k="tolib">Save to Dock Yard</button>' : ''}<details class="menu" data-k="exportMenu"><summary class="btn">Export…</summary><div class="menu-pop">
+        <button class="menu-item" data-k="export"><b>.json backup</b><span>This ${isShip ? 'ship' : 'multi-tool'} as a file you can import again</span></button>
+        ${isShip && shipBuild(i) ? '<button class="menu-item" data-k="nmsship"><b>.nmsship</b><span>The whole corvette, for TAZ\'s tools or the Dock Yard</span></button>' : ''}
+        ${isShip ? '<button class="menu-item" data-k="so"><b>.so</b><span>The ship entry alone, as TAZ\'s tools write it</span></button>' : ''}</div></details><label class="btn">Import<input type="file" accept=".json,application/json" data-k="import" hidden></label>
       <button class="btn danger" data-k="delete">Delete ${isShip ? 'ship' : 'multi-tool'}</button>
     </div>`;
   ed.appendChild(panel);
@@ -2582,7 +2614,7 @@ PAGES.hangar = (el) => {
     if (it.kind !== 'tool') stats.push([slotsOf(g(it.obj, 'Inventory')).length + slotsOf(g(it.obj, 'Inventory_Cargo')).length, 'Items carried']);
     if (it.holo) stats.push([it.holo.objs.toLocaleString(), 'Build parts']);
     stats.push([it.current ? 'Yes' : 'No', it.kind === 'tool' ? 'Equipped' : 'Current ship']);
-    box.innerHTML = `<div class="hangar-detail"><div><h2 style="margin-bottom:10px">${esc(it.name)}</h2><div class="stats">${stats.map(([b, s]) => `<div><b>${esc(b)}</b><span>${s}</span></div>`).join('')}</div></div>
+    box.innerHTML = `<div class="hangar-detail"><div><h2 style="margin-bottom:10px">${esc(it.name)}</h2><div class="stats">${stats.map(([b, s]) => `<div><b>${s === 'Class' && /^[SABC]$/.test(b) ? `<span class="badge big cls-${b}">${b}</span>` : esc(b)}</b><span>${s}</span></div>`).join('')}</div></div>
       <div class="acts"><button class="btn primary" id="hOpen">Open loadout</button>${APP && it.scene && S.lib && S.lib.game ? '<button class="btn" id="hParts">Choose parts</button>' : ''}${APP && it.kind === 'corvette' ? `<button class="btn" id="hRender">${it.renderImg ? 'Render again' : 'Render with Blender'}</button>` : ''}${APP ? '<button class="btn" id="hShot">Choose a screenshot</button>' : ''}<label class="btn">Use an image file<input type="file" accept="image/*" id="hCover" hidden></label>${it.custom ? '<button class="btn ghost" id="hReset">Use generated cover</button>' : ''}</div></div>
       <p class="dim" id="renderState" style="margin:10px 0 0;font-size:14px" aria-live="polite"></p>`;
     $('#hOpen', box).onclick = () => openLoadout(it);
@@ -3293,6 +3325,7 @@ async function loadLibrary() {
   S.db = { list, byId: new Map(list.map((it) => [it.id, it])), icons: new Map(), src: 'lib',
     words: d.words || null, traits: new Map((d.traits || []).map((t) => [t.id, t])), perks: new Map((d.perks || []).map((t) => [t.id, t])), ranks: d.ranks && d.ranks.length ? new Map(d.ranks.map((r) => [r.id, r])) : null,
     seasons: d.seasons || null, rewards: d.rewards || null, twitch: d.twitch || null, platform: d.platform || null };
+  addTechPacks(S.db);
 }
 // build (or rebuild) in the background, reporting progress through onTick
 async function buildLibrary(onTick, post) {
@@ -3301,6 +3334,28 @@ async function buildLibrary(onTick, post) {
   while (st.status.state === 'building') { onTick && onTick(st.status); await new Promise((r) => setTimeout(r, 700)); st = await libStatus(); }
   if (st.status.state === 'error') throw new Error(st.status.error);
   await loadLibrary(); return st;
+}
+// Technology packs: the game stores them under a hashed ID (raw bytes in the save) made from the technology they install:
+// Jenkins one-at-a-time of the tech ID, little-endian, with lowercase-letter, zero and '#' bytes made safe and flagged in
+// two leading bytes. Checked against all 142 packs Goatfungus lists.
+function joaat(text) {
+  let h = 0;
+  for (const c of new TextEncoder().encode(text)) { h = (h + c) >>> 0; h = (h + (h << 10)) >>> 0; h = (h ^ (h >>> 6)) >>> 0; }
+  h = (h + (h << 3)) >>> 0; h = (h ^ (h >>> 11)) >>> 0; return (h + (h << 15)) >>> 0;
+}
+function techPackId(techId) {
+  const v = joaat(techId.replace(/^\^/, '')), b = [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255]; let f0 = 0, f1 = 0;
+  for (let i = 0; i < 4; i++) { if (b[i] >= 0x61 && b[i] <= 0x7A) { b[i] -= 0x20; f1 |= 1 << i; } else if (b[i] === 0) { b[i] = 0x58; f0 |= 1 << i; } else if (b[i] === 0x23) { b[i] = 0x58; f0 |= 1 << (i + 4); } }
+  return '^' + [0x80 | f0, 0x80 | f1, ...b].map((x) => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+function addTechPacks(db) {
+  if (!db || !db.byId) return;
+  const pack = db.byId.get('^U_TECHPACK_CORE');
+  for (const it of db.list.filter((x) => x.type === 'Technology' && !x.proc)) {
+    const id = techPackId(it.id); if (db.byId.has(id)) continue;
+    const p = { id, name: it.name + ' (technology pack)', type: 'Product', icon: (pack && pack.icon) || it.icon, sub: 'Technology pack: installs ' + it.name, cat: 'Tradeable', hashed: true };
+    db.byId.set(id, p);
+  }
 }
 function dbItem(id) {
   if (!S.db || !id) return null;
@@ -3649,6 +3704,7 @@ function parseShipFile(text) {
   } else if (doc instanceof Map && g(doc, 'Resource')) { out.format = 'Ship entry'; out.ship = doc; }
   else if (doc instanceof Map && Array.isArray(g(doc, 'Objects'))) { out.format = 'Corvette build'; out.base = doc; }
   else if (Array.isArray(doc) && doc.length && doc[0] instanceof Map && g(doc[0], 'ObjectID') != null) { out.format = 'Corvette parts'; out.build = doc; }
+  else if (doc instanceof Map && Array.isArray(doc.get('Prefab'))) { out.format = 'Base Building App prefab'; out.build = doc.get('Prefab'); }
   else return { error: "Not a format the library reads yet." };
   if (out.ship && !(out.ship instanceof Map)) out.ship = null;
   out.objects = (out.base && g(out.base, 'Objects')) || out.build || null;
@@ -3919,12 +3975,13 @@ async function libDetail(x, refresh) {
   if (f.src !== 'linked') acts.push(['Delete', 'delete', 'danger']);
   if (!p.error && p.ship && p.objects) acts.push(['Save as .nmsship', 'nmsship']);
   if (!p.error && p.ship) acts.push(['Save as .so', 'so']);
+  if (APP && m.link) acts.push(['Get art from the link', 'meta']);
   if (canPut && S.save) acts.push([s.buildOnly ? 'Put on a corvette…' : s.shipOnly ? 'Put on a corvette…' : 'Put in this save…', 'put', 'primary']);
   const shown = dialog(s.name, `<div class="lib-detail">
       <div class="tc lib-art"><div class="tc-art"></div></div>
       <div class="lib-info">
         <p>${esc([s.type, s.cls && s.cls + ' class', s.parts && plural(s.parts, 'part')].filter(Boolean).join(', ') || s.error || '')}${s.format ? ` <span class="dim">· ${esc(s.format)}</span>` : ''}</p>
-        <p class="dim mono lib-path">${esc(where)}</p>
+        <p class="dim mono lib-path">${esc(where)}</p>${m.author || m.desc ? `<p class="lib-by">${m.author ? `By <b>${esc(m.author)}</b>` : ''}${m.desc ? `<span class="dim">${esc(m.desc)}</span>` : ''}</p>` : ''}
         ${p.error ? `<p class="bad-hint">${esc(p.error)} Send a sample to get this format added.</p>` : s.shipOnly ? '<p class="dim">A corvette loadout (tech, class and inventory) without a build: it goes onto one of your corvettes, which keeps its parts.</p>' : !S.save ? '<p class="dim">Open a save to put this ship in it.</p>' : ''}
         <label class="check"><input type="checkbox" id="ldFav"${m.fav ? ' checked' : ''}> Favourite</label>
         <label class="field"><span>Tags (separate with commas)</span><input class="input" id="ldTags" value="${esc((m.tags || []).join(', '))}"></label>
@@ -3947,6 +4004,18 @@ async function libDetail(x, refresh) {
     return;
   }
   if (v === 'nmsship') { downloadBlob(safeFile(s.name) + '.nmsship', await libNmsship(p)); return; }
+  if (v === 'meta') {
+    toast('Reading ' + m.link + '…');
+    try {
+      const info = await (await api('/api/linkmeta?url=' + encodeURIComponent(m.link))).json();
+      if (info.author) m.author = info.author; if (info.description) m.desc = info.description.slice(0, 400);
+      let got = [];
+      if (info.image) { const blob = await (await api('/api/linkmeta?image=' + encodeURIComponent(info.image))).blob(); if (await setCustomCover(libCoverItem(f, p, s).key, blob)) got.push('artwork'); }
+      if (info.author) got.push('author'); if (info.description) got.push('description');
+      ShipLib.saveIndex(); toast(got.length ? 'Got the ' + got.join(', ') + ' from the listing' : "That page doesn't share artwork or details the app can read.", !got.length); render();
+    } catch (e) { toast("Couldn't read the listing: " + e.message, true); }
+    return;
+  }
   if (v === 'so') { downloadBlob(safeFile(s.name) + '.so', new Blob([soJSON(toPlain(cloneJSON(p.ship)))])); return; }
   if (v === 'reveal') { api(ShipLib.url(f, '&reveal=1')).catch((e) => toast(e.message, true)); }
   if (v === 'copy') { await ShipLib.add('library', f.path.split('/').pop(), await ShipLib.read(f)); toast('Copied to Ship storage'); render(); return; }
@@ -4633,14 +4702,14 @@ PAGES.bases = (el) => {
         <label class="field"><span>Built by</span><input class="input" disabled value="${esc(str(g(b, 'Owner', 'USN')) || 'You')}"></label>
       </div>
       ${at && kind !== 'FreighterBase' ? `<div class="base-where"><span class="k">Where</span>${glyphRow(code, 'small')}<span class="mono">${code}</span><span class="dim">${esc(GALAXIES[at.gi] || '')}${at.planet ? ', planet ' + at.planet : ''}</span><button class="link" type="button" id="bCoords">Open in Coordinates</button></div>` : ''}
-      <div class="sw-acts"><button class="btn" type="button" data-a="copy">Copy parts</button><button class="btn" type="button" data-a="paste">Paste parts</button><label class="btn">Load parts from a file<input type="file" id="bFile" accept=".json,.txt,.nmsbase,.nmsprefab" hidden></label><button class="btn" type="button" data-a="save">Save to a file</button><span class="sw-gap"></span><button class="btn danger" type="button" data-a="del">Delete base</button></div></div>
+      <div class="sw-acts"><button class="btn" type="button" data-a="copy">Copy parts</button><button class="btn" type="button" data-a="paste">Paste parts</button><label class="btn">Load parts from a file<input type="file" id="bFile" accept=".json,.txt,.nmsbase,.nmsprefab" hidden></label><label class="btn" title="Adds a Base Building App prefab (or any parts file) to this base, keeping what's there">Add a prefab<input type="file" id="bPrefab" accept=".nmsprefab,.json,.txt" hidden></label><button class="btn" type="button" data-a="save">Save to a file</button><span class="sw-gap"></span><button class="btn danger" type="button" data-a="del">Delete base</button></div></div>
     <div class="panel"><h3>Most used parts</h3>${top.length ? `<div class="base-parts">${top.map(([id, n]) => { const it = dbItem(id); return `<div><span class="ic">${it && it.icon ? `<img data-icon="${esc(it.icon)}" alt="">` : ''}</span><span class="nm">${esc(it ? it.name : id.replace(/^\^/, ''))}</span><span class="mono dim">${n.toLocaleString()}</span></div>`; }).join('')}</div>` : '<p class="dim">No parts yet.</p>'}</div>`;
   loadIcons(main);
   $('#bName', main).onchange = (e) => { set(b, 'Name', e.target.value); render(); };
   const co = $('#bCoords', main); if (co) co.onclick = () => { S.coords = { p: { ...at }, digits: code }; go('coords'); };
   const replace = async (text, how) => {
     let v; try { v = C.parseJSON(String(text).replace(/^﻿/, '')); } catch (e) { throw new Error('That is not valid JSON: ' + e.message); }
-    const parts = Array.isArray(v) ? v : v instanceof Map ? (g(v, 'Objects') || g(g(v, 'Base') || new Map(), 'Objects')) : null;
+    const parts = Array.isArray(v) ? v : v instanceof Map ? (g(v, 'Objects') || (Array.isArray(v.get('Prefab')) ? v.get('Prefab') : null) || g(g(v, 'Base') || new Map(), 'Objects')) : null;
     if (!Array.isArray(parts) || !parts.length || !parts.every((o) => o instanceof Map && g(o, 'ObjectID') != null)) throw new Error("That doesn't look like base parts (a base's JSON, or its Objects list).");
     if (!(await dialog('Replace the parts?', `<p>${esc(baseLabel(b))}'s ${plural(objs.length, 'part')} are replaced with ${plural(parts.length, 'part')} ${how}. The base keeps its name, place and owner. Nothing is written to your game until you save.</p>`, [['Cancel', false, 'ghost'], ['Replace', true, 'primary']]))) return;
     set(b, 'Objects', inGameOrder(fromPlain(cloneJSON(parts)), objs[0])); toast(`Parts replaced: ${plural(parts.length, 'part')}`); render();
@@ -4666,6 +4735,15 @@ PAGES.bases = (el) => {
     } catch (e) { toast(e.message, true); }
   });
   $('#bFile', main).onchange = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { await replace(await f.text(), 'from ' + f.name); } catch (err) { toast(err.message, true); } };
+  $('#bPrefab', main).onchange = async (e) => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    let v; try { v = C.parseJSON((await f.text()).replace(/^\uFEFF/, '')); } catch (err) { toast('That is not valid JSON: ' + err.message, true); return; }
+    const parts = Array.isArray(v) ? v : v instanceof Map ? (Array.isArray(v.get('Prefab')) ? v.get('Prefab') : g(v, 'Objects')) : null;
+    if (!Array.isArray(parts) || !parts.length || !parts.every((o) => o instanceof Map && g(o, 'ObjectID') != null)) { toast("That doesn't look like a prefab or a parts list.", true); return; }
+    if (!(await dialog('Add the prefab?', `<p>${plural(parts.length, 'part')} from <b>${esc(f.name)}</b> are added to ${esc(baseLabel(b))}, which keeps its ${plural(objs.length, 'part')}. They sit where the prefab puts them, measured from the base's centre, so you may want to move them in the game. Nothing is written to your game until you save.</p>`, [['Cancel', false, 'ghost'], ['Add', true, 'primary']]))) return;
+    const add = inGameOrder(fromPlain(cloneJSON(parts)), objs[0]);
+    set(b, 'Objects', [...objs, ...add]); toast(`${plural(add.length, 'part')} added from ${f.name}`); render();
+  };
 };
 const SETTLE_STATS = ['Max population', 'Happiness', 'Production', 'Upkeep', 'Sentinels', 'Debt', 'Alert', 'Bug attacks'];   // GcSettlementStatType
 function settlementsEditor(el, B, list, me) {
@@ -4860,6 +4938,8 @@ function setupFind() {
   res.onmousedown = (e) => e.preventDefault();
   res.onclick = (e) => { const b = e.target.closest('[data-k]'); if (b) pick(+b.dataset.k); };
   box.onblur = () => setTimeout(close, 120);
+  // menus close after picking something, or on a click elsewhere
+  document.addEventListener('click', (e) => { document.querySelectorAll('details.menu[open]').forEach((m) => { if (!m.contains(e.target) || e.target.closest('.menu-item')) m.open = false; }); });
   document.addEventListener('keydown', (e) => {
     if (!S.save || $('#app').classList.contains('hidden')) return;
     if ((e.key === 'k' && (e.ctrlKey || e.metaKey)) || (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName))) { e.preventDefault(); box.focus(); box.select(); }
@@ -5191,7 +5271,7 @@ PAGES.coords = (el) => {
       <div class="dest">
         <div class="dest-glyphs" id="destGlyphs" aria-label="Portal code as glyphs"></div>
         <div class="keypad" id="keypad">${GLYPH_NAMES.map((n, i) => `<button type="button" data-d="${hexN(i, 1)}" title="${n}">${glyph(hexN(i, 1))}<span>${hexN(i, 1)}</span></button>`).join('')}</div>
-        <div class="dest-acts"><button class="btn small" id="gBack" type="button">Delete last glyph</button><button class="btn small" id="gClear" type="button">Clear</button></div>
+        <div class="dest-acts"><button class="btn small" id="gBack" type="button">Delete last glyph</button><button class="btn small" id="gClear" type="button">Clear</button><span class="sw-gap"></span><a class="btn small banner-link" id="gBanner" href="${RESOURCES[0][1]}" target="_blank" rel="noopener" title="Opens the Portal Glyph Banner maker; the portal code is copied so you can paste it there">Make a glyph banner ${EXT_ICON}</a></div>
         <div class="dest-fields">
           <label class="field"><span>Portal code (12 glyphs, or paste a link)</span><input class="input mono" id="fPortal" maxlength="80" spellcheck="false" autocomplete="off"></label>
           <label class="field"><span>Galactic address (signal booster)</span><input class="input mono" id="fGal" placeholder="0000:0000:0000:0000" maxlength="40" spellcheck="false" autocomplete="off"></label>
@@ -5248,6 +5328,7 @@ PAGES.coords = (el) => {
   $$('#keypad').onclick = (e) => { const b = e.target.closest('button[data-d]'); if (b && C.digits.length < 12) setDigits(C.digits + b.dataset.d); };
   $$('#gBack').onclick = () => setDigits(C.digits.slice(0, -1));
   $$('#gClear').onclick = () => setDigits('');
+  $$('#gBanner').addEventListener('click', () => { if (C.digits.length === 12) navigator.clipboard.writeText(C.digits).then(() => toast('Portal code copied: paste it into the banner maker')).catch(() => {}); });
   $$('#hereUse').onclick = () => { C.p = { ...here }; setDigits(Place.portal(here)); };
   $$('#fPortal').oninput = (e) => { const v = e.target.value, p = Place.parse(v, C.p.gi, C.p.planet); if (p && /:/.test(v)) { C.p = p; setDigits(Place.portal(p)); } else setDigits((v.includes('#') ? v.split('#').pop() : v), 'portal'); };
   $$('#fGal').oninput = (e) => {
