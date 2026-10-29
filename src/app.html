@@ -206,12 +206,14 @@ nav .count { font-family: var(--mono); font-size: 11px; color: var(--faint); }
 .grid.named { grid-template-columns: repeat(var(--w), minmax(66px, 92px)); }
 .grid.named .cell { aspect-ratio: 5 / 6; }
 .grid.named .cell.has { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px 6px; }
-.grid.named .cell img { width: 54%; height: auto; aspect-ratio: 1; flex: none; }
+/* icon fills the space above; name (always two lines tall) and amount sit at fixed spots at the bottom */
+.grid.named .cell img { width: 54%; height: auto; aspect-ratio: 1; flex: none; margin: auto 0; }
 .grid.named .cell .nm, .grid.named .cell .qty { flex: none; max-width: 100%; }
+.grid.named .cell .nm { height: 2.3em; }
 .grid.named .cell.no-icon .nm { margin-top: auto; }
 .cell .nm { font-weight: 500; font-size: 10px; line-height: 1.15; text-align: center; color: var(--ink); overflow-wrap: break-word; hyphens: auto; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; pointer-events: none; }
 .cell .nm.raw { font-family: var(--mono); font-size: 9px; color: var(--dim); }
-.cell .qty { margin-top: auto; font-family: var(--mono); font-size: 9.5px; font-weight: 600; color: var(--dim); pointer-events: none; }
+.cell .qty { font-family: var(--mono); font-size: 9.5px; font-weight: 600; color: var(--dim); pointer-events: none; }
 .db-form { margin: 14px 0 12px; }
 .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 11.5px; color: var(--dim); margin-top: 12px; }
 .legend i { display: inline-block; width: 12px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
