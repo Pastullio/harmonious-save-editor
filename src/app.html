@@ -3494,7 +3494,8 @@ function warpTo(p, spot) {
   if (prev instanceof Map && cur) write(prev, cur);
   write(ua, { ...p, planet: (spot && spot.planet) || 0 });
   const spawn = g(S.ctx, 'SpawnStateData');
-  if (spot && spawn instanceof Map) placeAtSpot(spawn, spot);
+  if (spot && spot.freighter) { write(g(ctx, 'FreighterUniverseAddress'), { ...p, planet: 0 }); if (kOf(ctx, 'FreighterDismissed') != null) set(ctx, 'FreighterDismissed', false); if (spawn instanceof Map) placeAboard(spawn); }
+  else if (spot && spawn instanceof Map) placeAtSpot(spawn, spot);
   // otherwise arrive in your ship, in space, like a warp jump (the same as Goatfungus's coordinate editor)
   else if (spawn instanceof Map && kOf(spawn, 'LastKnownPlayerState') != null) set(spawn, 'LastKnownPlayerState', 'InShip');
   markDirty();
@@ -3543,6 +3544,21 @@ function arrivalSpots(p) {
     add(str(g(e, 'Name')), teleKind(t), Place.fromUA(g(e, 'UniverseAddress')), g(e, 'Position'), g(e, 'Facing'));
   }
   return out.sort((a, b) => (a.kind !== b.kind ? (a.kind === 'Your base' ? -1 : 1) : a.name.localeCompare(b.name)));
+}
+// aboard your freighter: the freighter is called to the system and you stand inside it, with your ship on its pad.
+// Inside the freighter the spawn fields are relative to the freighter (state AboardFleet); these values come from a
+// save made standing on a capital freighter. The death respawn point is star-relative, beside the freighter.
+const ABOARD = { player: [0.9699363708496094, 31.926101684570312, -72.72491455078125], at: [-0.5532817840576172, 7.450580596923828e-09, 0.8329957127571106],
+  ship: [-99.97189331054688, 59.12852096557617, -23.29821014404297], shipAt: [0, 0, -1], shipUp: [0, 1, 0], respawn: [243.25, -530.53125, 261.875] };
+const hasFreighter = () => !!str(g(ps(), 'CurrentFreighter', 'Filename'));
+function placeAboard(spawn) {
+  const vec = (key, v) => { const a = g(spawn, key); if (!Array.isArray(a)) return; for (let i = 0; i < 3; i++) a[i] = FL(v[i]); };
+  vec('PlayerPositionInSystem', ABOARD.player); vec('PlayerTransformAt', ABOARD.at);
+  vec('ShipPositionInSystem', ABOARD.ship); vec('ShipTransformAt', ABOARD.shipAt); vec('ShipTransformUp', ABOARD.shipUp);
+  const fp = g(spawn, 'FreighterPositionInSystem');
+  if (Array.isArray(fp)) { const c = fp.slice(0, 3).map(num); vec('PlayerDeathRespawnPositionInSystem', c.map((v, i) => Math.fround(v + ABOARD.respawn[i]))); }
+  if (kOf(spawn, 'ShipHovering') != null) set(spawn, 'ShipHovering', false);
+  if (kOf(spawn, 'LastKnownPlayerState') != null) set(spawn, 'LastKnownPlayerState', 'AboardFleet');
 }
 // on foot a little above the base's centre, facing the way the base faces; the ship hovers overhead
 function placeAtSpot(spawn, spot) {
@@ -5372,7 +5388,7 @@ PAGES.coords = (el) => {
       </ul>
       ${k.places.length ? `<h4 class="sub-h">Places here</h4><ul class="place-facts">${k.places.map((x) => `<li>${esc(x.name)} <span class="dim">(${esc(x.kind)})</span></li>`).join('')}</ul>` : ''}
       <div id="arrive"></div>
-      <div class="warp-row"><button class="btn primary" id="warpBtn"${k.isHere ? ' disabled' : ''}>Warp here</button>
+      <div class="warp-row"><button class="btn primary" id="warpBtn"${k.isHere ? ' disabled' : ''}>Warp here</button>${hasFreighter() ? '<button class="btn" id="boardBtn">Arrive on your freighter</button>' : ''}
         <span class="dim">You'll load in your ship, in space, in this system. Nothing changes in the game until you press Save to game, and the app backs up the save first.</span></div>`;
     const token = (C.token = (C.token || 0) + 1);
     predictSystem(p).then((sys) => {
@@ -5394,6 +5410,12 @@ PAGES.coords = (el) => {
         if (!go) return; warpTo(p, { ...x, centre: centres[x.planet - 1] }); toast('Arrival set. Press Save to game to keep it.'); render();
       });
     });
+    const bb = $$('#boardBtn');
+    if (bb) bb.onclick = async () => {
+      const name = str(g(ps(), 'PlayerFreighterName')) || 'your freighter';
+      const go = await dialog('Arrive on your freighter?', `<p>${glyphRow(Place.portal(p))}</p><p><b>${esc(name)}</b> is called to this system and next time you load this save you'll be standing aboard it, with your ship in the hangar. Your current location is kept as the previous one.</p><p class="dim">Then press Save to game.</p>`, [['Cancel', false], ['Arrive aboard', true, 'primary']]);
+      if (!go) return; warpTo(p, { freighter: true }); toast('Arrival set. Press Save to game to keep it.'); render();
+    };
     const wb = $$('#warpBtn');
     wt.disabled = k.isHere; wn.textContent = k.isHere ? 'You are in this system now' : `${GALAXIES[p.gi]} · ${Place.portal(p)}`;
     if (wb) wt.onclick = () => wb.click();

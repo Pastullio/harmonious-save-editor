@@ -2,7 +2,7 @@ const { chromium } = require('/opt/npm-tools/node_modules/playwright');
 const { spawn } = require('child_process'); const fs = require('fs'); const path = require('path');
 // Arriving on foot at a base: planet centres come from the save (checked against the predicted planet seeds) and are
 // remembered per system, so a save made elsewhere can still arrive there.
-// Usage: node test/e2e/test_arrive.js <scratch dir> <folder with a save pair made on foot at a base> [folder with a save from another system]
+// Usage: node test/e2e/test_arrive.js <scratch dir> <folder with a save pair made on foot at a base> [folder with a save from another system] [plain JSON of a save made aboard the freighter]
 const SP = process.argv[2], AT = process.argv[3], OTHER = process.argv[4] || path.join(SP, 'dbroot/NMS/st_76561190000000001');
 const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n); if (!c) fails.push(n); };
 (async () => {
@@ -46,6 +46,14 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   which = 1 - which; await open();
   const known = await p.evaluate(async ([code, gi]) => { const q = Place.fromPortal(code, gi); return !Place.sameSystem(Place.fromUA(g(ps(), 'UniverseAddress')), q) && !!(await planetCentres(q)); }, [orig.here, gi]);
   ok('planet centres remembered for the system', known);
+  // aboard the freighter: called to the system, standing inside it with the ship on its pad
+  await p.evaluate(() => go('coords')); await p.waitForSelector('#hereUse');
+  await p.evaluate((c) => { $('#fPortal').value = c; $('#fPortal').dispatchEvent(new Event('input')); }, '0' + orig.here.slice(1));
+  await p.waitForSelector('#boardBtn'); await p.click('#boardBtn'); await p.waitForSelector('#dlg[open]'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(200);
+  const fr = await p.evaluate(() => { const s = g(S.ctx, 'SpawnStateData'), P = ps(); return { state: str(g(s, 'LastKnownPlayerState')), pos: g(s, 'PlayerPositionInSystem').slice(0, 3).map(num), ship: g(s, 'ShipPositionInSystem').slice(0, 3).map(num), dismissed: g(P, 'FreighterDismissed'), fua: Place.portal(Place.fromUA(g(P, 'FreighterUniverseAddress'))), ua: Place.portal(Place.fromUA(g(P, 'UniverseAddress'))) }; });
+  const want = process.argv[5] ? JSON.parse(fs.readFileSync(process.argv[5], 'utf8')).BaseContext.SpawnStateData : null;
+  ok('aboard the freighter, called to the system', fr.state === 'AboardFleet' && fr.dismissed === false && fr.fua === fr.ua && fr.ua.slice(1) === orig.here.slice(1)
+    && (!want || (fr.pos.every((v, i) => Math.abs(v - want.PlayerPositionInSystem[i]) < 1e-3) && fr.ship.every((v, i) => Math.abs(v - want.ShipPositionInSystem[i]) < 1e-3))));
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
   await b.close(); proc.kill();
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS'); process.exit(fails.length ? 1 : 0);
