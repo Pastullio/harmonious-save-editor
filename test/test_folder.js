@@ -33,7 +33,7 @@ const fx = process.argv[2];
   }, { data, meta });
   await p.click('#openFolder');
   await p.waitForSelector('.slot-row');
-  const rows = await p.$$eval('.slot-row', (r) => r.map((x) => x.innerText.replace(/\s+/g, ' ')));
+  const rows = await p.$$eval('.slot-card', (r) => r.map((x) => x.innerText.replace(/\s+/g, ' ')));
   console.log('rows:', rows);
   await p.click('.slot-row:has-text("save3.hg")');
   await p.waitForSelector('#app:not(.hidden)');
@@ -51,7 +51,7 @@ const fx = process.argv[2];
   await b.close();
   const save = C.readSave(new Uint8Array(out.data), new Uint8Array(out.meta), 'save3.hg');
   const checks = [
-    ['two rows (save with missing meta flagged)', rows.length === 2 && rows.some((r) => /meta file missing/.test(r))],
+    ['one card for slot 2, its other save (missing meta) flagged underneath', rows.length === 1 && /meta file missing/.test(rows[0])],
     ['descended into st_ folder automatically', rows.some((r) => /Harmonious Café/.test(r))],
     ['backup folder holds both originals', out.backups.sort().join() === 'mf_save3.hg,save3.hg'],
     ['backup is the original bytes', out.bakSame],

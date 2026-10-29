@@ -1,0 +1,42 @@
+const { chromium } = require('/opt/npm-tools/node_modules/playwright');
+const { spawn } = require('child_process'); const fs = require('fs');
+const SP = process.argv[2]; // scratch dir with real/save.hg + mf_save.hg
+const ACC = SP + '/slotroot/NMS/st_76561190000000001';
+fs.rmSync(SP + '/slotroot', { recursive: true, force: true }); fs.mkdirSync(ACC, { recursive: true });
+for (const f of ['save.hg', 'mf_save.hg']) fs.copyFileSync(SP + '/real/' + f, ACC + '/' + f);
+fs.copyFileSync(SP + '/real/save.hg', ACC + '/save2.hg'); fs.copyFileSync(SP + '/real/mf_save.hg', ACC + '/mf_save2.hg'); // not a valid manual meta (wrong slot key) - fine for listing test
+(async () => {
+  const proc = spawn('/home/claude/harmonious-save-editor/dist/hse-linux', ['-no-window', '-root', SP + '/slotroot/NMS', '-port', '47965'], { env: { ...process.env, XDG_CONFIG_HOME: SP + '/dbcfg', HOME: SP + '/fakehome' } });
+  fs.mkdirSync(SP + '/fakehome/Documents', { recursive: true });
+  const url = await new Promise((res) => proc.stdout.on('data', (d) => res(String(d).trim())));
+  const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1440, height: 1000 } });
+  const errs = []; p.on('pageerror', (e) => errs.push(e.message));
+  const ok = (n, c) => console.log((c ? 'PASS ' : 'FAIL ') + n);
+  await p.goto(url); await p.waitForSelector('.slot-row');
+  ok('one card per slot', (await p.$$('.slot-card')).length === 1);
+  console.log(await p.$$eval('.slot-acts', (a) => a.map((x) => x.innerText)));
+  await p.screenshot({ path: SP + '/shots/a0-landing.png' });
+  await p.click('[data-copy]'); await p.waitForSelector('#copyName');
+  await p.fill('#copyName', 'Test copy'); await p.click('#dlgActs .btn.primary');
+  await p.waitForFunction(() => document.querySelectorAll('.slot-card').length === 2, null, { timeout: 15000 });
+  ok('copy made save3.hg', fs.existsSync(ACC + '/save3.hg') && fs.existsSync(ACC + '/mf_save3.hg'));
+  const C = require('/home/claude/harmonious-save-editor/src/codec.js');
+  const cp = C.readSave(fs.readFileSync(ACC + '/save3.hg'), fs.readFileSync(ACC + '/mf_save3.hg'), 'save3.hg');
+  ok('copy decodes with slot-3 key and new name', cp.meta.info.saveName === 'Test copy');
+  console.log(await p.$$eval('.slot-row .t', (t) => t.map((x) => x.textContent)));
+  await p.click('#backupAll'); await p.waitForTimeout(1500);
+  const bdir = SP + '/fakehome/Documents/Harmonious Save Editor backups';
+  ok('backup zip written', fs.existsSync(bdir) && fs.readdirSync(bdir).some((f) => f.endsWith('.zip')));
+  await p.screenshot({ path: SP + '/shots/a1-landing-after.png' });
+  await p.click('.slot-row:has-text("save.hg")'); await p.waitForSelector('#app:not(.hidden)'); await p.waitForTimeout(2500);
+  await p.screenshot({ path: SP + '/shots/a2-overview.png', fullPage: true });
+  console.log('meta', await p.evaluate(() => JSON.stringify(S.save.meta && S.save.meta.info)));
+  console.log(await p.$eval('.tc.loc', (e) => e.innerText.replace(/\s+/g, ' ')));
+  console.log(await p.$eval('#journey', (e) => e.innerText.replace(/\s+/g, ' ')));
+  await p.setViewportSize({ width: 900, height: 1000 }); await p.waitForTimeout(400);
+  await p.screenshot({ path: SP + '/shots/a3-overview-900.png' });
+  await p.click('#tcShip'); await p.waitForTimeout(800);
+  ok('ship card opens hangar on it', await p.evaluate(() => S.section === 'hangar'));
+  ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
+  await b.close(); proc.kill();
+})();

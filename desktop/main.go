@@ -92,6 +92,8 @@ func main() {
 	mux.HandleFunc("/api/screenshots", handleScreenshots)
 	mux.HandleFunc("/api/screenshot", handleScreenshot)
 	mux.HandleFunc("/api/itemdb", handleItemDB)
+	mux.HandleFunc("/api/create", handleCreate)
+	mux.HandleFunc("/api/backup-all", handleBackupAll)
 	mux.HandleFunc("/api/itemdb/items.xml", handleItemXML)
 	mux.HandleFunc("/api/itemdb/icon", handleItemIcon)
 

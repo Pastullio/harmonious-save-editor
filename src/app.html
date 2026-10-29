@@ -122,6 +122,11 @@ input[type=checkbox], input[type=range] { accent-color: var(--accent); }
 .slot-row .n { font-family: var(--display); font-weight: 300; font-size: 23.5px; color: var(--dim); text-align: center; }
 .slot-row .t { font-weight: 600; }
 .slot-row .s { color: var(--dim); font-size: 12.5px; }
+.slot-card { display: grid; gap: 4px; }
+.slot-acts { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 0 16px 0 84px; font-size: 12.5px; }
+.slot-acts .link, .link { background: none; border: 0; padding: 2px 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.slot-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; font-size: 12.5px; }
+#backupAllBtn { margin-top: 2px; }
 .err { color: var(--danger); font-size: 13.5px; white-space: pre-line; }
 body.is-app .open-grid, body.is-app .where { display: none; }
 .app-where { font-size: 13.5px; color: var(--dim); margin: 22px 0 12px; }
@@ -166,6 +171,29 @@ nav .count { font-family: var(--mono); font-size: 11px; color: var(--faint); }
 .facts div { background: var(--surface); padding: 11px 15px; }
 .facts b { display: block; font-family: var(--display); font-size: 17px; font-weight: 500; }
 .facts span { font-size: 12.5px; color: var(--dim); }
+/* overview: traveller, current ship, multi-tool and location */
+.trav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.25fr); gap: 14px; margin-bottom: 14px; }
+.tc { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; box-shadow: var(--shadow); padding: 0; text-align: left; font: inherit; color: inherit; }
+button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } button.tc:hover { border-color: var(--accent); transform: translateY(-2px); }
+.tc-art { aspect-ratio: 1; background: #06141a; display: grid; place-items: center; overflow: hidden; }
+.tc-art canvas, .tc-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tc-art img.default { object-fit: contain; padding: 8%; background: radial-gradient(circle at 50% 40%, #12404a, #06141a 70%); }
+.tc-cap { padding: 11px 14px 13px; display: grid; gap: 1px; font-size: 12.5px; color: var(--dim); }
+.tc-cap b { font-size: 15px; color: var(--ink); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tc .k { font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+.tc .k.sm { margin-top: 12px; }
+.tc-acts { display: flex; gap: 12px; margin-top: 4px; }
+.tc.loc { padding: 16px 18px; gap: 3px; font-size: 13px; color: var(--dim); }
+.tc.loc .gal { font-family: var(--display); font-weight: 300; font-size: 26px; letter-spacing: .06em; color: var(--ink); line-height: 1.15; margin-top: 4px; }
+.tc.loc .loc-where { color: var(--ink); margin-top: 4px; }
+.portal { display: flex; gap: 2px; flex-wrap: wrap; margin-top: 3px; }
+.portal i { font-style: normal; font-family: var(--mono); font-size: 12px; width: 21px; height: 26px; display: grid; place-items: center; border-radius: 6px; background: var(--well); color: var(--ink); }
+.journey { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 1180px) { .journey { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .journey { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.journey h3 { grid-column: 1 / -1; margin: 0; padding: 11px 15px 8px; background: var(--surface); font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+@media (max-width: 1180px) { .trav { grid-template-columns: repeat(3, minmax(0, 1fr)); } .tc.loc { grid-column: 1 / -1; } }
+@media (max-width: 640px) { .trav { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .panel { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); padding: 18px 20px; margin-bottom: 18px; box-shadow: var(--shadow); }
 .panel > h3 { margin-bottom: 14px; }
 .row { display: flex; gap: 14px; flex-wrap: wrap; align-items: end; }
@@ -422,6 +450,7 @@ nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .
       <div class="status" id="status" aria-live="polite">No changes</div>
       <button class="btn primary" id="saveBtn" disabled>Save to game</button>
       <button class="btn ghost small" id="closeBtn">Open a different save</button>
+      <button class="btn small hidden" id="backupAllBtn" title="Zips every save slot into Documents\Harmonious Save Editor backups">Back up all saves</button>
       <div class="row-btns"><button class="btn ghost small hidden" id="backupsBtn">Show backups</button><button class="btn ghost small theme-btn" type="button">Dark mode</button></div>
     </div>
   </aside>
@@ -580,16 +609,61 @@ async function showSlots(pool, makeSrc) {
     } finally { busy(); }
   };
   if (rows.length === 1 && !S.appNoAutoOpen) return open(rows[0]);
-  rows.sort((a, b) => ((b.info && b.info.timestamp) || b.mtime / 1000) - ((a.info && a.info.timestamp) || a.mtime / 1000));
-  list.innerHTML = '<h3>Choose a save</h3><p class="dim" style="font-size:14px">Newest first. Each slot keeps an auto save and a manual save.</p>' + rows.map((r, i) => {
-    const sl = slotLabel(r.name);
-    const when = new Date(((r.info && r.info.timestamp) || r.mtime / 1000) * 1000).toLocaleString();
+  // one card per slot: the newer of its auto and manual saves, with the other one a click away
+  const when = (r) => (r.info && r.info.timestamp) || r.mtime / 1000;
+  rows.sort((a, b) => when(b) - when(a));
+  const slots = new Map();
+  for (const r of rows) { const k = slotLabel(r.name).slot; if (!slots.has(k)) slots.set(k, []); slots.get(k).push(r); }
+  const canCopy = !!(window.NMS_APP && S.appAcct);
+  const ago = (sec) => sec < 90 ? Math.round(sec) + ' seconds' : sec < 5400 ? Math.round(sec / 60) + ' minutes' : sec < 172800 ? Math.round(sec / 3600) + ' hours' : Math.round(sec / 86400) + ' days';
+  const kindName = (r) => slotLabel(r.name).kind === 'auto' ? 'auto save' : 'manual save';
+  list.innerHTML = '<h3>Choose a save</h3><p class="dim" style="font-size:14px">Newest first. Each slot opens its most recent save; the other one is underneath.</p>' + [...slots.values()].map((grp) => {
+    const r = grp[0], i = rows.indexOf(r), other = grp[1], sl = slotLabel(r.name);
     const title = (r.info && r.info.saveName) || 'Slot ' + sl.slot;
-    const sub = [(r.info && r.info.saveSummary) || '', sl.kind === 'auto' ? 'Auto save' : 'Manual save', when, r.info ? fmtPlay(r.info.totalPlayTime) : ''].filter(Boolean).join(', ');
-    return `<button class="slot-row" data-i="${i}"><span class="n">${sl.slot}</span><span><span class="t">${esc(title)}</span><br><span class="s">${esc(sub)}</span>${r.err ? `<br><span class="err">${esc(r.err)}</span>` : ''}</span><span class="mono dim">${esc(r.name)}</span></button>`;
-  }).join('');
-  list.querySelectorAll('.slot-row').forEach((b) => b.onclick = () => open(rows[+b.dataset.i]));
+    const sub = [(r.info && r.info.saveSummary) || '', kindName(r).replace(/^./, (c) => c.toUpperCase()), new Date(when(r) * 1000).toLocaleString(), r.info ? fmtPlay(r.info.totalPlayTime) : ''].filter(Boolean).join(', ');
+    const acts = [other ? `<button class="link" data-open="${rows.indexOf(other)}">Open the ${kindName(other)} instead <span class="dim">(${other.err ? esc(other.err) : ago(Math.max(0, when(r) - when(other))) + ' older'})</span></button>` : '',
+      canCopy && r.m ? `<button class="link" data-copy="${i}">Copy to a new slot</button>` : ''].filter(Boolean).join('');
+    return `<div class="slot-card"><button class="slot-row" data-open="${i}"><span class="n">${sl.slot}</span><span><span class="t">${esc(title)}</span><br><span class="s">${esc(sub)}</span>${r.err ? `<br><span class="err">${esc(r.err)}</span>` : ''}</span><span class="mono dim">${esc(r.name)}</span></button>${acts ? `<div class="slot-acts">${acts}</div>` : ''}</div>`;
+  }).join('') + (canCopy ? `<div class="slot-foot"><button class="btn small" id="backupAll">Back up all saves</button><span class="dim">Zips every slot into Documents\\Harmonious Save Editor backups, so you always have a copy.</span></div>` : '');
+  list.querySelectorAll('[data-open]').forEach((b) => b.onclick = () => open(rows[+b.dataset.open]));
+  list.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => copyToNewSlot(rows[+b.dataset.copy], pool));
+  const ba = list.querySelector('#backupAll'); if (ba) ba.onclick = () => backupAll(S.appAcct.path);
   list.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Copy a save into the first empty slot (the game has 15). Nothing existing is ever overwritten:
+// the app refuses if either file is already there.
+async function copyToNewSlot(r, pool) {
+  let free = 0;
+  for (let n = 1; n <= 15 && !free; n++) { const a = n === 1 ? 'save.hg' : `save${2 * n - 1}.hg`, b = `save${2 * n}.hg`; if (!pool.has(a) && !pool.has(b)) free = n; }
+  if (!free) { toast('All 15 slots are in use. Delete one in the game first.', true); return; }
+  const dataName = free === 1 ? 'save.hg' : `save${2 * free - 1}.hg`, metaName = 'mf_' + dataName;
+  const oldName = (r.info && r.info.saveName) || 'Slot ' + slotLabel(r.name).slot;
+  const ok = await dialog('Copy to a new slot', `<p>Copies <b>${esc(oldName)}</b> (${esc(r.name)}) into slot ${free} as <span class="mono">${dataName}</span>. The original is not changed.</p>
+    <label class="field"><span>Name for the copy</span><input class="input" id="copyName" maxlength="42" value="${esc((oldName + ' copy').slice(0, 42))}"></label>`, [['Cancel', false, 'ghost'], ['Copy', true, 'primary']]);
+  if (!ok) return;
+  const newName = ($('#copyName').value.trim() || oldName).slice(0, 42);
+  busy('Copying…'); await tick();
+  try {
+    const save = C.readSave(await r.d.read(), await r.m.read(), r.name);
+    const json = save.json, cm = g(json, 'CommonStateData'), bc = g(json, 'BaseContext'), psd = g(bc, 'PlayerStateData') || g(json, 'PlayerStateData');
+    for (const o of [cm, psd]) { const k = kOf(o, 'SaveName'); if (k != null) o.set(k, newName); }
+    save.meta.slot = C.slotFromName(dataName);
+    const out = C.writeSave(save, { saveName: newName });
+    C.readSave(out.data, out.meta, dataName); // must decode back before anything is written
+    const fd = new FormData();
+    fd.append('dir', S.appAcct.path); fd.append('dataName', dataName); fd.append('metaName', metaName);
+    fd.append('data', new Blob([out.data]), dataName); fd.append('meta', new Blob([out.meta]), metaName);
+    await api('/api/create', { method: 'POST', body: fd });
+    toast(`Copied to slot ${free}. It shows in the game's load menu as ${newName}.`);
+    await appListAccount(S.appAcct);
+  } catch (e) { toast('Copy failed, nothing was written: ' + e.message, true); } finally { busy(); }
+}
+
+async function backupAll(dir) {
+  busy('Backing up every save…'); await tick();
+  try { const r = await (await api('/api/backup-all?reveal=1&dir=' + encodeURIComponent(dir), { method: 'POST' })).json(); toast(`Backed up ${r.files} files to ${r.path}`); }
+  catch (e) { toast('Backup failed: ' + e.message, true); } finally { busy(); }
 }
 
 function fmtPlay(sec) { sec = Number(sec) || 0; const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60); return h + 'h ' + m + 'm played'; }
@@ -793,11 +867,45 @@ function modelName(path) { const f = str(path).split('/').pop() || ''; return f.
 // ------------------------------------------------------------------ pages
 const PAGES = {};
 
+const GALAXIES = ['Euclid','Hilbert Dimension','Calypso','Hesperius Dimension','Hyades','Ickjamatew','Budullangr','Kikolgallr','Eltiensleen','Eissentam','Elkupalos','Aptarkaba','Ontiniangp','Odiwagiri','Ogtialabi','Muhacksonto','Hitonskyer','Rerasmutul','Isdoraijung','Doctinawyra','Loychazinq','Zukasizawa','Ekwathore','Yeberhahne','Twerbetek','Sivarates','Eajerandal','Aldukesci','Wotyarogii','Sudzerbal','Maupenzhay','Sugueziume','Brogoweldian','Ehbogdenbu','Ijsenufryos','Nipikulha','Autsurabin','Lusontrygiamh','Rewmanawa','Ethiophodhe','Urastrykle','Xobeurindj','Oniijialdu','Wucetosucc','Ebyeloof','Odyavanta','Milekistri','Waferganh','Agnusopwit','Teyaypilny','Zalienkosm','Ladgudiraf','Mushonponte','Amsentisz','Fladiselm','Laanawemb','Ilkerloor','Davanossi','Ploehrliou','Corpinyaya','Leckandmeram','Quulngais','Nokokipsechl','Rinblodesa','Loydporpen','Ibtrevskip','Elkowaldb','Heholhofsko','Yebrilowisod','Husalvangewi','Ovna\'uesed','Bahibusey','Nuybeliaure','Doshawchuc','Ruckinarkh','Thorettac','Nuponoparau','Moglaschil','Uiweupose','Nasmilete','Ekdaluskin','Hakapanasy','Dimonimba','Cajaccari','Olonerovo','Umlanswick','Henayliszm','Utzenmate','Umirpaiya','Paholiang','Iaereznika','Yudukagath','Boealalosnj','Yaevarcko','Coellosipp','Wayndohalou','Smoduraykl','Apmaneessu','Hicanpaav','Akvasanta','Tuychelisaor','Rivskimbe','Daksanquix','Kissonlin','Aediabiel','Ulosaginyik','Roclaytonycar','Kichiaroa','Irceauffey','Nudquathsenfe','Getaizakaal','Hansolmien','Bloytisagra','Ladsenlay','Luyugoslasr','Ubredhatk','Cidoniana','Jasinessa','Torweierf','Saffneckm','Thnistner','Dotusingg','Luleukous','Jelmandan','Otimanaso','Enjaxusanto','Sezviktorew','Zikehpm','Bephembah','Broomerrai','Meximicka','Venessika','Gaiteseling','Zosakasiro','Drajayanes','Ooibekuar','Urckiansi','Dozivadido','Emiekereks','Meykinunukur','Kimycuristh','Roansfien','Isgarmeso','Daitibeli','Gucuttarik','Enlaythie','Drewweste','Akbulkabi','Homskiw','Zavainlani','Jewijkmas','Itlhotagra','Podalicess','Hiviusauer','Halsebenk','Puikitoac','Gaybakuaria','Grbodubhe','Rycempler','Indjalala','Fontenikk','Pasycihelwhee','Ikbaksmit','Telicianses','Oyleyzhan','Uagerosat','Impoxectin','Twoodmand','Hilfsesorbs','Ezdaranit','Wiensanshe','Ewheelonc','Litzmantufa','Emarmatosi','Mufimbomacvi','Wongquarum','Hapirajua','Igbinduina','Wepaitvas','Sthatigudi','Yekathsebehn','Ebedeagurst','Nolisonia','Ulexovitab','Iodhinxois','Irroswitzs','Bifredait','Beiraghedwe','Yeonatlak','Cugnatachh','Nozoryenki','Ebralduri','Evcickcandj','Ziybosswin','Heperclait','Sugiuniam','Aaseertush','Uglyestemaa','Horeroedsh','Drundemiso','Ityanianat','Purneyrine','Dokiessmat','Nupiacheh','Dihewsonj','Rudrailhik','Tweretnort','Snatreetze','Iwundaracos','Digarlewena','Erquagsta','Logovoloin','Boyaghosganh','Kuolungau','Pehneldept','Yevettiiqidcon','Sahliacabru','Noggalterpor','Chmageaki','Veticueca','Vittesbursul','Nootanore','Innebdjerah','Kisvarcini','Cuzcogipper','Pamanhermonsu','Brotoghek','Mibittara','Huruahili','Raldwicarn','Ezdartlic','Badesclema','Isenkeyan','Iadoitesu','Yagrovoisi','Ewcomechio','Inunnunnoda','Dischiutun','Yuwarugha','Ialmendra','Reponudrle','Rinjanagrbo','Zeziceloh','Oeileutasc','Zicniijinis','Dugnowarilda','Neuxoisan','Ilmenhorn','Rukwatsuku','Nepitzaspru','Chcehoemig','Haffneyrin','Uliciawai','Tuhgrespod','Iousongola','Odyalutai'];
+// Where the player is: galaxy, the 12-digit portal code (planet, system, Y, Z, X) and the galactic address
+function locationOf(ua) {
+  const ga = g(ua, 'GalacticAddress'); if (!(ga instanceof Map)) return null;
+  const v = (k) => num(g(ga, k)), hx = (n, d) => (n >>> 0).toString(16).toUpperCase().padStart(d, '0').slice(-d);
+  const x = v('VoxelX'), y = v('VoxelY'), z = v('VoxelZ'), sys = v('SolarSystemIndex'), pl = v('PlanetIndex'), gi = num(g(ua, 'RealityIndex'));
+  return { galaxy: GALAXIES[gi] || 'Galaxy ' + (gi + 1), gi, portal: hx(pl, 1) + hx(sys, 3) + hx(y & 0xFF, 2) + hx(z & 0xFFF, 3) + hx(x & 0xFFF, 3),
+    galactic: [hx(x + 0x7FF, 4), hx(y + 0x7F, 4), hx(z + 0x7FF, 4), hx(sys, 4)].join(':') };
+}
+function globalStats() {
+  const out = new Map(), grp = (g(ps(), 'Stats') || []).find((x) => str(g(x, 'GroupId')) === '^GLOBAL_STATS');
+  for (const st of (grp && g(grp, 'Stats')) || []) { const val = g(st, 'Value'); out.set(str(g(st, 'Id')).replace(/^\^/, ''), num(g(val, 'IntValue')) || num(g(val, 'FloatValue')) || 0); }
+  return out;
+}
+function discoveryCounts() {
+  const recs = g(S.save.json, 'DiscoveryManagerData', 'DiscoveryData-v1', 'Store', 'Record') || [], out = {};
+  for (const r of recs) { const t = str(g(r, 'DD', 'DT')); out[t] = (out[t] || 0) + 1; }
+  const who = recs.length ? str(g(recs[0], 'OWS', 'USN')) : '';
+  return { counts: out, who };
+}
+// a cover (ship, multi-tool or the traveller's portrait) as a small card on the overview
+function miniCover(host, it, size, onClick) {
+  const dpr = Math.min(2, devicePixelRatio || 1), cv = document.createElement('canvas'); cv.width = cv.height = Math.round(size * dpr);
+  const frame = host.querySelector('.tc-art'); frame.replaceChildren(cv); paintCover(cv, it);
+  customCover(it.key).then((url) => { if (url) { const im = new Image(); im.src = url; im.alt = ''; cv.replaceWith(im); it.custom = true; } });
+  if (it.kind === 'corvette') {
+    const on = (e) => { if (!host.isConnected) { document.removeEventListener('cover-render', on); return; } if (e.detail.key === it.key && !it.custom) { it.renderImg = e.detail.img; paintCover(cv, it); } };
+    document.addEventListener('cover-render', on); loadRender(it);
+  }
+  if (onClick) host.onclick = onClick;
+}
+
 PAGES.overview = (el) => {
   const p = ps(), cm = common();
   const cur = [['Units', 'Units'], ['Nanites', 'Nanites'], ['Quicksilver', 'Specials']];
   el.innerHTML = `
-    <div class="page-head"><div><h1>Overview</h1><p>Currencies and the save's name as it appears in the load menu.</p></div></div>
+    <div class="page-head"><div><h1>Overview</h1><p>Your traveller at a glance, currencies, and the save's name as it appears in the load menu.</p></div></div>
+    <div class="trav" id="trav"></div>
+    <div class="facts journey" id="journey"></div>
     <div class="currencies">${cur.map(([label, key]) => `
       <div class="cur"><div class="lbl">${label}<span>max 4,294,967,295</span></div>
         <input class="input num" inputmode="numeric" data-cur="${key}" value="${num(g(p, key))}" aria-label="${label}">
@@ -815,6 +923,7 @@ PAGES.overview = (el) => {
   const ver = num(g(S.save.json, 'Version')); if (ver) facts.push([ver, 'Save version']);
   if (S.save.meta) facts.push([S.save.meta.info.length === 432 ? 'Worlds Part II' : S.save.meta.info.length === 384 ? 'Worlds Part I' : 'Waypoint era', 'Meta format']);
   $('#facts', el).innerHTML = facts.map(([b, s]) => `<div><b>${esc(b)}</b><span>${s}</span></div>`).join('');
+  travellerCards($('#trav', el), $('#journey', el));
   el.querySelectorAll('[data-cur]').forEach((inp) => inp.onchange = () => { const v = clampU32(inp.value); inp.value = v; set(p, inp.dataset.cur, N(v)); });
   el.querySelectorAll('[data-add]').forEach((b) => b.onclick = () => {
     const inp = el.querySelector(`[data-cur="${b.dataset.add}"]`);
@@ -827,6 +936,38 @@ PAGES.overview = (el) => {
   $('#rechargeAll', el).onclick = () => { let n = 0; all().forEach((inv) => slotsOf(inv).forEach((s) => { if (typeOf(s) === 'Technology' && refill(s)) n++; })); toast(n + ' technologies recharged'); };
   $('#refillAll', el).onclick = () => { let n = 0; all().forEach((inv) => slotsOf(inv).forEach((s) => { if (typeOf(s) !== 'Technology' && refill(s)) n++; })); toast(n + ' stacks filled'); };
 };
+function travellerCards(host, journey) {
+  const p = ps(), items = coverItems(), disc = discoveryCounts(), st = globalStats();
+  const ship = items.find((x) => x.kind !== 'tool' && x.current), tool = items.find((x) => x.kind === 'tool' && x.current);
+  const loc = locationOf(g(p, 'UniverseAddress')), where = S.save.meta && S.save.meta.info && S.save.meta.info.saveSummary;
+  const saveName = str(g(common() || p, 'SaveName')) || 'Traveller';
+  const me = { kind: 'portrait', key: 'traveller|' + saveName, name: disc.who || saveName, cls: '' };
+  host.innerHTML = `
+    <div class="tc portrait"><div class="tc-art"></div><div class="tc-cap"><span class="k">Traveller</span><b>${esc(me.name)}</b><span class="tc-acts">${APP ? '<button class="link" id="meShot">Choose a screenshot</button>' : ''}<label class="link">Image file<input type="file" accept="image/*" id="meFile" hidden></label></span></div></div>
+    ${ship ? `<button class="tc" id="tcShip"><div class="tc-art"></div><div class="tc-cap"><span class="k">Current ship</span><b>${esc(ship.name)}</b><span>${esc(ship.sub.replace(/, current ship$/, ''))}</span></div></button>` : ''}
+    ${tool ? `<button class="tc" id="tcTool"><div class="tc-art"></div><div class="tc-cap"><span class="k">Multi-tool</span><b>${esc(tool.name)}</b><span>${esc(tool.sub.replace(/, equipped$/, ''))}</span></div></button>` : ''}
+    <div class="tc loc"><span class="k">Location</span>
+      ${loc ? `<b class="gal">${esc(loc.galaxy)}</b><span class="dim">Galaxy ${loc.gi + 1} of 256</span>${where ? `<span class="loc-where">${esc(where)}</span>` : ''}
+      <span class="k sm">Portal code</span><span class="portal">${[...loc.portal].map((c) => `<i>${c}</i>`).join('')}</span>
+      <span class="k sm">Galactic address</span><span class="mono">${loc.galactic}</span>` : '<span class="dim">Not in this save</span>'}</div>`;
+  const art = host.querySelector('.portrait .tc-art'), hero = document.querySelector('.hero-art');
+  const showMe = () => customCover(me.key).then((url) => { const im = new Image(); im.alt = ''; im.src = url || (hero && hero.src) || ''; im.className = url ? '' : 'default'; art.replaceChildren(im); });
+  showMe();
+  const setMe = async (blob) => { if (blob && await chooseCover(me, blob)) showMe(); };
+  const ms = host.querySelector('#meShot'); if (ms) ms.onclick = async () => setMe(await pickScreenshot());
+  host.querySelector('#meFile').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; setMe(f); };
+  const toHangar = (it) => () => { S.hangar = { filter: 'all', key: it.key }; go('hangar'); };
+  if (ship) miniCover(host.querySelector('#tcShip'), ship, 220, toHangar(ship));
+  if (tool) miniCover(host.querySelector('#tcTool'), tool, 220, toHangar(tool));
+  const km = (m) => (m / 1000).toLocaleString(undefined, { maximumFractionDigits: m < 100000 ? 1 : 0 }) + ' km';
+  const c = disc.counts, tiles = [
+    [c.Planet, 'Planets discovered'], [c.SolarSystem, 'Systems discovered'], [st.get('DISC_CREATURES') || c.Animal, 'Creatures discovered'],
+    [st.get('WORDS_LEARNT'), 'Words learnt'], [st.get('DIST_WARP'), 'Warp jumps'], [st.get('DIST_WALKED') && km(st.get('DIST_WALKED')), 'Walked'],
+    [st.get('DIST_FLY') && km(st.get('DIST_FLY')), 'Flown'], [st.get('ALIENS_MET'), 'Aliens met'], [st.get('ENEMIES_KILLED'), 'Enemies defeated'],
+    [st.get('MONEY_EVER'), 'Units earned, all time'], [(g(p, 'PersistentPlayerBases') || []).filter((b) => str(g(b, 'BaseType', 'PersistentBaseTypes')) === 'HomePlanetBase').length, 'Planet bases'], [st.has('DEATHS') ? st.get('DEATHS') : null, 'Deaths'],
+  ].filter(([v]) => v != null && v !== '');
+  journey.innerHTML = '<h3>Journey</h3>' + tiles.map(([v, l]) => `<div><b>${typeof v === 'number' ? Math.round(v).toLocaleString() : esc(v)}</b><span>${l}</span></div>`).join('');
+}
 const clampU32 = (v) => Math.max(0, Math.min(4294967295, Math.floor(Number(String(v).replace(/[^\d.]/g, '')) || 0)));
 
 function allInvs() {
@@ -2128,6 +2269,8 @@ async function appInit() {
   document.body.classList.add('is-app');
   $('#appLanding').classList.remove('hidden');
   $('#backupsBtn').classList.remove('hidden');
+  $('#backupAllBtn').classList.remove('hidden');
+  $('#backupAllBtn').onclick = () => { if (S.src && S.src.dir) backupAll(S.src.dir); };
   const ping = () => api('/api/ping', { method: 'POST' }).catch(() => {});
   ping(); setInterval(ping, 5000);
   addEventListener('pagehide', () => navigator.sendBeacon('/api/bye?t=' + encodeURIComponent(APP.token)));

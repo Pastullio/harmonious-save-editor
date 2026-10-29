@@ -14,6 +14,14 @@ Everything so far was tested on a synthetic save. These files decide how several
 - [ ] One build exported from Blender / Drydock [1]
 - [ ] A few files from the downloaded ship collection, whatever formats they're in [5]
 
+## Shipped alongside
+
+- [x] Save list shows one card per slot (newest of its auto and manual saves; the other is a click away)
+- [x] Copy a save into the next empty slot, with a new name; nothing existing is ever overwritten
+- [x] Back up all saves: zips the whole account folder into Documents\Harmonious Save Editor backups (landing page and sidebar)
+- [x] Overview: traveller portrait (own screenshot), current ship and multi-tool covers, location (galaxy, portal code, galactic address) and journey stats from the save
+- [ ] Portal code drawn as glyphs (reuse the Portal Glyph Banner's glyph art)
+
 ## Phase 1 — Loadout profiles (the owner's biggest win) [3]
 
 Save a ship's or multi-tool's whole fit as a named profile ("S-class corvette loaded up"), then apply it to any other ship or tool in one click.
