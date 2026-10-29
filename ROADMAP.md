@@ -45,7 +45,7 @@ One personal library of ship files outside the game, with three views onto it.
 - [ ] **Testing Facility** (later, owner 2026-10-29): ships you're testing for other creators, kept apart from the main library. Versions of the same ship are grouped, each with test notes, a date, and which test character it's on
 - [x] Reads our own `.ship.json` (now with the whole corvette base), bare ship entries, and corvette builds (a base with Objects, or just the Objects)
 - [x] TAZ's `.nmsship` (a zip of `objects.json`, `so.json` and `ccd.json`; read and written, matching TAZ's BOM + CRLF JSON) and `.so` (a ship entry: put onto an existing corvette, which keeps its name and build); the owner's `.txt` corvette builds. Checked on the owner's Death n Glory files
-- [ ] Confirm against a `.so` written by TAZ itself (tested with the `so.json` from inside an `.nmsship`)
+- [x] Confirmed against a `.so` written by TAZ itself (owner, 2026-10-29): it reads as a corvette loadout, and our new .so export (Starships and Dock Yard) writes the same format byte for byte
 - [x] Each entry can store a link (Charon, NMA or anywhere) and notes
 - [ ] Pull artwork, author and description from a linked listing
 - [x] Search, type and tag filters, tags and favourites
@@ -64,8 +64,9 @@ One personal library of ship files outside the game, with three views onto it.
 - [ ] Name the parts better than the game's internal labels (e.g. thumbnails per option)
 - [ ] Their look is generated in-game from the seed, so it can't be rendered outside the game; artwork for fixed-look specials (Golden Vector, Atlas Sceptre, Starborn ships) could come from the web later
 - [ ] Artwork from a linked Charon/NMA listing
-- [ ] More camera angles per corvette, and a turntable in the detail view
-- [ ] Store custom covers with the library on disk (today they live in the app's browser profile)
+- [x] Turntable: cover cards (Overview, ship pages, Dock Yard details) turn while hovered and follow a drag
+- [ ] More camera angles per corvette
+- [x] Custom covers live on disk in `Dock Yard\Covers` (with `covers.json`); ones the app kept in the browser profile move there by themselves
 - [ ] Stretch: render a 3D preview of a corvette from its part list using the Base Builder part models already on your PC
 - [x] Glacial look to match the Portal Glyph Banner: icy light theme, deep-teal dark theme (toggle, remembered), Jost, pill buttons, wide-tracked titles; no yellow or purple anywhere
 - [x] Cover Flow motion: spring physics, 1:1 drag with momentum, continuous trackpad/wheel glide, covers swing smoothly through the centre
@@ -95,7 +96,7 @@ The save file holds no images, so a ship's picture has to come from one of these
 - [x] Consolidate: pick a destination, see the plan, untick anything to leave alone, then apply. Stack limits are each stack's own limit (the game sets them from the difficulty's stack-size setting)
 - [x] Select several slots (Ctrl-click, Shift-click, Ctrl+A) and fill, repair, remove, unlock or move them to any other inventory in one go
 - [x] Drag and drop between slots of any grids on the same page: same item merges, different items swap, technology only rearranges within its own grid. Moving to another inventory (side panel) now tops up matching stacks first
-- [ ] Drag-select (rubber band) in a grid
+- [x] Drag a box across empty slots to select a block (Ctrl adds)
 - [x] Rewards page: every expedition reward (past and current, read from the game's tables), Twitch drops and platform rewards; unlock all at once, a whole expedition, or single rewards; saved to `accountdata.hg` with its own button and a backup (the app may now read and write only that pair besides saves)
 
 ## Own item library (so Goatfungus isn't needed)
@@ -119,8 +120,8 @@ The save file holds no images, so a ship's picture has to come from one of these
 - [x] Warp: sets the location, keeps the old one as the previous location and arrives in the ship in space (same fields as Goatfungus)
 - [x] Predicted system for any address, visited or not: system, region and planet names, star colour, planets and moons, race, economy and wealth, conflict, pirate/abandoned/uncharted, station prices (nms-core / nms_namegen, MIT; about 99% against 1,000 player-recorded systems)
 - [ ] Predicted planet details: biome, weather, resources, sentinels, flora and fauna. No open research covers these yet; ATLAS APF does (closed, permission asked of FIBONACCI 2026-10-29). Otherwise this needs our own research
-- [ ] More arrival choices: on the freighter or at a base (warping in space is done)
-- [ ] Planet "qualities" card: copy a planet's details to share or search elsewhere
+- [ ] More arrival choices: on the freighter or at a base (warping in space is done). Needs two saves from the owner, one made standing on the freighter and one at a base, to copy the exact spawn fields (PlayerPositionInSystem etc. are local to the place you're in)
+- [x] Place card: Copy card (a PNG with glyphs, address, system, race, economy, conflict and planets), Save card, or Copy as text, on the Coordinates page
 
 What these can show is limited by the game: planets are generated by the game itself, so the editor can't draw what a planet looks like. Names and qualities come only from what's in the save (your own discoveries). What the save holds (checked on the owner's save, 2026-10-29): discovery records carry only a type, a seed and a packed address, no names or resources; bases and teleport destinations carry names. The system itself (names, planets, race, economy) is predicted from the address with nms-core; planet details aren't yet.
 

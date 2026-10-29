@@ -287,6 +287,10 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .tidy-acts { margin-top: 14px; } .tidy-acts .dim { font-size: 12.5px; }
 .cell.dragging { opacity: .4; }
 .cell.drop { box-shadow: 0 0 0 3px var(--accent); }
+.tc-art.spinnable { cursor: grab; touch-action: pan-y; }
+.band { position: fixed; z-index: 50; pointer-events: none; border: 1.5px solid var(--accent); background: var(--accent-soft); border-radius: 6px; }
+.cell.banded { box-shadow: 0 0 0 2px var(--accent); }
+.pred-share { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; margin-right: 10px; }
 /* plain editors */
 .ed-tabs { margin-bottom: 16px; }
 .ed-tabs .n { font-family: var(--mono); letter-spacing: 0; opacity: .7; margin-left: 4px; }
@@ -1284,7 +1288,7 @@ function discoveryCounts() {
 // a cover (ship, multi-tool or the traveller's portrait) as a small card on the overview
 function miniCover(host, it, size, onClick) {
   const dpr = Math.min(2, devicePixelRatio || 1), cv = document.createElement('canvas'); cv.width = cv.height = Math.round(size * dpr);
-  const frame = host.querySelector('.tc-art'); frame.replaceChildren(cv); paintCover(cv, it);
+  const frame = host.querySelector('.tc-art'); frame.replaceChildren(cv); paintCover(cv, it); frame.classList.add('spinnable');
   customCover(it.key).then((url) => { if (url) { const im = new Image(); im.src = url; im.alt = ''; cv.replaceWith(im); it.custom = true; } });
   if (it.kind === 'corvette') {
     const on = (e) => { if (!host.isConnected) { document.removeEventListener('cover-render', on); return; } if (e.detail.key === it.key && !it.custom) { it.renderImg = e.detail.img; paintCover(cv, it); } };
@@ -1293,6 +1297,17 @@ function miniCover(host, it, size, onClick) {
     const on = (e) => { if (!host.isConnected) { document.removeEventListener('cover-model', on); return; } if (e.detail.key === it.key && !it.custom) paintCover(cv, it); };
     document.addEventListener('cover-model', on); if (it.model) paintCover(cv, it); else loadModel(it);
   }
+  // turntable: the model turns slowly while the pointer is over it, and follows a drag (renders and pictures stay still)
+  const canSpin = () => cv.isConnected && !it.custom && !it.renderImg && (it.holo || (it.model && GL3D.ok()) || !!wireMesh(it));
+  const base = it.holo ? -.65 : it.kind === 'tool' ? -1.25 : -.95;
+  let angle = null, raf = 0, hover = false, dragX = null;
+  const loop = () => { raf = 0; if (!canSpin() || !hover) return; if (dragX == null && !REDUCED) angle = (angle ?? base) + .012; paintCover(cv, it, angle ?? base); raf = requestAnimationFrame(loop); };
+  frame.onpointerenter = () => { hover = true; if (!raf && canSpin()) raf = requestAnimationFrame(loop); };
+  frame.onpointerleave = () => { hover = false; dragX = null; };
+  frame.onpointerdown = (e) => { if (!canSpin()) return; dragX = e.clientX; frame._moved = false; try { frame.setPointerCapture(e.pointerId); } catch (_) {} };
+  frame.onpointermove = (e) => { if (dragX == null) return; const d = e.clientX - dragX; if (Math.abs(d) > 2) frame._moved = true; angle = (angle ?? base) + d * .012; dragX = e.clientX; paintCover(cv, it, angle); };
+  frame.onpointerup = () => { dragX = null; };
+  if (!frame._spinClick) { frame._spinClick = true; frame.addEventListener('click', (e) => { if (frame._moved) { e.stopPropagation(); e.preventDefault(); frame._moved = false; } }, true); }
   if (onClick) host.onclick = onClick;
 }
 
@@ -1510,7 +1525,7 @@ function entityDetails(ed, o, i, kind) {
       <button class="btn primary" data-k="saveprof">Save as profile</button><button class="btn" data-k="applyprof">Apply a profile</button>
       ${APP && S.lib && S.lib.game ? '<button class="btn" data-k="parts">Choose parts</button>' : ''}
       <span class="sep"></span>
-      ${isShip && APP ? '<button class="btn" data-k="tolib">Save to Dock Yard</button>' : ''}${isShip && shipBuild(i) ? '<button class="btn" data-k="nmsship">Export .nmsship</button>' : ''}<button class="btn" data-k="export">Export</button><label class="btn">Import<input type="file" accept=".json,application/json" data-k="import" hidden></label>
+      ${isShip && APP ? '<button class="btn" data-k="tolib">Save to Dock Yard</button>' : ''}${isShip && shipBuild(i) ? '<button class="btn" data-k="nmsship">Export .nmsship</button>' : ''}${isShip ? '<button class="btn" data-k="so" title="The ship entry alone, as TAZ\'s tools write it">Export .so</button>' : ''}<button class="btn" data-k="export">Export</button><label class="btn">Import<input type="file" accept=".json,application/json" data-k="import" hidden></label>
       <button class="btn danger" data-k="delete">Delete ${isShip ? 'ship' : 'multi-tool'}</button>
     </div>`;
   ed.appendChild(panel);
@@ -1540,6 +1555,7 @@ function entityDetails(ed, o, i, kind) {
   if (pb) pb.onclick = () => { const it = coverItems().find((x) => (kind === 'tool' ? x.kind === 'tool' : x.kind !== 'tool') && x.i === i); if (it && it.scene) partsDialog(it, () => render()); else toast("Corvettes are built from base parts; render them with Blender instead.", true); };
   $k('export').onclick = () => exportEntity(o, i, kind);
   if ($k('nmsship')) $k('nmsship').onclick = async () => downloadBlob(safeFile(entityName(o, i, kind)) + '.nmsship', await shipNmsship(i));
+  if ($k('so')) $k('so').onclick = () => downloadBlob(safeFile(entityName(o, i, kind)) + '.so', new Blob([soJSON(toPlain(cloneJSON(o)))]));
   if ($k('tolib')) $k('tolib').onclick = () => saveShipToLibrary(i).catch((e) => toast(e.message, true));
   $k('import').onchange = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importEntity(o, i, kind, await f.text()); };
   $k('delete').onclick = () => deleteEntity(o, i, kind);
@@ -2219,17 +2235,49 @@ function paintRender(ctx, W, img) {
   ctx.drawImage(img, (W - w) / 2, (W - h) / 2, w, h);
 }
 
-// custom cover images (screenshots) — kept per browser profile
+// custom cover images (screenshots): in the app they live on disk with the Dock Yard (Covers folder); in the browser,
+// in this browser profile. Pictures the app kept in the browser profile before are moved to disk once (moveCoversToDisk).
 const coverCache = new Map();
 async function customCover(key) {
   if (coverCache.has(key)) return coverCache.get(key);
-  let url = null; try { const b = await IDB.get('cover:' + key); if (b) url = URL.createObjectURL(b); } catch (_) {}
-  coverCache.set(key, url); return url;
+  const p = (async () => {
+    if (APP) {
+      if (S.coverKeys === undefined) S.coverKeys = api('/api/covers/custom?list=1').then((r) => r.json()).then((a) => new Set(a)).catch(() => null);
+      const keys = await S.coverKeys;
+      if (keys && !keys.has(key)) return null;
+      try { const r = await fetch('/api/covers/custom?key=' + encodeURIComponent(key), { headers: { 'X-Token': window.NMS_APP.token } }); if (r.ok) return URL.createObjectURL(await r.blob()); } catch (_) {}
+      return null;
+    }
+    try { const b = await IDB.get('cover:' + key); if (b) return URL.createObjectURL(b); } catch (_) {}
+    return null;
+  })();
+  coverCache.set(key, p); return p;
 }
 async function setCustomCover(key, blob) {
   if (blob && !/^image\//.test(blob.type)) { toast('That file is not an image.', true); return false; }
-  try { if (blob) await IDB.put('cover:' + key, blob); else await IDB.del('cover:' + key); } catch (e) { toast('Could not store the cover: ' + e.message, true); return false; }
-  const old = coverCache.get(key); if (old) URL.revokeObjectURL(old); coverCache.delete(key); return true;
+  try {
+    if (APP) {
+      if (blob) await api('/api/covers/custom?key=' + encodeURIComponent(key), { method: 'POST', headers: { 'Content-Type': blob.type }, body: blob });
+      else await api('/api/covers/custom?key=' + encodeURIComponent(key), { method: 'DELETE' });
+      S.coverKeys = undefined;
+    } else if (blob) await IDB.put('cover:' + key, blob); else await IDB.del('cover:' + key);
+  } catch (e) { toast('Could not store the cover: ' + e.message, true); return false; }
+  const old = await coverCache.get(key); if (old) URL.revokeObjectURL(old); coverCache.delete(key); return true;
+}
+async function moveCoversToDisk() {
+  if (!APP) return 0;
+  let keys = []; try { keys = (await IDB.keys()).filter((k) => typeof k === 'string' && k.startsWith('cover:')); } catch (_) { return 0; }
+  let n = 0;
+  for (const k of keys) {
+    try {
+      const b = await IDB.get(k); if (!(b instanceof Blob)) continue;
+      const type = /^image\/(png|jpeg|webp|gif)$/.test(b.type) ? b.type : 'image/png';
+      await api('/api/covers/custom?key=' + encodeURIComponent(k.slice(6)), { method: 'POST', headers: { 'Content-Type': type }, body: b });
+      await IDB.del(k); n++;
+    } catch (_) { /* keep it in the browser profile and try again next time */ }
+  }
+  if (n) { S.coverKeys = undefined; coverCache.clear(); }
+  return n;
 }
 
 /** Cover Flow widget. opts: { size, index, onChange(i), onOpen(i), caption } */
@@ -2862,7 +2910,7 @@ function invBlock(el, inv, title, peers) {
         <button class="btn small ghost" data-act="settings">Size and class</button>
       </div></div>
     <div class="inv-wrap"><div><div class="grid${S.db ? ' named' : ''}" style="--w:${w}">${cells}</div>
-      <div class="legend"><span><i style="background:var(--substance)"></i>Substance</span><span><i style="background:var(--product)"></i>Product</span><span><i style="background:var(--technology)"></i>Technology</span><span><i style="background:var(--danger)"></i>Damaged</span><span><i style="background:var(--accent)"></i>Stack or charge level</span>${charged.size || chargeable ? '<span><i class="lg-charge"></i>Supercharged</span>' : ''}<span class="hint">Ctrl-click or Shift-click to select several</span></div></div>
+      <div class="legend"><span><i style="background:var(--substance)"></i>Substance</span><span><i style="background:var(--product)"></i>Product</span><span><i style="background:var(--technology)"></i>Technology</span><span><i style="background:var(--danger)"></i>Damaged</span><span><i style="background:var(--accent)"></i>Stack or charge level</span>${charged.size || chargeable ? '<span><i class="lg-charge"></i>Supercharged</span>' : ''}<span class="hint">Drag across empty slots to select a block; Ctrl-click or Shift-click to pick more</span></div></div>
       <div class="insp-slot"></div></div>`;
   el.appendChild(block);
   loadIcons(block);
@@ -2880,6 +2928,7 @@ function invBlock(el, inv, title, peers) {
   block._showSel = showSel;
   // click selects one slot; Ctrl (or Cmd) adds or removes a slot; Shift selects everything from the last slot clicked
   block.querySelector('.grid').onclick = (e) => {
+    if (block._banded) { block._banded = false; return; }
     const c = e.target.closest('.cell'); if (!c) return;
     const x = +c.dataset.x, y = +c.dataset.y, k = x + ',' + y, same = S.sel && S.sel.inv === inv;
     if (e.shiftKey && same) {
@@ -2893,6 +2942,34 @@ function invBlock(el, inv, title, peers) {
     } else S.sel = { inv, keys: new Set([k]), anchor: [x, y] };
     showSel();
   };
+  // drag a box from an empty slot (or the gaps between slots) to select every slot it touches; Ctrl adds to the selection
+  const grid = block.querySelector('.grid');
+  grid.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    const c0 = e.target.closest('.cell'); if (c0 && c0.classList.contains('has')) return;   // stacks drag and drop instead
+    const x0 = e.clientX, y0 = e.clientY; let band = null;
+    const inBox = (x1, y1) => { const L = Math.min(x0, x1), R = Math.max(x0, x1), T = Math.min(y0, y1), B = Math.max(y0, y1), ks = new Set();
+      grid.querySelectorAll('.cell').forEach((n) => { const b = n.getBoundingClientRect(); if (b.right > L && b.left < R && b.bottom > T && b.top < B) ks.add(n.dataset.x + ',' + n.dataset.y); }); return ks; };
+    const move = (ev) => {
+      if (!band && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return;
+      if (!band) { band = document.createElement('div'); band.className = 'band'; document.body.appendChild(band); }
+      Object.assign(band.style, { left: Math.min(x0, ev.clientX) + 'px', top: Math.min(y0, ev.clientY) + 'px', width: Math.abs(ev.clientX - x0) + 'px', height: Math.abs(ev.clientY - y0) + 'px' });
+      const ks = inBox(ev.clientX, ev.clientY); grid.querySelectorAll('.cell').forEach((n) => n.classList.toggle('banded', ks.has(n.dataset.x + ',' + n.dataset.y)));
+    };
+    const up = (ev) => {
+      removeEventListener('pointermove', move);
+      grid.querySelectorAll('.cell.banded').forEach((n) => n.classList.remove('banded'));
+      if (!band) return;
+      band.remove();
+      const ks = inBox(ev.clientX, ev.clientY), add = (ev.ctrlKey || ev.metaKey) && S.sel && S.sel.inv === inv;
+      if (!ks.size) return;
+      const first = [...ks][0].split(',').map(Number);
+      S.sel = { inv, keys: add ? new Set([...S.sel.keys, ...ks]) : ks, anchor: first };
+      block._banded = true; setTimeout(() => { block._banded = false; }, 0);
+      showSel();
+    };
+    addEventListener('pointermove', move); addEventListener('pointerup', up, { once: true });
+  });
   block.querySelectorAll('[data-act]').forEach((b) => b.onclick = async () => {
     const a = b.dataset.act;
     if (a === 'unlock') {
@@ -3129,7 +3206,8 @@ function addForm(panel, inv, x, y, rerender) {
 const IDB = { open() { return new Promise((res, rej) => { const r = indexedDB.open('harmonious-save-editor', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
   async get(k) { const db = await this.open(); return new Promise((res) => { const r = db.transaction('kv').objectStore('kv').get(k); r.onsuccess = () => res(r.result); r.onerror = () => res(undefined); }); },
   async put(k, v) { const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = () => rej(t.error); }); },
-  async del(k) { const db = await this.open(); return new Promise((res) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').delete(k); t.oncomplete = res; }); } };
+  async del(k) { const db = await this.open(); return new Promise((res) => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').delete(k); t.oncomplete = res; }); },
+  async keys() { const db = await this.open(); return new Promise((res) => { const r = db.transaction('kv').objectStore('kv').getAllKeys(); r.onsuccess = () => res(r.result || []); r.onerror = () => res([]); }); } };
 
 function zipIndex(buf) {
   const u8 = new Uint8Array(buf), dv = new DataView(buf);
@@ -3404,12 +3482,67 @@ function predictionHtml(p, s) {
     ['Bodies', `${plural(s.planetCount, 'planet')}${s.moonCount ? ' and ' + plural(s.moonCount, 'moon') : ''}`],
   ].filter(Boolean);
   const rest = Place.portal(p).slice(1);
-  return `<div class="pred-head"><div><span class="k">System</span><b class="pred-name">${esc(s.name)}</b><span class="dim">${esc(s.region)}, ${esc(GALAXIES[p.gi])}</span></div><span class="pill">Predicted</span></div>
+  return `<div class="pred-head"><div><span class="k">System</span><b class="pred-name">${esc(s.name)}</b><span class="dim">${esc(s.region)}, ${esc(GALAXIES[p.gi])}</span></div><span class="pred-share"><button class="btn small" type="button" data-card="image">Copy card</button><button class="btn small ghost" type="button" data-card="save">Save card</button><button class="btn small ghost" type="button" data-card="text">Copy as text</button></span><span class="pill">Predicted</span></div>
     <dl class="pred-grid">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
     ${s.planets.length ? `<table class="pred-planets"><thead><tr><th>#</th><th>Name</th><th>Portal address</th><th></th></tr></thead><tbody>
       ${s.planets.map((n, i) => { const code = hexN(i + 1, 1) + rest; return `<tr${p.planet === i + 1 ? ' class="on"' : ''}><td>${i + 1}</td><td>${esc(n)}</td><td>${glyphRow(code, 'tiny')} <span class="mono">${code}</span></td><td><button class="link" type="button" data-planet="${i + 1}">${p.planet === i + 1 ? 'Selected' : 'Use this address'}</button></td></tr>`; }).join('')}
     </tbody></table>` : '<p class="dim">No planets.</p>'}
     <p class="pred-note dim">Predicted from the address with the game's own rules, so it works for systems nobody has visited. Checked against 1,000 systems players recorded: about 99% right. Names travellers uploaded later aren't included. Biomes, weather and resources aren't predicted yet. Generation research: nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, ported to JavaScript as nms-core by elegra1965 (both MIT).</p>`;
+}
+
+// a shareable card for a place: glyphs, address, the predicted system and its planets (for Discord and the like)
+function placeText(p, s) {
+  const pl = p.planet && s.planets[p.planet - 1];
+  return [`${s.name}${pl ? ' · planet ' + p.planet + ': ' + pl : ''}`, `${s.region}, ${GALAXIES[p.gi]} (galaxy ${p.gi + 1})`,
+    `Portal code: ${Place.portal(p)}`, `Galactic address: ${Place.galactic(p)}`,
+    `Star: ${s.star}${s.gasGiant ? ' (gas giant system)' : ''} · Race: ${s.abandoned ? 'none (abandoned)' : s.race} · Economy: ${s.abandoned ? 'none' : s.pirate ? 'pirate' : s.economy + ', ' + s.wealth.toLowerCase() + ' wealth'} · Conflict: ${s.abandoned ? 'none' : s.pirate ? 'pirate controlled' : s.conflict}`,
+    s.planets.length ? 'Planets: ' + s.planets.map((n, i) => `${i + 1}. ${n}`).join(', ') : 'No planets', 'Made with Harmonious Save Editor'].join('\n');
+}
+const glyphImgCache = new Map();
+function glyphImage(d) {
+  if (!glyphImgCache.has(d)) glyphImgCache.set(d, new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = GLYPH_IMG[parseInt(d, 16)]; }));
+  return glyphImgCache.get(d);
+}
+async function placeCard(p, s) {
+  await document.fonts.ready.catch(() => {});
+  const W = 1200, H = 630, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const ctx = cv.getContext('2d');
+  const bg = ctx.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#07131a'); bg.addColorStop(.6, '#0d2430'); bg.addColorStop(1, '#123a47'); ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  let seed = 7; for (const ch of Place.portal(p)) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0; const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
+  for (let i = 0; i < 160; i++) { ctx.fillStyle = `rgba(220,245,255,${.15 + rnd() * .5})`; const r = rnd() * 1.4 + .3; ctx.beginPath(); ctx.arc(rnd() * W, rnd() * H, r, 0, 7); ctx.fill(); }
+  const glow = ctx.createRadialGradient(W * .82, H * .2, 0, W * .82, H * .2, W * .5); glow.addColorStop(0, 'rgba(54,214,195,.18)'); glow.addColorStop(1, 'rgba(54,214,195,0)'); ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  const F = '"Jost", "Segoe UI", sans-serif', M = 'ui-monospace, Consolas, monospace', X = 64;
+  const track = (t, x, y, sp) => { let cx = x; for (const ch of t) { ctx.fillText(ch, cx, y); cx += ctx.measureText(ch).width + sp; } };
+  ctx.textBaseline = 'alphabetic'; ctx.fillStyle = 'rgba(160,230,235,.85)'; ctx.font = `500 15px ${F}`; track(`${GALAXIES[p.gi].toUpperCase()} · GALAXY ${p.gi + 1}`, X, 78, 4);
+  ctx.fillStyle = '#ffffff'; ctx.font = `300 64px ${F}`; ctx.fillText(s.name, X - 3, 150);
+  ctx.fillStyle = 'rgba(225,240,245,.75)'; ctx.font = `400 22px ${F}`; ctx.fillText(s.region + (p.planet && s.planets[p.planet - 1] ? '  ·  planet ' + p.planet + ': ' + s.planets[p.planet - 1] : ''), X, 190);
+  // the glyphs, white with a teal glow
+  const gs = 56, gap = 8, code = Place.portal(p), gy = 232;
+  ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.beginPath(); ctx.roundRect(X - 14, gy - 14, 12 * gs + 11 * gap + 28, gs + 28, 20); ctx.fill();
+  const tmp = document.createElement('canvas'); tmp.width = tmp.height = gs * 2; const tc = tmp.getContext('2d');
+  for (let i = 0; i < 12; i++) {
+    const im = await glyphImage(code[i]); if (!im) continue;
+    tc.clearRect(0, 0, tmp.width, tmp.height); tc.globalCompositeOperation = 'source-over'; tc.drawImage(im, 0, 0, tmp.width, tmp.height); tc.globalCompositeOperation = 'source-in'; tc.fillStyle = '#ffffff'; tc.fillRect(0, 0, tmp.width, tmp.height);
+    ctx.save(); ctx.shadowColor = 'rgba(54,214,195,.9)'; ctx.shadowBlur = 14; ctx.drawImage(tmp, X + i * (gs + gap), gy, gs, gs); ctx.restore();
+  }
+  ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.font = `500 26px ${M}`; track(code, X, gy + gs + 64, 6);
+  ctx.fillStyle = 'rgba(200,225,232,.7)'; ctx.font = `400 20px ${M}`; ctx.fillText(Place.galactic(p), X, gy + gs + 98);
+  // facts
+  const facts = [['STAR', s.star], ['RACE', s.abandoned ? 'None' : s.race], ['ECONOMY', s.abandoned ? 'None' : s.pirate ? 'Pirate' : s.economy], ['CONFLICT', s.abandoned ? 'None' : s.pirate ? 'Pirate' : s.conflict]];
+  facts.forEach(([k, v], i) => { const fx = X + i * 190, fy = 500; ctx.fillStyle = 'rgba(160,230,235,.7)'; ctx.font = `500 12px ${F}`; track(k, fx, fy, 3); ctx.fillStyle = '#fff'; ctx.font = `400 21px ${F}`; ctx.fillText(String(v), fx, fy + 30); });
+  // planets
+  const px = 880; ctx.fillStyle = 'rgba(160,230,235,.7)'; ctx.font = `500 12px ${F}`; track(`${s.planets.length} PLANET${s.planets.length === 1 ? '' : 'S'}${s.moonCount ? `, ${s.moonCount} MOON${s.moonCount === 1 ? '' : 'S'}` : ''}`, px, 372, 3);
+  s.planets.slice(0, 5).forEach((n, i) => { const on = p.planet === i + 1; ctx.fillStyle = on ? '#36d6c3' : 'rgba(255,255,255,.88)'; ctx.font = `${on ? 500 : 400} 21px ${F}`; ctx.fillText(`${i + 1}  ${n}`, px, 410 + i * 34); });
+  ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.font = `400 14px ${F}`; ctx.fillText('Harmonious Save Editor', W - 64 - ctx.measureText('Harmonious Save Editor').width, H - 36);
+  return new Promise((res) => cv.toBlob(res, 'image/png'));
+}
+async function shareCard(how, p, s) {
+  try {
+    if (how === 'text') { await navigator.clipboard.writeText(placeText(p, s)); toast('Copied as text'); return; }
+    const blob = await placeCard(p, s), name = safeFile(s.name + ' ' + Place.portal(p)) + '.png';
+    if (how === 'save') { downloadBlob(name, blob); return; }
+    try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); toast('Card copied. Paste it into Discord or anywhere.'); }
+    catch (_) { downloadBlob(name, blob); toast("Your browser wouldn't copy pictures, so the card was saved as a file instead."); }
+  } catch (e) { toast('Could not make the card: ' + e.message, true); }
 }
 
 // ------------------------------------------------------------------ Dock Yard (ship library)
@@ -3487,6 +3620,8 @@ async function zip(files) {   // [{ name, data: Uint8Array }] -> Blob (deflated)
 }
 // TAZ writes its JSON with a byte-order mark, two-space indents and Windows line endings
 const tazJSON = (v) => new TextEncoder().encode('\uFEFF' + C.stringifyJSON(v, '  ').replace(/\n/g, '\r\n'));
+// TAZ's .so: the ShipOwnership entry with plain keys, 2-space indent and CRLF, no BOM (checked against a .so TAZ wrote)
+const soJSON = (v) => new TextEncoder().encode(C.stringifyJSON(v, '  ').replace(/\n/g, '\r\n'));
 const jsonOf = (u8) => C.parseJSON(new TextDecoder().decode(u8).replace(/^\uFEFF/, ''));
 // each ship slot has its own customisation entry (GcCustomisationComponentData: Ship_01..06 are 3..8, Ship_07..12 are 17..22)
 const shipCcdIndex = (i) => (i < 6 ? 3 + i : 17 + (i - 6));
@@ -3783,6 +3918,7 @@ async function libDetail(x, refresh) {
   acts.push(['Show in folder', 'reveal']);
   if (f.src !== 'linked') acts.push(['Delete', 'delete', 'danger']);
   if (!p.error && p.ship && p.objects) acts.push(['Save as .nmsship', 'nmsship']);
+  if (!p.error && p.ship) acts.push(['Save as .so', 'so']);
   if (canPut && S.save) acts.push([s.buildOnly ? 'Put on a corvette…' : s.shipOnly ? 'Put on a corvette…' : 'Put in this save…', 'put', 'primary']);
   const shown = dialog(s.name, `<div class="lib-detail">
       <div class="tc lib-art"><div class="tc-art"></div></div>
@@ -3811,6 +3947,7 @@ async function libDetail(x, refresh) {
     return;
   }
   if (v === 'nmsship') { downloadBlob(safeFile(s.name) + '.nmsship', await libNmsship(p)); return; }
+  if (v === 'so') { downloadBlob(safeFile(s.name) + '.so', new Blob([soJSON(toPlain(cloneJSON(p.ship)))])); return; }
   if (v === 'reveal') { api(ShipLib.url(f, '&reveal=1')).catch((e) => toast(e.message, true)); }
   if (v === 'copy') { await ShipLib.add('library', f.path.split('/').pop(), await ShipLib.read(f)); toast('Copied to Ship storage'); render(); return; }
   if (v === 'delete') {
@@ -5097,6 +5234,7 @@ PAGES.coords = (el) => {
       if (C.token !== token) return;   // the destination changed meanwhile
       const box = $$('#pred'); if (!box) return; box.innerHTML = predictionHtml(p, sys);
       box.querySelectorAll('[data-planet]').forEach((b) => b.onclick = () => setDigits(hexN(+b.dataset.planet, 1) + C.digits.slice(1)));
+      box.querySelectorAll('[data-card]').forEach((b) => b.onclick = () => shareCard(b.dataset.card, p, sys));
     }).catch((e) => { const box = $$('#pred'); if (box) box.innerHTML = `<p class="dim">Couldn't predict this system (${esc(e.message)}).</p>`; });
     const wb = $$('#warpBtn');
     wt.disabled = k.isHere; wn.textContent = k.isHere ? 'You are in this system now' : `${GALAXIES[p.gi]} · ${Place.portal(p)}`;
@@ -5328,6 +5466,7 @@ const fmtWhen = (ms) => new Date(ms).toLocaleString();
 
 async function appInit() {
   document.body.classList.add('is-app');
+  moveCoversToDisk().then((n) => { if (n) console.log(n + ' cover pictures moved to the Dock Yard Covers folder'); }).catch(() => {});
   $('#appLanding').classList.remove('hidden');
   $('#backupsBtn').classList.remove('hidden');
   $('#backupAllBtn').classList.remove('hidden');

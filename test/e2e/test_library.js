@@ -138,6 +138,17 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   ok('it all survives saving and reopening', st.name === 'The Cutting Remark' && st.b6 === 2091 && st.max === 300 && (!taz || st.b7 === 941));
   await p.click('nav button[data-s="library"]'); await p.click('.dy-tabs [data-v="fav"]'); await p.waitForTimeout(1500);
   ok('favourites filter', (await p.$$('.lib-card')).length === 1);
+  // a .so written by TAZ itself (owner, 2026-10-29): ours must have the same format byte for byte (only the
+  // supercharged slots differ, because the save moved on after TAZ wrote it)
+  const tazSo = ATT + '139b3fef-The_Cutting_Remark.so';
+  if (fs.existsSync(tazSo)) {
+    const ours = Buffer.from(await p.evaluate(() => [...soJSON(toPlain(cloneJSON(g(ps(), 'ShipOwnership').find((s) => str(g(s, 'Name')) === 'The Cutting Remark'))))]));
+    const theirs = fs.readFileSync(tazSo), strip = (b) => b.toString('utf8').replace(/"SpecialSlots": \[[\s\S]*?\r\n {4}\]/g, '');
+    { const a = strip(ours), b = strip(theirs); let i = 0; while (i < a.length && a[i] === b[i]) i++; if (a !== b) console.log('so diff', ours.length, theirs.length, JSON.stringify(a.slice(i - 80, i + 60)), JSON.stringify(b.slice(i - 80, i + 60))); }
+    ok('.so export matches the format TAZ writes', ours.length === theirs.length && ours[0] === 0x7B && theirs[0] === 0x7B && strip(ours) === strip(theirs));
+    const pr = await p.evaluate(async (bytes) => { const r = await loadShipFile(new Uint8Array(bytes).buffer, 'x.so'); const s = shipSummary(r, 'x.so'); return s.shipOnly && s.name === 'The Cutting Remark' && s.cls === 'S'; }, [...theirs]);
+    ok('a .so written by TAZ reads as a corvette loadout', pr);
+  }
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
   await p.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark')); await p.click('.dy-sub [data-v="all"]'); await p.waitForTimeout(2500);
   await p.screenshot({ path: SP + '/shots/lib2-dark.png' });
