@@ -9,10 +9,10 @@ New features are built for the desktop app. Most of them need to keep files on d
 Everything so far was tested on a synthetic save. These files decide how several features get built:
 
 - [x] A real save pair (`save.hg` + `mf_save.hg`) with at least one corvette and a fitted ship (e.g. The Cutting Remark). Received 2026-10-28 (GodMode_2.9): round-trips byte-identical
-- [ ] `accountdata.hg` + `mf_accountdata.hg` (expedition and Twitch reward unlocks live there) [7]
-- [ ] One corvette exported from TAZ's optimizer (`.nmsship`, plus a `.json` if you have one) [11]
+- [ ] `accountdata.hg` + `mf_accountdata.hg` (expedition and Twitch reward unlocks live there) [7]: `accountdata.hg` received 2026-10-29, `mf_accountdata.hg` still needed
+- [x] One corvette exported from TAZ's optimizer (`.nmsship`, plus a `.json` if you have one) [11]: Death n Glory, 2026-10-29
 - [ ] One build exported from Blender / Drydock [1]
-- [ ] A few files from the downloaded ship collection, whatever formats they're in [5]
+- [x] A few files from the downloaded ship collection, whatever formats they're in [5]: `.txt` corvette builds (whole PlayerShipBase), 2026-10-29
 
 ## Shipped alongside
 
@@ -77,7 +77,7 @@ The save file holds no images, so a ship's picture has to come from one of these
 
 ## Phase 4 — Corvettes: easy loading and the live Blender link [1] [11]
 
-- [ ] Map exactly how a corvette is stored (the ship entry, its PlayerShipBase part list, and the link between them) from the real save
+- [x] Map exactly how a corvette is stored: the PlayerShipBase whose UserData is the ship's slot, plus the slot's CharacterCustomisationData entry
 - [x] Import and export TAZ's `.nmsship` (Ship library and the ship details' Export .nmsship); part fields are put back in the game's order on import
 - [ ] TAZ's build safety checks (part ordering, camera and boarding cockpit, beam-up landing bay)
 - [ ] **Live Blender link**: Ctrl+S in Blender writes the build straight into the chosen corvette in your save. The app runs quietly in the system tray and receives the build from Blender. Drydock (or a tiny companion add-on) sends it on save, so there's no export, copy, paste or load step
