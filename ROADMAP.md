@@ -27,11 +27,13 @@ Everything so far was tested on a synthetic save. These files decide how several
 
 Save a ship's or multi-tool's whole fit as a named profile ("S-class corvette loaded up"), then apply it to any other ship or tool in one click.
 
-- [ ] A profile captures: class, slot counts and which slots are unlocked, every technology module with its exact slot position, charge and damage state, and the general/cargo layout if wanted
-- [ ] Apply: unlock and resize the target to match, then place the tech exactly as in the source
-- [ ] Profiles for multi-tools as well as starships; corvettes once their structure is mapped
-- [ ] Profiles are files on disk, so they can be shared with other players
-- [ ] Preview before applying: what will be added, replaced, or removed
+- [x] A profile captures: class, base stats, slot counts and which slots are unlocked (and supercharged), every technology module with its exact slot position, charge and damage state, and the cargo layout and contents
+- [x] Apply: upgrades the class, copies the stats, resizes and unlocks the target to match, then places the tech exactly as in the source (cargo contents optional)
+- [x] Profiles for multi-tools as well as starships and corvettes
+- [x] Profiles are JSON files in the app's profiles folder, so they can be shared; import a profile file from the Apply dialog
+- [x] Preview before applying, with a tick box per part and a warning when the ship types differ
+- [x] Ship and multi-tool details like Goatfungus: type, class, seed with Generate, old colours, base stats, ship health and shield, delete, export and import (a ship file carries its corvette build)
+- [x] Storage page shows one container at a time, or Show all
 
 ## Phase 2 — Ship library: Hangar, Garage and Testing Facility [3] [5] [6]
 
