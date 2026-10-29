@@ -81,12 +81,34 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.click('.sw-json [data-a="apply"]'); await p.waitForSelector('#dlg[open]'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(400);
   ok('JSON apply', (await p.evaluate(() => g(shipBuild(3), 'Objects').length)) === 938);
   await p.screenshot({ path: SP + '/shots/sw2.png' });
+  // Add corvette: a starter build in the first empty slot, then a real build pasted over it
+  await p.click('#swAdd'); await p.waitForSelector('#dlg[open]'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(400);
+  st = await p.evaluate(() => {
+    const s = g(ps(), 'ShipOwnership')[6], b = shipBuild(6), tpl = shipBuild(5);
+    return { name: str(g(s, 'Name')), file: str(g(s, 'Resource', 'Filename')), cls: invClass(g(s, 'Inventory')), items: ['Inventory', 'Inventory_TechOnly', 'Inventory_Cargo'].map((k) => slotsOf(g(s, k)).length).join(),
+      seedNew: str(g(s, 'Resource', 'Seed')[1]) !== str(g(g(ps(), 'ShipOwnership')[5], 'Resource', 'Seed')[1]), parts: g(b, 'Objects').map((o) => str(g(o, 'ObjectID'))).join(),
+      ud: num(g(b, 'UserData')), keys: [...b.keys()].join() === [...tpl.keys()].join(), okeys: [...g(b, 'Objects')[0].keys()].map(nameOf).join(), shipKeys: [...s.keys()].join() === [...g(ps(), 'ShipOwnership')[5].keys()].join(),
+      selected: S.wright.slot };
+  });
+  console.log(JSON.stringify(st));
+  ok('Add corvette makes a C-class corvette with empty inventories in the first empty slot', st.name === 'New corvette' && /BIGGS/.test(st.file) && st.cls === 'C' && st.items === '0,0,0' && st.seedNew && st.shipKeys && st.selected === 6);
+  ok('…with a starter build linked to that slot, in the game\'s layout', st.ud === 6 && st.keys && st.okeys === 'Timestamp,ObjectID,UserData,Position,Up,At' && st.parts === '^B_GEN_1,^B_TRU_F,^B_TUR_D,^B_LND_A,^B_ALK_A,^B_COK_D,^B_HAB1_A,^U_PARAGON');
+  const hc = await p.textContent('.sw-health'); console.log(hc.replace(/\s+/g, ' '));
+  ok('…which passes the build check', !/No cockpit|No landing bay|out of order|won't work/.test(hc));
+  await p.evaluate((t) => navigator.clipboard.writeText(t), fs.readFileSync(ATT + '0289520e-Death___Glory_3.txt', 'utf8'));
+  await p.click('.sw-bar [data-a="paste"]'); await p.waitForSelector('#dlg[open]'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(500);
+  ok('a real build pastes over the starter', (await p.evaluate(() => [g(shipBuild(6), 'Objects').length, num(g(shipBuild(6), 'UserData')), str(g(shipBuild(6), 'Name'))].join())) === '2091,6,New corvette');
+  // add a second one, then delete it again
+  await p.click('#swAdd'); await p.waitForSelector('#dlg[open]'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(400);
+  ok('a second corvette goes into the next empty slot', (await p.evaluate(() => S.wright.slot)) === 7 && !!(await p.evaluate(() => shipBuild(7))));
+  await p.click('#swDel'); await p.waitForSelector('#dlg[open]'); await p.click('#dlgActs .btn.danger'); await p.waitForTimeout(400);
+  ok('Delete corvette removes the ship and its build', await p.evaluate(() => !str(g(g(ps(), 'ShipOwnership')[7], 'Resource', 'Filename')) && !shipBuild(7)));
   // save, reopen
   await p.click('#saveBtn'); await p.waitForFunction(() => !S.dirty, null, { timeout: 30000 }).catch(() => {});
   if (await p.$('#dlg[open]')) { await p.click('#dlgActs .btn.primary'); await p.waitForFunction(() => !S.dirty, null, { timeout: 30000 }); }
   await p.reload(); await p.waitForSelector('.slot-row'); await p.click('.slot-row'); await p.waitForSelector('#app:not(.hidden)');
-  st = await p.evaluate((u) => ({ y: g(shipBuild(3), 'Objects').length, max: g(shipBuild(4), 'Objects').length, tuned: isTuned(g(shipBuild(u), 'Objects')) }), untuned.i);
-  ok('it all survives saving and reopening', st.y === 938 && st.max === 2091 && st.tuned);
+  st = await p.evaluate((u) => ({ y: g(shipBuild(3), 'Objects').length, max: g(shipBuild(4), 'Objects').length, tuned: isTuned(g(shipBuild(u), 'Objects')), nw: shipBuild(6) && g(shipBuild(6), 'Objects').length, nm: str(g(g(ps(), 'ShipOwnership')[6], 'Name')) }), untuned.i);
+  ok('it all survives saving and reopening', st.y === 938 && st.max === 2091 && st.tuned && st.nw === 2091 && st.nm === 'New corvette');
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
   await p.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark')); await p.click('nav button[data-s="shipwright"]'); await p.waitForTimeout(800);
   await p.screenshot({ path: SP + '/shots/sw3-dark.png' });

@@ -210,6 +210,7 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .sw-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: #2bb673; }
 .sw-dot.warn { background: #e08a3c; } .sw-dot.bad { background: var(--danger); }
 .sw-tip { font-size: 12.5px; margin: 12px 0 0; }
+.sw-side-acts { display: grid; gap: 8px; margin-top: 14px; }
 .sw-probs { margin-top: 12px; display: grid; gap: 6px; font-size: 13px; }
 .sw-main { display: grid; gap: 14px; min-width: 0; }
 .sw-main .panel { margin: 0; }
@@ -3744,11 +3745,62 @@ async function buildFromInput(input, name) {
   return { objects: p.objects, base: p.base };
 }
 
+// A new corvette in an empty slot: a corvette ship entry (copied from a ship already in the save, so it has the game's
+// shape) and a starter build with the bare essentials the game needs to fly it, ready to have a real build pasted over it.
+const STARTER_PARTS = [   // id, position: the essentials, stacked around the core
+  ['^B_GEN_1', [0, 6, 0]], ['^B_TRU_F', [0, 7.5, -3]], ['^B_TUR_D', [0, 9, 0]], ['^B_LND_A', [0, 0, 0]],
+  ['^B_ALK_A', [0, 3, -3]], ['^B_COK_D', [0, 3, 3]], ['^B_HAB1_A', [0, 3, 0]], ['^U_PARAGON', [0, 0, 0]],
+];
+function starterObjects(sample) {
+  const now = Math.floor(Date.now() / 1000), f = (v) => N(Number.isInteger(v) ? v.toFixed(1) : String(v));
+  const objs = STARTER_PARTS.map(([id, pos], k) => fromPlain(mapOf({ Timestamp: N(now + k), ObjectID: id, UserData: N(id === '^U_PARAGON' ? '4294967296000000' : 0),
+    Position: pos.map(f), Up: [f(0), f(1), f(0)], At: [f(0), f(0), f(1)] })));
+  return inGameOrder(objs, sample);
+}
+function addCorvette(slot) {
+  const p = ps(), list = g(p, 'ShipOwnership'), bases = g(p, 'PersistentPlayerBases');
+  const isCorv = (s) => /\/BIGGS\//i.test(str(g(s, 'Resource', 'Filename')));
+  const tpl = list.find(isCorv) || list.find((s) => str(g(s, 'Resource', 'Filename')) && isInv(g(s, 'Inventory_TechOnly')));
+  if (!tpl) throw new Error('This save has no ship to copy the layout from.');
+  const ent = cloneJSON(tpl);
+  set(ent, 'Name', 'New corvette');
+  set(g(ent, 'Resource'), 'Filename', 'MODELS/COMMON/SPACECRAFT/BIGGS/BIGGS.SCENE.MBIN');
+  const sd = g(g(ent, 'Resource'), 'Seed'); if (Array.isArray(sd)) { sd[0] = true; sd[1] = randomSeed(); }
+  for (const k of ['Inventory', 'Inventory_Cargo', 'Inventory_TechOnly']) {
+    const inv = g(ent, k); if (!isInv(inv)) continue;
+    set(inv, 'Slots', []); if (Array.isArray(g(inv, 'SpecialSlots'))) set(inv, 'SpecialSlots', []);
+    const c = g(inv, 'Class'); if (c instanceof Map) set(c, 'InventoryClass', 'C');
+  }
+  list[slot] = ent;
+  const legacy = g(p, 'ShipUsesLegacyColours'); if (Array.isArray(legacy)) legacy[slot] = false;
+  // the build: a copy of an existing corvette base (or any base) for the game's layout, with the starter parts
+  const shipBases = bases.filter((b) => str(g(b, 'BaseType', 'PersistentBaseTypes')) === 'PlayerShipBase');
+  const old = shipBases.filter((b) => num(g(b, 'UserData')) === slot); old.forEach((b) => bases.splice(bases.indexOf(b), 1));
+  const btpl = shipBases.find((b) => !old.includes(b)) || null, owner = bases.find((b) => g(b, 'Owner') instanceof Map);
+  let nb;
+  if (btpl) nb = cloneJSON(btpl);
+  else nb = fromPlain(mapOf({ BaseVersion: N(8), OriginalBaseVersion: N(8), GalacticAddress: N(0), Position: [N('0.0'), N('0.0'), N('0.0')], Forward: [N('0.0'), N('0.0'), N('1.0')],
+    UserData: N(slot), LastUpdateTimestamp: N(0), RID: '', Owner: mapOf({ LID: '', UID: '', USN: '', PTK: '', TS: N(0) }), Name: '', BaseType: mapOf({ PersistentBaseTypes: 'PlayerShipBase' }),
+    LastEditedById: '', LastEditedByUsername: '', ScreenshotAt: [N('0.0'), N('0.0'), N('0.0')], ScreenshotPos: [N('0.0'), N('0.0'), N('0.0')], GameMode: mapOf({ PresetGameMode: 'Normal' }),
+    Difficulty: mapOf({ DifficultyPreset: mapOf({ DifficultyPresetType: 'Custom' }), PersistentBaseDifficultyFlags: N(0) }), PlatformToken: '', IsReported: false, IsFeatured: false, AutoPowerSetting: mapOf({ BaseAutoPowerSetting: 'UseDefault' }), Objects: [] }));
+  set(nb, 'UserData', N(slot)); set(nb, 'Name', 'New corvette'); set(nb, 'LastUpdateTimestamp', N(Math.floor(Date.now() / 1000)));
+  if (kOf(nb, 'LastEditedById') != null) set(nb, 'LastEditedById', ''); if (kOf(nb, 'LastEditedByUsername') != null) set(nb, 'LastEditedByUsername', '');
+  if (owner && owner !== nb) set(nb, 'Owner', cloneJSON(g(owner, 'Owner')));
+  set(nb, 'Objects', starterObjects(((btpl && g(btpl, 'Objects')) || [])[0]));
+  bases.push(nb);
+  markDirty();
+}
 PAGES.shipwright = (el) => {
   markSeen('shipwright');
   const corvs = ships().filter(({ s }) => /\/BIGGS\//i.test(str(g(s, 'Resource', 'Filename'))));
   el.innerHTML = `<div class="page-head"><div><h1>Shipwright</h1><p>Corvette builds, done right: parts in the order the game reads them, checks for the mistakes that break a build, and whole builds in and out with one copy or paste.</p></div></div>`;
-  if (!corvs.length) { el.insertAdjacentHTML('beforeend', '<p class="dim">This save has no corvettes yet. Build one in the game, or put one in from the Dock Yard.</p>'); return; }
+  const emptySlot = () => (g(ps(), 'ShipOwnership') || []).findIndex((s) => !str(g(s, 'Resource', 'Filename')));
+  const doAdd = async () => {
+    const slot = emptySlot(); if (slot < 0) { toast('Every ship slot is taken. Delete a ship first.', true); return; }
+    if (!(await dialog('Add a corvette?', `<p>A new corvette goes into empty slot ${slot + 1} with a starter build: the bare essentials the game needs (a cockpit, landing bay, reactor, thruster, weapon, landing gear and walkway).</p><p>Then paste your own build over it with <b>Paste all</b> or <b>Load file</b>. Nothing is written to your game until you save.</p>`, [['Cancel', false, 'ghost'], ['Add corvette', true, 'primary']]))) return;
+    try { addCorvette(slot); (S.wright || (S.wright = {})).slot = slot; if (S.wright.sel) S.wright.sel = new Set(); renderSide(); toast(`New corvette in slot ${slot + 1}. Paste your build over it.`); render(); } catch (e) { toast(e.message, true); }
+  };
+  if (!corvs.length) { el.insertAdjacentHTML('beforeend', '<div class="panel"><p class="dim">This save has no corvettes yet.</p><button class="btn primary" type="button" id="swAddFirst">Add corvette</button></div>'); $('#swAddFirst', el).onclick = doAdd; return; }
   const W = S.wright || (S.wright = { slot: corvs[0].i, q: '', sel: new Set(), auto: true, json: false });
   if (!corvs.some((c) => c.i === W.slot)) W.slot = corvs[0].i;
   const probs = slotProblems();
@@ -3757,9 +3809,13 @@ PAGES.shipwright = (el) => {
   side.innerHTML = `<h3>Corvettes</h3><div class="sw-list">${corvs.map(({ s, i }) => {
     const h = corvetteHealth(i), worst = h.out.some((x) => x[0] === 'bad') ? 'bad' : h.out.some((x) => x[0] === 'warn') ? 'warn' : 'ok';
     return `<button type="button" class="sw-corv${i === W.slot ? ' on' : ''}" data-i="${i}"><span class="sw-dot ${worst}"></span><span><b>${esc(str(g(s, 'Name')) || 'Corvette')}</b><span class="dim">Slot ${i + 1} · ${plural(h.objs.length, 'part')}</span></span></button>`;
-  }).join('')}</div>${probs.length ? `<div class="sw-probs">${probs.map((t) => `<p class="bad-hint">${esc(t)}</p>`).join('')}</div>` : ''}<p class="dim sw-tip">To add a corvette, put one in an empty slot from the Dock Yard. To remove one, use Delete on its Starships page.</p>`;
+  }).join('')}</div>${probs.length ? `<div class="sw-probs">${probs.map((t) => `<p class="bad-hint">${esc(t)}</p>`).join('')}</div>` : ''}
+    <div class="sw-side-acts"><button class="btn primary" type="button" id="swAdd">Add corvette</button><button class="btn danger" type="button" id="swDel">Delete corvette</button></div>
+    <p class="dim sw-tip">Add corvette puts a starter build in an empty slot for you to paste over. Finished corvettes from files go in through the Dock Yard.</p>`;
   wrap.appendChild(side);
   side.querySelectorAll('[data-i]').forEach((b) => b.onclick = () => { W.slot = +b.dataset.i; W.sel = new Set(); render(); });
+  $('#swAdd', side).onclick = doAdd;
+  $('#swDel', side).onclick = () => deleteEntity(g(ps(), 'ShipOwnership')[W.slot], W.slot, 'ship');
   const main = document.createElement('div'); main.className = 'sw-main'; wrap.appendChild(main);
   const i = W.slot, ship = g(ps(), 'ShipOwnership')[i], H = corvetteHealth(i), base = H.base;
   main.innerHTML = `<div class="panel sw-bar">
