@@ -120,6 +120,28 @@ func reveal(path string) error {
 	return exec.Command("explorer", path).Start() // explorer returns exit code 1 even on success
 }
 
+// revealFile opens Explorer with the file selected.
+func revealFile(path string) error { return exec.Command("explorer", "/select,", path).Start() }
+
+// pickFolder shows the Windows folder dialog (on top of the app window) and returns the chosen folder,
+// or "" when the owner cancels.
+func pickFolder(title string) (string, error) {
+	script := `[Console]::OutputEncoding = [Text.Encoding]::UTF8
+Add-Type -AssemblyName System.Windows.Forms
+$owner = New-Object System.Windows.Forms.Form -Property @{TopMost = $true; ShowInTaskbar = $false}
+$f = New-Object System.Windows.Forms.FolderBrowserDialog
+$f.Description = $env:HSE_TITLE
+$f.ShowNewFolderButton = $false
+if ($f.ShowDialog($owner) -eq 'OK') { [Console]::Out.Write($f.SelectedPath) }`
+	cmd := exec.Command("powershell", "-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-Command", script)
+	cmd.Env = append(os.Environ(), "HSE_TITLE="+title)
+	out, err := hidden(cmd).Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
 func fatal(msg string) {
 	user32 := syscall.NewLazyDLL("user32.dll")
 	box := user32.NewProc("MessageBoxW")

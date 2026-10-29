@@ -40,12 +40,14 @@ Save a ship's or multi-tool's whole fit as a named profile ("S-class corvette lo
 
 One personal library of ship files outside the game, with three views onto it.
 
-- [ ] **Hangar**: your own collection (the hundreds of downloaded ships). Swap a ship into an empty or chosen slot, or pull a ship out of the game into the library
-- [ ] **Garage**: every ship that has been in any of your saves, captured automatically when a save is opened, so nothing is ever lost
-- [ ] **Testing Facility**: ships you're testing for other creators, kept apart from the main library. Versions of the same ship are grouped, each with test notes, a date, and which test character it's on
-- [ ] Import the formats in the collection (`.nmsship`, `.json`, `.so` tech files)
-- [ ] Each entry can link to a Charon or NMA listing to pull artwork, author and description
-- [ ] Search, tags and favourites
+- [x] **Ship library** (the "Hangar" of the original list; the Hangar page already shows the save's own ships): one place in `Documents\Harmonious Save Editor\Ships`, plus linked folders the owner already keeps ships in (read only). Put a ship into an empty slot or replace one (corvette builds re-linked to the slot through the base's UserData, owner set to this player), put a build onto an existing corvette, save a ship from the save into the library, import files, delete to a Deleted folder
+- [x] **Garage**: every ship in every save opened, captured automatically, one file per distinct version (ignoring where it's parked); a replaced ship is captured before it's overwritten
+- [ ] **Testing Facility** (later, owner 2026-10-29): ships you're testing for other creators, kept apart from the main library. Versions of the same ship are grouped, each with test notes, a date, and which test character it's on
+- [x] Reads our own `.ship.json` (now with the whole corvette base), bare ship entries, and corvette builds (a base with Objects, or just the Objects)
+- [ ] TAZ's `.nmsship` and `.so`, and the owner's own `.json`/`.txt` files: waiting on samples
+- [x] Each entry can store a link (Charon, NMA or anywhere) and notes
+- [ ] Pull artwork, author and description from a linked listing
+- [x] Search, type and tag filters, tags and favourites
 
 ## Phase 3 — Visuals: Cover Flow and the overall look [2] [9]
 

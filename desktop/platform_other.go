@@ -86,3 +86,9 @@ func reveal(path string) error {
 }
 
 func fatal(msg string) { fmt.Fprintln(os.Stderr, msg); os.Exit(1) }
+
+func revealFile(path string) error { return reveal(filepath.Dir(path)) }
+
+func pickFolder(title string) (string, error) {
+	return "", fmt.Errorf("choosing a folder needs the Windows app; type the folder's path instead")
+}

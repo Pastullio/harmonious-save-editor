@@ -100,6 +100,10 @@ func main() {
 	mux.HandleFunc("/api/itemlib/items.json", handleItemLibItems)
 	mux.HandleFunc("/api/itemlib/icon", handleItemLibIcon)
 	mux.HandleFunc("/api/backup-all", handleBackupAll)
+	mux.HandleFunc("/api/ships", handleShips)
+	mux.HandleFunc("/api/ships/file", handleShipFile)
+	mux.HandleFunc("/api/ships/index", handleShipIndex)
+	mux.HandleFunc("/api/ships/folders", handleShipFolders)
 	mux.HandleFunc("/api/itemdb/items.xml", handleItemXML)
 	mux.HandleFunc("/api/itemdb/icon", handleItemIcon)
 
