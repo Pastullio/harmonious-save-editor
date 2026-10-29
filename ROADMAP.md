@@ -20,6 +20,7 @@ Everything so far was tested on a synthetic save. These files decide how several
 - [x] Copy a save into the next empty slot, with a new name; nothing existing is ever overwritten
 - [x] Back up all saves: zips the whole account folder into Documents\Harmonious Save Editor backups (landing page and sidebar)
 - [x] Overview: traveller portrait (own screenshot), current ship and multi-tool covers, location (galaxy, portal code, galactic address) and journey stats from the save
+- [x] Change picture on every cover (Cover Flow button, freighter and exocraft cards, the traveller): Steam screenshot, image file, paste or drop
 - [ ] Portal code drawn as glyphs (reuse the Portal Glyph Banner's glyph art)
 
 ## Phase 1 — Loadout profiles (the owner's biggest win) [3]

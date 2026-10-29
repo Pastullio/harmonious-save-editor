@@ -183,6 +183,8 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .tc .k { font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
 .tc .k.sm { margin-top: 12px; }
 .tc-acts { display: flex; gap: 12px; margin-top: 4px; }
+.pic-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 240px)); gap: 14px; margin-bottom: 18px; }
+.pic-card.drop-over { outline: 2px dashed var(--accent); outline-offset: 3px; }
 .tc.loc { padding: 16px 18px; gap: 3px; font-size: 13px; color: var(--dim); }
 .tc.loc .gal { font-family: var(--display); font-weight: 300; font-size: 26px; letter-spacing: .06em; color: var(--ink); line-height: 1.15; margin-top: 4px; }
 .tc.loc .loc-where { color: var(--ink); margin-top: 4px; }
@@ -348,6 +350,8 @@ dialog.wide { max-width: 1000px; }
 .cf-caption .s { color: rgba(225, 245, 250, .78); font-size: 12.5px; text-shadow: 0 1px 4px rgba(0, 0, 0, .6); }
 .cf-bar { position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 18px 16px; }
 .cf-bar input[type=range] { flex: 1; accent-color: #9ee6f5; }
+.cf-pic { background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .25); color: #fff; padding: 5px 14px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 12px; white-space: nowrap; }
+.cf-pic:hover { background: rgba(255, 255, 255, .2); }
 .cf-bar .arrow { background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .25); color: #fff; width: 34px; height: 28px; border-radius: 999px; cursor: pointer; font-size: 11px; }
 .cf-bar .arrow:hover { background: rgba(255, 255, 255, .2); }
 .cf-bar .pos { font-family: var(--mono); font-size: 11.5px; color: rgba(225, 245, 250, .7); min-width: 60px; text-align: right; }
@@ -986,7 +990,7 @@ PAGES.exosuit = (el) => {
   invGroup(el, standardInvs(p, ''));
 };
 
-function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, nameKey, flow }) {
+function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, nameKey, flow, picture }) {
   el.innerHTML = `<div class="page-head"><div><h1>${title}</h1><p>${intro}</p></div></div>`;
   if (!list.length) { el.insertAdjacentHTML('beforeend', '<p class="dim">Nothing owned here yet.</p>'); return; }
   const primary = primaryKey ? num(g(ps(), primaryKey)) : -1;
@@ -1007,6 +1011,7 @@ function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, 
   function editor() {
     ed.innerHTML = '';
     const cur = list.find((x) => x.i === S.pick[key]).s;
+    if (picture) { const row = document.createElement('div'); row.className = 'pic-row'; ed.appendChild(row); pictureCard(row, picture(cur, S.pick[key]), title.replace(/s$/, '')); }
     if (nameKey) {
       const panel = document.createElement('div'); panel.className = 'panel';
       panel.innerHTML = `<div class="row"><label class="field"><span>Name</span><input class="input" value="${esc(str(g(cur, nameKey)))}" maxlength="42"></label>${seedField(cur)}</div>`;
@@ -1039,6 +1044,7 @@ PAGES.vehicles = (el) => ownedPage(el, {
   title: 'Exocraft', intro: 'Cargo and technology for each exocraft you have summoned.', list: vehicles(), key: 'veh', primaryKey: 'PrimaryVehicle',
   label: (s, i) => str(g(s, 'Name')) || modelName(g(s, 'Resource', 'Filename')) || 'Exocraft ' + (i + 1), sub: (s, i) => 'Bay ' + (i + 1),
   invs: (s) => [[g(s, 'Inventory_TechOnly'), 'Technology'], [g(s, 'Inventory'), 'Cargo']],
+  picture: (s, i) => { const model = modelName(g(s, 'Resource', 'Filename')); return { kind: 'ship', type: 'Exocraft', name: str(g(s, 'Name')) || model || 'Exocraft ' + (i + 1), cls: '', key: 'veh|' + i + '|' + model }; },
 });
 // ------------------------------------------------------------------ Cover Flow: ships, corvettes and multi-tools
 // Covers are drawn from the save: a corvette becomes a hologram of its real part layout, other ships and
@@ -1088,6 +1094,8 @@ const SHIP_SHAPES = {
   Interceptor: [[0, -1], [.12, -.55], [.5, -.75], [.85, -.2], [.4, .05], [.6, .7], [.2, .45], [.1, .9], [0, .75]],
   Corvette: [[0, -.9], [.25, -.85], [.3, -.4], [.75, -.3], [.78, .2], [.32, .3], [.35, .85], [0, .9]],
   Starship: [[0, -1], [.16, -.4], [.9, .3], [.92, .48], [.2, .32], [.24, .72], [.46, .92], [0, .82]],
+  Freighter: [[0, -1], [.1, -.88], [.16, -.3], [.3, -.2], [.32, .45], [.2, .55], [.24, .95], [0, .88]],
+  Exocraft: [[0, -.72], [.3, -.68], [.52, -.6], [.52, -.22], [.32, -.16], [.32, .16], [.52, .22], [.52, .6], [.3, .68], [0, .72]],
 };
 // full outlines, side view, muzzle to the right
 const TOOL_SHAPES = {
@@ -1259,7 +1267,7 @@ function CoverFlow(host, items, opts) {
   const size = opts.size || 260, n = items.length;
   const root = document.createElement('div'); root.className = 'cf'; root.style.setProperty('--cs', size + 'px');
   root.innerHTML = `${opts.chips || ''}<div class="cf-stage" tabindex="0" role="listbox" aria-label="${esc(opts.label || 'Collection')}" aria-roledescription="cover flow"></div>
-    <div class="cf-bar"><button class="arrow" data-d="-1" aria-label="Previous">◀</button><input type="range" min="0" max="${Math.max(0, n - 1)}" step="0.001" value="0" aria-label="Scroll the collection"><button class="arrow" data-d="1" aria-label="Next">▶</button><span class="pos"></span></div>`;
+    <div class="cf-bar"><button class="arrow" data-d="-1" aria-label="Previous">◀</button><input type="range" min="0" max="${Math.max(0, n - 1)}" step="0.001" value="0" aria-label="Scroll the collection"><button class="arrow" data-d="1" aria-label="Next">▶</button><span class="pos"></span><button class="cf-pic" type="button">Change picture</button></div>`;
   host.appendChild(root);
   const stage = root.querySelector('.cf-stage'), range = root.querySelector('input[type=range]'), posEl = root.querySelector('.pos');
   const cap = document.createElement('div'); cap.className = 'cf-caption'; cap.setAttribute('aria-live', 'polite'); stage.appendChild(cap);
@@ -1384,6 +1392,7 @@ function CoverFlow(host, items, opts) {
   range.addEventListener('input', () => { target = clamp(+range.value, 0, n - 1); pos = target; vel = 0; place(); });
   range.addEventListener('change', () => go(+range.value));
   root.querySelectorAll('.arrow').forEach((b) => b.onclick = () => go(target + +b.dataset.d, true));
+  root.querySelector('.cf-pic').onclick = async () => { const it = items[cur]; if (it && await pictureDialog(it)) { api.refresh(); opts.onChange && opts.onChange(cur); } };
 
   // drop a screenshot on the stage to make it the centre item's cover
   stage.addEventListener('dragover', (e) => { if ([...e.dataTransfer.items].some((x) => x.kind === 'file')) { e.preventDefault(); e.stopPropagation(); stage.classList.add('drop-over'); } });
@@ -1488,6 +1497,37 @@ async function pickScreenshot() {
 }
 
 /** Crop a picture and make it this item's cover. Returns true when a cover was set. */
+// One place to give anything a picture: a Steam screenshot, an image file, or a pasted image.
+async function pictureDialog(it) {
+  const has = !!(await customCover(it.key));
+  let pasted = null;
+  const onPaste = (e) => { const f = [...(e.clipboardData && e.clipboardData.items) || []].find((x) => x.type.startsWith('image/')); if (f) { e.preventDefault(); pasted = f.getAsFile(); $('#dlg').close(); } };
+  document.addEventListener('paste', onPaste);
+  const acts = [['Cancel', false, 'ghost']];
+  if (has) acts.push(['Use generated cover', 'reset', 'ghost']);
+  acts.push(['Image file', 'file', '']); if (APP) acts.push(['Choose a screenshot', 'shot', 'primary']);
+  const how = await dialog('Picture for ' + it.name, `<p>The game doesn't save pictures, so pick one of your own. It's cropped to a square and kept on this PC.</p>
+    <p class="dim">You can also paste an image here (Ctrl+V), or drop one onto the cover.</p>`, acts);
+  document.removeEventListener('paste', onPaste);
+  let blob = pasted;
+  if (!blob && how === 'reset') return !!(await setCustomCover(it.key, null));
+  if (!blob && how === 'shot') blob = await pickScreenshot();
+  if (!blob && how === 'file') blob = await new Promise((res) => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = () => res(inp.files[0] || null); addEventListener('focus', () => setTimeout(() => res(inp.files[0] || null), 400), { once: true }); inp.click(); });
+  return blob ? chooseCover(it, blob) : false;
+}
+// a picture card for things without Cover Flow (freighter, exocraft): generated cover until a picture is added
+function pictureCard(host, it, caption) {
+  const card = document.createElement('div'); card.className = 'tc pic-card';
+  card.innerHTML = `<div class="tc-art"></div><div class="tc-cap"><span class="k">${esc(caption)}</span><b>${esc(it.name)}</b><span class="tc-acts"><button class="link" type="button">Change picture</button></span></div>`;
+  host.appendChild(card);
+  const paint = () => miniCover(card, it, 240);
+  paint();
+  card.querySelector('.link').onclick = async () => { if (await pictureDialog(it)) { it.custom = false; paint(); } };
+  card.addEventListener('dragover', (e) => { e.preventDefault(); card.classList.add('drop-over'); });
+  card.addEventListener('dragleave', () => card.classList.remove('drop-over'));
+  card.addEventListener('drop', async (e) => { e.preventDefault(); card.classList.remove('drop-over'); const f = e.dataTransfer.files[0]; if (f && await chooseCover(it, f)) { it.custom = false; paint(); } });
+  return card;
+}
 async function chooseCover(it, blob) {
   if (!blob) return false;
   const cropped = await cropImage(blob); if (!cropped) return false;
@@ -1617,6 +1657,11 @@ function openLoadout(it) {
 PAGES.freighter = (el) => {
   const p = ps();
   el.innerHTML = `<div class="page-head"><div><h1>Freighter</h1><p>The capital ship's own inventories. Frigates and base parts are in Raw data for now.</p></div></div>`;
+  const fname = str(g(p, 'PlayerFreighterName')) || 'Freighter', fseed = str((g(p, 'CurrentFreighter', 'Seed') || [])[1]);
+  if (isInv(g(p, 'FreighterInventory'))) {
+    const row = document.createElement('div'); row.className = 'pic-row'; el.appendChild(row);
+    pictureCard(row, { kind: 'ship', type: 'Freighter', name: fname, cls: invClass(g(p, 'FreighterInventory')), key: 'freighter|' + fseed }, 'Freighter');
+  }
   if (kOf(p, 'PlayerFreighterName') != null) {
     const panel = document.createElement('div'); panel.className = 'panel';
     panel.innerHTML = `<div class="row"><label class="field"><span>Freighter name</span><input class="input" maxlength="42" value="${esc(str(g(p, 'PlayerFreighterName')))}"></label></div>`;
