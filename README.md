@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/logo.png" alt="Harmonious Save Editor" width="560"></p>
+
 # Harmonious Save Editor
 
 A single-file, in-browser save editor for No Man's Sky (Steam and GOG on PC, Frontiers 3.60 or newer).

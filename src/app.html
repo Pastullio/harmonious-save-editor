@@ -135,8 +135,15 @@ body.is-app .open-grid, body.is-app .where { display: none; }
 .other-folder { margin-top: 18px; font-size: 13.5px; }
 .other-folder summary { cursor: pointer; color: var(--accent); }
 .other-folder form { margin-top: 10px; }
-.theme-toggle { position: fixed; top: 14px; right: 16px; z-index: 30; }
-body:not(.on-landing) .theme-toggle { display: none; }
+.land-corner { position: fixed; top: 14px; right: 16px; z-index: 30; display: flex; gap: 8px; }
+body:not(.on-landing) .land-corner { display: none; }
+/* About: the logo sits on its own night-sky panel so it looks the same in light and dark mode */
+.about-sky { margin: -4px 0 14px; padding: 18px 18px 10px; border-radius: var(--r-lg); background: radial-gradient(120% 90% at 50% 20%, #12305a 0%, #0a1630 55%, #050a18 100%); text-align: center; }
+.about-sky img { width: min(420px, 100%); height: auto; display: block; margin: 0 auto; }
+.about-sky .ver { color: #b9d6ff; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; margin-top: 6px; }
+.about-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.about-credits { font-size: 13px; color: var(--dim); line-height: 1.55; margin: 0; padding-left: 18px; }
+#dlg:has(.about-sky) { width: min(560px, calc(100vw - 32px)); }
 
 /* ---------------- app shell */
 #app { display: grid; grid-template-columns: 248px 1fr; height: 100%; }
@@ -433,7 +440,7 @@ nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .
 </head>
 <body class="on-landing">
 
-<button class="btn small theme-btn theme-toggle" type="button">Dark mode</button>
+<div class="land-corner"><button class="btn small about-btn" type="button">About</button><button class="btn small theme-btn" type="button">Dark mode</button></div>
 <section id="landing">
   <div class="landing-inner">
     <div class="landing-copy">
@@ -479,7 +486,7 @@ nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .
       <button class="btn primary" id="saveBtn" disabled>Save to game</button>
       <button class="btn ghost small" id="closeBtn">Open a different save</button>
       <button class="btn small hidden" id="backupAllBtn" title="Zips every save slot into Documents\Harmonious Save Editor backups">Back up all saves</button>
-      <div class="row-btns"><button class="btn ghost small hidden" id="backupsBtn">Show backups</button><button class="btn ghost small theme-btn" type="button">Dark mode</button></div>
+      <div class="row-btns"><button class="btn ghost small hidden" id="backupsBtn">Show backups</button><button class="btn ghost small theme-btn" type="button">Dark mode</button><button class="btn ghost small about-btn" type="button">About</button></div>
     </div>
   </aside>
   <main id="main"><div class="page" id="page"></div></main>
@@ -566,6 +573,19 @@ document.addEventListener('click', (e) => {
   syncThemeButtons();
 });
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncThemeButtons);
+
+// ------------------------------------------------------------------ about
+const LINKS = [['GitHub', 'https://github.com/Pastullio/harmonious-save-editor'], ['Discord', 'https://discord.gg/3PfZfPYDn'], ['YouTube', 'https://www.youtube.com/@PastullioTheHarmonious'], ['Patreon', 'https://www.patreon.com/pastullio'], ['Buy me a coffee', 'https://buymeacoffee.com/pastullio']];
+function aboutDialog() {
+  const ver = window.NMS_APP ? 'Desktop app' : 'Browser version';
+  dialog('About', `<div class="about-sky"><img src="@@LOGO@@" alt="Harmonious Save Editor"><div class="ver">${ver}</div></div>
+    <p>A No Man's Sky save editor for Steam and GOG on PC, by Pastullio the Harmonious. It reads your own game files for item names, icons and models, and backs up every save before it changes it.</p>
+    <div class="about-links">${LINKS.map(([t, u]) => `<a class="btn small" href="${u}" target="_blank" rel="noopener">${t}</a>`).join('')}</div>
+    <p class="dim" style="margin:12px 0 6px">Built with thanks to</p>
+    <ul class="about-credits"><li>libNOM.map and libNOM.io by zencq (save keys and format)</li><li>MBINCompiler by monkeyman192 and contributors (game table layouts)</li><li>HGPAKtool by monkeyman192 (game archive format)</li><li>Charon Forge by xX-Charon-Xx (corvette renders)</li><li>Pillow (texture decoding), klauspost/compress (zstd), Jost by indestructible type* (typeface)</li></ul>
+    <p class="dim" style="font-size:13px;margin:12px 0 0">Free software under the GPL-3.0 licence. Not affiliated with Hello Games.</p>`, [['Close', true, 'primary']]);
+}
+document.addEventListener('click', (e) => { if (e.target.closest('.about-btn')) aboutDialog(); });
 syncThemeButtons();
 
 

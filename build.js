@@ -28,8 +28,9 @@ const fonts = [300, 400, 500, 600].flatMap((w) => Object.entries(RANGES).map(([s
   return `@font-face{font-family:"Jost";font-style:normal;font-display:swap;font-weight:${w};src:url(data:font/woff2;base64,${data}) format("woff2");unicode-range:${range}}`;
 })).join('\n');
 const icon = 'data:image/png;base64,' + fs.readFileSync(path.join(__dirname, 'src/assets/icon.png')).toString('base64');
+const logo = 'data:image/webp;base64,' + fs.readFileSync(path.join(__dirname, 'src/assets/logo.webp')).toString('base64');
 const hero = 'data:image/webp;base64,' + fs.readFileSync(path.join(__dirname, 'src/assets/traveller.webp')).toString('base64');
-html = html.replace('/*@@FONTS@@*/', () => fonts).replace('@@HERO@@', () => hero).replace('@@ICON@@', () => icon).replace('/*@@CODEC@@*/', () => codec).replace('/*@@MAPPING@@*/', () => 'const MAPPING = ' + JSON.stringify(mapping) + ';');
+html = html.replace('/*@@FONTS@@*/', () => fonts).replace('@@HERO@@', () => hero).replace('@@ICON@@', () => icon).replace('@@LOGO@@', () => logo).replace('/*@@CODEC@@*/', () => codec).replace('/*@@MAPPING@@*/', () => 'const MAPPING = ' + JSON.stringify(mapping) + ';');
 fs.mkdirSync(path.join(__dirname, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(__dirname, 'dist/nms-save-editor.html'), html);
 fs.writeFileSync(path.join(__dirname, 'desktop/index.html'), html); // embedded into the desktop app
