@@ -11,7 +11,7 @@ Open `dist/nms-save-editor.html` in Chrome or Edge. Nothing is uploaded anywhere
 - Ship and multi-tool names and seeds
 - Any value in the save through the raw data explorer, with search, plus JSON export and import
 
-Item names and icons come from your own copy of Goatfungus's `NMSSaveEditor.jar`. The desktop app finds it on your PC by itself (or set its location on the Item names page) and reads it in place; the browser version asks you to pick it once and caches it.
+Item names and icons come from your own No Man's Sky install: the desktop app reads the game's files the first time it starts and keeps a library on your PC, rebuilt after game updates. Nothing from the game is included with the app. The browser version can use Goatfungus's `NMSSaveEditor.jar` instead.
 
 ## Desktop app (recommended on Windows)
 

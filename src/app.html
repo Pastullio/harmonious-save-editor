@@ -285,6 +285,9 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .cell .nm.raw { font-family: var(--mono); font-size: 9px; color: var(--dim); white-space: normal; word-break: break-all; }
 .cell .qty { font-family: var(--mono); font-size: clamp(8px, 9.5cqw, 12.5px); font-weight: 600; color: var(--dim); pointer-events: none; }
 .db-form { margin: 14px 0 12px; }
+.lib-bar { height: 6px; border-radius: 999px; background: var(--well); overflow: hidden; margin: 10px 0 4px; } .lib-bar i { display: block; height: 100%; background: var(--accent); transition: width .4s; }
+.gf-panel summary { cursor: pointer; list-style: none; } .gf-panel summary::-webkit-details-marker { display: none; } .gf-panel summary h3 { display: inline; }
+.gf-panel summary h3::after { content: " ▾"; color: var(--faint); }
 .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 11.5px; color: var(--dim); margin-top: 12px; }
 .legend i { display: inline-block; width: 12px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
 
@@ -2440,10 +2443,29 @@ async function loadDbFromApp(post) {
   const opts = post ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(post) } : {};
   const info = await (await api('/api/itemdb', opts)).json();
   S.dbInfo = info;
-  if (!info.ready) { S.db = null; return info; }
+  if (!info.ready) { if (!S.db || S.db.src === 'jar-app') S.db = null; return info; }
   const text = await (await api('/api/itemdb/items.xml')).text();
-  S.db = { ...parseItemsXml(text), app: true };
+  S.db = { ...parseItemsXml(text), app: true, src: 'jar-app' };
   return info;
+}
+// the app's own item library, built from the player's No Man's Sky install
+async function libStatus(post) {
+  const opts = post ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(post) } : {};
+  S.lib = await (await api('/api/itemlib', opts)).json();
+  return S.lib;
+}
+async function loadLibrary() {
+  const d = await (await api('/api/itemlib/items.json')).json();
+  const list = d.items.map((it) => ({ ...it, icon: it.icon || '' }));
+  S.db = { list, byId: new Map(list.map((it) => [it.id, it])), icons: new Map(), src: 'lib' };
+}
+// build (or rebuild) in the background, reporting progress through onTick
+async function buildLibrary(onTick, post) {
+  let st = await libStatus({ build: true, ...(post || {}) });
+  onTick && onTick(st.status);
+  while (st.status.state === 'building') { onTick && onTick(st.status); await new Promise((r) => setTimeout(r, 700)); st = await libStatus(); }
+  if (st.status.state === 'error') throw new Error(st.status.error);
+  await loadLibrary(); return st;
 }
 function dbItem(id) {
   if (!S.db || !id) return null;
@@ -2452,6 +2474,7 @@ function dbItem(id) {
 }
 async function iconUrl(name) {
   const db = S.db; if (!db) return null;
+  if (db.src === 'lib') return '/api/itemlib/icon?name=' + encodeURIComponent(name) + '&t=' + encodeURIComponent(window.NMS_APP.token);
   if (db.app) return '/api/itemdb/icon?name=' + encodeURIComponent(name) + '&t=' + encodeURIComponent(window.NMS_APP.token);
   if (db.icons.has(name)) return db.icons.get(name);
   const p = (async () => { const b = await zipRead(db.zip, 'nomanssave/icons/' + name); return b ? URL.createObjectURL(new Blob([b], { type: 'image/png' })) : null; })();
@@ -2466,27 +2489,65 @@ function loadIcons(root) {
 }
 const dbReady = (async () => {
   try {
-    if (window.NMS_APP) await loadDbFromApp();
-    else { const buf = await IDB.get('jar'); if (buf) await loadDbFromJar(buf); }
+    if (window.NMS_APP) {
+      // our own library first; built automatically from the game the first time, and again after a game update
+      const st = await libStatus().catch(() => null);
+      if (st && st.items) { await loadLibrary(); if (st.stale) buildLibrary().then(() => { toast('Item library updated for the new game version'); if (S.save) render(); }).catch(() => {}); }
+      else {
+        await loadDbFromApp().catch(() => null); // Goatfungus's jar, if there is one, while ours is built
+        if (st && st.game && st.status.state !== 'building') {
+          if (S.save) toast('Building the item library from your game. This takes about a minute.');
+          buildLibrary().then(() => { toast(S.db.list.length.toLocaleString() + ' items ready, read from your game'); if (S.save && $('#page')) render(); }).catch((e) => { S.libError = e.message; });
+        }
+      }
+    } else { const buf = await IDB.get('jar'); if (buf) await loadDbFromJar(buf); }
   } catch (_) { /* no item database */ }
   if (S.db && S.save && $('#page')) render(); // a save opened before the list finished loading
 })();
 
 PAGES.items = (el) => {
-  const info = S.dbInfo || {};
-  const status = S.db ? `<h3>${S.db.list.length.toLocaleString()} items loaded</h3><p class="dim">Names and icons show in every inventory.${APP && info.path ? ` Read from <span class="mono">${esc(info.path)}</span>.` : ''}</p>`
-    : `<h3>No item database yet</h3><p class="dim">${APP ? `The app couldn't find <span class="mono">NMSSaveEditor.jar</span> on this PC. Paste where it is, or the folder it's in.` : `Choose <span class="mono">NMSSaveEditor.jar</span> from the folder where you keep that editor.`}</p>`;
-  const controls = APP
-    ? `<form class="row db-form" id="dbForm"><label class="field"><span>Location of NMSSaveEditor.jar</span><input class="input mono" id="dbPath" placeholder="C:\\Users\\you\\Downloads\\NMSSaveEditor\\NMSSaveEditor.jar" value="${esc(info.path || '')}"></label><button class="btn primary" type="submit">Use this file</button></form>
-       <div class="toolbar"><button class="btn" id="dbSearch">Search this PC again</button>${S.db ? '<button class="btn" id="dbForget">Stop using it</button>' : ''}</div>`
-    : (S.db ? `<button class="btn" id="dbForget">Forget item database</button>` : `<label class="btn primary">Choose NMSSaveEditor.jar<input type="file" id="jarPick" accept=".jar,.zip" hidden></label>`);
-  el.innerHTML = `<div class="page-head"><div><h1>Item names and icons</h1>
-    <p>Names and icons come from your own copy of Goatfungus's <span class="mono">NMSSaveEditor.jar</span>. ${APP ? 'The app finds it on your PC and reads it in place; nothing is copied.' : 'It is read in this tab and remembered for next time.'}</p></div></div>
-    <div class="panel">${status}${controls}<p class="err" id="dbErr"></p></div>`;
-  const err = (m) => { $('#dbErr', el).textContent = m; };
+  const info = S.dbInfo || {}, lib = S.lib || {}, st = (lib.status || {});
+  const fromLib = S.db && S.db.src === 'lib';
+  const gfBlock = () => {
+    const gfOn = S.db && (S.db.src === 'jar-app' || S.db.zip);
+    const status = gfOn ? `<p>Using <span class="mono">${esc(info.path || 'NMSSaveEditor.jar')}</span> (${S.db.list.length.toLocaleString()} items).</p>` : `<p class="dim">${APP ? `Not in use.` : `Choose <span class="mono">NMSSaveEditor.jar</span> from the folder where you keep that editor.`}</p>`;
+    const controls = APP
+      ? `<form class="row db-form" id="dbForm"><label class="field"><span>Location of NMSSaveEditor.jar</span><input class="input mono" id="dbPath" placeholder="C:\\Users\\you\\Downloads\\NMSSaveEditor\\NMSSaveEditor.jar" value="${esc(info.path || '')}"></label><button class="btn" type="submit">Use this file</button></form>
+         <div class="toolbar"><button class="btn" id="dbSearch">Search this PC for it</button>${gfOn ? '<button class="btn" id="dbForget">Stop using it</button>' : ''}</div>`
+      : (gfOn ? `<button class="btn" id="dbForget">Forget item database</button>` : `<label class="btn primary">Choose NMSSaveEditor.jar<input type="file" id="jarPick" accept=".jar,.zip" hidden></label>`);
+    return status + controls;
+  };
+  if (!APP) {
+    el.innerHTML = `<div class="page-head"><div><h1>Item names and icons</h1><p>In the browser version, names and icons come from your own copy of Goatfungus's <span class="mono">NMSSaveEditor.jar</span>. The desktop app reads them straight from your game instead.</p></div></div>
+      <div class="panel">${S.db ? `<h3>${S.db.list.length.toLocaleString()} items loaded</h3>` : '<h3>No item database yet</h3>'}${gfBlock()}<p class="err" id="dbErr"></p></div>`;
+  } else {
+    const building = st.state === 'building';
+    const pct = st.total ? Math.round((st.done / st.total) * 100) : 0;
+    el.innerHTML = `<div class="page-head"><div><h1>Item names and icons</h1>
+      <p>Names, types and icons are read from your own No Man's Sky files and kept on this PC. Nothing from the game comes with the app, and the library rebuilds itself after a game update.</p></div></div>
+      <div class="panel lib-panel">
+        ${building ? `<h3>Building the item library…</h3><p class="dim">${esc(st.phase || '')}${st.total ? ` (${st.done.toLocaleString()} of ${st.total.toLocaleString()})` : ''}</p><div class="lib-bar"><i style="width:${pct}%"></i></div>`
+          : lib.items ? `<h3>${lib.items.toLocaleString()} items from your game</h3><p class="dim">Built ${esc(new Date(lib.built).toLocaleString())} from <span class="mono">${esc(lib.builtFrom || '')}</span>${lib.missingIcons ? `. ${lib.missingIcons.toLocaleString()} icons couldn't be read.` : '.'}${lib.stale ? ' <b>The game has been updated since; rebuild to match.</b>' : ''}</p>`
+          : `<h3>No item library yet</h3><p class="dim">${lib.game ? 'Build it from your game. It takes about a minute.' : "No Man's Sky wasn't found through Steam. Paste the game's folder below (the one that contains GAMEDATA)."}</p>`}
+        ${st.state === 'error' || S.libError ? `<p class="err">${esc(st.error || S.libError)}</p>` : ''}
+        <form class="row db-form" id="gameForm"><label class="field"><span>No Man's Sky folder</span><input class="input mono" id="gamePath" placeholder="C:\\Program Files (x86)\\Steam\\steamapps\\common\\No Man's Sky" value="${esc(lib.gameSet || (lib.game || '').replace(/[\\/]GAMEDATA[\\/]PCBANKS$/i, ''))}"></label><button class="btn" type="submit">Use this folder</button></form>
+        <div class="toolbar"><button class="btn primary" id="libBuild"${building ? ' disabled' : ''}>${lib.items ? 'Rebuild from the game' : 'Build item library'}</button></div>
+      </div>
+      <details class="panel gf-panel"${fromLib ? '' : ' open'}><summary><h3>Goatfungus's item database (optional)</h3></summary>
+        <p class="dim">Used only until your own library is built.</p>${gfBlock()}<p class="err" id="dbErr"></p></details>`;
+    if (building && !S.libWatch) { S.libWatch = true; setTimeout(async () => { S.libWatch = false; if (!el.isConnected) return; await libStatus().catch(() => {}); if (S.section === 'items') render(); }, 800); }
+    $('#libBuild', el).onclick = async () => {
+      const b = $('#libBuild', el); b.disabled = true;
+      try { await buildLibrary(() => { if (S.section === 'items') render(); }); S.libError = ''; toast(S.db.list.length.toLocaleString() + ' items ready, read from your game'); }
+      catch (e) { S.libError = e.message; toast('The library could not be built: ' + e.message, true); }
+      if (S.section === 'items') render();
+    };
+    $('#gameForm', el).onsubmit = async (e) => { e.preventDefault(); await libStatus({ game: $('#gamePath', el).value.trim() }).catch(() => {}); render(); };
+  }
+  const err = (m) => { const x = $('#dbErr', el); if (x) x.textContent = m; };
   const appSet = async (post, busy) => {
     err(busy);
-    try { const i = await loadDbFromApp(post); if (i.error) { render(); err(i.error); return; } render(); if (S.db) toast(S.db.list.length.toLocaleString() + ' items loaded'); else if (post.search) err('No NMSSaveEditor.jar turned up in the usual folders.'); }
+    try { const keep = S.db && S.db.src === 'lib' ? S.db : null; const i = await loadDbFromApp(post); if (keep) S.db = keep; if (i.error) { render(); err(i.error); return; } render(); if (i.ready) toast('Goatfungus database found'); else if (post.search) err('No NMSSaveEditor.jar turned up in the usual folders.'); }
     catch (e) { err('Could not read that file: ' + e.message); }
   };
   const form = $('#dbForm', el); if (form) form.onsubmit = (e) => { e.preventDefault(); const p = $('#dbPath', el).value.trim(); if (p) appSet({ path: p }, 'Opening…'); };

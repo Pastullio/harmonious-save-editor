@@ -34,10 +34,10 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.click('#dbForget'); await p.waitForFunction(() => !S.db && document.querySelector('#dbPath'), null, { timeout: 15000 });
   const off = await (await fetch(url + 'api/itemdb', { headers: H })).json();
   ok('stop using it clears names and the app stops looking', !off.ready);
-  await p.fill('#dbPath', path.dirname(path.join(home, 'Downloads', 'NMSSaveEditor', 'x'))); await p.click('#dbForm .btn.primary');
+  await p.fill('#dbPath', path.dirname(path.join(home, 'Downloads', 'NMSSaveEditor', 'x'))); await p.click('#dbForm button[type=submit]');
   await p.waitForFunction(() => !!S.db, null, { timeout: 15000 });
   ok('a folder path finds the jar inside it', true);
-  await p.fill('#dbPath', path.join(home, 'nope.jar')); await p.click('#dbForm .btn.primary');
+  await p.fill('#dbPath', path.join(home, 'nope.jar')); await p.click('#dbForm button[type=submit]');
   await p.waitForFunction(() => document.querySelector('#dbErr')?.textContent.length > 0, null, { timeout: 15000 });
   ok('a wrong path shows an error', true);
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);

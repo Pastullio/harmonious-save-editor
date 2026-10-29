@@ -36,6 +36,7 @@ type renderSettings struct {
 	Samples int    `json:"samples"`
 	Shots   string `json:"shots"`            // optional folder of screenshots to pick covers from
 	ItemDB  string `json:"itemdb,omitempty"` // NMSSaveEditor.jar for item names and icons
+	Game    string `json:"game,omitempty"`   // No Man's Sky folder, when Steam can't find it
 }
 
 type renderJob struct {
