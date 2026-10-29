@@ -196,6 +196,54 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .tc.loc { padding: 16px 18px; gap: 3px; font-size: 13px; color: var(--dim); }
 .tc.loc .gal { font-family: var(--display); font-weight: 300; font-size: 26px; letter-spacing: .06em; color: var(--ink); line-height: 1.15; margin-top: 4px; }
 .tc.loc .loc-where { color: var(--ink); margin-top: 4px; }
+/* Shipwright */
+.sw { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 1000px) { .sw { grid-template-columns: 1fr; } }
+.sw-side { position: sticky; top: 12px; }
+.sw-list { display: grid; gap: 6px; }
+.sw-corv { display: flex; gap: 10px; align-items: center; text-align: left; padding: 9px 12px; border-radius: var(--r); border: 1px solid var(--line); background: var(--field); color: var(--ink); font: inherit; cursor: pointer; }
+.sw-corv > span:last-child { display: grid; min-width: 0; }
+.sw-corv b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sw-corv .dim { font-size: 12px; }
+.sw-corv:hover { border-color: var(--accent); }
+.sw-corv.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent); }
+.sw-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: #2bb673; }
+.sw-dot.warn { background: #e08a3c; } .sw-dot.bad { background: var(--danger); }
+.sw-tip { font-size: 12.5px; margin: 12px 0 0; }
+.sw-probs { margin-top: 12px; display: grid; gap: 6px; font-size: 13px; }
+.sw-main { display: grid; gap: 14px; min-width: 0; }
+.sw-main .panel { margin: 0; }
+.sw-bar { display: grid; gap: 12px; }
+.sw-title { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.sw-title b { font-family: var(--display); font-weight: 300; font-size: 24px; letter-spacing: .06em; }
+.sw-acts { display: flex; gap: 8px 10px; flex-wrap: wrap; align-items: center; }
+.sw-acts .check { padding: 0; }
+.sw-gap { flex: 1; }
+.sw-tune { padding-inline: 22px; }
+.sw-health ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.sw-health li { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: var(--r-sm); background: var(--well); }
+.sw-health li > span:nth-child(2) { flex: 1; }
+.sw-ic { width: 18px; height: 18px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; }
+.sw-health .ok .sw-ic { background: #2bb673; } .sw-health .ok .sw-ic::after { content: "✓"; }
+.sw-health .warn .sw-ic { background: #e08a3c; } .sw-health .warn .sw-ic::after { content: "!"; }
+.sw-health .bad .sw-ic { background: var(--danger); } .sw-health .bad .sw-ic::after { content: "×"; }
+.sw-parts-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.sw-parts-head h3 { margin: 0 auto 0 0; }
+.sw-parts-head #swQ { width: 220px; }
+.sw-move { display: flex; gap: 6px; flex-wrap: wrap; }
+.sw-hint { font-size: 12.5px; margin: 10px 0; }
+.sw-rows { max-height: 560px; overflow: auto; border: 1px solid var(--line); border-radius: var(--r); background: var(--field); }
+.sw-row { display: grid; grid-template-columns: 48px minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 60px; gap: 10px; align-items: center; padding: 5px 10px; border-bottom: 1px solid var(--line); font-size: 13px; cursor: pointer; user-select: none; }
+.sw-row:hover { background: var(--hover); }
+.sw-row.sel { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
+.sw-row .n, .sw-row .sc { color: var(--dim); font-size: 12px; }
+.sw-row .sc { text-align: right; }
+.sw-row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sw-row .id { color: var(--dim); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sw-row .grp { font-size: 12px; color: var(--dim); }
+.sw-row:not(.g-other) .nm { font-weight: 500; color: var(--accent); }
+.sw-json summary { cursor: pointer; font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+.sw-json textarea { width: 100%; font-size: 12px; margin: 8px 0; }
 /* supercharged slots: electric glow, crackling arcs and a bolt badge (no yellow) */
 :root { --charge: #1597d8; --charge-2: #6b5cff; --charge-hot: #8fe9ff; }
 :root[data-theme="dark"] { --charge: #4fd8ff; --charge-2: #9b8bff; --charge-hot: #e8fbff; }
@@ -996,13 +1044,13 @@ function download(bytes, name) { const u = URL.createObjectURL(new Blob([bytes])
 
 // ------------------------------------------------------------------ navigation
 const SECTIONS = [
-  ['overview', 'Overview'], ['hangar', 'Hangar'], ['library', 'Dock Yard'], ['exosuit', 'Exosuit'], ['ships', 'Starships'], ['tools', 'Multi-tools'],
+  ['overview', 'Overview'], ['shipwright', 'Shipwright'], ['hangar', 'Hangar'], ['library', 'Dock Yard'], ['exosuit', 'Exosuit'], ['ships', 'Starships'], ['tools', 'Multi-tools'],
   ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['storage', 'Storage'], ['coords', 'Coordinates'], ['items', 'Item names'], ['raw', 'Raw data'],
 ];
 // Spectrum: each section's colour, sweeping teal through blue, violet, magenta, rose and coral (owner's pick);
 // the tool pages after it are aqua (coordinates), mint (item names) and slate (raw data).
 // One bright base per section; light mode darkens it automatically.
-const SECTION_COLORS = { overview: '#2fc3d6', hangar: '#4ea8ff', library: '#6598ff', exosuit: '#7d8bff', ships: '#a37bff', tools: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', storage: '#ff8a70', coords: '#36d6c3', items: '#3fd9a3', raw: '#8fb3c4' };
+const SECTION_COLORS = { overview: '#2fc3d6', shipwright: '#3cb6ea', hangar: '#4ea8ff', library: '#6598ff', exosuit: '#7d8bff', ships: '#a37bff', tools: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', storage: '#ff8a70', coords: '#36d6c3', items: '#3fd9a3', raw: '#8fb3c4' };
 const secColor = (id) => SECTION_COLORS[id];
 function applySection(id) {
   const c = secColor(id);
@@ -1017,7 +1065,7 @@ function renderSide() {
   if (m) bits.push(fmtPlay(num(g(common() || p, 'TotalPlayTime')) || m.totalPlayTime));
   $('#saveMeta').textContent = bits.join(', ');
   const counts = { hangar: ships().length + tools().length, ships: ships().length, tools: tools().length, storage: storageInvs().length };
-  $('#nav').innerHTML = SECTIONS.map(([id, label]) => `<button data-s="${id}" ${S.section === id ? 'aria-current="page"' : ''} style="--dot:${secColor(id) || 'var(--line-2)'}"><span class="dot" aria-hidden="true"></span><span class="lbl">${label}</span>${id === 'library' && APP && !dockyardSeen() ? '<span class="new-pill">New</span>' : counts[id] != null ? `<span class="count">${counts[id]}</span>` : ''}</button>`).join('');
+  $('#nav').innerHTML = SECTIONS.map(([id, label]) => `<button data-s="${id}" ${S.section === id ? 'aria-current="page"' : ''} style="--dot:${secColor(id) || 'var(--line-2)'}"><span class="dot" aria-hidden="true"></span><span class="lbl">${label}</span>${NEW_SECTIONS[id] && APP && !seenSection(id) ? '<span class="new-pill">New</span>' : counts[id] != null ? `<span class="count">${counts[id]}</span>` : ''}</button>`).join('');
   applySection(S.section);
   $('#nav').querySelectorAll('button').forEach((b) => b.onclick = () => go(b.dataset.s));
   updateStatus();
@@ -3201,7 +3249,11 @@ function predictionHtml(p, s) {
 }
 
 // ------------------------------------------------------------------ Dock Yard (ship library)
-const dockyardSeen = () => { try { return localStorage.getItem('hse-dockyard-seen') === '1'; } catch (_) { return true; } };
+// brand-new sections wear a New badge in the menu until they've been opened once
+const NEW_SECTIONS = { library: 'hse-dockyard-seen', shipwright: 'hse-shipwright-seen' };
+const seenSection = (id) => { try { return localStorage.getItem(NEW_SECTIONS[id]) === '1'; } catch (_) { return true; } };
+function markSeen(id) { try { localStorage.setItem(NEW_SECTIONS[id], '1'); } catch (_) {} const pill = document.querySelector(`nav [data-s="${id}"] .new-pill`); if (pill) pill.remove(); }
+const dockyardSeen = () => seenSection('library');
 // One place for every ship: Library (files kept on purpose), Garage (every ship from every save opened,
 // captured automatically) and linked folders the owner already keeps ships in (read only). Files live in
 // Documents\Harmonious Save Editor\Ships; tags, favourites, links and notes live in its library.json.
@@ -3436,8 +3488,7 @@ const DY_TABS = [
   ['fav', 'Favourites', 'The ships you star, from anywhere in the Dock Yard.'],
 ];
 PAGES.library = (el) => {
-  try { localStorage.setItem('hse-dockyard-seen', '1'); } catch (_) {}
-  const pill = document.querySelector('nav [data-s="library"] .new-pill'); if (pill) pill.remove();
+  markSeen('library');
   const L = S.shipLib || (S.shipLib = { q: '', src: 'library', type: 'all', tag: '', fav: false, shown: 60 });
   el.innerHTML = `<div class="page-head"><div><h1>Dock Yard</h1><p>Every ship you own, build or download, in one place. Store them, keep every version, and move ships and corvettes into any save.</p></div>${APP ? `<input class="input dy-search" id="libQ" type="search" placeholder="Search names, tags and notes" aria-label="Search the Dock Yard" value="${esc(L.q)}">` : ''}</div>`;
   if (!APP) { el.insertAdjacentHTML('beforeend', '<p class="dim">The Dock Yard keeps ship files on your PC, so it is part of the desktop app.</p>'); return; }
@@ -3624,6 +3675,187 @@ document.addEventListener('click', async (e) => {
   await api('/api/ships/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ remove: b.dataset.rm }) }).catch((err) => toast(err.message, true));
   b.closest('li').remove(); toast('Folder removed from the Dock Yard (its files are untouched)'); if (S.section === 'library') render();
 });
+
+// ------------------------------------------------------------------ Shipwright: corvette build tools
+// Puts a corvette's parts in the order the game reads them, checks a build for the mistakes that break it, and
+// gets builds in and out in one go (copy, paste, files). The priority order and the cockpit/landing-bay rules are
+// the ones TAZmd documents for his Corvette Optimizer (tazmd.nl/corvette-optimizer); this is our own implementation.
+const PART_GROUPS = [
+  ['rockhopper', 'Rockhopper wings'], ['reactor', 'Reactors'], ['engine', 'Thrusters, boosters and wings'], ['weapon', 'Weapons'],
+  ['shield', 'Shields'], ['gear', 'Landing gear'], ['bay', 'Landing bays'], ['cockpit', 'Cockpits'], ['other', 'Everything else'],
+];
+const GROUP_RANK = Object.fromEntries(PART_GROUPS.map(([k], i) => [k, i]));
+const GROUP_BY_SUB = { 'Corvette Reactor Module': 'reactor', 'Corvette Main Engine': 'engine', 'Corvette Rear Thruster': 'engine', 'Corvette Light Thruster': 'engine', 'Corvette Flight Stabliser': 'engine',
+  'Corvette Weapon System': 'weapon', 'Corvette Shield Generator': 'shield', 'Corvette Landing Gear': 'gear', 'Corvette Cockpit': 'cockpit' };
+function partGroup(id) {
+  const raw = str(id).replace(/^\^/, ''), info = dbItem(id), sub = info && info.sub;
+  if (/^B_WNG_O_/.test(raw)) return 'rockhopper';
+  if (/^B_ALK_/.test(raw)) return 'bay';   // landing bays ("Access Module" also covers walkways, which aren't bays)
+  if (sub && GROUP_BY_SUB[sub]) return GROUP_BY_SUB[sub];
+  if (/^B_GEN_/.test(raw)) return 'reactor';
+  if (/^B_(WNG|TRU|LTH)_/.test(raw)) return 'engine';
+  if (/^B_TUR_/.test(raw)) return 'weapon';
+  if (/^B_SHL_/.test(raw)) return 'shield';
+  if (/^B_LND_/.test(raw)) return 'gear';
+  if (/^B_COK_/.test(raw)) return 'cockpit';
+  return 'other';
+}
+const partScale = (o) => { const u = g(o, 'Up'); return Array.isArray(u) ? Math.hypot(num(u[0]), num(u[1]), num(u[2])) : 1; };
+const partKey = (o) => C.stringifyJSON(new Map([['i', g(o, 'ObjectID')], ['p', g(o, 'Position')], ['u', g(o, 'Up')], ['a', g(o, 'At')]]));
+// stable: parts keep their relative order within a group, so the camera cockpit, boarding cockpit and beam-up bay stay put
+function tunedOrder(objs) { return objs.map((o, i) => [GROUP_RANK[partGroup(g(o, 'ObjectID'))], i, o]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map((x) => x[2]); }
+function isTuned(objs) { let last = -1; for (const o of objs) { const r = GROUP_RANK[partGroup(g(o, 'ObjectID'))]; if (r < last) return false; last = r; } return true; }
+function duplicateParts(objs) { const seen = new Set(), dup = []; for (const o of objs) { const k = partKey(o); if (seen.has(k)) dup.push(o); else seen.add(k); } return dup; }
+// everything worth knowing about one corvette's build
+function corvetteHealth(i) {
+  const list = g(ps(), 'ShipOwnership') || [], s = list[i], base = shipBuild(i), out = [];
+  const bases = (g(ps(), 'PersistentPlayerBases') || []).filter((b) => str(g(b, 'BaseType', 'PersistentBaseTypes')) === 'PlayerShipBase');
+  const same = bases.filter((b) => num(g(b, 'UserData')) === i);
+  if (!base) { out.push(['bad', 'No build is linked to this slot (no corvette base with UserData ' + i + ').', null]); return { out, base: null, objs: [] }; }
+  if (same.length > 1) out.push(['bad', `${same.length} builds claim this slot (UserData ${i}). The game only uses one; the others should be removed or moved.`, null]);
+  const objs = g(base, 'Objects') || [];
+  const cockpits = objs.filter((o) => partGroup(g(o, 'ObjectID')) === 'cockpit'), bays = objs.filter((o) => partGroup(g(o, 'ObjectID')) === 'bay');
+  if (!cockpits.length) out.push(['bad', 'No cockpit: the corvette has nowhere to fly from.', null]);
+  else out.push(['ok', cockpits.length > 1 ? `Camera cockpit and boarding cockpit set (${cockpits.length} cockpits; the first two in the list are used).` : 'One cockpit: it is both the camera and the boarding cockpit.', null]);
+  if (!bays.length) out.push(['warn', 'No landing bay, so there is nowhere to beam up to.', null]);
+  else { const sc = partScale(bays[0]); out.push(sc >= 0.058 ? ['ok', `Beam-up landing bay set (the first one in the list, scale ${sc.toFixed(3)}).`, null] : ['bad', `The beam-up landing bay (the first one in the list) is scaled to ${sc.toFixed(3)}; it needs at least 0.058 or beam-up won't work.`, null]); }
+  out.push(isTuned(objs) ? ['ok', 'Parts are in the order the game reads them.', null] : ['warn', 'Parts are out of order: performance parts listed late can lose stats or misbehave.', 'tune']);
+  const dup = duplicateParts(objs);
+  if (dup.length) out.push(['warn', `${plural(dup.length, 'part')} sit exactly on top of an identical part.`, 'dedupe']);
+  return { out, base, objs };
+}
+// any other trouble between ships and builds in this save
+function slotProblems() {
+  const list = g(ps(), 'ShipOwnership') || [], out = [];
+  const isCorv = (s) => /\/BIGGS\//i.test(str(g(s, 'Resource', 'Filename')));
+  for (const b of (g(ps(), 'PersistentPlayerBases') || []).filter((b) => str(g(b, 'BaseType', 'PersistentBaseTypes')) === 'PlayerShipBase')) {
+    const u = num(g(b, 'UserData')), s = list[u];
+    if (!s || !isCorv(s)) out.push(`The build "${str(g(b, 'Name')) || 'unnamed'}" points at slot ${u + 1}, which ${s && str(g(s, 'Resource', 'Filename')) ? 'is not a corvette' : 'is empty'}.`);
+  }
+  return out;
+}
+function plainBuild(base) { return C.stringifyJSON(toPlain(base), '  '); }
+// a pasted or loaded build: a whole base, the Objects alone, a .nmsship, or a single part
+async function buildFromInput(input, name) {
+  if (typeof input !== 'string') { const p = await loadShipFile(input, name || 'build.json'); if (p.error) throw new Error(p.error); if (!p.objects) throw new Error("That file doesn't hold a corvette build."); return { objects: p.objects, base: p.base }; }
+  let doc; try { doc = C.parseJSON(input.trim().replace(/^﻿/, '')); } catch (e) { throw new Error("That isn't JSON (" + e.message + ')'); }
+  if (doc instanceof Map && g(doc, 'ObjectID') != null) return { single: doc };
+  const p = parseShipFile(input); if (p.error || !p.objects) throw new Error("That doesn't look like a corvette build.");
+  return { objects: p.objects, base: p.base };
+}
+
+PAGES.shipwright = (el) => {
+  markSeen('shipwright');
+  const corvs = ships().filter(({ s }) => /\/BIGGS\//i.test(str(g(s, 'Resource', 'Filename'))));
+  el.innerHTML = `<div class="page-head"><div><h1>Shipwright</h1><p>Corvette builds, done right: parts in the order the game reads them, checks for the mistakes that break a build, and whole builds in and out with one copy or paste.</p></div></div>`;
+  if (!corvs.length) { el.insertAdjacentHTML('beforeend', '<p class="dim">This save has no corvettes yet. Build one in the game, or put one in from the Dock Yard.</p>'); return; }
+  const W = S.wright || (S.wright = { slot: corvs[0].i, q: '', sel: new Set(), auto: true, json: false });
+  if (!corvs.some((c) => c.i === W.slot)) W.slot = corvs[0].i;
+  const probs = slotProblems();
+  const wrap = document.createElement('div'); wrap.className = 'sw'; el.appendChild(wrap);
+  const side = document.createElement('aside'); side.className = 'sw-side panel';
+  side.innerHTML = `<h3>Corvettes</h3><div class="sw-list">${corvs.map(({ s, i }) => {
+    const h = corvetteHealth(i), worst = h.out.some((x) => x[0] === 'bad') ? 'bad' : h.out.some((x) => x[0] === 'warn') ? 'warn' : 'ok';
+    return `<button type="button" class="sw-corv${i === W.slot ? ' on' : ''}" data-i="${i}"><span class="sw-dot ${worst}"></span><span><b>${esc(str(g(s, 'Name')) || 'Corvette')}</b><span class="dim">Slot ${i + 1} · ${plural(h.objs.length, 'part')}</span></span></button>`;
+  }).join('')}</div>${probs.length ? `<div class="sw-probs">${probs.map((t) => `<p class="bad-hint">${esc(t)}</p>`).join('')}</div>` : ''}<p class="dim sw-tip">To add a corvette, put one in an empty slot from the Dock Yard. To remove one, use Delete on its Starships page.</p>`;
+  wrap.appendChild(side);
+  side.querySelectorAll('[data-i]').forEach((b) => b.onclick = () => { W.slot = +b.dataset.i; W.sel = new Set(); render(); });
+  const main = document.createElement('div'); main.className = 'sw-main'; wrap.appendChild(main);
+  const i = W.slot, ship = g(ps(), 'ShipOwnership')[i], H = corvetteHealth(i), base = H.base;
+  main.innerHTML = `<div class="panel sw-bar">
+      <div class="sw-title"><b>${esc(str(g(ship, 'Name')) || 'Corvette')}</b><span class="dim">Slot ${i + 1}${base ? ' · ' + plural(H.objs.length, 'part') : ''}</span></div>
+      <div class="sw-acts">
+        <button class="btn primary sw-tune" type="button" data-a="tune"${base ? '' : ' disabled'}>Tune up</button>
+        <label class="check"><input type="checkbox" id="swAuto"${W.auto ? ' checked' : ''}> Tune up when pasting or loading</label>
+        <span class="sw-gap"></span>
+        <button class="btn" type="button" data-a="copy"${base ? '' : ' disabled'}>Copy all</button>
+        <button class="btn" type="button" data-a="paste">Paste all</button>
+        <label class="btn">Load file<input type="file" id="swFile" accept=".json,.txt,.nmsship,.nmsbase,.nmsprefab" hidden></label>
+        <button class="btn" type="button" data-a="saveas"${base ? '' : ' disabled'}>Save as…</button>
+      </div></div>
+    <div class="panel sw-health"><h3>Build check</h3><ul>${H.out.map(([k, t, fix]) => `<li class="${k}"><span class="sw-ic"></span><span>${esc(t)}</span>${fix ? `<button class="btn small" type="button" data-a="${fix}">${fix === 'tune' ? 'Tune up' : 'Remove them'}</button>` : ''}</li>`).join('')}</ul></div>
+    ${base ? `<div class="panel sw-parts"><div class="sw-parts-head"><h3>Parts</h3><input class="input" id="swQ" type="search" placeholder="Search parts" value="${esc(W.q)}">
+      <span class="sw-move"><button class="btn small" type="button" data-m="top" title="Move to the top">Top</button><button class="btn small" type="button" data-m="up" title="Move up">Up</button><button class="btn small" type="button" data-m="down" title="Move down">Down</button><button class="btn small" type="button" data-m="bottom" title="Move to the bottom">Bottom</button><button class="btn small" type="button" data-m="copy1" title="Copy the selected parts">Copy</button><button class="btn small danger" type="button" data-m="del">Delete</button></span></div>
+      <p class="dim sw-hint">Click a part to select it; Ctrl-click and Shift-click select several. The game reads parts from the top down: the first cockpit is the camera, the second the boarding cockpit, and the first landing bay is where you beam up.</p>
+      <div class="sw-rows" id="swRows"></div></div>
+    <details class="panel sw-json"${W.json ? ' open' : ''}><summary>Build JSON</summary><p class="dim">The whole build as text, for Blender, the Base Building App or any JSON tool. Edit it here and press Apply; the build's link to this slot is kept.</p><textarea class="input mono" id="swJson" spellcheck="false" rows="18"></textarea><div class="toolbar"><button class="btn" type="button" data-a="apply">Apply</button></div></details>` : ''}`;
+  const $m = (q) => main.querySelector(q);
+  const commit = (objs, msg) => { set(base, 'Objects', objs); markDirty(); if (msg) toast(msg); W.sel = new Set(); render(); };
+  // replace the build with new parts, keeping the slot's own base (UserData, BaseType, name, owner)
+  const replaceBuild = async (b, how) => {
+    if (b.single) { const objs = g(base, 'Objects'); const o = inGameOrder([fromPlain(cloneJSON(b.single))], objs[0])[0]; const next = [...objs, o]; commit(W.auto ? tunedOrder(next) : next, 'Part added'); return; }
+    if (!(await dialog('Replace the build?', `<p>${esc(str(g(ship, 'Name')) || 'This corvette')}'s ${plural(H.objs.length, 'part')} are replaced with ${plural(b.objects.length, 'part')} ${how}. The corvette keeps its name, class and inventories, and a copy goes to the Garage first.</p>`, [['Cancel', false, 'ghost'], ['Replace', true, 'primary']]))) return;
+    await garageCapture().catch(() => {});
+    let objs = inGameOrder(fromPlain(cloneJSON(b.objects)), (g(base, 'Objects') || [])[0]);
+    if (W.auto) objs = tunedOrder(objs);
+    commit(objs, `Build replaced: ${plural(objs.length, 'part')}${W.auto ? ', tuned up' : ''}. Press Save to game to keep it.`);
+  };
+  main.querySelectorAll('[data-a]').forEach((b) => b.onclick = async () => {
+    const a = b.dataset.a;
+    try {
+      if (a === 'tune') { const objs = g(base, 'Objects'), next = tunedOrder(objs), moved = next.filter((o, k) => o !== objs[k]).length; if (!moved) { toast('Already in the right order'); return; } commit(next, `Tuned up: ${plural(moved, 'part')} moved`); }
+      if (a === 'dedupe') { const d = new Set(duplicateParts(g(base, 'Objects'))); commit(g(base, 'Objects').filter((o) => !d.has(o)), `${plural(d.size, 'duplicate')} removed`); }
+      if (a === 'copy') { await navigator.clipboard.writeText(plainBuild(base)); toast(`Copied the whole build (${plural(H.objs.length, 'part')})`); }
+      if (a === 'paste') {
+        let t = ''; try { t = await navigator.clipboard.readText(); } catch (_) { t = null; }
+        if (t == null || !t.trim()) {   // no clipboard access (or nothing in it): let the owner paste into a box
+          const ok = await dialog('Paste a build', '<p>Paste a corvette build (the whole JSON, its Objects, or a single part) here with Ctrl+V.</p><textarea class="input mono" id="swPasteBox" rows="10" spellcheck="false"></textarea>', [['Cancel', false, 'ghost'], ['Use this', true, 'primary']]);
+          t = ok ? $('#swPasteBox').value : ''; if (!t.trim()) return;
+        }
+        await replaceBuild(await buildFromInput(t), 'from the clipboard');
+      }
+      if (a === 'saveas') {
+        const v = await dialog('Save the build as…', '<p>A <b>.json</b> file is the build alone, for Blender, the Base Building App and similar tools. A <b>.nmsship</b> is the whole corvette (build, tech, class and inventories) for TAZ\'s tools or the Dock Yard.</p>', [['Cancel', null, 'ghost'], ['.json build', 'json'], ['.nmsship', 'nmsship', 'primary']]);
+        const nm = safeFile(str(g(ship, 'Name')) || 'Corvette');
+        if (v === 'json') downloadText(nm + '.json', plainBuild(base));
+        if (v === 'nmsship') downloadBlob(nm + '.nmsship', await shipNmsship(i));
+      }
+      if (a === 'apply') { await replaceBuild(await buildFromInput($m('#swJson').value), 'from the JSON box'); }
+    } catch (e) { toast(e.message, true); }
+  });
+  $m('#swAuto').onchange = (e) => { W.auto = e.target.checked; };
+  $m('#swFile').onchange = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { await replaceBuild(await buildFromInput(await f.arrayBuffer(), f.name), 'from ' + f.name); } catch (err) { toast(err.message, true); } };
+  if (!base) return;
+  const det = $m('.sw-json'); det.ontoggle = () => { W.json = det.open; if (det.open && !$m('#swJson').value) $m('#swJson').value = plainBuild(base); };
+  if (det.open) $m('#swJson').value = plainBuild(base);
+  // the parts list
+  const objs = g(base, 'Objects'), rows = $m('#swRows');
+  const draw = () => {
+    const q = W.q.toLowerCase();
+    rows.innerHTML = objs.map((o, k) => {
+      const id = str(g(o, 'ObjectID')), info = dbItem(id), nm = info ? info.name : id.replace(/^\^/, ''), grp = partGroup(id);
+      if (q && !(nm + ' ' + id + ' ' + grp).toLowerCase().includes(q)) return '';
+      return `<div class="sw-row g-${grp}${W.sel.has(k) ? ' sel' : ''}" data-k="${k}"><span class="mono n">${k}</span><span class="nm">${esc(nm)}</span><span class="mono id">${esc(id.replace(/^\^/, ''))}</span><span class="grp">${esc(PART_GROUPS[GROUP_RANK[grp]][1])}</span><span class="mono sc">${partScale(o).toFixed(3)}</span></div>`;
+    }).join('');
+  };
+  draw();
+  let anchor = null;
+  rows.onclick = (e) => {
+    const r = e.target.closest('.sw-row'); if (!r) return; const k = +r.dataset.k;
+    if (e.shiftKey && anchor != null) { if (!(e.ctrlKey || e.metaKey)) W.sel = new Set(); for (let x = Math.min(anchor, k); x <= Math.max(anchor, k); x++) W.sel.add(x); }
+    else if (e.ctrlKey || e.metaKey) { W.sel.has(k) ? W.sel.delete(k) : W.sel.add(k); anchor = k; }
+    else { W.sel = new Set([k]); anchor = k; }
+    draw();
+  };
+  $m('#swQ').oninput = (e) => { W.q = e.target.value; draw(); };
+  main.querySelector('.sw-move').onclick = async (e) => {
+    const b = e.target.closest('[data-m]'); if (!b) return;
+    const pick = [...W.sel].sort((x, y) => x - y); if (!pick.length) { toast('Select one or more parts first.'); return; }
+    const m = b.dataset.m, chosen = pick.map((k) => objs[k]), rest = objs.filter((o, k) => !W.sel.has(k));
+    let next;
+    if (m === 'copy1') { await navigator.clipboard.writeText(C.stringifyJSON(chosen.length === 1 ? toPlain(chosen[0]) : chosen.map(toPlain), '  ')); toast(`Copied ${plural(chosen.length, 'part')}`); return; }
+    if (m === 'del') { if (!(await dialog(`Delete ${plural(chosen.length, 'part')}?`, '<p>They are removed from the build. Nothing is written to your game until you save.</p>', [['Cancel', false, 'ghost'], ['Delete', true, 'danger']]))) return; set(base, 'Objects', rest); markDirty(); W.sel = new Set(); toast(`${plural(chosen.length, 'part')} deleted`); render(); return; }
+    if (m === 'top') next = [...chosen, ...rest];
+    if (m === 'bottom') next = [...rest, ...chosen];
+    if (m === 'up' || m === 'down') {   // each selected part moves one place, a block of them moves together
+      next = objs.slice(); const on = new Set(chosen);
+      if (m === 'up') { for (let x = 1; x < next.length; x++) if (on.has(next[x]) && !on.has(next[x - 1])) [next[x - 1], next[x]] = [next[x], next[x - 1]]; }
+      else for (let x = next.length - 2; x >= 0; x--) if (on.has(next[x]) && !on.has(next[x + 1])) [next[x], next[x + 1]] = [next[x + 1], next[x]];
+    }
+    const newSel = new Set(chosen.map((o) => next.indexOf(o)));
+    set(base, 'Objects', next); markDirty(); W.sel = newSel; render();
+  };
+};
 
 PAGES.coords = (el) => {
   const here = Place.fromUA(g(ps(), 'UniverseAddress'));

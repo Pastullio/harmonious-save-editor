@@ -79,7 +79,9 @@ The save file holds no images, so a ship's picture has to come from one of these
 
 - [x] Map exactly how a corvette is stored: the PlayerShipBase whose UserData is the ship's slot, plus the slot's CharacterCustomisationData entry
 - [x] Import and export TAZ's `.nmsship` (Ship library and the ship details' Export .nmsship); part fields are put back in the game's order on import
-- [ ] TAZ's build safety checks (part ordering, camera and boarding cockpit, beam-up landing bay)
+- [x] **Shipwright** (our own take on TAZ's optimizer, right under Overview): Tune up puts parts in the priority order TAZ documents (Rockhopper wings, reactors, thrusters/boosters/wings, weapons, shields, landing gear, landing bays, cockpits, everything else; stable, so cockpit and bay order are kept); build check (cockpits, beam-up bay scale ≥ 0.058, order, exact duplicates, builds pointing at the wrong slot); Copy all / Paste all (whole build, Objects or a single part) / Load file / Save as .json or .nmsship; part list with names, groups, search, move and delete; Build JSON with Apply
+- [ ] Ship slot manager: reorder slots and repair broken slot links (TAZ has this)
+- [ ] BBA's `.nmsprefab` and `.nmsbase` (need samples)
 - [ ] **Live Blender link**: Ctrl+S in Blender writes the build straight into the chosen corvette in your save. The app runs quietly in the system tray and receives the build from Blender. Drydock (or a tiny companion add-on) sends it on save, so there's no export, copy, paste or load step
 - [ ] Every live update is backed up, so any version can be rolled back
 - [ ] To test early: whether No Man's Sky picks up the new file when you load the save from the main menu, and how Steam Cloud reacts to a file changing outside the game
