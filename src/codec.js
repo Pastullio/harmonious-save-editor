@@ -404,7 +404,9 @@
       const dec = decryptMeta(metaBytes, slotFromName(name || ''));
       meta = { ...dec, info: parseMeta(dec.words) };
     }
-    return { json, meta, compressed, hadRawBytes: raw, originalSize: bytes.length, name };
+    // uncompressed files (accountdata.hg) may end without the null terminator; keep it that way
+    const noNull = !compressed && end === bytes.length;
+    return { json, meta, compressed, noNull, hadRawBytes: raw, originalSize: bytes.length, name };
   }
 
   /** Encode a save back to { data, meta } bytes. */
@@ -412,11 +414,11 @@
     const text = stringifyJSON(save.json);
     const body = encodeText(text);
     const plain = new Uint8Array(body.length + 1); plain.set(body); // + null terminator
-    const data = save.compressed ? compressData(plain) : plain;
+    const data = save.compressed ? compressData(plain) : save.noNull ? plain.subarray(0, body.length) : plain;
     let meta = null;
     if (save.meta) {
       const words = patchMeta(save.meta.words, {
-        sizeDecompressed: plain.length, sizeDisk: data.length,
+        sizeDecompressed: plain.length, sizeDisk: save.noNull ? plain.length : data.length,   // the game counts the terminator even when the file leaves it out
         timestamp: opts.timestamp != null ? opts.timestamp : Math.floor(Date.now() / 1000),
         saveName: opts.saveName, saveSummary: opts.saveSummary, difficultyPreset: opts.difficultyPreset,
       });

@@ -36,6 +36,7 @@ var (
 	dataRe   = regexp.MustCompile(`(?i)^save\d*\.hg$`)
 	anySave  = regexp.MustCompile(`(?i)^(mf_)?save\d*\.hg$`)
 	acctRe   = regexp.MustCompile(`(?i)^(st_\d+|defaultuser)$`)
+	acctFile = regexp.MustCompile(`(?i)^(mf_)?accountdata\.hg$`) // the account file: settings and unlocked rewards for every slot
 	token    string
 	lastPing atomic.Int64 // unix ms of the page's last heartbeat
 	byeAt    atomic.Int64 // unix ms the page said goodbye (0 = not)
@@ -273,7 +274,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 func handleRead(w http.ResponseWriter, r *http.Request) {
 	dir, err := cleanDir(r.URL.Query().Get("dir"))
 	name := r.URL.Query().Get("name")
-	if err != nil || !anySave.MatchString(name) || filepath.Base(name) != name {
+	if err != nil || !(anySave.MatchString(name) || acctFile.MatchString(name)) || filepath.Base(name) != name {
 		http.Error(w, "only save files can be read", http.StatusBadRequest)
 		return
 	}
@@ -287,7 +288,7 @@ func handleRead(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleWrite backs up the current save pair, then replaces it with the uploaded one.
-// Only an existing saveN.hg / mf_saveN.hg pair can be replaced; nothing else is ever written.
+// Only an existing saveN.hg / mf_saveN.hg pair (or accountdata.hg / mf_accountdata.hg) can be replaced; nothing else is ever written.
 func handleWrite(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST only", http.StatusMethodNotAllowed)
@@ -299,7 +300,7 @@ func handleWrite(w http.ResponseWriter, r *http.Request) {
 	}
 	dir, err := cleanDir(r.FormValue("dir"))
 	dataName, metaName := r.FormValue("dataName"), r.FormValue("metaName")
-	if err != nil || !dataRe.MatchString(dataName) || !strings.EqualFold(metaName, "mf_"+dataName) ||
+	if err != nil || !(dataRe.MatchString(dataName) || strings.EqualFold(dataName, "accountdata.hg")) || !strings.EqualFold(metaName, "mf_"+dataName) ||
 		filepath.Base(dataName) != dataName || filepath.Base(metaName) != metaName {
 		http.Error(w, "not a save pair", http.StatusBadRequest)
 		return

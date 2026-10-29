@@ -9,7 +9,7 @@ New features are built for the desktop app. Most of them need to keep files on d
 Everything so far was tested on a synthetic save. These files decide how several features get built:
 
 - [x] A real save pair (`save.hg` + `mf_save.hg`) with at least one corvette and a fitted ship (e.g. The Cutting Remark). Received 2026-10-28 (GodMode_2.9): round-trips byte-identical
-- [ ] `accountdata.hg` + `mf_accountdata.hg` (expedition and Twitch reward unlocks live there) [7]: `accountdata.hg` received 2026-10-29, `mf_accountdata.hg` still needed
+- [x] `accountdata.hg` + `mf_accountdata.hg` (expedition and Twitch reward unlocks live there) [7]: both received 2026-10-29; the pair round-trips byte-identical
 - [x] One corvette exported from TAZ's optimizer (`.nmsship`, plus a `.json` if you have one) [11]: Death n Glory, 2026-10-29
 - [ ] One build exported from Blender / Drydock [1]
 - [x] A few files from the downloaded ship collection, whatever formats they're in [5]: `.txt` corvette builds (whole PlayerShipBase), 2026-10-29
@@ -87,7 +87,7 @@ The save file holds no images, so a ship's picture has to come from one of these
 - [ ] Every live update is backed up, so any version can be rolled back
 - [ ] To test early: whether No Man's Sky picks up the new file when you load the save from the main menu, and how Steam Cloud reacts to a file changing outside the game
 
-- [x] Supercharge slots (owner, 2026-10-29): button next to Unlock all slots on exosuit and starship technology, per-slot toggle and multi-select; supercharged slots get an animated lightning border (electric blue, no yellow)
+- [x] Supercharge slots (owner, 2026-10-29): button next to Unlock all slots on exosuit and starship technology, per-slot toggle and multi-select; supercharged slots get a steady electric edge and bolt badge; the lightning crackles on hover or selection and once when a slot is charged (owner found a fully charged grid too busy)
 
 ## Phase 5 — Cargo and Loadout Ops [7]
 
@@ -95,7 +95,7 @@ The save file holds no images, so a ship's picture has to come from one of these
 - [ ] Consolidate: pick a destination, see the plan, untick anything to leave alone, then apply. Stack limits come from your character's difficulty settings
 - [x] Select several slots (Ctrl-click, Shift-click, Ctrl+A) and fill, repair, remove, unlock or move them to any other inventory in one go
 - [ ] Drag-select and drag-and-drop between inventories
-- [ ] Unlock expedition rewards and Twitch drops (these live in `accountdata.hg`, so the app gains carefully limited write access to it)
+- [x] Rewards page: every expedition reward (past and current, read from the game's tables), Twitch drops and platform rewards; unlock all at once, a whole expedition, or single rewards; saved to `accountdata.hg` with its own button and a backup (the app may now read and write only that pair besides saves)
 
 ## Own item library (so Goatfungus isn't needed)
 

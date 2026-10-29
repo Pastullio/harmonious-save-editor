@@ -213,6 +213,22 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .spot { animation: spot 2.2s ease-out; border-radius: var(--r-sm); }
 @keyframes spot { 0%, 35% { box-shadow: 0 0 0 3px var(--accent), 0 0 24px color-mix(in srgb, var(--accent) 45%, transparent); } 100% { box-shadow: 0 0 0 0 transparent; } }
 @media (prefers-reduced-motion: reduce) { .spot { animation: none; outline: 3px solid var(--accent); } }
+/* rewards */
+.rw-hero { display: grid; gap: 16px; }
+.rw-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+.rw-stats > div { display: grid; gap: 4px; padding: 12px 14px; border-radius: var(--r); background: var(--well); }
+.rw-stats b { font-family: var(--display); font-weight: 300; font-size: 28px; letter-spacing: .04em; }
+.rw-stats b span { font-size: 15px; color: var(--dim); }
+.rw-stats .bar { height: 4px; background: color-mix(in srgb, var(--accent) 18%, transparent); border-radius: 2px; overflow: hidden; }
+.rw-stats .bar i { display: block; height: 100%; background: var(--accent); }
+.rw-acts { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.rw-all { padding: 12px 26px; font-size: 15px; letter-spacing: .06em; }
+.rw-save { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+.rw-exp { grid-template-columns: auto minmax(0, 1fr); display: grid; gap: 18px; align-items: start; }
+.rw-patch { width: 96px; height: 96px; object-fit: contain; }
+.rw-desc { margin: 6px 0 12px; font-size: 13.5px; }
+.rw-row { grid-template-columns: 20px 28px minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); cursor: pointer; }
+.rw-row:hover { background: var(--hover); }
 /* plain editors */
 .ed-tabs { margin-bottom: 16px; }
 .ed-tabs .n { font-family: var(--mono); letter-spacing: 0; opacity: .7; margin-left: 4px; }
@@ -311,7 +327,8 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .sw-row:not(.g-other) .nm { font-weight: 500; color: var(--accent); }
 .sw-json summary { cursor: pointer; font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
 .sw-json textarea { width: 100%; font-size: 12px; margin: 8px 0; }
-/* supercharged slots: electric glow, crackling arcs and a bolt badge (no yellow) */
+/* supercharged slots: a steady electric edge and a bolt badge; the arcs crackle only on hover or selection,
+   and once when a slot is supercharged, so a fully charged grid stays calm (no yellow) */
 :root { --charge: #1597d8; --charge-2: #6b5cff; --charge-hot: #8fe9ff; }
 :root[data-theme="dark"] { --charge: #4fd8ff; --charge-2: #9b8bff; --charge-hot: #e8fbff; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --charge: #4fd8ff; --charge-2: #9b8bff; --charge-hot: #e8fbff; } }
@@ -320,24 +337,29 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .cell.charged::before { content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 2px; pointer-events: none; z-index: 2;
   background: conic-gradient(from var(--spin), var(--charge) 0deg, var(--charge-hot) 40deg, var(--charge-2) 120deg, var(--charge) 200deg, var(--charge-hot) 250deg, var(--charge-2) 320deg, var(--charge) 360deg);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-  animation: charge-spin 4s linear infinite; }
-.cell .arcs { position: absolute; inset: -3px; width: calc(100% + 6px); height: calc(100% + 6px); pointer-events: none; z-index: 3; overflow: visible; filter: drop-shadow(0 0 2px var(--charge)) drop-shadow(0 0 6px var(--charge)) drop-shadow(0 0 10px var(--charge-2)); }
+  }
+.cell.charged:hover::before, .cell.charged.sel::before { animation: charge-spin 4s linear infinite; }
+.cell .arcs { position: absolute; inset: -3px; width: calc(100% + 6px); height: calc(100% + 6px); pointer-events: none; z-index: 3; overflow: visible; filter: drop-shadow(0 0 2px var(--charge)) drop-shadow(0 0 6px var(--charge)) drop-shadow(0 0 10px var(--charge-2)); opacity: 0; transition: opacity .25s; }
+.cell.charged:hover .arcs, .cell.charged.sel .arcs, .cell.charged:focus-visible .arcs { opacity: 1; }
+.cell.charged.zap .arcs { animation: zap-once 1.8s ease-out forwards; }
 .cell .arcs path { fill: none; stroke: var(--charge-hot); stroke-width: 1.9; vector-effect: non-scaling-stroke; stroke-linejoin: miter; stroke-linecap: round; }
 .cell .arcs .a1 { stroke-dasharray: 26 95; animation: arc-run 1.9s linear infinite, arc-flicker 1.3s steps(2) infinite; }
 .cell .arcs .a2 { stroke-dasharray: 14 60 20 70; stroke: var(--charge); animation: arc-run 2.7s linear infinite reverse, arc-flicker 1.7s steps(3) infinite; }
+.cell:not(:hover):not(.sel):not(.zap):not(:focus-visible) .arcs path { animation-play-state: paused !important; }   /* hidden arcs cost nothing */
 .cell .bolt, .bolt-ico { display: inline-block; width: 13px; height: 13px; background: var(--charge); flex: none;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M13.5 1 4 13.5h6.5L9 23l11-13.5h-6.8z'/%3E%3C/svg%3E") center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M13.5 1 4 13.5h6.5L9 23l11-13.5h-6.8z'/%3E%3C/svg%3E") center / contain no-repeat; }
-.cell .bolt { position: absolute; top: 4px; right: 4px; z-index: 4; filter: drop-shadow(0 0 3px var(--charge)); animation: arc-flicker 2.3s steps(4) infinite; }
+.cell .bolt { position: absolute; top: 4px; right: 4px; z-index: 4; filter: drop-shadow(0 0 3px var(--charge)); }
 .bolt-ico { margin-right: 6px; vertical-align: -2px; }
 .charge-btn { border-color: color-mix(in srgb, var(--charge) 60%, var(--line-2)); box-shadow: 0 0 10px -4px var(--charge); }
 .charge-btn:hover { border-color: var(--charge); box-shadow: 0 0 14px -3px var(--charge); }
 .legend .lg-charge { border: 2px solid var(--charge); background: transparent !important; box-shadow: 0 0 6px var(--charge); }
 .charge-row { margin-top: 4px; padding: 8px 10px; border-radius: var(--r-sm); background: color-mix(in srgb, var(--charge) 10%, transparent); }
 @keyframes charge-spin { to { --spin: 360deg; } }
+@keyframes zap-once { 0%, 55% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes arc-run { to { stroke-dashoffset: -276; } }
 @keyframes arc-flicker { 0%, 100% { opacity: 1; } 35% { opacity: .35; } 60% { opacity: .9; } 80% { opacity: .55; } }
-@media (prefers-reduced-motion: reduce) { .cell.charged::before, .cell .arcs path, .cell .bolt { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .cell.charged::before, .cell.charged:hover::before, .cell .arcs path, .cell .bolt, .cell.charged.zap .arcs { animation: none; } }
 /* Dock Yard: big tabs and the "new" spotlight */
 .new-pill { font-size: 9.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; background: var(--dot, var(--accent)); color: #fff; margin-left: 6px; }
 .dy-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 10px; }
@@ -791,8 +813,9 @@ function common() { return g(S.save.json, 'CommonStateData'); }
 function markDirty() { S.dirty = true; updateStatus(); }
 function updateStatus() {
   const st = $('#status');
-  st.textContent = S.dirty ? 'Unsaved changes' : 'No changes';
-  st.classList.toggle('dirty', S.dirty);
+  const rw = !!(S.acct && S.acct.dirty);
+  st.textContent = S.dirty ? 'Unsaved changes' + (rw ? ', and rewards' : '') : rw ? 'Rewards not saved yet' : 'No changes';
+  st.classList.toggle('dirty', S.dirty || rw);
   $('#saveBtn').classList.toggle('dirty', S.dirty);
   $('#saveBtn').disabled = !S.dirty;
   $('#saveBtn').textContent = S.src && (S.src.kind === 'dir' || S.src.kind === 'app') ? 'Save to game' : 'Download edited files';
@@ -1036,7 +1059,7 @@ function openSave(data, meta, name, src) {
   const save = C.readSave(data, meta, name);
   S.save = save; S.src = src; S.dirty = false; S.pick = {}; S.sel = null;
   S.raw = { path: [], q: '', hits: null, open: new Set(), page: {} };
-  S.bases = S.pets = S.frig = S.coords = null; S.diffPreset = null;
+  S.bases = S.pets = S.frig = S.coords = S.acct = null; S.diffPreset = null;
   const root = save.json;
   if (!(root instanceof Map)) throw new Error('Save content is not a JSON object');
   S.obf = !root.has('Version') && !root.has('PlayerStateData') && !root.has('CommonStateData');
@@ -1060,11 +1083,11 @@ function openSave(data, meta, name, src) {
 $('#ctxSel').onchange = (e) => { S.ctx = g(S.save.json, e.target.value); S.pick = {}; S.sel = null; S.bases = S.pets = S.frig = null; renderSide(); render(); };
 
 $('#closeBtn').onclick = async () => {
-  if (S.dirty && !(await dialog('Discard changes?', '<p>Your edits to this save have not been written yet.</p>', [['Keep editing', false, 'ghost'], ['Discard', true, 'danger']]))) return;
+  if ((S.dirty || (S.acct && S.acct.dirty)) && !(await dialog('Discard changes?', '<p>Your edits to this save have not been written yet.</p>', [['Keep editing', false, 'ghost'], ['Discard', true, 'danger']]))) return;
   S.save = null; $('#app').classList.add('hidden'); $('#landing').classList.remove('hidden'); document.body.classList.add('on-landing'); applySection(null);
   if (APP && S.appAcct) appListAccount(S.appAcct);
 };
-window.addEventListener('beforeunload', (e) => { if (S.dirty) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('beforeunload', (e) => { if (S.dirty || (S.acct && S.acct.dirty)) { e.preventDefault(); e.returnValue = ''; } });
 
 // ------------------------------------------------------------------ writing
 $('#saveBtn').onclick = async () => {
@@ -1116,13 +1139,13 @@ function download(bytes, name) { const u = URL.createObjectURL(new Blob([bytes])
 const SECTIONS = [
   ['overview', 'Overview'], ['shipwright', 'Shipwright'], ['hangar', 'Hangar'], ['library', 'Dock Yard'], ['exosuit', 'Exosuit'], ['ships', 'Starships'], ['tools', 'Multi-tools'],
   ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['companions', 'Companions'], ['bases', 'Bases'], ['storage', 'Storage'], ['coords', 'Coordinates'],
-  ['knowledge', 'Knowledge'], ['standing', 'Standing'], ['difficulty', 'Difficulty'], ['items', 'Item names'], ['raw', 'Raw data'],
+  ['knowledge', 'Knowledge'], ['rewards', 'Rewards'], ['standing', 'Standing'], ['difficulty', 'Difficulty'], ['items', 'Item names'], ['raw', 'Raw data'],
 ];
 // Spectrum: each section's colour, sweeping teal through blue, violet, magenta, rose and coral (owner's pick);
 // the pages after it are aqua (coordinates), sky, periwinkle and steel (knowledge, standing, difficulty),
 // mint (item names) and slate (raw data).
 // One bright base per section; light mode darkens it automatically.
-const SECTION_COLORS = { overview: '#2fc3d6', shipwright: '#3cb6ea', hangar: '#4ea8ff', library: '#6598ff', exosuit: '#7d8bff', ships: '#a37bff', tools: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', companions: '#ff7690', bases: '#ff8079', storage: '#ff8a70', coords: '#36d6c3', knowledge: '#5ab8f0', standing: '#9a8cff', difficulty: '#a3b3cf', items: '#3fd9a3', raw: '#8fb3c4' };
+const SECTION_COLORS = { overview: '#2fc3d6', shipwright: '#3cb6ea', hangar: '#4ea8ff', library: '#6598ff', exosuit: '#7d8bff', ships: '#a37bff', tools: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', companions: '#ff7690', bases: '#ff8079', storage: '#ff8a70', coords: '#36d6c3', knowledge: '#5ab8f0', rewards: '#7ba2ff', standing: '#9a8cff', difficulty: '#a3b3cf', items: '#3fd9a3', raw: '#8fb3c4' };
 const secColor = (id) => SECTION_COLORS[id];
 function applySection(id) {
   const c = secColor(id);
@@ -2719,6 +2742,7 @@ function setCharged(inv, keys, on) {
     t.set(keyFor('InventorySpecialSlotType'), 'TechBonus'); m.set(keyFor('Type'), t); m.set(keyFor('Index'), coord(x, y)); arr.push(m); n++;
   }
   else for (let i = arr.length - 1; i >= 0; i--) if (isBonus(arr[i]) && keys.has(chargeKey(arr[i]))) { arr.splice(i, 1); n++; }
+  if (on && n) S.zap = { inv, keys: new Set(keys), until: Date.now() + 1500 };   // these crackle once when drawn
   if (n) markDirty(); return n;
 }
 // lightning around a supercharged slot: two jagged arcs, different for every slot, crackling along the edge
@@ -2744,7 +2768,7 @@ function invBlock(el, inv, title, peers) {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const key = x + ',' + y, s = items.get(key), ok = valid.has(key);
     const sel = selHere && S.sel.keys.has(key) ? ' sel' : '';
-    const ch = charged.has(key), zap = ch ? boltArcs(x, y) : '', chs = ch ? ' charged' : '';
+    const ch = charged.has(key), zap = ch ? boltArcs(x, y) : '', chs = ch ? ' charged' + (S.zap && S.zap.inv === inv && S.zap.until > Date.now() && S.zap.keys.has(key) ? ' zap' : '') : '';
     if (!s) { cells += `<button class="cell${ok ? '' : ' locked'}${chs}${sel}" data-x="${x}" data-y="${y}" aria-label="${ok ? 'Empty slot' : 'Locked slot'} ${x + 1},${y + 1}${ch ? ', supercharged' : ''}">${zap}</button>`; continue; }
     const id = idOf(s), t = typeOf(s), info = dbItem(id);
     const amt = num(g(s, 'Amount')), mx = num(g(s, 'MaxAmount'));
@@ -3135,7 +3159,8 @@ async function loadLibrary() {
   const d = await (await api('/api/itemlib/items.json')).json();
   const list = d.items.map((it) => ({ ...it, icon: it.icon || '' }));
   S.db = { list, byId: new Map(list.map((it) => [it.id, it])), icons: new Map(), src: 'lib',
-    words: d.words || null, traits: new Map((d.traits || []).map((t) => [t.id, t])), perks: new Map((d.perks || []).map((t) => [t.id, t])), ranks: d.ranks && d.ranks.length ? new Map(d.ranks.map((r) => [r.id, r])) : null };
+    words: d.words || null, traits: new Map((d.traits || []).map((t) => [t.id, t])), perks: new Map((d.perks || []).map((t) => [t.id, t])), ranks: d.ranks && d.ranks.length ? new Map(d.ranks.map((r) => [r.id, r])) : null,
+    seasons: d.seasons || null, rewards: d.rewards || null, twitch: d.twitch || null, platform: d.platform || null };
 }
 // build (or rebuild) in the background, reporting progress through onTick
 async function buildLibrary(onTick, post) {
@@ -3335,7 +3360,7 @@ function predictionHtml(p, s) {
 
 // ------------------------------------------------------------------ Dock Yard (ship library)
 // brand-new sections wear a New badge in the menu until they've been opened once
-const NEW_SECTIONS = { library: 'hse-dockyard-seen', shipwright: 'hse-shipwright-seen', bases: 'hse-bases-seen', companions: 'hse-companions-seen', knowledge: 'hse-knowledge-seen', standing: 'hse-standing-seen', difficulty: 'hse-difficulty-seen' };
+const NEW_SECTIONS = { library: 'hse-dockyard-seen', shipwright: 'hse-shipwright-seen', bases: 'hse-bases-seen', companions: 'hse-companions-seen', knowledge: 'hse-knowledge-seen', standing: 'hse-standing-seen', difficulty: 'hse-difficulty-seen', rewards: 'hse-rewards-seen' };
 const seenSection = (id) => { try { return localStorage.getItem(NEW_SECTIONS[id]) === '1'; } catch (_) { return true; } };
 function markSeen(id) { try { localStorage.setItem(NEW_SECTIONS[id], '1'); } catch (_) {} const pill = document.querySelector(`nav [data-s="${id}"] .new-pill`); if (pill) pill.remove(); }
 const dockyardSeen = () => seenSection('library');
@@ -4466,6 +4491,7 @@ const FIND_WORDS = [
   ['difficulty', 'Difficulty settings', 'difficulty game mode permadeath creative survival relaxed settings preset'],
   ['standing', 'Standing and reputation', 'standing reputation rank guild faction gek korvax vykeen autophage outlaw'],
   ['standing', 'Journey milestones', 'milestones journey titles stats'],
+  ['rewards', 'Expedition rewards', 'expedition rewards unlock twitch drops platform season quicksilver'], ['rewards', 'Twitch drops', 'twitch drops rewards'],
   ['knowledge', 'Known technology and recipes', 'blueprints recipes technology known learn unlock base parts'], ['knowledge', 'Words', 'words language learn alien'],
   ['companions', 'Companions', 'pets companions creatures eggs trust'], ['bases', 'Bases', 'bases base parts building'], ['bases', 'Settlements', 'settlement settlements overseer'],
   ['freighter', 'Frigates', 'frigates fleet expeditions'], ['shipwright', 'Corvette builds', 'corvette build optimizer tune'], ['library', 'Dock Yard', 'dock yard ship library garage storage favourites import nmsship'],
@@ -4474,7 +4500,7 @@ const FIND_WORDS = [
 function findIndex() {
   const out = [], p = ps();
   const push = (label, sub, kind, go2, extra = '') => out.push({ label, sub, kind, go: go2, hay: (label + ' ' + sub + ' ' + extra).toLowerCase() });
-  for (const [s, l, w] of FIND_WORDS) push(l, (SECTIONS.find(([id]) => id === s) || [, ''])[1], 'Page', () => { if (s === 'knowledge') (S.know || (S.know = { tab: 'tech', q: '', race: 0, wq: '' })).tab = /word/i.test(l) ? 'words' : 'tech'; if (s === 'bases') (S.bases || (S.bases = { tab: 'bases' })).tab = /settle/i.test(l) ? 'settlements' : 'bases'; go(s); if (s === 'freighter') spotlight('#frigates'); }, w);
+  for (const [s, l, w] of FIND_WORDS) push(l, (SECTIONS.find(([id]) => id === s) || [, ''])[1], 'Page', () => { if (s === 'knowledge') (S.know || (S.know = { tab: 'tech', q: '', race: 0, wq: '' })).tab = /word/i.test(l) ? 'words' : 'tech'; if (s === 'bases') (S.bases || (S.bases = { tab: 'bases' })).tab = /settle/i.test(l) ? 'settlements' : 'bases'; if (s === 'rewards') (S.rw || (S.rw = { q: '' })).tab = /twitch/i.test(l) ? 'twitch' : 'seasons'; go(s); if (s === 'freighter') spotlight('#frigates'); }, w);
   for (const [id, l] of SECTIONS) push(l, 'Section', 'Page', () => go(id));
   ships().forEach(({ s, i }) => push(str(g(s, 'Name')) || 'Ship ' + (i + 1), 'Starship, ' + modelName(g(s, 'Resource', 'Filename')), 'Ship', () => { S.pick.ship = i; go('ships'); }));
   tools().forEach(({ s, i }) => push(str(g(s, 'Name')) || 'Multi-tool ' + (i + 1), 'Multi-tool', 'Multi-tool', () => { S.pick.tool = i; go('tools'); }));
@@ -4534,6 +4560,122 @@ function setupFind() {
     if (!S.save || $('#app').classList.contains('hidden')) return;
     if ((e.key === 'k' && (e.ctrlKey || e.metaKey)) || (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName))) { e.preventDefault(); box.focus(); box.select(); }
   });
+}
+
+// ---------------------------------------------------------------- rewards (the account file)
+// Expedition, Twitch and platform rewards are unlocked per account in accountdata.hg (UserSettingsData:
+// UnlockedSeasonRewards, UnlockedTwitchRewards, UnlockedPlatformRewards); the game lists every one of them in
+// its own tables, which the item library reads. Unlocked rewards are claimed in the game on the Space Anomaly.
+const ACCT = { data: 'accountdata.hg', meta: 'mf_accountdata.hg' };
+const REWARD_KINDS = [['seasons', 'Expeditions', 'UnlockedSeasonRewards'], ['twitch', 'Twitch drops', 'UnlockedTwitchRewards'], ['platform', 'Platform rewards', 'UnlockedPlatformRewards']];
+async function acctRead(name) {
+  if (S.src.kind === 'app') { const r = await api('/api/read?dir=' + encodeURIComponent(S.src.dir) + '&name=' + encodeURIComponent(name)); return new Uint8Array(await r.arrayBuffer()); }
+  if (S.src.kind === 'dir') return new Uint8Array(await (await (await S.src.dir.getFileHandle(name)).getFile()).arrayBuffer());
+  throw new Error('no folder');
+}
+async function loadAccount() {
+  if (S.acct && S.acct.src === S.src) return S.acct;
+  S.acct = { src: S.src, save: null, error: '', dirty: false };
+  if (!S.src || (S.src.kind !== 'app' && S.src.kind !== 'dir')) { S.acct.error = 'browser'; return S.acct; }
+  try { const [d, m] = await Promise.all([acctRead(ACCT.data), acctRead(ACCT.meta)]); S.acct.save = C.readSave(d, m, ACCT.data); }
+  catch (e) { S.acct.error = /no folder/.test(e.message) ? 'browser' : 'The account file (accountdata.hg) wasn\'t found next to this save, or couldn\'t be read: ' + e.message; }
+  return S.acct;
+}
+// the account file has its own key mapping (libNOM splits the list at UserSettingsData)
+const ACC_N2O = {}; for (const [o, n] of Object.entries(MAPPING.account || {})) if (!(n in ACC_N2O)) ACC_N2O[n] = o;
+const ag = (m, name) => (m instanceof Map ? (m.has(ACC_N2O[name]) ? m.get(ACC_N2O[name]) : m.get(name)) : undefined);
+const acctList = (key) => { const u = S.acct && S.acct.save && ag(S.acct.save.json, 'UserSettingsData'); const v = u && ag(u, key); return Array.isArray(v) ? v : null; };
+function unlockRewards(key, ids) {
+  const arr = acctList(key); if (!arr) return 0;
+  const have = new Set(arr.map(str)); let n = 0;
+  for (const id of ids) if (!have.has(id)) { arr.push(id); have.add(id); n++; }
+  if (n) { S.acct.dirty = true; updateStatus(); }
+  return n;
+}
+function lockRewards(key, ids) {
+  const arr = acctList(key); if (!arr) return 0; const drop = new Set(ids); let n = 0;
+  for (let k = arr.length - 1; k >= 0; k--) if (drop.has(str(arr[k]))) { arr.splice(k, 1); n++; }
+  if (n) { S.acct.dirty = true; updateStatus(); }
+  return n;
+}
+const rewardName = (id) => { const it = dbItem(id); return it ? it.name : humanize(id.replace(/^\^/, '').replace(/_/g, ' ').toLowerCase()); };
+function rewardSets() {
+  const db = S.db || {};
+  return { seasons: db.rewards || [], twitch: (db.twitch || []).map((t) => ({ id: t.id, product: t.product, group: t.group })), platform: (db.platform || []).map((t) => ({ id: t.id, product: t.product })) };
+}
+async function saveAccount() {
+  const A = S.acct; if (!A || !A.save || !A.dirty) return;
+  let out; try { out = C.writeSave(A.save, {}); const back = C.readSave(out.data, out.meta, ACCT.data); if (C.stringifyJSON(back.json) !== C.stringifyJSON(A.save.json)) throw new Error('the file did not read back the same'); }
+  catch (e) { toast('Could not prepare the account file: ' + e.message, true); return; }
+  if (S.src.kind === 'app') {
+    let running = false; try { running = (await (await api('/api/game-running')).json()).running; } catch (_) {}
+    const ok = await dialog(running ? 'The game is still running' : 'Save the rewards?', `<p>This replaces <span class="mono">accountdata.hg</span> and <span class="mono">mf_accountdata.hg</span>, the account file every save slot shares. The current pair is copied to the backups folder first.</p>${running ? '<p class="err">No Man\'s Sky is running. Quit to the desktop first, or the game will overwrite this.</p>' : ''}`, [['Cancel', false, 'ghost'], [running ? 'Save anyway' : 'Save', true, running ? 'danger' : 'primary']]);
+    if (!ok) return;
+    try {
+      const fd = new FormData(); fd.append('dir', S.src.dir); fd.append('dataName', ACCT.data); fd.append('metaName', ACCT.meta);
+      fd.append('data', new Blob([out.data]), ACCT.data); fd.append('meta', new Blob([out.meta]), ACCT.meta);
+      const res = await (await api('/api/write', { method: 'POST', body: fd })).json();
+      A.save.meta = C.readSave(out.data, out.meta, ACCT.data).meta; A.dirty = false;
+      toast('Rewards saved. The previous account file is in backups\\' + res.backupName);
+    } catch (e) { toast('Save failed, nothing was changed: ' + e.message, true); return; }
+  } else {
+    try { await writeFile(S.src.dir, ACCT.meta, out.meta); await writeFile(S.src.dir, ACCT.data, out.data); A.save.meta = C.readSave(out.data, out.meta, ACCT.data).meta; A.dirty = false; toast('Rewards saved'); }
+    catch (e) { toast('Save failed: ' + e.message, true); return; }
+  }
+  updateStatus(); render();
+}
+PAGES.rewards = (el) => {
+  el.innerHTML = `<div class="page-head"><div><h1>Rewards</h1><p>Every expedition reward, past and current, plus Twitch drops and platform rewards: unlock all of them at once or pick the ones you want. You collect them in the game on the Space Anomaly.</p></div></div><div id="rwBody"><p class="dim">Reading the account file…</p></div>`;
+  loadAccount().then((A) => { if (S.section === 'rewards' && el.isConnected) rewardsBody($('#rwBody', el), A); });
+};
+function rewardsBody(host, A) {
+  if (A.error === 'browser') { host.innerHTML = '<div class="panel"><p>Rewards live in the account file (accountdata.hg) next to your saves. Open your save folder (not single files) or use the desktop app to change them.</p></div>'; return; }
+  if (A.error) { host.innerHTML = `<div class="panel"><p class="err">${esc(A.error)}</p></div>`; return; }
+  const R = rewardSets(), seasons = (S.db && S.db.seasons) || [];
+  if (!R.seasons.length && !R.twitch.length) { host.innerHTML = '<div class="panel"><p>The reward lists come from your game. Build the item library on the Item names page (the desktop app does this by itself) and come back.</p></div>'; return; }
+  const W = S.rw || (S.rw = { tab: 'seasons', season: null, q: '' });
+  const known = (key) => new Set((acctList(key) || []).map(str));
+  const kSeason = known('UnlockedSeasonRewards'), kTwitch = known('UnlockedTwitchRewards'), kPlat = known('UnlockedPlatformRewards');
+  const totals = [[R.seasons.length, R.seasons.filter((r) => kSeason.has(r.id)).length], [R.twitch.length, R.twitch.filter((r) => kTwitch.has(r.id)).length], [R.platform.length, R.platform.filter((r) => kPlat.has(r.id)).length]];
+  const missing = totals.reduce((s, [t, h]) => s + t - h, 0);
+  host.innerHTML = `<div class="panel rw-hero"><div class="rw-stats">${REWARD_KINDS.map(([, l], k) => `<div><b>${totals[k][1].toLocaleString()}<span> of ${totals[k][0].toLocaleString()}</span></b><span class="dim">${l} unlocked</span><span class="bar"><i style="width:${totals[k][0] ? Math.round(100 * totals[k][1] / totals[k][0]) : 0}%"></i></span></div>`).join('')}</div>
+      <div class="rw-acts"><button class="btn primary rw-all" type="button" id="rwAll"${missing ? '' : ' disabled'}>${missing ? `Unlock all rewards (${missing.toLocaleString()})` : 'Every reward is unlocked'}</button>
+      <button class="btn${A.dirty ? ' primary rw-save' : ''}" type="button" id="rwSave"${A.dirty ? '' : ' disabled'}>${A.dirty ? 'Save rewards to the game' : 'No reward changes'}</button></div>
+      <p class="dim ed-note">Rewards are saved to the account file, which every save slot shares, with their own save button. Then load any save and claim them from the Quicksilver Synthesis Companion on the Space Anomaly.</p></div>`;
+  $('#rwAll', host).onclick = () => { const n = unlockRewards('UnlockedSeasonRewards', R.seasons.map((r) => r.id)) + unlockRewards('UnlockedTwitchRewards', R.twitch.map((r) => r.id)) + unlockRewards('UnlockedPlatformRewards', R.platform.map((r) => r.id)); toast(plural(n, 'reward') + ' unlocked. Press Save rewards to the game to keep them.'); render(); };
+  $('#rwSave', host).onclick = saveAccount;
+  tabs(host, REWARD_KINDS.map(([id, l], k) => [id, l, totals[k][0]]), W.tab, (t) => { W.tab = t; render(); });
+  const row = (id, on, nm, sub, iconId = id) => { const it = dbItem(iconId); return `<label class="know-row rw-row"><input type="checkbox" data-id="${esc(id)}"${on ? ' checked' : ''}><span class="ic">${it && it.icon ? `<img data-icon="${esc(it.icon)}" alt="">` : ''}</span><span class="nm">${esc(nm)}</span><span class="mono dim">${esc(id.replace(/^\^/, ''))}</span><span class="dim sub">${esc(sub || '')}</span></label>`; };
+  const wire = (box, key) => { loadIcons(box); box.onchange = (e) => { const c = e.target.closest('[data-id]'); if (!c) return; (c.checked ? unlockRewards : lockRewards)(key, [c.dataset.id]); render(); }; };
+  if (W.tab === 'seasons') {
+    const nums = [...new Set(R.seasons.map((r) => r.season))].sort((a, b) => b - a);
+    if (W.season == null || !nums.includes(W.season)) W.season = nums[0];
+    const sInfo = (n) => seasons.find((x) => x.num === n) || { num: n, name: 'Expedition ' + n };
+    const { main } = listDetail(host, { title: 'Expeditions', pick: String(W.season), onPick: (k) => { W.season = +k; render(); },
+      items: nums.map((n) => { const list = R.seasons.filter((r) => r.season === n), have = list.filter((r) => kSeason.has(r.id)).length; return { key: String(n), name: `${n}. ${sInfo(n).name}`, sub: `${have} of ${list.length} unlocked`, dot: have === list.length ? 'ok' : '' }; }) });
+    const s = sInfo(W.season), list = R.seasons.filter((r) => r.season === W.season).sort((a, b) => (a.stage < 0) - (b.stage < 0) || a.stage - b.stage);
+    const have = list.filter((r) => kSeason.has(r.id)).length;
+    main.innerHTML = `<div class="panel sw-bar rw-exp">${s.icon ? `<img class="rw-patch" data-icon="${esc(s.icon)}" alt="">` : ''}<div><div class="sw-title"><b>${esc(s.name)}</b><span class="dim">Expedition ${s.num} · ${have} of ${list.length} unlocked</span></div>${s.desc ? `<p class="dim rw-desc">${esc(s.desc)}</p>` : ''}
+        <div class="toolbar"><button class="btn primary" type="button" id="rwExp"${have === list.length ? ' disabled' : ''}>Unlock this expedition's rewards</button><button class="btn ghost" type="button" id="rwExpNone"${have ? '' : ' disabled'}>Lock them again</button></div></div></div>
+      <div class="panel know"><div class="know-rows" id="rwRows">${list.map((r) => row(r.id, kSeason.has(r.id), rewardName(r.id), r.id === s.final ? 'Final reward' : r.stage >= 0 ? 'Milestone stage ' + r.stage : 'Expedition reward')).join('')}</div></div>`;
+    loadIcons(main);
+    wire($('#rwRows', main), 'UnlockedSeasonRewards');
+    $('#rwExp', main).onclick = () => { toast(plural(unlockRewards('UnlockedSeasonRewards', list.map((r) => r.id)), 'reward') + ' unlocked'); render(); };
+    $('#rwExpNone', main).onclick = () => { lockRewards('UnlockedSeasonRewards', list.map((r) => r.id)); render(); };
+    return;
+  }
+  const key = W.tab === 'twitch' ? 'UnlockedTwitchRewards' : 'UnlockedPlatformRewards', list = W.tab === 'twitch' ? R.twitch : R.platform, have = W.tab === 'twitch' ? kTwitch : kPlat;
+  const panel = document.createElement('div'); panel.className = 'panel know'; host.appendChild(panel);
+  panel.innerHTML = `<div class="know-head"><input class="input" type="search" id="rwQ" placeholder="Search" value="${esc(W.q)}"><span class="dim" id="rwCount"></span><span class="sw-gap"></span><button class="btn primary" type="button" id="rwKind"${list.every((r) => have.has(r.id)) ? ' disabled' : ''}>Unlock all ${W.tab === 'twitch' ? 'Twitch drops' : 'platform rewards'}</button></div><div class="know-rows" id="rwRows"></div>`;
+  const draw = () => {
+    const q = W.q.toLowerCase(), hits = list.filter((r) => !q || (rewardName(r.product) + ' ' + r.id + ' ' + r.product).toLowerCase().includes(q));
+    $('#rwRows', panel).innerHTML = hits.map((r) => { const it = dbItem(r.product); return row(r.id, have.has(r.id), rewardName(r.product), (it && (it.sub || it.cat)) || r.product.replace(/^\^/, ''), r.product); }).join('') || '<p class="dim" style="padding:10px">Nothing matches.</p>';
+    $('#rwCount', panel).textContent = `${have.size.toLocaleString()} of ${list.length.toLocaleString()} unlocked`;
+    wire($('#rwRows', panel), key);
+  };
+  draw();
+  $('#rwQ', panel).oninput = (e) => { W.q = e.target.value; draw(); };
+  $('#rwKind', panel).onclick = () => { toast(plural(unlockRewards(key, list.map((r) => r.id)), 'reward') + ' unlocked'); render(); };
 }
 
 setupFind();

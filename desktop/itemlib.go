@@ -24,7 +24,7 @@ import (
 	"time"
 )
 
-const itemlibVersion = 2 // 2: words, frigate traits and settlement perks
+const itemlibVersion = 3 // 2: words, frigate traits and settlement perks; 3: expedition, Twitch and platform rewards
 
 type libItem struct {
 	ID     string `json:"id"`
@@ -39,16 +39,52 @@ type libItem struct {
 }
 
 type libFile struct {
-	Version int               `json:"version"`
-	Built   string            `json:"built"`
-	Game    string            `json:"game"`
-	Stamp   map[string]string `json:"stamp"`
-	Items   []libItem         `json:"items"`
-	Missing []string          `json:"missingIcons,omitempty"`
-	Words   []libWord         `json:"words,omitempty"`
-	Traits  []libTrait        `json:"traits,omitempty"`
-	Perks   []libPerk         `json:"perks,omitempty"`
-	Ranks   []libRanks        `json:"ranks,omitempty"`
+	Version  int               `json:"version"`
+	Built    string            `json:"built"`
+	Game     string            `json:"game"`
+	Stamp    map[string]string `json:"stamp"`
+	Items    []libItem         `json:"items"`
+	Missing  []string          `json:"missingIcons,omitempty"`
+	Words    []libWord         `json:"words,omitempty"`
+	Traits   []libTrait        `json:"traits,omitempty"`
+	Perks    []libPerk         `json:"perks,omitempty"`
+	Ranks    []libRanks        `json:"ranks,omitempty"`
+	Seasons  []libSeason       `json:"seasons,omitempty"`
+	Rewards  []libReward       `json:"rewards,omitempty"`
+	Twitch   []libTwitch       `json:"twitch,omitempty"`
+	Platform []libPlatform     `json:"platform,omitempty"`
+}
+
+// an expedition (historicalseasondatatable): rewards point at it by its display number
+type libSeason struct {
+	Num   int    `json:"num"`
+	Name  string `json:"name"`
+	Title string `json:"title,omitempty"` // the player title it unlocks
+	Desc  string `json:"desc,omitempty"`
+	Icon  string `json:"icon,omitempty"`
+	Final string `json:"final,omitempty"` // the reward for finishing it
+}
+
+// an expedition reward (unlockableseasonrewards): unlocked per account in UnlockedSeasonRewards
+type libReward struct {
+	ID     string `json:"id"`
+	Season int    `json:"season"`           // first of SeasonIds
+	Stage  int    `json:"stage"`            // first of StageIds (-1: not tied to a stage)
+	Must   bool   `json:"must,omitempty"`   // MustBeUnlocked
+	Switch bool   `json:"switch,omitempty"` // SwitchExclusive
+}
+
+// a Twitch drop (unlockabletwitchrewards): unlocked per account in UnlockedTwitchRewards
+type libTwitch struct {
+	ID      string `json:"id"`
+	Product string `json:"product"`
+	Group   string `json:"group,omitempty"`
+}
+
+// a platform reward (unlockableplatformrewards): unlocked per account in UnlockedPlatformRewards
+type libPlatform struct {
+	ID      string `json:"id"`
+	Product string `json:"product"`
 }
 
 // a stat with named levels (standing with each race and guild, journey milestones): the level is
@@ -495,6 +531,83 @@ func buildItemLibrary() (err error) {
 		}
 	}
 
+	// rewards: expeditions (seasons), their rewards, Twitch drops and platform rewards
+	var seasons []libSeason
+	var rewards []libReward
+	var twitch []libTwitch
+	var platform []libPlatform
+	if m, err := table("metadata/reality/tables/historicalseasondatatable.mbin", 0xF917FBD15953731A); err != nil {
+		log.Printf("item library: skipping expeditions: %v", err)
+	} else {
+		a, n := m.list(0x20)
+		for i := 0; i < n; i++ {
+			e := a + i*0xB8
+			num := int(m.i32(e + 0x88))
+			if num <= 0 || num > 500 {
+				continue
+			}
+			name := b.text(m.fstr(e, 0x20))
+			if name == "" {
+				name = fmt.Sprintf("Expedition %d", num)
+			}
+			seasons = append(seasons, libSeason{Num: num, Name: name, Title: b.text(m.fstr(e+0x40, 0x20)), Desc: b.text(m.fstr(e+0x94, 0x20)), Icon: icon(m.vstr(e + 0x60)), Final: "^" + m.fstr(e+0x78, 0x10)})
+		}
+	}
+	ints := func(m *mbin, p int) []int {
+		a, n := m.list(p)
+		out := []int{}
+		for k := 0; k < n && k < 64; k++ {
+			out = append(out, int(m.i32(a+4*k)))
+		}
+		return out
+	}
+	if m, err := table("metadata/reality/tables/unlockableseasonrewards.mbin", 0x5D906A07E9EA8A9F); err != nil {
+		log.Printf("item library: skipping expedition rewards: %v", err)
+	} else {
+		a, n := m.list(0x20)
+		for i := 0; i < n; i++ {
+			e := a + i*0x78
+			id := m.fstr(e+0x40, 0x10)
+			if id == "" || !printable(id) {
+				continue
+			}
+			r := libReward{ID: "^" + id, Stage: -1, Must: m.u8(e+0x70) != 0, Switch: m.u8(e+0x71) != 0}
+			if s := ints(m, e+0x50); len(s) > 0 {
+				r.Season = s[0]
+			}
+			if s := ints(m, e+0x60); len(s) > 0 {
+				r.Stage = s[0]
+			}
+			rewards = append(rewards, r)
+		}
+	}
+	if m, err := table("metadata/reality/tables/unlockabletwitchrewards.mbin", 0xDAE66604A5D6F5D4); err != nil {
+		log.Printf("item library: skipping Twitch rewards: %v", err)
+	} else {
+		a, n := m.list(0x20)
+		for i := 0; i < n; i++ {
+			e := a + i*0x30
+			if id := m.fstr(e+0x20, 0x10); id != "" && printable(id) {
+				t := libTwitch{ID: "^" + id, Product: "^" + m.fstr(e+0x10, 0x10)}
+				if gr := m.fstr(e, 0x10); gr != "" {
+					t.Group = "^" + gr
+				}
+				twitch = append(twitch, t)
+			}
+		}
+	}
+	if m, err := table("metadata/reality/tables/unlockableplatformrewards.mbin", 0x6813221B24CD0086); err != nil {
+		log.Printf("item library: skipping platform rewards: %v", err)
+	} else {
+		a, n := m.list(0x20)
+		for i := 0; i < n; i++ {
+			e := a + i*0x20
+			if id := m.fstr(e+0x10, 0x10); id != "" && printable(id) {
+				platform = append(platform, libPlatform{ID: "^" + id, Product: "^" + m.fstr(e, 0x10)})
+			}
+		}
+	}
+
 	// stat levels (metadata/gamestate/stats, in MetadataEtc): GcLeveledStatData is 0x610 bytes, 11 levels of
 	// 0x80 at the start (name key at 0, GcStatValueData at 0x70: denominator, float, int), the id at 0x5F8.
 	// Anything that doesn't look right is dropped, so a quiet layout change only loses the rank names.
@@ -618,7 +731,7 @@ func buildItemLibrary() (err error) {
 		stampNames = append(stampNames, n)
 	}
 	sort.Strings(stampNames)
-	lib := &libFile{Version: itemlibVersion, Built: time.Now().Format(time.RFC3339), Game: banks, Stamp: stampOf(banks, stampNames), Items: items, Missing: missing, Words: words, Traits: traits, Perks: perks, Ranks: ranks}
+	lib := &libFile{Version: itemlibVersion, Built: time.Now().Format(time.RFC3339), Game: banks, Stamp: stampOf(banks, stampNames), Items: items, Missing: missing, Words: words, Traits: traits, Perks: perks, Ranks: ranks, Seasons: seasons, Rewards: rewards, Twitch: twitch, Platform: platform}
 	out, _ := json.Marshal(lib)
 	if err := atomicWrite(filepath.Join(itemlibDir(), "items.json"), out); err != nil {
 		return err
@@ -626,7 +739,7 @@ func buildItemLibrary() (err error) {
 	libMu.Lock()
 	libLoaded = lib
 	libMu.Unlock()
-	log.Printf("item library: %d items, %d icons (%d missing), %d words, %d frigate traits, %d perks, %d ranked stats from %s", len(items), len(names)-len(missing), len(missing), len(words), len(traits), len(perks), len(ranks), banks)
+	log.Printf("item library: %d items, %d icons (%d missing), %d words, %d frigate traits, %d perks, %d ranked stats, %d expeditions, %d rewards, %d Twitch drops from %s", len(items), len(names)-len(missing), len(missing), len(words), len(traits), len(perks), len(ranks), len(seasons), len(rewards), len(twitch), banks)
 	return nil
 }
 

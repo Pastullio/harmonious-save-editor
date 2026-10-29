@@ -17,4 +17,10 @@ const diff = []; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) diff.push
 ok(diff.every((i) => i >= 60 && i < 64), 'meta unchanged except the compressed-size field');
 const back = C.readSave(w.data, w.meta, 'save.hg');
 ok(C.stringifyJSON(back.json) === C.stringifyJSON(s.json), 'written save decodes to the same JSON');
+// the account file (uncompressed, no null terminator), if it is there too
+if (fs.existsSync(path.join(dir, 'accountdata.hg')) && fs.existsSync(path.join(dir, 'mf_accountdata.hg'))) {
+  const ad = new Uint8Array(fs.readFileSync(path.join(dir, 'accountdata.hg'))), am = new Uint8Array(fs.readFileSync(path.join(dir, 'mf_accountdata.hg')));
+  const acc = C.readSave(ad, am, 'accountdata.hg'), aw = C.writeSave(acc, { timestamp: acc.meta.info.timestamp });
+  ok(Buffer.compare(Buffer.from(aw.data), Buffer.from(ad)) === 0 && Buffer.compare(Buffer.from(aw.meta), Buffer.from(am)) === 0, 'unedited accountdata.hg and its meta re-encode byte-identical');
+}
 console.log(fails ? `\n${fails} FAILED` : '\nALL PASS'); process.exit(fails ? 1 : 0);
