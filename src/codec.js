@@ -220,7 +220,7 @@
   }
 
   /** Patch a decrypted meta for a newly written data file. Keeps every unknown byte as-is. */
-  function patchMeta(words, { sizeDecompressed, sizeDisk, timestamp, saveName, saveSummary }) {
+  function patchMeta(words, { sizeDecompressed, sizeDisk, timestamp, saveName, saveSummary, difficultyPreset }) {
     const w = new Uint32Array(words);
     const b = new Uint8Array(w.buffer);
     if (w[1] < 0x7D2) throw new Error('Pre-Frontiers (meta format ' + w[1] + ') saves are not supported');
@@ -232,6 +232,7 @@
     if (b.length >= META_LEN.WAYPOINT) {
       if (saveName != null) writeCString(b, 88, 128, saveName);
       if (saveSummary != null) writeCString(b, 216, 128, saveSummary);
+      if (difficultyPreset != null) b[344] = difficultyPreset & 0xFF;   // GcDifficultyPresetType, shown in the load menu
     }
     return w;
   }
@@ -417,7 +418,7 @@
       const words = patchMeta(save.meta.words, {
         sizeDecompressed: plain.length, sizeDisk: data.length,
         timestamp: opts.timestamp != null ? opts.timestamp : Math.floor(Date.now() / 1000),
-        saveName: opts.saveName, saveSummary: opts.saveSummary,
+        saveName: opts.saveName, saveSummary: opts.saveSummary, difficultyPreset: opts.difficultyPreset,
       });
       meta = encryptMeta(words, save.meta.slot, save.meta.iter);
     }

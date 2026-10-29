@@ -2,7 +2,7 @@
 #
 # Finds your No Man's Sky install through Steam, downloads HGPAKtool (MIT licence, by monkeyman192,
 # https://github.com/monkeyman192/HGPAKtool) to read the game's .pak archives, and pulls out only:
-#   - the item tables (METADATA/REALITY/TABLES)
+#   - the item tables (METADATA/REALITY/TABLES) and stat tables (METADATA/GAMESTATE/STATS)
 #   - the English text (LANGUAGE/*ENGLISH*)
 #   - a sample of the item icons (TEXTURES/UI/FRONTEND/ICONS), plus a list of all of them
 #   - the list of every file in every .pak (no contents)
@@ -97,6 +97,7 @@ try {
     $ext = Join-Path $work 'EXTRACTED'
     & $HgpakTool -U -q -O $ext `
         -f '*metadata/reality/tables/*' `
+        -f '*metadata/gamestate/stats/*' `
         -f '*language/*english*' `
         -f '*textures/ui/frontend/icons/*' `
         $banks
@@ -108,7 +109,7 @@ New-Item -ItemType Directory -Path $pack | Out-Null
 Copy-Item (Join-Path $work 'filenames.json') $pack
 
 $all = @(Get-ChildItem $ext -Recurse -File)
-$tables = $all | Where-Object { $_.FullName -match '[\\/]tables[\\/]' }
+$tables = $all | Where-Object { $_.FullName -match '[\\/](tables|stats)[\\/]' }
 $lang = $all | Where-Object { $_.FullName -match '[\\/]language[\\/]' }
 $icons = $all | Where-Object { $_.FullName -match '[\\/]icons[\\/]' }
 if (-not $tables) { Fail ("No item tables were extracted. Send Claude the file filenames.json from $work instead.") }

@@ -197,6 +197,72 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .tc.loc .gal { font-family: var(--display); font-weight: 300; font-size: 26px; letter-spacing: .06em; color: var(--ink); line-height: 1.15; margin-top: 4px; }
 .tc.loc .loc-where { color: var(--ink); margin-top: 4px; }
 /* Shipwright */
+/* find anything (sidebar) */
+.find { position: relative; margin: 12px 12px 0; }
+.find .input { padding-right: 58px; border-radius: 999px; }
+.find kbd { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font: 500 10.5px/1 var(--mono); color: var(--faint); border: 1px solid var(--line-2); border-radius: 6px; padding: 3px 5px; pointer-events: none; }
+.find .input:focus + kbd { display: none; }
+.find-res { position: absolute; z-index: 30; left: 0; top: calc(100% + 6px); width: min(420px, 86vw); max-height: 70vh; overflow: auto; background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r); box-shadow: 0 18px 50px rgba(0, 0, 0, .28); padding: 6px; }
+.find-res button { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 10px; align-items: center; width: 100%; text-align: left; background: none; border: 0; border-radius: var(--r-sm); padding: 7px 10px; cursor: pointer; font: inherit; color: var(--ink); }
+.find-res button[aria-selected="true"], .find-res button:hover { background: var(--hover); }
+.find-res button[aria-selected="true"] { box-shadow: inset 3px 0 0 var(--accent); }
+.find-res .fk { font-size: 10px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); }
+.find-res .fl { display: grid; min-width: 0; }
+.find-res .fl b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.find-res .fl .dim { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spot { animation: spot 2.2s ease-out; border-radius: var(--r-sm); }
+@keyframes spot { 0%, 35% { box-shadow: 0 0 0 3px var(--accent), 0 0 24px color-mix(in srgb, var(--accent) 45%, transparent); } 100% { box-shadow: 0 0 0 0 transparent; } }
+@media (prefers-reduced-motion: reduce) { .spot { animation: none; outline: 3px solid var(--accent); } }
+/* plain editors */
+.ed-tabs { margin-bottom: 16px; }
+.ed-tabs .n { font-family: var(--mono); letter-spacing: 0; opacity: .7; margin-left: 4px; }
+.ed-note { font-size: 12.5px; margin: 10px 0 0; }
+.ed-q { margin-bottom: 10px; }
+.ed-list { max-height: 62vh; overflow: auto; padding: 2px; }
+.sub-title { font-size: 13px; font-weight: 500; letter-spacing: .24em; text-transform: uppercase; color: var(--dim); margin: 30px 0 12px; }
+.diff-grid { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.diff-grid .check { align-self: center; padding: 6px 0; }
+.ed-note + .toolbar, .stand + .toolbar, .details-grid + .toolbar, .pet-grid + .toolbar { margin-top: 14px; }
+.stand { display: grid; }
+.stand-row { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(0, 1.8fr) 150px 64px; gap: 12px; align-items: center; padding: 7px 4px; border-bottom: 1px solid var(--line); }
+.stand-row .lbl { font-weight: 500; }
+.stand-row .rank { font-size: 13px; color: var(--accent); }
+@media (max-width: 760px) { .stand-row { grid-template-columns: 1fr 120px 60px; } .stand-row .rank { grid-column: 1 / -1; order: 3; } }
+.know-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.know-head #kQ { max-width: 280px; }
+.know-head #kCount { font-size: 12.5px; }
+.know-rows { max-height: 620px; overflow: auto; border: 1px solid var(--line); border-radius: var(--r); background: var(--field); }
+.know-row { display: grid; grid-template-columns: 28px minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 4px 10px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.know-row .ic, .base-parts .ic { width: 28px; height: 28px; display: block; }
+.know-row .ic img, .base-parts .ic img { width: 28px; height: 28px; object-fit: contain; display: block; }
+.know-row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.know-row .mono, .know-row .sub { font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.know-row.word { grid-template-columns: 20px minmax(0, 1fr) minmax(0, 1fr); cursor: pointer; }
+.know-row.word:hover { background: var(--hover); }
+.word-races { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.wr { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--field); cursor: pointer; display: grid; gap: 4px; }
+.wr:hover { border-color: var(--accent); }
+.wr.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent); }
+.wr .dim { font-size: 12px; font-family: var(--mono); }
+.wr .bar { height: 4px; background: var(--well); border-radius: 2px; overflow: hidden; }
+.wr .bar i { display: block; height: 100%; background: var(--accent); }
+.know .toolbar { margin-bottom: 12px; }
+.perks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.perks li { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: var(--r-sm); background: var(--well); }
+.perks li > span { display: grid; gap: 2px; }
+.perks li .dim { font-size: 12.5px; }
+.perks li.neg b { color: var(--danger); }
+.base-where { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.base-where .k, .pet-slide > span:first-child { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+.base-parts { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
+.base-parts > div { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 10px; background: var(--well); border-radius: var(--r-sm); font-size: 13px; }
+.base-parts .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px 24px; }
+.pet-slide > span:first-child { display: flex; justify-content: space-between; letter-spacing: .14em; }
+.pet-slide > span:first-child b { letter-spacing: 0; color: var(--ink); font-weight: 500; }
+.pet-slide input[type=range] { width: 100%; accent-color: var(--accent); }
+.pet-slide .ends { display: flex; justify-content: space-between; font-size: 11.5px; }
+.pet-slide .ends i { font-style: normal; }
 .sw { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 16px; align-items: start; }
 @media (max-width: 1000px) { .sw { grid-template-columns: 1fr; } }
 .sw-side { position: sticky; top: 12px; }
@@ -661,6 +727,7 @@ nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .
       <div class="meta" id="saveMeta"></div>
       <div class="ctx hidden" id="ctxWrap"><select class="input" id="ctxSel" aria-label="Game context"></select></div>
     </div>
+    <div class="find" role="search"><input class="input" id="findBox" type="search" placeholder="Find anything" aria-label="Find anything in this save" aria-controls="findRes" aria-expanded="false" autocomplete="off" spellcheck="false"><kbd>Ctrl K</kbd><div class="find-res" id="findRes" role="listbox" hidden></div></div>
     <nav id="nav" aria-label="Sections"></nav>
     <div class="side-foot">
       <div class="status" id="status" aria-live="polite">No changes</div>
@@ -969,6 +1036,7 @@ function openSave(data, meta, name, src) {
   const save = C.readSave(data, meta, name);
   S.save = save; S.src = src; S.dirty = false; S.pick = {}; S.sel = null;
   S.raw = { path: [], q: '', hits: null, open: new Set(), page: {} };
+  S.bases = S.pets = S.frig = S.coords = null; S.diffPreset = null;
   const root = save.json;
   if (!(root instanceof Map)) throw new Error('Save content is not a JSON object');
   S.obf = !root.has('Version') && !root.has('PlayerStateData') && !root.has('CommonStateData');
@@ -989,7 +1057,7 @@ function openSave(data, meta, name, src) {
   if (APP) setTimeout(() => garageCapture().catch((e) => console.warn('garage', e)), 800);
   toast('Loaded ' + name + ' in ' + Math.round(performance.now() - t0) + ' ms' + (meta ? '' : ' (read-only: no meta file)'));
 }
-$('#ctxSel').onchange = (e) => { S.ctx = g(S.save.json, e.target.value); S.pick = {}; S.sel = null; renderSide(); render(); };
+$('#ctxSel').onchange = (e) => { S.ctx = g(S.save.json, e.target.value); S.pick = {}; S.sel = null; S.bases = S.pets = S.frig = null; renderSide(); render(); };
 
 $('#closeBtn').onclick = async () => {
   if (S.dirty && !(await dialog('Discard changes?', '<p>Your edits to this save have not been written yet.</p>', [['Keep editing', false, 'ghost'], ['Discard', true, 'danger']]))) return;
@@ -1005,7 +1073,8 @@ $('#saveBtn').onclick = async () => {
   let out;
   const btn = $('#saveBtn'); btn.disabled = true; btn.textContent = 'Preparing files…'; await tick();
   try {
-    try { out = C.writeSave(S.save, { saveName: S.save.meta.info.saveName != null ? saveName : undefined }); }
+    // the load menu shows the difficulty preset from the meta file, so a changed preset goes there too
+    try { out = C.writeSave(S.save, { saveName: S.save.meta.info.saveName != null ? saveName : undefined, difficultyPreset: S.diffPreset != null && S.save.meta.info.difficultyPreset != null ? S.diffPreset : undefined }); }
     catch (e) { toast('Could not encode the save: ' + e.message, true); return; }
     // self-check: the bytes we are about to write must decode back to the same JSON
     try {
@@ -1046,12 +1115,14 @@ function download(bytes, name) { const u = URL.createObjectURL(new Blob([bytes])
 // ------------------------------------------------------------------ navigation
 const SECTIONS = [
   ['overview', 'Overview'], ['shipwright', 'Shipwright'], ['hangar', 'Hangar'], ['library', 'Dock Yard'], ['exosuit', 'Exosuit'], ['ships', 'Starships'], ['tools', 'Multi-tools'],
-  ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['storage', 'Storage'], ['coords', 'Coordinates'], ['items', 'Item names'], ['raw', 'Raw data'],
+  ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['companions', 'Companions'], ['bases', 'Bases'], ['storage', 'Storage'], ['coords', 'Coordinates'],
+  ['knowledge', 'Knowledge'], ['standing', 'Standing'], ['difficulty', 'Difficulty'], ['items', 'Item names'], ['raw', 'Raw data'],
 ];
 // Spectrum: each section's colour, sweeping teal through blue, violet, magenta, rose and coral (owner's pick);
-// the tool pages after it are aqua (coordinates), mint (item names) and slate (raw data).
+// the pages after it are aqua (coordinates), sky, periwinkle and steel (knowledge, standing, difficulty),
+// mint (item names) and slate (raw data).
 // One bright base per section; light mode darkens it automatically.
-const SECTION_COLORS = { overview: '#2fc3d6', shipwright: '#3cb6ea', hangar: '#4ea8ff', library: '#6598ff', exosuit: '#7d8bff', ships: '#a37bff', tools: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', storage: '#ff8a70', coords: '#36d6c3', items: '#3fd9a3', raw: '#8fb3c4' };
+const SECTION_COLORS = { overview: '#2fc3d6', shipwright: '#3cb6ea', hangar: '#4ea8ff', library: '#6598ff', exosuit: '#7d8bff', ships: '#a37bff', tools: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', companions: '#ff7690', bases: '#ff8079', storage: '#ff8a70', coords: '#36d6c3', knowledge: '#5ab8f0', standing: '#9a8cff', difficulty: '#a3b3cf', items: '#3fd9a3', raw: '#8fb3c4' };
 const secColor = (id) => SECTION_COLORS[id];
 function applySection(id) {
   const c = secColor(id);
@@ -1076,7 +1147,7 @@ function go(section) {
   $('#nav').querySelectorAll('button').forEach((b) => { if (b.dataset.s === section) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   render(); $('#main').scrollTop = 0;
 }
-function render() { const f = PAGES[S.section]; $('#page').innerHTML = ''; f($('#page')); if (S.section === 'overview') dockyardSpot($('#page')); }
+function render() { const f = PAGES[S.section]; $('#page').innerHTML = ''; f($('#page')); if (S.section === 'overview') dockyardSpot($('#page')); if (NEW_SECTIONS[S.section] && S.section !== 'library') markSeen(S.section); }
 
 // ------------------------------------------------------------------ owned things
 const isInv = (v) => v instanceof Map && Array.isArray(g(v, 'Slots')) && Array.isArray(g(v, 'ValidSlotIndices'));
@@ -2471,7 +2542,7 @@ function openLoadout(it) {
 
 PAGES.freighter = (el) => {
   const p = ps();
-  el.innerHTML = `<div class="page-head"><div><h1>Freighter</h1><p>The capital ship's own inventories. Frigates and base parts are in Raw data for now.</p></div></div>`;
+  el.innerHTML = `<div class="page-head"><div><h1>Freighter</h1><p>The capital ship, its inventories and its fleet of frigates.</p></div></div>`;
   const fname = str(g(p, 'PlayerFreighterName')) || 'Freighter', fseed = str((g(p, 'CurrentFreighter', 'Seed') || [])[1]);
   if (isInv(g(p, 'FreighterInventory'))) {
     const row = document.createElement('div'); row.className = 'pic-row'; el.appendChild(row);
@@ -2479,6 +2550,7 @@ PAGES.freighter = (el) => {
   }
   if (isInv(g(p, 'FreighterInventory'))) freighterDetails(el, p);
   invGroup(el, standardInvs(p, 'Freighter'));
+  frigatesPanel(el);
 };
 // freighter: name, type, class, home and model seeds, stats, the base built on it, backup and restore
 function freighterBase() { return (g(ps(), 'PersistentPlayerBases') || []).find((b) => str(g(b, 'BaseType', 'PersistentBaseTypes')) === 'FreighterBase') || null; }
@@ -3031,6 +3103,17 @@ async function loadDbFromJar(buf) {
   const xmlBytes = await zipRead(z, 'nomanssave/db/items.xml');
   if (!xmlBytes) throw new Error('items.xml not found inside that file');
   S.db = { ...parseItemsXml(new TextDecoder().decode(xmlBytes)), zip: z };
+  const w = await zipRead(z, 'nomanssave/db/words.xml').catch(() => null);   // the jar's word list, for the Words tab
+  if (w) S.db.words = parseWordsXml(new TextDecoder().decode(w));
+}
+function parseWordsXml(text) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml'), out = [];
+  const race = { TRADERS: 0, WARRIORS: 1, EXPLORERS: 2, ROBOTS: 3, ATLAS: 4, DIPLOMATS: 5, EXOTICS: 6, BUILDERS: 8 };
+  for (const wd of doc.querySelectorAll('word')) for (const gr of wd.querySelectorAll('group')) {
+    const r = race[(gr.getAttribute('race') || '').toUpperCase()]; if (r == null) continue;
+    out.push({ id: wd.getAttribute('id'), text: wd.getAttribute('text') || '', group: gr.getAttribute('group'), race: r });
+  }
+  return out;
 }
 // desktop app: ask where the jar is (the app looks for it the first time), then load its item list
 async function loadDbFromApp(post) {
@@ -3051,7 +3134,8 @@ async function libStatus(post) {
 async function loadLibrary() {
   const d = await (await api('/api/itemlib/items.json')).json();
   const list = d.items.map((it) => ({ ...it, icon: it.icon || '' }));
-  S.db = { list, byId: new Map(list.map((it) => [it.id, it])), icons: new Map(), src: 'lib' };
+  S.db = { list, byId: new Map(list.map((it) => [it.id, it])), icons: new Map(), src: 'lib',
+    words: d.words || null, traits: new Map((d.traits || []).map((t) => [t.id, t])), perks: new Map((d.perks || []).map((t) => [t.id, t])), ranks: d.ranks && d.ranks.length ? new Map(d.ranks.map((r) => [r.id, r])) : null };
 }
 // build (or rebuild) in the background, reporting progress through onTick
 async function buildLibrary(onTick, post) {
@@ -3251,7 +3335,7 @@ function predictionHtml(p, s) {
 
 // ------------------------------------------------------------------ Dock Yard (ship library)
 // brand-new sections wear a New badge in the menu until they've been opened once
-const NEW_SECTIONS = { library: 'hse-dockyard-seen', shipwright: 'hse-shipwright-seen' };
+const NEW_SECTIONS = { library: 'hse-dockyard-seen', shipwright: 'hse-shipwright-seen', bases: 'hse-bases-seen', companions: 'hse-companions-seen', knowledge: 'hse-knowledge-seen', standing: 'hse-standing-seen', difficulty: 'hse-difficulty-seen' };
 const seenSection = (id) => { try { return localStorage.getItem(NEW_SECTIONS[id]) === '1'; } catch (_) { return true; } };
 function markSeen(id) { try { localStorage.setItem(NEW_SECTIONS[id], '1'); } catch (_) {} const pill = document.querySelector(`nav [data-s="${id}"] .new-pill`); if (pill) pill.remove(); }
 const dockyardSeen = () => seenSection('library');
@@ -3912,6 +3996,547 @@ PAGES.shipwright = (el) => {
     set(base, 'Objects', next); markDirty(); W.sel = newSel; render();
   };
 };
+
+// ------------------------------------------------------------------ easier editing: plain editors for what people change
+// Each editor writes only the fields it shows, through the key accessors, so obfuscated and plaintext saves
+// both work and every other field stays exactly as the game wrote it.
+
+// one-entry enum maps ({"DifficultyPresetType": "Custom"}): read and write the value, keeping the key
+const enumVal = (m) => (m instanceof Map && m.size ? str([...m.values()][0]) : '');
+function setEnum(m, v) { if (!(m instanceof Map) || !m.size) return; m.set([...m.keys()][0], v); markDirty(); }
+const humanize = (s) => String(s).replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, (c) => c.toUpperCase()).replace(/ ([A-Z])(?=[a-z])/g, (m, c) => ' ' + c.toLowerCase());
+const RACE_NAMES = ['Gek', "Vy'keen", 'Korvax', 'Robots', 'Atlas', 'Diplomats', 'Exotics', 'None', 'Autophage'];
+const RACE_ENUM = ['Traders', 'Warriors', 'Explorers', 'Robots', 'Atlas', 'Diplomats', 'Exotics', 'None', 'Builders'];
+const raceLabel = (e) => { const i = RACE_ENUM.indexOf(e); return i >= 0 ? RACE_NAMES[i] : humanize(e || 'None'); };
+const fmtNum = (v) => (Number.isInteger(v) ? String(v) : String(Math.round(v * 1e6) / 1e6));
+const dateOf = (t) => { const n = num(t); return n > 1e9 ? new Date(n * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : ''; };
+// float fields: keep a decimal point so the value stays a float when the game reads it back
+const FL = (v) => N(Number.isInteger(v) ? v.toFixed(1) : String(v));
+function numberIn(inp, { min = -Infinity, max = Infinity, int = false } = {}) {
+  let v = Number(String(inp.value).replace(/,/g, '').trim());
+  if (!isFinite(v)) return null;
+  if (int) v = Math.trunc(v);
+  return Math.max(min, Math.min(max, v));
+}
+// a list on the left, the chosen one on the right (the Shipwright layout)
+function listDetail(el, { title, items, pick, onPick, empty, extra }) {
+  const wrap = document.createElement('div'); wrap.className = 'sw ed'; el.appendChild(wrap);
+  const side = document.createElement('aside'); side.className = 'sw-side panel';
+  side.innerHTML = `<h3>${title}</h3>${items.length > 8 ? '<input class="input ed-q" type="search" placeholder="Filter" aria-label="Filter">' : ''}<div class="sw-list ed-list">${items.map((it) => `<button type="button" class="sw-corv${it.key === pick ? ' on' : ''}" data-k="${esc(it.key)}"${it.dot ? '' : ''}>${it.dot ? `<span class="sw-dot ${it.dot}"></span>` : ''}<span><b>${esc(it.name)}</b><span class="dim">${esc(it.sub || '')}</span></span></button>`).join('') || `<p class="dim">${esc(empty || 'Nothing here yet.')}</p>`}</div>${extra || ''}`;
+  wrap.appendChild(side);
+  side.querySelectorAll('[data-k]').forEach((b) => b.onclick = () => onPick(b.dataset.k));
+  const q = side.querySelector('.ed-q');
+  if (q) q.oninput = () => { const t = q.value.toLowerCase(); side.querySelectorAll('[data-k]').forEach((b) => { b.hidden = t && !b.textContent.toLowerCase().includes(t); }); };
+  const main = document.createElement('div'); main.className = 'sw-main'; wrap.appendChild(main);
+  const on = side.querySelector('.sw-corv.on'); if (on) requestAnimationFrame(() => on.scrollIntoView({ block: 'nearest' }));
+  return { side, main };
+}
+function tabs(el, list, cur, onPick) {
+  const bar = document.createElement('div'); bar.className = 'seg ed-tabs'; bar.setAttribute('role', 'tablist');
+  bar.innerHTML = list.map(([id, label, n]) => `<button type="button" role="tab" data-t="${id}" aria-pressed="${id === cur}">${esc(label)}${n != null ? ` <span class="n">${n.toLocaleString()}</span>` : ''}</button>`).join('');
+  bar.onclick = (e) => { const b = e.target.closest('[data-t]'); if (b) onPick(b.dataset.t); };
+  el.appendChild(bar); return bar;
+}
+// flash and scroll to whatever the find box pointed at
+function spotlight(sel) {
+  requestAnimationFrame(() => { const n = typeof sel === 'string' ? document.querySelector(sel) : sel; if (!n) return; n.scrollIntoView({ block: 'center', behavior: REDUCED ? 'auto' : 'smooth' }); n.classList.add('spot'); setTimeout(() => n.classList.remove('spot'), 2200); const f = n.matches('input,select') ? n : n.querySelector('input,select'); if (f) f.focus({ preventScroll: true }); });
+}
+
+// ---------------------------------------------------------------- difficulty
+const PRESETS = [['Normal', 'Normal'], ['Relaxed', 'Relaxed'], ['Creative', 'Creative'], ['Survival', 'Survival'], ['Permadeath', 'Permadeath'], ['Custom', 'Custom']];
+const PRESET_INDEX = { Invalid: 0, Custom: 1, Normal: 2, Creative: 3, Relaxed: 4, Survival: 5, Permadeath: 6 };   // GcDifficultyPresetType, also kept in the meta file
+// [setting, label, [value, label]...] in easy-to-hard order (values from libMBIN's Gc*DifficultyOption enums)
+const DIFF_GROUPS = [
+  ['Survival', [
+    ['ActiveSurvivalBars', 'Survival bars', [['None', 'Off'], ['HealthOnly', 'Health only'], ['HealthAndHazard', 'Health and hazard protection'], ['All', 'All']]],
+    ['HazardDrain', 'Hazard protection drain', [['Slow', 'Slow'], ['Normal', 'Normal'], ['Fast', 'Fast']]],
+    ['EnergyDrain', 'Life support drain', [['Slow', 'Slow'], ['Normal', 'Normal'], ['Fast', 'Fast']]],
+    ['SprintingCost', 'Sprinting cost', [['Free', 'Free'], ['Low', 'Low'], ['Full', 'Normal']]],
+    ['DeathConsequences', 'When you die', [['None', 'Nothing is lost'], ['ItemGrave', 'Items drop at a grave'], ['DestroyItems', 'Items are lost'], ['DestroySave', 'The save is deleted']]],
+  ]],
+  ['Combat', [
+    ['DamageReceived', 'Damage you take', [['None', 'None'], ['Low', 'Low'], ['Normal', 'Normal'], ['High', 'High']]],
+    ['DamageGiven', 'Damage you deal', [['High', 'High'], ['Normal', 'Normal'], ['Low', 'Low']]],
+    ['CreatureHostility', 'Creatures', [['NeverAttack', 'Never attack'], ['AttackIfProvoked', 'Attack if provoked'], ['FullEcosystem', 'Full ecosystem (predators hunt)']]],
+    ['SpaceCombatTimers', 'Space combat', [['Off', 'Off'], ['Slow', 'Rare'], ['Normal', 'Normal'], ['Fast', 'Frequent']]],
+    ['GroundCombatTimers', 'Sentinels and ground combat', [['Off', 'Off'], ['Slow', 'Rare'], ['Normal', 'Normal'], ['Fast', 'Frequent']]],
+    ['BreakTechOnDamage', 'Damage breaks technology', [['None', 'Never'], ['Low', 'Sometimes'], ['High', 'Often']]],
+  ]],
+  ['Crafting and resources', [
+    ['CraftingIsFree', 'Crafting is free'],
+    ['StartWithAllItemsKnown', 'Every recipe known'],
+    ['SubstanceCollection', 'Resources gathered', [['High', 'More'], ['Normal', 'Normal'], ['Low', 'Less']]],
+    ['InventoryStackLimits', 'Stack sizes', [['High', 'Large'], ['Normal', 'Normal'], ['Low', 'Small']]],
+    ['ChargingRequirements', 'Technology charging', [['None', 'Free'], ['Low', 'Low'], ['Normal', 'Normal'], ['High', 'High']]],
+    ['FuelUse', 'Fuel use', [['Free', 'Free'], ['Cheap', 'Low'], ['Normal', 'Normal'], ['Expensive', 'High']]],
+    ['LaunchFuelCost', 'Launch thruster fuel', [['Free', 'Free'], ['Low', 'Low'], ['Normal', 'Normal'], ['High', 'High']]],
+    ['CurrencyCost', 'Prices', [['Free', 'Free'], ['Cheap', 'Low'], ['Normal', 'Normal'], ['Expensive', 'High']]],
+    ['ItemShopAvailability', 'Shop stock', [['High', 'Plenty'], ['Normal', 'Normal'], ['Low', 'Scarce']]],
+  ]],
+  ['Inventory and travel', [
+    ['AllSlotsUnlocked', 'Every inventory slot unlocked'],
+    ['InventoriesAlwaysInRange', 'Storage reachable from anywhere'],
+    ['WarpDriveRequirements', 'Coloured stars need hyperdrive upgrades'],
+    ['BaseAutoPower', 'Bases power themselves'],
+  ]],
+  ['World', [
+    ['ScannerRecharge', 'Scanner recharge', [['VeryFast', 'Very fast'], ['Fast', 'Fast'], ['Normal', 'Normal'], ['Slow', 'Slow']]],
+    ['ReputationGain', 'Reputation gain', [['VeryFast', 'Very fast'], ['Fast', 'Fast'], ['Normal', 'Normal'], ['Slow', 'Slow']]],
+    ['Fishing', 'Fishing', [['AutoCatch', 'Catch by itself'], ['LongCatchWindow', 'Easy'], ['NormalCatchWindow', 'Normal'], ['ShortCatchWindow', 'Hard']]],
+    ['NPCPopulation', 'Settlements and stations', [['Full', 'Populated'], ['Abandoned', 'Abandoned (no one around)']]],
+    ['TutorialEnabled', 'Tutorial missions'],
+  ]],
+];
+const DIFF_FLAT = DIFF_GROUPS.flatMap(([, list]) => list);
+function difficultyState() { return g(ps(), 'DifficultyState'); }
+PAGES.difficulty = (el) => {
+  const ds = difficultyState(), st = g(ds, 'Settings');
+  el.innerHTML = `<div class="page-head"><div><h1>Difficulty</h1><p>The game's difficulty settings, the same ones as in its options menu, including those it only lets you choose when starting a new game.</p></div></div>`;
+  if (!(st instanceof Map)) { el.insertAdjacentHTML('beforeend', '<p class="dim">This save has no difficulty settings (it may be from before the Frontiers update).</p>'); return; }
+  const preset = enumVal(g(ds, 'Preset')), easiest = enumVal(g(ds, 'EasiestUsedPreset')), hardest = enumVal(g(ds, 'HardestUsedPreset'));
+  const head = document.createElement('div'); head.className = 'panel';
+  head.innerHTML = `<h3>Preset</h3><div class="details-grid">
+      <label class="field" data-find="diff-Preset"><span>Shown in the game as</span><select class="input" id="dPreset">${PRESETS.some(([v]) => v === preset) ? '' : `<option selected>${esc(preset)}</option>`}${PRESETS.map(([v, l]) => `<option value="${v}"${v === preset ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+      <label class="check" data-find="diff-SettingsLocked"><input type="checkbox" id="dLocked"${g(st, 'SettingsLocked') === true ? ' checked' : ''}> Settings locked in the game</label>
+    </div>
+    <p class="dim ed-note">The preset is the name the game shows; the settings below are what it actually plays by. Changing a setting makes the preset Custom, as the game does.${easiest || hardest ? ` This save has been played on ${esc(easiest === hardest ? easiest : [easiest, hardest].filter(Boolean).join(' up to '))}.` : ''}</p>
+    <div class="toolbar"><button class="btn" type="button" id="dEasy">Make everything easy</button><button class="btn" type="button" id="dNormal">Back to normal</button></div>`;
+  el.appendChild(head);
+  const setPreset = (v) => { const m = g(ds, 'Preset'); if (enumVal(m) !== v) { setEnum(m, v); S.diffPreset = PRESET_INDEX[v]; } };
+  $('#dPreset', head).onchange = (e) => {
+    const v = e.target.value; setPreset(v);
+    if (v === 'Permadeath') toast('Permadeath: the game deletes this save if you die. Set "When you die" to match.');
+    else toast('Preset set to ' + v);
+  };
+  $('#dLocked', head).onchange = (e) => set(st, 'SettingsLocked', e.target.checked);
+  const fill = (vals) => {
+    for (const [k, , opts] of DIFF_FLAT) {
+      if (!(k in vals)) continue; const m = g(st, k);
+      if (opts) { if (m instanceof Map) setEnum(m, vals[k]); } else if (typeof g(st, k) === 'boolean') set(st, k, vals[k]);
+    }
+  };
+  $('#dEasy', head).onclick = () => {
+    const easy = {}; for (const [k, , opts] of DIFF_FLAT) easy[k] = opts ? opts[0][0] : !['TutorialEnabled', 'WarpDriveRequirements'].includes(k);
+    easy.NPCPopulation = 'Full'; easy.DeathConsequences = 'None';
+    fill(easy); setPreset('Custom'); toast('Every setting at its easiest'); render();
+  };
+  $('#dNormal', head).onclick = () => {
+    const normal = { ActiveSurvivalBars: 'All', HazardDrain: 'Normal', EnergyDrain: 'Normal', SprintingCost: 'Full', DeathConsequences: 'ItemGrave', DamageReceived: 'Normal', DamageGiven: 'Normal', CreatureHostility: 'FullEcosystem', SpaceCombatTimers: 'Normal', GroundCombatTimers: 'Normal', BreakTechOnDamage: 'Low', CraftingIsFree: false, StartWithAllItemsKnown: false, SubstanceCollection: 'Normal', InventoryStackLimits: 'Normal', ChargingRequirements: 'Normal', FuelUse: 'Normal', LaunchFuelCost: 'Normal', CurrencyCost: 'Normal', ItemShopAvailability: 'Normal', AllSlotsUnlocked: false, InventoriesAlwaysInRange: false, WarpDriveRequirements: true, BaseAutoPower: false, ScannerRecharge: 'Normal', ReputationGain: 'Normal', Fishing: 'NormalCatchWindow', NPCPopulation: 'Full', TutorialEnabled: false };
+    fill(normal); setPreset('Normal'); toast('Settings back to the Normal preset'); render();
+  };
+  for (const [group, list] of DIFF_GROUPS) {
+    const p = document.createElement('div'); p.className = 'panel';
+    p.innerHTML = `<h3>${group}</h3><div class="details-grid diff-grid">${list.map(([k, label, opts]) => {
+      const m = g(st, k);
+      if (!opts) return typeof m === 'boolean' ? `<label class="check" data-find="diff-${k}"><input type="checkbox" data-b="${k}"${m ? ' checked' : ''}> ${label}</label>` : '';
+      if (!(m instanceof Map)) return '';
+      const v = enumVal(m), known = opts.some(([o]) => o === v);
+      return `<label class="field" data-find="diff-${k}"><span>${label}</span><select class="input" data-e="${k}">${known ? '' : `<option selected>${esc(v)}</option>`}${opts.map(([o, l]) => `<option value="${o}"${o === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>`;
+    }).join('')}</div>`;
+    el.appendChild(p);
+    p.querySelectorAll('[data-e]').forEach((s) => s.onchange = () => { setEnum(g(st, s.dataset.e), s.value); setPreset('Custom'); $('#dPreset', head).value = 'Custom'; });
+    p.querySelectorAll('[data-b]').forEach((c) => c.onchange = () => { set(st, c.dataset.b, c.checked); setPreset('Custom'); $('#dPreset', head).value = 'Custom'; });
+  }
+};
+
+// ---------------------------------------------------------------- standing and milestones
+const STANDINGS = [['TRA_STANDING', 'Gek'], ['EXP_STANDING', 'Korvax'], ['WAR_STANDING', "Vy'keen"], ['BUI_STANDING', 'Autophage'],
+  ['TGUILD_STAND', 'Merchants guild'], ['EGUILD_STAND', 'Explorers guild'], ['WGUILD_STAND', 'Mercenaries guild'], ['PIRATE_STAND', 'Outlaws'], ['NEXUS_STAND', 'Space Anomaly']];
+const MILESTONES = [['DIST_WARP', 'Warp jumps'], ['DIST_WALKED', 'Distance walked (m)'], ['ALIENS_MET', 'Aliens met'], ['WORDS_LEARNT', 'Words learnt'], ['DISC_ALL_CREATU', 'Creatures discovered'],
+  ['RARE_SCANNED', 'Rare creatures scanned'], ['PLANTS_PLANTED', 'Plants farmed'], ['ENEMIES_KILLED', 'Enemies defeated'], ['SENTINEL_KILLS', 'Sentinels destroyed'], ['PIRATES_KILLED', 'Pirates destroyed'],
+  ['PREDS_KILLED', 'Predators killed'], ['MONEY', 'Units earned'], ['TDONE_MISSIONS', 'Gek missions'], ['EDONE_MISSIONS', 'Korvax missions'], ['WDONE_MISSIONS', "Vy'keen missions"]];
+function globalStatGroup() { return (g(ps(), 'Stats') || []).find((x) => str(g(x, 'GroupId')) === '^GLOBAL_STATS'); }
+function statEntry(id) { const grp = globalStatGroup(); return ((grp && g(grp, 'Stats')) || []).find((s) => str(g(s, 'Id')) === '^' + id) || null; }
+function statValue(id) { const e = statEntry(id), v = e && g(e, 'Value'); if (!(v instanceof Map)) return 0; return kOf(v, 'FloatValue') != null ? num(g(v, 'FloatValue')) : num(g(v, 'IntValue')); }
+function setStatValue(id, v) {
+  const grp = globalStatGroup(); if (!grp) throw new Error('This save has no stats.');
+  let e = statEntry(id);
+  if (!e) { const arr = g(grp, 'Stats'); e = new Map([[keyFor('Id'), '^' + id], [keyFor('Value'), new Map()]]); arr.push(e); }
+  const val = g(e, 'Value');
+  if (kOf(val, 'FloatValue') != null) set(val, 'FloatValue', FL(v)); else set(val, 'IntValue', N(Math.round(v)));
+}
+const ranksOf = (id) => (S.db && S.db.ranks && S.db.ranks.get('^' + id)) || null;
+function rankAt(id, v) { const r = ranksOf(id); if (!r) return null; let cur = null, next = null; for (const l of r.levels) { if (v >= l.value) cur = l; else if (!next) next = l; } return { cur, next, top: r.levels[r.levels.length - 1] }; }
+PAGES.standing = (el) => {
+  el.innerHTML = `<div class="page-head"><div><h1>Standing</h1><p>Your reputation with each race and guild, and the journey milestones the game counts.</p></div></div>`;
+  if (!globalStatGroup()) { el.insertAdjacentHTML('beforeend', '<p class="dim">This save has no stats.</p>'); return; }
+  const rows = (list, kind) => list.map(([id, label]) => {
+    const v = statValue(id), r = rankAt(id, v);
+    return `<div class="stand-row" data-find="stat-${id}"><span class="lbl">${esc(label)}</span><span class="rank">${r ? esc((r.cur || { name: '' }).name || '') + (r.next ? `<span class="dim"> · next: ${esc(r.next.name)} at ${r.next.value.toLocaleString()}</span>` : r.cur ? '<span class="dim"> · top rank</span>' : '') : ''}</span>
+      <input class="input mono" inputmode="decimal" data-stat="${id}" value="${fmtNum(v)}" aria-label="${esc(label)}">${kind === 'stand' ? `<button class="btn small" type="button" data-max="${id}"${r || kind === 'stand' ? '' : ' disabled'}>Max</button>` : ''}</div>`;
+  }).join('');
+  const p1 = document.createElement('div'); p1.className = 'panel';
+  p1.innerHTML = `<h3>Standing</h3><div class="stand">${rows(STANDINGS, 'stand')}</div>
+    <div class="toolbar"><button class="btn primary" type="button" id="stMaxAll">Max every standing</button></div>
+    <p class="dim ed-note">${S.db && S.db.ranks ? 'Rank names and thresholds come from your game.' : 'Rank names show once the item library is built from your game (Item names page).'} Max sets the value of the top rank.</p>`;
+  el.appendChild(p1);
+  const p2 = document.createElement('div'); p2.className = 'panel';
+  p2.innerHTML = `<h3>Journey milestones</h3><div class="stand">${rows(MILESTONES, 'mile')}</div><p class="dim ed-note">These are the counters behind the journey milestones and their titles. Raising them unlocks the titles the next time the game checks.</p>`;
+  el.appendChild(p2);
+  const topOf = (id) => { const r = rankAt(id, 0); return r ? r.top.value : null; };
+  el.querySelectorAll('[data-stat]').forEach((inp) => inp.onchange = () => { const v = numberIn(inp, { min: -1e9, max: 2147483647 }); if (v == null) { toast('Enter a number.', true); inp.value = fmtNum(statValue(inp.dataset.stat)); return; } setStatValue(inp.dataset.stat, v); render(); });
+  el.querySelectorAll('[data-max]').forEach((b) => b.onclick = () => { const id = b.dataset.max, t = topOf(id); setStatValue(id, Math.max(statValue(id), t ?? 1000)); render(); });
+  $('#stMaxAll', el).onclick = () => { for (const [id] of STANDINGS) { if (id === 'PIRATE_STAND' || id === 'NEXUS_STAND') { if (!statEntry(id)) continue; } setStatValue(id, Math.max(statValue(id), topOf(id) ?? 1000)); } toast('Every standing at its top rank'); render(); };
+};
+
+// ---------------------------------------------------------------- knowledge: technology, recipes, cosmetics, words
+const KNOW_TABS = [['tech', 'Technology', 'KnownTech'], ['prod', 'Recipes and base parts', 'KnownProducts'], ['spec', 'Cosmetics and specials', 'KnownSpecials'], ['words', 'Words']];
+PAGES.knowledge = (el) => {
+  const K = S.know || (S.know = { tab: 'tech', q: '', race: 0, wq: '' });
+  el.innerHTML = `<div class="page-head"><div><h1>Knowledge</h1><p>The blueprints you can build and the alien words you know.</p></div></div>`;
+  const p = ps(), counts = { tech: (g(p, 'KnownTech') || []).length, prod: (g(p, 'KnownProducts') || []).length, spec: (g(p, 'KnownSpecials') || []).length, words: (g(p, 'KnownWordGroups') || []).length };
+  tabs(el, KNOW_TABS.map(([id, l]) => [id, l, counts[id]]), K.tab, (t) => { K.tab = t; render(); });
+  if (K.tab === 'words') { wordsEditor(el, K); return; }
+  const [, label, key] = KNOW_TABS.find((x) => x[0] === K.tab), arr = g(p, key);
+  const panel = document.createElement('div'); panel.className = 'panel know';
+  if (!Array.isArray(arr)) { panel.innerHTML = '<p class="dim">Not in this save.</p>'; el.appendChild(panel); return; }
+  const type = K.tab === 'tech' ? 'Technology' : 'Product';
+  const nameOfId = (id) => { const it = dbItem(id); return it ? it.name : id.replace(/^\^/, ''); };
+  panel.innerHTML = `<div class="know-head"><input class="input" type="search" id="kQ" placeholder="Search what you know" value="${esc(K.q)}"><span class="dim" id="kCount"></span>
+      <span class="sw-gap"></span>${S.db ? `<button class="btn" type="button" id="kAdd">Learn…</button>` : ''}${K.tab === 'tech' && S.db ? '<button class="btn" type="button" id="kAll">Learn all technology</button>' : ''}${K.tab === 'prod' && S.db ? '<button class="btn" type="button" id="kAll">Learn all base parts</button>' : ''}</div>
+    <div class="know-rows" id="kRows"></div>
+    ${S.db ? '' : '<p class="dim ed-note">Item names show once the item library is ready (Item names page).</p>'}`;
+  el.appendChild(panel);
+  const rowsEl = $('#kRows', panel);
+  const draw = () => {
+    const q = K.q.toLowerCase(); let n = 0, out = '';
+    for (let i = 0; i < arr.length; i++) {
+      const id = str(arr[i]), it = dbItem(id), nm = it ? it.name : id.replace(/^\^/, '');
+      if (q && !(nm + ' ' + id).toLowerCase().includes(q)) continue;
+      if (++n > 400) continue;
+      out += `<div class="know-row" data-i="${i}"><span class="ic">${it && it.icon ? `<img data-icon="${esc(it.icon)}" alt="">` : ''}</span><span class="nm">${esc(nm)}</span><span class="mono dim">${esc(id.replace(/^\^/, ''))}</span><span class="dim sub">${esc((it && (it.sub || it.cat)) || '')}</span><button class="btn small ghost" type="button" data-forget="${i}">Forget</button></div>`;
+    }
+    rowsEl.innerHTML = out || '<p class="dim" style="padding:10px">Nothing matches.</p>';
+    $('#kCount', panel).textContent = (q ? n.toLocaleString() + ' of ' : '') + plural(arr.length, 'blueprint') + (n > 400 ? ', first 400 shown' : '');
+    loadIcons(rowsEl);
+  };
+  draw();
+  $('#kQ', panel).oninput = (e) => { K.q = e.target.value; draw(); };
+  rowsEl.onclick = (e) => { const b = e.target.closest('[data-forget]'); if (!b) return; const i = +b.dataset.forget, id = str(arr[i]); arr.splice(i, 1); markDirty(); toast(nameOfId(id) + ' forgotten'); draw(); };
+  const learn = (ids) => { const have = new Set(arr.map(str)); let n = 0; for (const id of ids) if (!have.has(id)) { arr.push(id); have.add(id); n++; } if (n) markDirty(); return n; };
+  const add = $('#kAdd', panel);
+  if (add) add.onclick = () => {
+    const done = dialog('Learn a blueprint', `<label class="field"><span>Find by name or ID</span><input class="input" id="kFind" placeholder="e.g. Pulse Engine, Antimatter"></label><div class="results" id="kRes"></div>`, [['Done', true, 'primary']]);
+    const q = $('#kFind'), res = $('#kRes'), have = new Set(arr.map(str));
+    const want = K.tab === 'spec' ? (it) => it.type === 'Product' : (it) => it.type === type && !it.proc;
+    q.focus();
+    q.oninput = () => {
+      const t = q.value.trim().toLowerCase(); if (t.length < 2) { res.innerHTML = ''; return; }
+      const hits = S.db.list.filter((it) => !it.hashed && want(it) && (it.name.toLowerCase().includes(t) || it.id.toLowerCase().includes(t))).slice(0, 40);
+      res.innerHTML = hits.map((it) => `<button type="button" data-id="${esc(it.id)}"${have.has(it.id) ? ' disabled' : ''}>${it.icon ? `<img data-icon="${esc(it.icon)}" alt="">` : '<span></span>'}<span>${esc(it.name)} <span class="dim mono">${esc(it.id)}</span>${have.has(it.id) ? ' <span class="dim">known</span>' : ''}</span></button>`).join('') || '<p class="dim" style="padding:8px;margin:0">No matches</p>';
+      loadIcons(res);
+      res.querySelectorAll('button[data-id]').forEach((b) => b.onclick = () => { learn([b.dataset.id]); have.add(b.dataset.id); b.disabled = true; toast(S.db.byId.get(b.dataset.id).name + ' learnt'); });
+    };
+    done.then(() => draw());
+  };
+  const all = $('#kAll', panel);
+  if (all) all.onclick = async () => {
+    const ids = K.tab === 'tech' ? S.db.list.filter((it) => it.type === 'Technology' && !it.proc && it.icon && it.name !== it.id.replace(/^\^/, '')).map((it) => it.id)
+      : S.db.list.filter((it) => it.type === 'Product' && it.cat === 'BuildingPart' && it.icon).map((it) => it.id);
+    const have = new Set(arr.map(str)), missing = ids.filter((id) => !have.has(id));
+    if (!missing.length) { toast('Nothing new to learn'); return; }
+    if (!(await dialog(K.tab === 'tech' ? 'Learn all technology?' : 'Learn all base parts?', `<p>Adds ${plural(missing.length, 'blueprint')} your game lists that this save doesn't know yet${K.tab === 'tech' ? ', including some the game normally keeps for special ships or expeditions' : ''}. You can forget any of them again here. Nothing is written to your game until you save.</p>`, [['Cancel', false, 'ghost'], ['Learn them', true, 'primary']]))) return;
+    toast(plural(learn(missing), 'blueprint') + ' learnt'); render();
+  };
+};
+// words: KnownWordGroups holds {Group, Races[9]}; a word is known for a race when its group's flag for that race is set
+const WORD_RACES = [[0, 'Gek'], [2, 'Korvax'], [1, "Vy'keen"], [4, 'Atlas'], [8, 'Autophage']];
+function wordGroups() {
+  const out = new Map(); if (!S.db || !S.db.words) return out;
+  for (const w of S.db.words) { const k = w.group + '|' + w.race; const e = out.get(k); if (e) { if (!e.texts.includes(w.text)) e.texts.push(w.text); } else out.set(k, { group: w.group, race: w.race, texts: [w.text] }); }
+  return out;
+}
+function knownWordMap() { const m = new Map(); for (const e of g(ps(), 'KnownWordGroups') || []) m.set(str(g(e, 'Group')), e); return m; }
+function knowWord(group, race, on) {
+  const arr = g(ps(), 'KnownWordGroups'); if (!Array.isArray(arr)) return false;
+  let e = arr.find((x) => str(g(x, 'Group')) === group);
+  if (!e) { if (!on) return false; e = new Map([[keyFor('Group'), group], [keyFor('Races'), Array(9).fill(false)]]); arr.push(e); }
+  const r = g(e, 'Races'); if (!Array.isArray(r) || r[race] === on) return false;
+  r[race] = on; markDirty(); return true;
+}
+function wordsEditor(el, K) {
+  const groups = [...wordGroups().values()], known = knownWordMap();
+  const isKnown = (w) => { const e = known.get(w.group), r = e && g(e, 'Races'); return Array.isArray(r) && r[w.race] === true; };
+  const panel = document.createElement('div'); panel.className = 'panel know';
+  if (!groups.length) { panel.innerHTML = `<p>The save knows ${plural((g(ps(), 'KnownWordGroups') || []).length, 'word')}.</p><p class="dim">The word list comes from your game: build the item library on the Item names page to see and teach words here.</p>`; el.appendChild(panel); return; }
+  const per = WORD_RACES.map(([r, n]) => { const list = groups.filter((w) => w.race === r); return { r, n, total: list.length, known: list.filter(isKnown).length }; });
+  panel.innerHTML = `<div class="word-races">${per.map((x) => `<div class="wr${x.r === K.race ? ' on' : ''}" data-r="${x.r}" role="button" tabindex="0"><b>${x.n}</b><span class="dim">${x.known.toLocaleString()} of ${x.total.toLocaleString()}</span><span class="bar"><i style="width:${x.total ? Math.round(100 * x.known / x.total) : 0}%"></i></span></div>`).join('')}</div>
+    <div class="toolbar"><button class="btn primary" type="button" id="wAll">Learn every word, every race</button><button class="btn" type="button" id="wRace">Learn all ${esc(WORD_RACES.find(([r]) => r === K.race)[1])} words</button><span class="sw-gap"></span><input class="input" type="search" id="wQ" placeholder="Search words" value="${esc(K.wq)}" style="max-width:240px"></div>
+    <div class="know-rows words" id="wRows"></div>`;
+  el.appendChild(panel);
+  panel.querySelectorAll('[data-r]').forEach((d) => { d.onclick = () => { K.race = +d.dataset.r; render(); }; d.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') d.click(); }; });
+  const rows = $('#wRows', panel);
+  const draw = () => {
+    const q = K.wq.toLowerCase(), list = groups.filter((w) => w.race === K.race && (!q || w.texts.join(' ').toLowerCase().includes(q) || w.group.toLowerCase().includes(q)));
+    rows.innerHTML = list.slice(0, 500).map((w) => `<label class="know-row word"><input type="checkbox" data-g="${esc(w.group)}"${isKnown(w) ? ' checked' : ''}><span class="nm">${esc(w.texts.join(', '))}</span><span class="mono dim">${esc(w.group.replace(/^\^/, ''))}</span></label>`).join('') + (list.length > 500 ? `<p class="dim" style="padding:10px">${(list.length - 500).toLocaleString()} more; search to narrow it down.</p>` : '') || '<p class="dim" style="padding:10px">Nothing matches.</p>';
+  };
+  draw();
+  $('#wQ', panel).oninput = (e) => { K.wq = e.target.value; draw(); };
+  rows.onchange = (e) => { const c = e.target.closest('[data-g]'); if (!c) return; knowWord(c.dataset.g, K.race, c.checked); const kw = known.get(c.dataset.g); if (!kw) known.set(c.dataset.g, (g(ps(), 'KnownWordGroups') || []).find((x) => str(g(x, 'Group')) === c.dataset.g)); };
+  const teach = (list) => { let n = 0; for (const w of list) if (knowWord(w.group, w.race, true)) n++; return n; };
+  $('#wAll', panel).onclick = () => { toast(plural(teach(groups.filter((w) => WORD_RACES.some(([r]) => r === w.race))), 'word') + ' learnt'); render(); };
+  $('#wRace', panel).onclick = () => { toast(plural(teach(groups.filter((w) => w.race === K.race)), 'word') + ' learnt'); render(); };
+}
+
+// ---------------------------------------------------------------- bases and settlements
+const BASE_KINDS = { HomePlanetBase: 'Planet base', FreighterBase: 'Freighter', PlayerSpaceBase: 'Space base', PlayerSpaceStationBase: 'Space station', ExternalPlanetBase: 'Visited base', PlayerShipBase: 'Corvette' };
+function playerBases() { return (g(ps(), 'PersistentPlayerBases') || []).map((b, i) => ({ b, i })).filter(({ b }) => str(g(b, 'BaseType', 'PersistentBaseTypes')) !== 'PlayerShipBase'); }
+const baseLabel = (b) => str(g(b, 'Name')).trim() || (str(g(b, 'BaseType', 'PersistentBaseTypes')) === 'FreighterBase' ? str(g(ps(), 'PlayerFreighterName')) || 'Freighter' : 'Unnamed base');
+function myUID() { for (const b of g(ps(), 'PersistentPlayerBases') || []) { const u = str(g(b, 'Owner', 'UID')); if (u && u !== '0') return u; } return ''; }
+PAGES.bases = (el) => {
+  const B = S.bases || (S.bases = { tab: 'bases', pick: null, set: null });
+  const sets = g(ps(), 'SettlementStatesV2') || [], me = myUID(), setList = sets.map((s, i) => ({ s, i })).filter(({ s }) => str(g(s, 'Name')) || str(g(s, 'SeedValue')) !== '0');
+  el.innerHTML = `<div class="page-head"><div><h1>Bases</h1><p>Your bases and the settlements you've visited or run: names, places, parts and settlement upkeep.</p></div></div>`;
+  tabs(el, [['bases', 'Bases', playerBases().length], ['settlements', 'Settlements', setList.length]], B.tab, (t) => { B.tab = t; render(); });
+  if (B.tab === 'settlements') { settlementsEditor(el, B, setList, me); return; }
+  const list = playerBases();
+  if (B.pick == null || !list.some((x) => x.i === B.pick)) B.pick = list.length ? list[0].i : null;
+  const { main } = listDetail(el, { title: 'Bases', pick: String(B.pick), onPick: (k) => { B.pick = +k; render(); }, empty: 'No bases in this save.',
+    items: list.map(({ b, i }) => ({ key: String(i), name: baseLabel(b), sub: (BASE_KINDS[str(g(b, 'BaseType', 'PersistentBaseTypes'))] || humanize(str(g(b, 'BaseType', 'PersistentBaseTypes')))) + ' · ' + plural((g(b, 'Objects') || []).length, 'part') })),
+    extra: '<p class="dim sw-tip">Corvette builds are bases too; they are in Shipwright.</p>' });
+  if (B.pick == null) return;
+  const b = g(ps(), 'PersistentPlayerBases')[B.pick], kind = str(g(b, 'BaseType', 'PersistentBaseTypes')), objs = g(b, 'Objects') || [];
+  const at = Place.fromPacked(g(b, 'GalacticAddress')), code = at ? Place.portal(at) : '';
+  const tally = new Map(); for (const o of objs) { const id = str(g(o, 'ObjectID')); tally.set(id, (tally.get(id) || 0) + 1); }
+  const top = [...tally].sort((x, y) => y[1] - x[1]).slice(0, 12);
+  main.innerHTML = `<div class="panel sw-bar"><div class="sw-title"><b>${esc(baseLabel(b))}</b><span class="dim">${esc(BASE_KINDS[kind] || humanize(kind))} · ${plural(objs.length, 'part')}${dateOf(g(b, 'LastUpdateTimestamp')) ? ' · last changed ' + dateOf(g(b, 'LastUpdateTimestamp')) : ''}</span></div>
+      <div class="details-grid">
+        <label class="field wide"><span>Name</span><input class="input" id="bName" maxlength="63" value="${esc(str(g(b, 'Name')))}"></label>
+        <label class="field"><span>Built by</span><input class="input" disabled value="${esc(str(g(b, 'Owner', 'USN')) || 'You')}"></label>
+      </div>
+      ${at && kind !== 'FreighterBase' ? `<div class="base-where"><span class="k">Where</span>${glyphRow(code, 'small')}<span class="mono">${code}</span><span class="dim">${esc(GALAXIES[at.gi] || '')}${at.planet ? ', planet ' + at.planet : ''}</span><button class="link" type="button" id="bCoords">Open in Coordinates</button></div>` : ''}
+      <div class="sw-acts"><button class="btn" type="button" data-a="copy">Copy parts</button><button class="btn" type="button" data-a="paste">Paste parts</button><label class="btn">Load parts from a file<input type="file" id="bFile" accept=".json,.txt,.nmsbase,.nmsprefab" hidden></label><button class="btn" type="button" data-a="save">Save to a file</button><span class="sw-gap"></span><button class="btn danger" type="button" data-a="del">Delete base</button></div></div>
+    <div class="panel"><h3>Most used parts</h3>${top.length ? `<div class="base-parts">${top.map(([id, n]) => { const it = dbItem(id); return `<div><span class="ic">${it && it.icon ? `<img data-icon="${esc(it.icon)}" alt="">` : ''}</span><span class="nm">${esc(it ? it.name : id.replace(/^\^/, ''))}</span><span class="mono dim">${n.toLocaleString()}</span></div>`; }).join('')}</div>` : '<p class="dim">No parts yet.</p>'}</div>`;
+  loadIcons(main);
+  $('#bName', main).onchange = (e) => { set(b, 'Name', e.target.value); render(); };
+  const co = $('#bCoords', main); if (co) co.onclick = () => { S.coords = { p: { ...at }, digits: code }; go('coords'); };
+  const replace = async (text, how) => {
+    let v; try { v = C.parseJSON(String(text).replace(/^﻿/, '')); } catch (e) { throw new Error('That is not valid JSON: ' + e.message); }
+    const parts = Array.isArray(v) ? v : v instanceof Map ? (g(v, 'Objects') || g(g(v, 'Base') || new Map(), 'Objects')) : null;
+    if (!Array.isArray(parts) || !parts.length || !parts.every((o) => o instanceof Map && g(o, 'ObjectID') != null)) throw new Error("That doesn't look like base parts (a base's JSON, or its Objects list).");
+    if (!(await dialog('Replace the parts?', `<p>${esc(baseLabel(b))}'s ${plural(objs.length, 'part')} are replaced with ${plural(parts.length, 'part')} ${how}. The base keeps its name, place and owner. Nothing is written to your game until you save.</p>`, [['Cancel', false, 'ghost'], ['Replace', true, 'primary']]))) return;
+    set(b, 'Objects', inGameOrder(fromPlain(cloneJSON(parts)), objs[0])); toast(`Parts replaced: ${plural(parts.length, 'part')}`); render();
+  };
+  main.querySelectorAll('[data-a]').forEach((btn) => btn.onclick = async () => {
+    const a = btn.dataset.a;
+    try {
+      if (a === 'copy') { await navigator.clipboard.writeText(C.stringifyJSON(objs.map((o) => toPlain(cloneJSON(o))), '  ')); toast(`Copied ${plural(objs.length, 'part')}`); }
+      if (a === 'save') downloadText(safeFile(baseLabel(b)) + '.json', C.stringifyJSON(toPlain(cloneJSON(b)), '  '));
+      if (a === 'paste') {
+        let t = ''; try { t = await navigator.clipboard.readText(); } catch (_) { t = null; }
+        if (t == null || !t.trim()) { const ok = await dialog('Paste parts', '<p>Paste a base (its whole JSON or its Objects list) here with Ctrl+V.</p><textarea class="input mono" id="bPasteBox" rows="10" spellcheck="false"></textarea>', [['Cancel', false, 'ghost'], ['Use this', true, 'primary']]); t = ok ? $('#bPasteBox').value : ''; if (!t.trim()) return; }
+        await replace(t, 'from the clipboard');
+      }
+      if (a === 'del') {
+        const tps = (g(ps(), 'TeleportEndpoints') || []).filter((e) => str(g(e, 'TeleporterType')) === 'Base' && str(g(e, 'Name')) === str(g(b, 'Name')) && Place.sameSystem(Place.fromUA(g(e, 'UniverseAddress')), at));
+        if (kind === 'FreighterBase') { toast("The freighter's base can't be deleted; replace its parts instead.", true); return; }
+        if (!(await dialog(`Delete ${esc(baseLabel(b))}?`, `<p>The base and its ${plural(objs.length, 'part')} are removed${tps.length ? ', with its teleporter destination' : ''}. Save it to a file first if you might want it back. Nothing is written to your game until you save.</p>`, [['Cancel', false, 'ghost'], ['Delete', true, 'danger']]))) return;
+        const all = g(ps(), 'PersistentPlayerBases'); all.splice(all.indexOf(b), 1);
+        const te = g(ps(), 'TeleportEndpoints'); for (const e of tps) te.splice(te.indexOf(e), 1);
+        markDirty(); B.pick = null; renderSide(); toast('Base deleted'); render();
+      }
+    } catch (e) { toast(e.message, true); }
+  });
+  $('#bFile', main).onchange = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { await replace(await f.text(), 'from ' + f.name); } catch (err) { toast(err.message, true); } };
+};
+const SETTLE_STATS = ['Max population', 'Happiness', 'Production', 'Upkeep', 'Sentinels', 'Debt', 'Alert', 'Bug attacks'];   // GcSettlementStatType
+function settlementsEditor(el, B, list, me) {
+  const mine = (s) => me && str(g(s, 'Owner', 'UID')) === me;
+  list = list.slice().sort((a, b) => (mine(b.s) - mine(a.s)) || str(g(a.s, 'Name')).localeCompare(str(g(b.s, 'Name'))));
+  if (B.set == null || !list.some((x) => x.i === B.set)) B.set = list.length ? list[0].i : null;
+  const { main } = listDetail(el, { title: 'Settlements', pick: String(B.set), onPick: (k) => { B.set = +k; render(); }, empty: 'No settlements in this save.',
+    items: list.map(({ s, i }) => ({ key: String(i), name: str(g(s, 'Name')) || 'Unnamed settlement', sub: (mine(s) ? 'Yours' : 'Visited' + (str(g(s, 'Owner', 'USN')) ? ', run by ' + str(g(s, 'Owner', 'USN')) : '')), dot: mine(s) ? 'ok' : '' })) });
+  if (B.set == null) return;
+  const s = g(ps(), 'SettlementStatesV2')[B.set], stats = g(s, 'Stats') || [], perks = g(s, 'Perks') || [];
+  const at = Place.fromPacked(g(s, 'UniverseAddress')), code = at ? Place.portal(at) : '';
+  const perkInfo = (id) => (S.db && S.db.perks && S.db.perks.get(id)) || null;
+  main.innerHTML = `<div class="panel sw-bar"><div class="sw-title"><b>${esc(str(g(s, 'Name')) || 'Unnamed settlement')}</b><span class="dim">${mine(s) ? 'Your settlement' : 'Visited'}${str(g(s, 'Owner', 'USN')) && !mine(s) ? ', run by ' + esc(str(g(s, 'Owner', 'USN'))) : ''}</span></div>
+      ${mine(s) ? '' : '<p class="dim ed-note">Someone else runs this settlement, so changes here only affect your own copy of it.</p>'}
+      <div class="details-grid">
+        <label class="field wide"><span>Name</span><input class="input" id="sName" maxlength="63" value="${esc(str(g(s, 'Name')))}"></label>
+        <label class="field"><span>Population</span><input class="input mono" id="sPop" inputmode="numeric" value="${num(g(s, 'Population'))}"></label>
+        <label class="field"><span>Race</span><select class="input" id="sRace">${RACE_ENUM.filter((r) => !['Robots', 'Diplomats', 'Exotics'].includes(r)).map((r) => `<option value="${r}"${r === str(g(s, 'Race', 'AlienRace')) ? ' selected' : ''}>${esc(raceLabel(r))}</option>`).join('')}</select></label>
+      </div>
+      ${at ? `<div class="base-where"><span class="k">Where</span>${glyphRow(code, 'small')}<span class="mono">${code}</span><span class="dim">${esc(GALAXIES[at.gi] || '')}${at.planet ? ', planet ' + at.planet : ''}</span><button class="link" type="button" id="sCoords">Open in Coordinates</button></div>` : ''}</div>
+    <div class="panel"><h3>Settlement stats</h3><div class="details-grid">${SETTLE_STATS.map((l, k) => k < stats.length ? `<label class="field"><span>${l}</span><input class="input mono" inputmode="numeric" data-st="${k}" value="${num(stats[k])}"></label>` : '').join('')}</div>
+      <div class="toolbar"><button class="btn primary" type="button" id="sFix">Clear debt, alerts and bug attacks</button></div></div>
+    <div class="panel"><h3>Perks</h3>${perks.length ? `<ul class="perks">${perks.map((id, k) => { const pi = perkInfo(str(id)); return `<li class="${pi && pi.negative ? 'neg' : ''}"><span><b>${esc(pi ? pi.name : str(id).replace(/^\^/, ''))}</b>${pi && pi.desc ? `<span class="dim">${esc(pi.desc)}</span>` : ''}</span><button class="btn small ghost" type="button" data-perk="${k}">Remove</button></li>`; }).join('')}</ul>` : '<p class="dim">No perks.</p>'}
+      ${perks.some((id) => (perkInfo(str(id)) || {}).negative) ? '<div class="toolbar"><button class="btn" type="button" id="sNeg">Remove the negative perks</button></div>' : ''}</div>`;
+  $('#sName', main).onchange = (e) => { set(s, 'Name', e.target.value); render(); };
+  $('#sPop', main).onchange = (e) => { const v = numberIn(e.target, { min: 0, max: 65535, int: true }); if (v == null) { e.target.value = num(g(s, 'Population')); return; } set(s, 'Population', N(v)); };
+  $('#sRace', main).onchange = (e) => { set(g(s, 'Race'), 'AlienRace', e.target.value); };
+  const co = $('#sCoords', main); if (co) co.onclick = () => { S.coords = { p: { ...at }, digits: code }; go('coords'); };
+  main.querySelectorAll('[data-st]').forEach((inp) => inp.onchange = () => { const v = numberIn(inp, { min: -2147483648, max: 2147483647, int: true }); if (v == null) { inp.value = num(stats[+inp.dataset.st]); return; } stats[+inp.dataset.st] = N(v); markDirty(); });
+  $('#sFix', main).onclick = () => { for (const k of [5, 6, 7]) if (k < stats.length) stats[k] = N(0); markDirty(); toast('Debt, alerts and bug attacks cleared'); render(); };
+  main.querySelectorAll('[data-perk]').forEach((btn) => btn.onclick = () => { perks.splice(+btn.dataset.perk, 1); markDirty(); render(); });
+  const neg = $('#sNeg', main); if (neg) neg.onclick = () => { for (let k = perks.length - 1; k >= 0; k--) if ((perkInfo(str(perks[k])) || {}).negative) perks.splice(k, 1); markDirty(); toast('Negative perks removed'); render(); };
+}
+
+// ---------------------------------------------------------------- companions
+const PET_TRAITS = ['Helpfulness', 'Aggression', 'Independence'];   // GcCreaturePetTraits, -1 to 1
+const PET_MOODS = ['Hunger', 'Loneliness'];                          // GcCreaturePetMood, 0 to 1
+const isPet = (p) => p instanceof Map && str(g(p, 'CreatureID')) !== '^' && str(g(p, 'CreatureID')) !== '';
+const petName = (p, i) => str(g(p, 'CustomName')) || humanize(str(g(p, 'CreatureID')).replace(/^\^/, '').toLowerCase().replace(/_/g, ' ')) || 'Companion ' + (i + 1);
+PAGES.companions = (el) => {
+  const pets = g(ps(), 'Pets') || [], list = pets.map((p, i) => ({ p, i })).filter(({ p }) => isPet(p)), eggs = (g(ps(), 'Eggs') || []).filter(isPet).length;
+  const slots = g(ps(), 'UnlockedPetSlots');
+  el.innerHTML = `<div class="page-head"><div><h1>Companions</h1><p>Your creature companions: names, size, trust, temperament and mood.</p></div></div>`;
+  const P = S.pets || (S.pets = { pick: null });
+  if (P.pick == null || !list.some((x) => x.i === P.pick)) P.pick = list.length ? list[0].i : null;
+  const locked = Array.isArray(slots) ? slots.filter((x) => x === false).length : 0;
+  const { side, main } = listDetail(el, { title: 'Companions', pick: String(P.pick), onPick: (k) => { P.pick = +k; render(); }, empty: 'No companions yet.',
+    items: list.map(({ p, i }) => ({ key: String(i), name: petName(p, i), sub: humanize(str(g(p, 'CreatureID')).replace(/^\^/, '').toLowerCase().replace(/_/g, ' ')) + ' · ' + Math.round(num(g(p, 'Trust')) * 100) + '% trust' })),
+    extra: `<p class="dim sw-tip">${plural(list.length, 'companion')}${eggs ? ', ' + plural(eggs, 'egg') : ''}${Array.isArray(slots) ? `, ${slots.length - locked} of ${slots.length} slots unlocked` : ''}.</p>${locked ? '<div class="sw-side-acts"><button class="btn" type="button" id="pSlots">Unlock every slot</button></div>' : ''}` });
+  const us = $('#pSlots', side); if (us) us.onclick = () => { for (let k = 0; k < slots.length; k++) slots[k] = true; markDirty(); toast('Every companion slot unlocked'); render(); };
+  if (P.pick == null) return;
+  const p = pets[P.pick], traits = g(p, 'Traits') || [], moods = g(p, 'Moods') || [];
+  const slider = (attr, k, v, min, max, label, lo, hi) => `<label class="field pet-slide"><span>${label}<b class="mono">${fmtNum(Math.round(v * 100) / 100)}</b></span><input type="range" min="${min}" max="${max}" step="0.01" ${attr}="${k}" value="${v}"><span class="ends dim"><i>${lo}</i><i>${hi}</i></span></label>`;
+  main.innerHTML = `<div class="panel sw-bar"><div class="sw-title"><b>${esc(petName(p, P.pick))}</b><span class="dim">${esc(humanize(str(g(p, 'CreatureType', 'CreatureType'))))}${str(g(p, 'Biome', 'Biome')) && str(g(p, 'Biome', 'Biome')) !== 'All' ? ' · ' + esc(humanize(str(g(p, 'Biome', 'Biome')))) + ' world' : ''}${dateOf(g(p, 'BirthTime')) ? ' · adopted ' + dateOf(g(p, 'BirthTime')) : ''}</span></div>
+      <div class="details-grid">
+        <label class="field wide"><span>Name</span><input class="input" id="pName" maxlength="31" value="${esc(str(g(p, 'CustomName')))}"></label>
+        <label class="field"><span>Size (1 is normal)</span><input class="input mono" id="pScale" inputmode="decimal" value="${fmtNum(Math.round(num(g(p, 'Scale')) * 1000) / 1000)}"></label>
+        <label class="check"><input type="checkbox" id="pPred"${g(p, 'Predator') === true ? ' checked' : ''}> Predator</label>
+        <label class="check"><input type="checkbox" id="pFur"${g(p, 'HasFur') === true ? ' checked' : ''}> Has fur</label>
+      </div></div>
+    <div class="panel"><h3>Trust and temperament</h3><div class="pet-grid">
+      ${slider('data-trust', 0, num(g(p, 'Trust')), 0, 1, 'Trust', 'Wary', 'Devoted')}
+      ${PET_TRAITS.map((l, k) => k < traits.length ? slider('data-trait', k, num(traits[k]), -1, 1, l, 'Low', 'High') : '').join('')}
+    </div></div>
+    <div class="panel"><h3>Mood</h3><div class="pet-grid">${PET_MOODS.map((l, k) => k < moods.length ? slider('data-mood', k, num(moods[k]), 0, 1, l, 'Content', 'Needs you') : '').join('')}</div>
+      <div class="toolbar"><button class="btn primary" type="button" id="pHappy">Fed, happy and fully trusting</button></div></div>`;
+  $('#pName', main).onchange = (e) => { set(p, 'CustomName', e.target.value); render(); };
+  $('#pScale', main).onchange = (e) => { const v = numberIn(e.target, { min: 0.05, max: 20 }); if (v == null) { e.target.value = fmtNum(num(g(p, 'Scale'))); return; } e.target.value = fmtNum(v); set(p, 'Scale', FL(v)); if (v > 5) toast('Very large companions can get stuck in bases and doorways.'); };
+  $('#pPred', main).onchange = (e) => set(p, 'Predator', e.target.checked);
+  $('#pFur', main).onchange = (e) => set(p, 'HasFur', e.target.checked);
+  const live = (inp) => { const b = inp.closest('.field').querySelector('b'); if (b) b.textContent = fmtNum(Math.round(+inp.value * 100) / 100); };
+  main.querySelectorAll('input[type=range]').forEach((inp) => {
+    inp.oninput = () => live(inp);
+    inp.onchange = () => {
+      const v = +inp.value;
+      if (inp.dataset.trust != null) set(p, 'Trust', FL(v));
+      else if (inp.dataset.trait != null) { traits[+inp.dataset.trait] = FL(v); markDirty(); }
+      else { moods[+inp.dataset.mood] = FL(v); markDirty(); }
+    };
+  });
+  $('#pHappy', main).onclick = () => { set(p, 'Trust', FL(1)); for (let k = 0; k < moods.length; k++) moods[k] = FL(0); markDirty(); toast(petName(p, P.pick) + ' is content and trusts you completely'); render(); };
+};
+
+// ---------------------------------------------------------------- frigates (on the Freighter page)
+const FRIGATE_CLASSES = [['Combat', 'Combat'], ['Exploration', 'Exploration'], ['Mining', 'Industrial'], ['Diplomacy', 'Trade'], ['Support', 'Support'], ['Normandy', 'Normandy'], ['DeepSpace', 'Living ship'], ['DeepSpaceCommon', 'Organic frigate'], ['Pirate', 'Pirate'], ['GhostShip', 'Ghost ship'], ['Swarm', 'Swarm']];
+const FRIGATE_STATS = ['Combat', 'Exploration', 'Mining', 'Trade', 'Fuel burn rate', 'Fuel capacity', 'Speed', 'Extra loot', 'Repair', 'Invulnerable', 'Stealth'];   // GcFrigateStatType
+const frigateName = (f, i) => { if (str(g(f, 'CustomName'))) return str(g(f, 'CustomName')); const l = (FRIGATE_CLASSES.find(([v]) => v === str(g(f, 'FrigateClass', 'FrigateClass'))) || [, 'Frigate'])[1]; return l + (/frigate|ship/i.test(l) ? ' ' : ' frigate ') + (i + 1); };
+function frigatesPanel(el) {
+  const fr = g(ps(), 'FleetFrigates'); if (!Array.isArray(fr) || !fr.length) return;
+  const F2 = S.frig || (S.frig = { pick: 0 }); if (F2.pick >= fr.length) F2.pick = 0;
+  const h = document.createElement('h2'); h.className = 'sub-title'; h.id = 'frigates'; h.textContent = 'Frigates'; el.appendChild(h);
+  const damaged = (f) => num(g(f, 'DamageTaken')) > 0;
+  const { main } = listDetail(el, { title: plural(fr.length, 'frigate'), pick: String(F2.pick), onPick: (k) => { F2.pick = +k; render(); requestAnimationFrame(() => $('#frigates').scrollIntoView()); },
+    items: fr.map((f, i) => ({ key: String(i), name: frigateName(f, i), sub: `${str(g(f, 'InventoryClass', 'InventoryClass'))} class · ${num(g(f, 'TotalNumberOfExpeditions'))} expeditions`, dot: damaged(f) ? 'bad' : 'ok' })),
+    extra: `<div class="sw-side-acts"><button class="btn" type="button" id="fRepairAll">Repair every frigate</button></div>` });
+  $('#fRepairAll', el).onclick = () => { let n = 0; for (const f of fr) if (damaged(f)) { set(f, 'DamageTaken', N(0)); n++; } toast(n ? plural(n, 'frigate') + ' repaired' : 'No frigate needs repairs'); render(); };
+  const f = fr[F2.pick], stats = g(f, 'Stats') || [], traits = g(f, 'TraitIDs') || [], cls = str(g(f, 'FrigateClass', 'FrigateClass'));
+  const traitInfo = (id) => (S.db && S.db.traits && S.db.traits.get(str(id))) || null;
+  main.innerHTML = `<div class="panel sw-bar"><div class="sw-title"><b>${esc(frigateName(f, F2.pick))}</b><span class="dim">${esc(raceLabel(str(g(f, 'Race', 'AlienRace'))))} crew · ${num(g(f, 'TotalNumberOfSuccessfulEvents'))} successes, ${num(g(f, 'TotalNumberOfFailedEvents'))} failures${damaged(f) ? ' · damaged' : ''}</span></div>
+      <div class="details-grid">
+        <label class="field wide"><span>Name</span><input class="input" id="fName" maxlength="60" value="${esc(str(g(f, 'CustomName')))}" placeholder="${esc(frigateName(new Map(), F2.pick).replace(/ \d+$/, ''))}"></label>
+        <label class="field"><span>Type</span><select class="input" id="fClass">${FRIGATE_CLASSES.some(([v]) => v === cls) ? '' : `<option selected>${esc(cls)}</option>`}${FRIGATE_CLASSES.map(([v, l]) => `<option value="${v}"${v === cls ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+        <label class="field"><span>Class</span><select class="input" id="fInv">${['C', 'B', 'A', 'S'].map((c) => `<option${c === str(g(f, 'InventoryClass', 'InventoryClass')) ? ' selected' : ''}>${c}</option>`).join('')}</select></label>
+        <label class="field"><span>Expeditions</span><input class="input mono" id="fExp" inputmode="numeric" value="${num(g(f, 'TotalNumberOfExpeditions'))}"></label>
+        <label class="field"><span>Damage</span><input class="input mono" id="fDmg" inputmode="numeric" value="${num(g(f, 'DamageTaken'))}"></label>
+      </div></div>
+    <div class="panel"><h3>Stats</h3><div class="details-grid">${FRIGATE_STATS.map((l, k) => k < stats.length ? `<label class="field"><span>${l}</span><input class="input mono" inputmode="numeric" data-fs="${k}" value="${num(stats[k])}"></label>` : '').join('')}</div>
+      <p class="dim ed-note">Expedition success depends on these: the higher the better, except fuel burn rate, where lower is better.</p></div>
+    <div class="panel"><h3>Traits</h3>${traits.length ? `<ul class="perks">${traits.map((id) => { const t = traitInfo(id); return `<li class="${t && t.strength < 3 ? 'neg' : ''}"><span><b>${esc(t ? t.name : str(id).replace(/^\^/, ''))}</b><span class="dim">${t ? esc(FRIGATE_STATS[t.stat] || '') + (t.strength === 9 ? ', primary' : t.strength < 3 ? ', negative' : '') : esc(str(id))}</span></span></li>`; }).join('')}</ul>` : '<p class="dim">No traits.</p>'}</div>`;
+  $('#fName', main).onchange = (e) => { set(f, 'CustomName', e.target.value); render(); };
+  $('#fClass', main).onchange = (e) => { set(g(f, 'FrigateClass'), 'FrigateClass', e.target.value); render(); };
+  $('#fInv', main).onchange = (e) => { set(g(f, 'InventoryClass'), 'InventoryClass', e.target.value); render(); };
+  const intField = (sel, key) => { $(sel, main).onchange = (e) => { const v = numberIn(e.target, { min: 0, max: 2147483647, int: true }); if (v == null) { e.target.value = num(g(f, key)); return; } set(f, key, N(v)); render(); }; };
+  intField('#fExp', 'TotalNumberOfExpeditions'); intField('#fDmg', 'DamageTaken');
+  main.querySelectorAll('[data-fs]').forEach((inp) => inp.onchange = () => { const v = numberIn(inp, { min: -1000, max: 10000, int: true }); if (v == null) { inp.value = num(stats[+inp.dataset.fs]); return; } stats[+inp.dataset.fs] = N(v); markDirty(); });
+}
+
+// ---------------------------------------------------------------- find anything
+// One box that searches every editor: sections, ships, multi-tools, exocraft, bases, settlements, frigates,
+// companions, settings, standings and every item in every inventory. Enter jumps there; the last result
+// always searches the raw data.
+const FIND_WORDS = [
+  ['overview', 'Units, nanites and quicksilver', 'money currency units nanites quicksilver'], ['overview', 'Save name', 'save name rename load menu'],
+  ['overview', 'Repair or recharge all technology', 'repair recharge fix damaged technology refill stacks'],
+  ['coords', 'Warp to coordinates or glyphs', 'warp teleport glyphs portal address coordinates location galaxy travel system'],
+  ['difficulty', 'Difficulty settings', 'difficulty game mode permadeath creative survival relaxed settings preset'],
+  ['standing', 'Standing and reputation', 'standing reputation rank guild faction gek korvax vykeen autophage outlaw'],
+  ['standing', 'Journey milestones', 'milestones journey titles stats'],
+  ['knowledge', 'Known technology and recipes', 'blueprints recipes technology known learn unlock base parts'], ['knowledge', 'Words', 'words language learn alien'],
+  ['companions', 'Companions', 'pets companions creatures eggs trust'], ['bases', 'Bases', 'bases base parts building'], ['bases', 'Settlements', 'settlement settlements overseer'],
+  ['freighter', 'Frigates', 'frigates fleet expeditions'], ['shipwright', 'Corvette builds', 'corvette build optimizer tune'], ['library', 'Dock Yard', 'dock yard ship library garage storage favourites import nmsship'],
+  ['exosuit', 'Exosuit inventory', 'exosuit suit inventory slots supercharge'], ['raw', 'Raw data', 'raw json expert'],
+];
+function findIndex() {
+  const out = [], p = ps();
+  const push = (label, sub, kind, go2, extra = '') => out.push({ label, sub, kind, go: go2, hay: (label + ' ' + sub + ' ' + extra).toLowerCase() });
+  for (const [s, l, w] of FIND_WORDS) push(l, (SECTIONS.find(([id]) => id === s) || [, ''])[1], 'Page', () => { if (s === 'knowledge') (S.know || (S.know = { tab: 'tech', q: '', race: 0, wq: '' })).tab = /word/i.test(l) ? 'words' : 'tech'; if (s === 'bases') (S.bases || (S.bases = { tab: 'bases' })).tab = /settle/i.test(l) ? 'settlements' : 'bases'; go(s); if (s === 'freighter') spotlight('#frigates'); }, w);
+  for (const [id, l] of SECTIONS) push(l, 'Section', 'Page', () => go(id));
+  ships().forEach(({ s, i }) => push(str(g(s, 'Name')) || 'Ship ' + (i + 1), 'Starship, ' + modelName(g(s, 'Resource', 'Filename')), 'Ship', () => { S.pick.ship = i; go('ships'); }));
+  tools().forEach(({ s, i }) => push(str(g(s, 'Name')) || 'Multi-tool ' + (i + 1), 'Multi-tool', 'Multi-tool', () => { S.pick.tool = i; go('tools'); }));
+  vehicles().forEach(({ s, i }) => push(str(g(s, 'Name')) || modelName(g(s, 'Resource', 'Filename')) || 'Exocraft', 'Exocraft', 'Exocraft', () => { S.pick.vehicle = i; go('vehicles'); }));
+  playerBases().forEach(({ b, i }) => push(baseLabel(b), BASE_KINDS[str(g(b, 'BaseType', 'PersistentBaseTypes'))] || 'Base', 'Base', () => { (S.bases || (S.bases = {})).tab = 'bases'; S.bases.pick = i; go('bases'); }));
+  (g(p, 'PersistentPlayerBases') || []).forEach((b, i) => { if (str(g(b, 'BaseType', 'PersistentBaseTypes')) === 'PlayerShipBase') push(str(g(b, 'Name')) || 'Corvette', 'Corvette build', 'Corvette', () => { const slot = num(g(b, 'UserData')); (S.wright || (S.wright = { q: '', sel: new Set(), auto: true, json: false })).slot = slot; go('shipwright'); }); });
+  (g(p, 'SettlementStatesV2') || []).forEach((s, i) => { const n = str(g(s, 'Name')); if (n) push(n, 'Settlement', 'Settlement', () => { (S.bases || (S.bases = {})).tab = 'settlements'; S.bases.set = i; go('bases'); }); });
+  (g(p, 'FleetFrigates') || []).forEach((f, i) => push(frigateName(f, i), 'Frigate', 'Frigate', () => { (S.frig || (S.frig = {})).pick = i; go('freighter'); spotlight('#frigates'); }));
+  (g(p, 'Pets') || []).forEach((pt, i) => { if (isPet(pt)) push(petName(pt, i), 'Companion', 'Companion', () => { (S.pets || (S.pets = {})).pick = i; go('companions'); }); });
+  for (const [k, l] of DIFF_FLAT) push(l, 'Difficulty setting', 'Setting', () => { go('difficulty'); spotlight(`[data-find="diff-${k}"]`); }, k);
+  for (const [id, l] of [...STANDINGS, ...MILESTONES]) push(l, STANDINGS.some(([x]) => x === id) ? 'Standing' : 'Milestone', 'Stat', () => { go('standing'); spotlight(`[data-find="stat-${id}"]`); }, id);
+  // every item in every inventory, with where it is
+  const where = [];
+  standardInvs(p, '').forEach(([inv, t]) => where.push([inv, 'Exosuit ' + t.toLowerCase(), () => go('exosuit')]));
+  standardInvs(p, 'Freighter').forEach(([inv, t]) => where.push([inv, 'Freighter ' + t.toLowerCase(), () => go('freighter')]));
+  ships().forEach(({ s, i }) => standardInvs(s, '').forEach(([inv, t]) => where.push([inv, (str(g(s, 'Name')) || 'Ship ' + (i + 1)) + ', ' + t.toLowerCase(), () => { S.pick.ship = i; go('ships'); }])));
+  tools().forEach(({ s, i }) => where.push([g(s, 'Store'), str(g(s, 'Name')) || 'Multi-tool ' + (i + 1), () => { S.pick.tool = i; go('tools'); }]));
+  vehicles().forEach(({ s, i }) => [['Inventory', 'cargo'], ['Inventory_TechOnly', 'technology']].forEach(([k, t]) => where.push([g(s, k), (str(g(s, 'Name')) || 'Exocraft') + ', ' + t, () => { S.pick.vehicle = i; go('vehicles'); }])));
+  storageInvs().forEach(({ name, inv }) => where.push([inv, prettyInvName(name), () => { S.pick.storage = name; go('storage'); }]));
+  for (const [inv, label, open] of where) {
+    if (!isInv(inv)) continue;
+    for (const s of slotsOf(inv)) {
+      const id = idOf(s), it = dbItem(id), [x, y] = posOf(s), nm = it ? it.name : idLabel(id);
+      push(nm, label + (num(g(s, 'MaxAmount')) > 0 && typeOf(s) !== 'Technology' ? ' · ' + num(g(s, 'Amount')).toLocaleString() : '') + ` · slot ${x + 1}, ${y + 1}`, 'Item', () => {
+        try { localStorage.setItem('hse-invtab', 'all'); } catch (_) {}
+        open(); S.sel = { inv, keys: new Set([x + ',' + y]), anchor: [x, y] }; render(); spotlight('.cell.sel');
+      }, id);
+    }
+  }
+  return out;
+}
+function setupFind() {
+  const box = $('#findBox'), res = $('#findRes'); if (!box) return;
+  let idx = null, hits = [], cur = 0;
+  const close = () => { res.hidden = true; box.setAttribute('aria-expanded', 'false'); };
+  const show = () => {
+    const q = box.value.trim().toLowerCase(); if (!q || !S.save) { close(); return; }
+    if (!idx) idx = findIndex();
+    const words = q.split(/\s+/), score = (h) => (h.label.toLowerCase() === q ? 0 : h.label.toLowerCase().startsWith(q) ? 1 : h.label.toLowerCase().includes(q) ? 2 : 3) + (h.kind === 'Item' ? 0.5 : 0);
+    hits = idx.filter((h) => words.every((w) => h.hay.includes(w))).sort((a, b) => score(a) - score(b) || a.label.localeCompare(b.label)).slice(0, 12);
+    hits.push({ label: `Search the raw data for “${box.value.trim()}”`, sub: 'Raw data', kind: 'Raw', go: () => { S.raw.q = box.value.trim(); S.raw.hits = search(S.raw.q); go('raw'); } });
+    cur = 0; res.hidden = false; box.setAttribute('aria-expanded', 'true');
+    res.innerHTML = hits.map((h, k) => `<button type="button" role="option" data-k="${k}" aria-selected="${k === cur}"><span class="fk">${esc(h.kind)}</span><span class="fl"><b>${esc(h.label)}</b><span class="dim">${esc(h.sub)}</span></span></button>`).join('');
+  };
+  const pick = (k) => { const h = hits[k]; if (!h) return; close(); box.value = ''; box.blur(); h.go(); };
+  box.oninput = show;
+  box.onfocus = () => { idx = null; if (box.value.trim()) show(); };
+  box.onkeydown = (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (res.hidden) return; cur = (cur + (e.key === 'ArrowDown' ? 1 : hits.length - 1)) % hits.length; res.querySelectorAll('[data-k]').forEach((b) => b.setAttribute('aria-selected', String(+b.dataset.k === cur))); res.querySelector(`[data-k="${cur}"]`).scrollIntoView({ block: 'nearest' }); }
+    else if (e.key === 'Enter') { e.preventDefault(); pick(cur); }
+    else if (e.key === 'Escape') { close(); box.blur(); }
+  };
+  res.onmousedown = (e) => e.preventDefault();
+  res.onclick = (e) => { const b = e.target.closest('[data-k]'); if (b) pick(+b.dataset.k); };
+  box.onblur = () => setTimeout(close, 120);
+  document.addEventListener('keydown', (e) => {
+    if (!S.save || $('#app').classList.contains('hidden')) return;
+    if ((e.key === 'k' && (e.ctrlKey || e.metaKey)) || (e.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName))) { e.preventDefault(); box.focus(); box.select(); }
+  });
+}
+
+setupFind();
 
 PAGES.coords = (el) => {
   const here = Place.fromUA(g(ps(), 'UniverseAddress'));

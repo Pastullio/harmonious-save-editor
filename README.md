@@ -11,6 +11,9 @@ Open `dist/nms-save-editor.html` in Chrome or Edge. Nothing is uploaded anywhere
 - Units, nanites, quicksilver and the save name
 - Exosuit, starship, multi-tool, freighter, exocraft and storage inventories: add, remove, refill, repair, unlock slots, resize, change class
 - Ship and multi-tool names and seeds
+- Corvette builds (Shipwright), a ship collection across saves (Dock Yard), coordinates and warp with portal glyphs
+- Plain editors for bases and settlements, frigates, companions, known technology and recipes, alien words, standing and journey milestones, and difficulty settings
+- A find box (Ctrl+K) that jumps to any ship, base, frigate, companion, setting or item in your inventories
 - Any value in the save through the raw data explorer, with search, plus JSON export and import
 
 Item names and icons come from your own No Man's Sky install: the desktop app reads the game's files the first time it starts and keeps a library on your PC, rebuilt after game updates. Nothing from the game is included with the app. The browser version can use Goatfungus's `NMSSaveEditor.jar` instead.

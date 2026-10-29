@@ -12,6 +12,7 @@ import (
 	"image/png"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -23,7 +24,7 @@ import (
 	"time"
 )
 
-const itemlibVersion = 1
+const itemlibVersion = 2 // 2: words, frigate traits and settlement perks
 
 type libItem struct {
 	ID     string `json:"id"`
@@ -44,6 +45,49 @@ type libFile struct {
 	Stamp   map[string]string `json:"stamp"`
 	Items   []libItem         `json:"items"`
 	Missing []string          `json:"missingIcons,omitempty"`
+	Words   []libWord         `json:"words,omitempty"`
+	Traits  []libTrait        `json:"traits,omitempty"`
+	Perks   []libPerk         `json:"perks,omitempty"`
+	Ranks   []libRanks        `json:"ranks,omitempty"`
+}
+
+// a stat with named levels (standing with each race and guild, journey milestones): the level is
+// reached when the stat's value is at least Levels[i].Value
+type libRanks struct {
+	ID     string    `json:"id"`
+	Title  string    `json:"title"`
+	Levels []libRank `json:"levels"`
+}
+
+type libRank struct {
+	Name  string  `json:"name"`
+	Value float64 `json:"value"`
+}
+
+// a word of an alien language: the save marks a word learnt per race in KnownWordGroups (by Group)
+type libWord struct {
+	ID    string `json:"id"`
+	Text  string `json:"text"`
+	Group string `json:"group"`
+	Race  int    `json:"race"` // GcAlienRace: Traders, Warriors, Explorers, Robots, Atlas, Diplomats, Exotics, None, Builders
+}
+
+// a frigate trait (FleetFrigates TraitIDs)
+type libTrait struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Stat     int    `json:"stat"`     // GcFrigateStatType
+	Strength int    `json:"strength"` // GcFrigateTraitStrength: 0-2 negative, 3-5 tertiary, 6-8 secondary, 9 primary
+}
+
+// a settlement perk (SettlementStatesV2 Perks)
+type libPerk struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Desc     string `json:"desc,omitempty"`
+	Negative bool   `json:"negative,omitempty"`
+	Blessing bool   `json:"blessing,omitempty"`
+	Job      bool   `json:"job,omitempty"`
 }
 
 type libStatus struct {
@@ -395,6 +439,108 @@ func buildItemLibrary() (err error) {
 		items = append(items, libItem{ID: "^" + id, Type: "Technology", Name: name, Icon: techIcon[tpl], Sub: sub, Proc: true})
 	}
 
+	// words, frigate traits and settlement perks: nice to have, so a layout change only skips them
+	var words []libWord
+	if m, err := table("metadata/reality/tables/nms_dialog_gcalienspeechtable.mbin", 0x29A23A2F80FBE6D8); err != nil {
+		log.Printf("item library: skipping words: %v", err)
+	} else {
+		a, n := m.list(0x20)
+		for i := 0; i < n; i++ {
+			e := a + i*0x68
+			id, grp := m.fstr(e+0x40, 0x10), m.fstr(e, 0x20)
+			if id == "" || grp == "" {
+				continue
+			}
+			txt := b.text(m.fstr(e+0x20, 0x20))
+			if txt == "" {
+				txt = strings.ToLower(id)
+			}
+			words = append(words, libWord{ID: "^" + id, Text: txt, Group: "^" + grp, Race: int(m.i32(e + 0x5C))})
+		}
+	}
+	var traits []libTrait
+	if m, err := table("metadata/reality/tables/frigatetraittable.mbin", 0x59E8152F3D9078A8); err != nil {
+		log.Printf("item library: skipping frigate traits: %v", err)
+	} else {
+		a, n := m.list(0x20)
+		for i := 0; i < n; i++ {
+			e := a + i*0x68
+			id := m.fstr(e+0x20, 0x10)
+			if id == "" {
+				continue
+			}
+			name := b.text(m.fstr(e, 0x20))
+			if name == "" {
+				name = id
+			}
+			traits = append(traits, libTrait{ID: "^" + id, Name: name, Stat: int(m.i32(e + 0x5C)), Strength: int(m.i32(e + 0x60))})
+		}
+	}
+	var perks []libPerk
+	if m, err := table("metadata/reality/tables/settlementperkstable.mbin", 0x34625E03A674E543); err != nil {
+		log.Printf("item library: skipping settlement perks: %v", err)
+	} else {
+		a, n := m.list(0x20)
+		for i := 0; i < n; i++ {
+			e := a + i*0x78
+			id := m.fstr(e+0x50, 0x10)
+			if id == "" {
+				continue
+			}
+			name := b.text(m.fstr(e+0x20, 0x20))
+			if name == "" {
+				name = id
+			}
+			perks = append(perks, libPerk{ID: "^" + id, Name: name, Desc: b.text(m.fstr(e, 0x20)), Negative: m.u8(e+0x72) != 0, Blessing: m.u8(e+0x70) != 0, Job: m.u8(e+0x71) != 0})
+		}
+	}
+
+	// stat levels (metadata/gamestate/stats, in MetadataEtc): GcLeveledStatData is 0x610 bytes, 11 levels of
+	// 0x80 at the start (name key at 0, GcStatValueData at 0x70: denominator, float, int), the id at 0x5F8.
+	// Anything that doesn't look right is dropped, so a quiet layout change only loses the rank names.
+	var ranks []libRanks
+	if p, err := b.find("metadata/gamestate/stats/leveledstatstable.mbin", "NMSARC.MetadataEtc.pak"); err != nil {
+		log.Printf("item library: skipping stat levels: %v", err)
+	} else if raw, err := p.Read("metadata/gamestate/stats/leveledstatstable.mbin"); err != nil {
+		log.Printf("item library: skipping stat levels: %v", err)
+	} else if m, err := openMbin(raw, 0x8C5EEFF51B0E1C86, "leveledstatstable.mbin"); err != nil {
+		log.Printf("item library: skipping stat levels: %v", err)
+	} else {
+		a, n := m.list(0x20)
+		for i := 0; i < n; i++ {
+			e := a + i*0x610
+			id := m.fstr(e+0x5F8, 0x10)
+			if id == "" || !printable(id) {
+				continue
+			}
+			r := libRanks{ID: "^" + id, Title: b.text(m.fstr(e+0x5C0, 0x20))}
+			last, ok := math.Inf(-1), true
+			for l := 0; l < 11; l++ {
+				le := e + l*0x80
+				key := m.fstr(le, 0x20)
+				if key == "" {
+					break
+				}
+				v := float64(m.i32(le + 0x78))
+				if f := float64(math.Float32frombits(uint32(m.i32(le + 0x74)))); v == 0 && f != 0 && !math.IsNaN(f) {
+					v = f
+				}
+				if v < last {
+					ok = false
+				}
+				last = v
+				name := b.text(key)
+				if name == "" {
+					name = key
+				}
+				r.Levels = append(r.Levels, libRank{Name: name, Value: v})
+			}
+			if ok && len(r.Levels) > 0 {
+				ranks = append(ranks, r)
+			}
+		}
+	}
+
 	// icons: read in order from the texture archive, decoded and shrunk on every core
 	if err := os.MkdirAll(filepath.Join(itemlibDir(), "icons"), 0o755); err != nil {
 		return err
@@ -472,7 +618,7 @@ func buildItemLibrary() (err error) {
 		stampNames = append(stampNames, n)
 	}
 	sort.Strings(stampNames)
-	lib := &libFile{Version: itemlibVersion, Built: time.Now().Format(time.RFC3339), Game: banks, Stamp: stampOf(banks, stampNames), Items: items, Missing: missing}
+	lib := &libFile{Version: itemlibVersion, Built: time.Now().Format(time.RFC3339), Game: banks, Stamp: stampOf(banks, stampNames), Items: items, Missing: missing, Words: words, Traits: traits, Perks: perks, Ranks: ranks}
 	out, _ := json.Marshal(lib)
 	if err := atomicWrite(filepath.Join(itemlibDir(), "items.json"), out); err != nil {
 		return err
@@ -480,7 +626,7 @@ func buildItemLibrary() (err error) {
 	libMu.Lock()
 	libLoaded = lib
 	libMu.Unlock()
-	log.Printf("item library: %d items, %d icons (%d missing) from %s", len(items), len(names)-len(missing), len(missing), banks)
+	log.Printf("item library: %d items, %d icons (%d missing), %d words, %d frigate traits, %d perks, %d ranked stats from %s", len(items), len(names)-len(missing), len(missing), len(words), len(traits), len(perks), len(ranks), banks)
 	return nil
 }
 
@@ -600,4 +746,13 @@ func handleItemLibIcon(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "private, max-age=86400")
 	http.ServeFile(w, r, p)
+}
+
+func printable(s string) bool {
+	for _, c := range s {
+		if c < 0x20 || c > 0x7E {
+			return false
+		}
+	}
+	return true
 }

@@ -106,9 +106,11 @@ The save file holds no images, so a ship's picture has to come from one of these
 
 ## Phase 6 — Streamlined editing (no more digging through JSON) [4]
 
-- [ ] Plain-language editors for the sections people actually change: bases, freighter and frigates, settlements, companions, known technology and recipes, words, milestones and reputation, difficulty settings, current location
-- [ ] "Find anything" box: type a ship name, item, base or setting and jump straight to its editor
-- [ ] Raw data stays available as the expert fallback
+- [x] Plain-language editors for the sections people actually change: bases (rename, place, parts in and out, delete), frigates (on the Freighter page), settlements, companions, known technology, recipes and cosmetics, words for every race, standing and journey milestones, difficulty settings (preset also written to the meta file for the load menu), current location (Coordinates)
+- [x] "Find anything" box (sidebar, Ctrl+K): ships, multi-tools, exocraft, bases, corvettes, settlements, frigates, companions, settings, standings and every item in every inventory; Enter jumps to it
+- [x] Raw data stays available as the expert fallback (the last find result searches it)
+- [ ] Companion battle stats (class overrides, treats, moves): their keys aren't in libNOM's mapping yet, so they stay in Raw data
+- [ ] Check the standing rank names against a real `leveledstatstable.mbin` (the extract tool now collects `metadata/gamestate/stats`)
 
 ## Phase 7 — Coordinates and planets [8] [10]
 
