@@ -87,6 +87,8 @@ The save file holds no images, so a ship's picture has to come from one of these
 ## Own item library (so Goatfungus isn't needed)
 
 - [ ] "Build item library from your game": read the owner's own No Man's Sky install (HGPAK archives since 5.5), pull the product, substance and technology tables and the English language file (MBIN), and convert the icons (DDS) to PNG, cached in the app folder. Nothing game-derived is bundled or committed, and it refreshes itself after a game update
+- [x] `tools/extract-nms-item-files.bat`: collects the tables, English text, an icon sample and the full pak file list from the owner's install (via HGPAKtool) so the reader can be built against real files
+- [ ] Waiting on that zip from the owner, then: HGPAK reader + zstd in the app, MBIN table reader, language lookup, DDS → PNG
 - [ ] Goatfungus's jar stays as a fallback
 
 ## Phase 6 — Streamlined editing (no more digging through JSON) [4]
