@@ -55,6 +55,8 @@ One personal library of ship files outside the game, with three views onto it.
 - [x] Drop a screenshot on any cover (or use Set cover image) to replace it; kept in the app's browser profile
 - [x] Real renders of corvettes: the desktop app runs the owner's Blender with Charon Forge's part models in the background (Render with Blender / Render all corvettes) and caches each PNG by a hash of the build, so a cover re-renders only when the build changes
 - [x] Covers for regular ships and multi-tools from the owner's own No Man's Sky screenshots: the app lists Steam's screenshot folder for the account (or a folder set in Cover settings), and a square crop frames the ship. Any image file or drop goes through the same crop
+- [x] Default covers are turning wire-grid holograms of generic shapes of our own (fighter, hauler, explorer, shuttle, exotic, living ship, solar, interceptor, freighter, exocraft; pistol, rifle, staff), not copies of the game's models
+- [ ] Real ship and multi-tool models rendered from the owner's own game files (needs a reader for the game's geometry format); the wireframes stay as the fallback
 - [ ] Their look is generated in-game from the seed, so it can't be rendered outside the game; artwork for fixed-look specials (Golden Vector, Atlas Sceptre, Starborn ships) could come from the web later
 - [ ] Artwork from a linked Charon/NMA listing
 - [ ] More camera angles per corvette, and a turntable in the detail view

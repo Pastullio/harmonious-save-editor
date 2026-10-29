@@ -1501,11 +1501,162 @@ function coverItems() {
   }
   return out;
 }
+
+// ------------------------------------------------------------------ wireframe covers
+// Default covers for ships and multi-tools that have no picture yet: a slowly turning wire-grid hologram.
+// These are generic shapes of our own (a fighter, a hauler, a pistol...), not copies of the game's models;
+// they only say what kind of thing it is. x is right, y up, z forward (the nose points to +z).
+function WireMesh() { this.v = []; this.e = []; }
+WireMesh.prototype.pt = function (x, y, z) { this.v.push([x, y, z]); return this.v.length - 1; };
+WireMesh.prototype.line = function (a, b) { this.e.push([a, b]); };
+// a ring of n points around the z axis (rx, ry radii, centred at x0, y0), with its edges
+WireMesh.prototype.ring = function (z, rx, ry, n, x0 = 0, y0 = 0, rot = 0) {
+  const ids = []; for (let i = 0; i < n; i++) { const a = rot + (i / n) * Math.PI * 2; ids.push(this.pt(x0 + Math.cos(a) * rx, y0 + Math.sin(a) * ry, z)); }
+  for (let i = 0; i < n; i++) this.line(ids[i], ids[(i + 1) % n]); return ids;
+};
+// a body lofted through sections [z, rx, ry, y0?, x0?], joined lengthwise
+WireMesh.prototype.loft = function (secs, n = 8, rot = Math.PI / 8) {
+  let prev = null;
+  for (const [z, rx, ry, y0 = 0, x0 = 0] of secs) { const r = this.ring(z, rx, ry, n, x0, y0, rot); if (prev) for (let i = 0; i < n; i++) this.line(prev[i], r[i]); prev = r; }
+  return this;
+};
+// a flat four-sided panel drawn as a grid of nu × nv cells (wings, fins, sails)
+WireMesh.prototype.panel = function (a, b, c, d, nu = 3, nv = 2) {
+  const lerp = (p, q, t) => p.map((v, i) => v + (q[i] - v) * t);
+  for (let i = 0; i <= nu; i++) { const t = i / nu; this.line(this.pt(...lerp(a, b, t)), this.pt(...lerp(d, c, t))); }
+  for (let j = 0; j <= nv; j++) { const t = j / nv; this.line(this.pt(...lerp(a, d, t)), this.pt(...lerp(b, c, t))); }
+  return this;
+};
+WireMesh.prototype.mirrorPanel = function (a, b, c, d, nu, nv) { const m = (p) => [-p[0], p[1], p[2]]; this.panel(a, b, c, d, nu, nv); return this.panel(m(a), m(b), m(c), m(d), nu, nv); };
+WireMesh.prototype.box = function (x, y, z, sx, sy, sz) {
+  const c = []; for (const dx of [-1, 1]) for (const dy of [-1, 1]) for (const dz of [-1, 1]) c.push(this.pt(x + dx * sx, y + dy * sy, z + dz * sz));
+  for (const [a, b] of [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [1, 3], [4, 6], [5, 7], [0, 4], [1, 5], [2, 6], [3, 7]]) this.line(c[a], c[b]); return this;
+};
+WireMesh.prototype.finish = function () { // centre and scale to unit radius
+  const lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
+  for (const p of this.v) for (let i = 0; i < 3; i++) { lo[i] = Math.min(lo[i], p[i]); hi[i] = Math.max(hi[i], p[i]); }
+  const mid = lo.map((v, i) => (v + hi[i]) / 2); let R = 0;
+  for (const p of this.v) { for (let i = 0; i < 3; i++) p[i] -= mid[i]; R = Math.max(R, Math.hypot(...p)); }
+  for (const p of this.v) for (let i = 0; i < 3; i++) p[i] /= R || 1; return this;
+};
+
+const WIRE_BUILD = {
+  Fighter() {
+    const m = new WireMesh().loft([[1, .02, .02], [.62, .1, .08], [.2, .17, .13], [-.35, .16, .12], [-.75, .1, .08]]);
+    m.loft([[.42, .02, .02, .1], [.3, .07, .06, .14], [.08, .07, .05, .13], [-.05, .02, .02, .1]], 6);
+    m.mirrorPanel([.15, 0, .15], [.95, -.04, -.55], [.95, -.04, -.72], [.15, 0, -.55], 4, 2);
+    m.mirrorPanel([.1, .08, -.45], [.16, .38, -.66], [.16, .38, -.78], [.1, .08, -.75], 1, 2);
+    m.ring(-.78, .06, .06, 8, .07, 0); m.ring(-.78, .06, .06, 8, -.07, 0); return m;
+  },
+  'Golden Vector'() {
+    const m = new WireMesh().loft([[1.1, .02, .02], [.7, .08, .06], [.15, .14, .1], [-.5, .12, .09], [-.8, .07, .06]]);
+    m.mirrorPanel([.12, 0, .2], [.85, -.02, -.65], [.85, -.02, -.8], [.12, 0, -.5], 5, 2);
+    m.mirrorPanel([.08, .06, -.5], [.3, .3, -.8], [.3, .3, -.88], [.08, .06, -.78], 1, 2); return m;
+  },
+  Hauler() {
+    const m = new WireMesh().loft([[.85, .14, .12], [.6, .3, .24], [-.5, .34, .26], [-.85, .26, .2]], 4, Math.PI / 4);
+    m.mirrorPanel([.32, -.05, .1], [.8, -.05, .05], [.8, -.05, -.35], [.32, -.05, -.4], 3, 2);
+    m.box(.62, -.16, -.2, .14, .12, .42); m.box(-.62, -.16, -.2, .14, .12, .42);
+    m.ring(-.9, .12, .12, 8, .18, 0); m.ring(-.9, .12, .12, 8, -.18, 0); return m;
+  },
+  Explorer() {
+    const m = new WireMesh().loft([[1.1, .03, .03], [.7, .08, .07], [.3, .13, .1], [-.2, .1, .08], [-1, .06, .06]]);
+    m.loft([[.2, .04, .04, 0, .45], [-.7, .04, .04, 0, .45]], 6); m.loft([[.2, .04, .04, 0, -.45], [-.7, .04, .04, 0, -.45]], 6);
+    m.mirrorPanel([.1, 0, 0], [.45, 0, -.05], [.45, 0, -.3], [.1, 0, -.35], 3, 1);
+    m.ring(-.45, .3, .3, 16); return m;
+  },
+  Shuttle() {
+    const m = new WireMesh().loft([[.7, .08, .07], [.5, .24, .2], [.1, .3, .25], [-.35, .28, .22], [-.6, .18, .15]], 10);
+    m.mirrorPanel([.28, -.05, .1], [.62, -.08, -.05], [.62, -.08, -.3], [.28, -.05, -.35], 2, 2);
+    m.loft([[-.2, .1, .1, -.05, .62], [-.75, .1, .1, -.05, .62]], 8); m.loft([[-.2, .1, .1, -.05, -.62], [-.75, .1, .1, -.05, -.62]], 8); return m;
+  },
+  Exotic() {
+    const m = new WireMesh().loft([[.9, .03, .03], [.4, .1, .1], [-.4, .1, .1], [-.8, .04, .04]], 6);
+    for (const t of [-.1, 0, .1]) m.ring(t, .55, .55, 24);
+    for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; m.line(m.pt(Math.cos(a) * .1, Math.sin(a) * .1, 0), m.pt(Math.cos(a) * .55, Math.sin(a) * .55, 0)); }
+    return m;
+  },
+  'Living ship'() {
+    const secs = []; for (let i = 0; i <= 9; i++) { const t = i / 9, z = .95 - t * 1.9; secs.push([z, .05 + Math.sin(t * Math.PI) * .2, .04 + Math.sin(t * Math.PI) * .16, Math.sin(t * Math.PI * 1.5) * .08]); }
+    const m = new WireMesh().loft(secs, 8);
+    for (const sgn of [-1, 1]) { let prev = null; for (let i = 0; i <= 8; i++) { const t = i / 8, p = m.pt(sgn * (.15 + t * .75), .05 + Math.sin(t * Math.PI) * .25, .3 - t * .9); if (prev != null) m.line(prev, p); prev = p; } }
+    let prev = null; for (let i = 0; i <= 8; i++) { const t = i / 8, p = m.pt(0, .15 + Math.sin(t * Math.PI) * .45, .2 - t * 1.0); if (prev != null) m.line(prev, p); prev = p; }
+    return m;
+  },
+  Solar() {
+    const m = new WireMesh().loft([[.85, .03, .03], [.45, .12, .1], [-.3, .14, .11], [-.75, .08, .07]]);
+    m.mirrorPanel([.12, .05, .3], [.95, .25, .55], [.95, .2, -.75], [.12, .05, -.45], 6, 3); return m;
+  },
+  Interceptor() {
+    const m = new WireMesh().loft([[.6, .1, .06], [.2, .22, .12], [-.4, .2, .1], [-.85, .1, .06]], 6);
+    m.mirrorPanel([.15, 0, .2], [.6, .05, .95], [.68, .02, .85], [.2, 0, -.1], 2, 3);
+    m.mirrorPanel([.15, 0, -.3], [.75, -.1, -.55], [.75, -.1, -.7], [.15, 0, -.65], 3, 1); return m;
+  },
+  Freighter() {
+    const m = new WireMesh().loft([[1.2, .05, .05], [.9, .16, .14], [.2, .2, .18], [-.7, .22, .2], [-1.1, .18, .16]], 6);
+    m.box(0, .3, -.3, .08, .12, .5); m.box(.34, -.05, -.35, .12, .1, .45); m.box(-.34, -.05, -.35, .12, .1, .45);
+    for (const x of [-.12, 0, .12]) m.ring(-1.15, .07, .07, 8, x, 0); return m;
+  },
+  Exocraft() {
+    const m = new WireMesh().box(0, .15, 0, .35, .14, .6); m.box(0, .35, -.1, .25, .08, .3);
+    for (const x of [-.48, .48]) for (const z of [-.45, .45]) { const n = 12, ids = []; for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; ids.push(m.pt(x, Math.sin(a) * .18, z + Math.cos(a) * .18)); } for (let i = 0; i < n; i++) m.line(ids[i], ids[(i + 1) % n]); }
+    return m;
+  },
+  pistol() {
+    const m = new WireMesh().box(0, .1, .1, .1, .12, .45); m.box(0, -.25, -.2, .08, .25, .1);
+    m.loft([[.55, .05, .05, .12], [.95, .04, .04, .12]], 8); m.ring(1, .08, .08, 10, 0, .12); m.box(0, .3, .05, .04, .05, .2); return m;
+  },
+  rifle() {
+    const m = new WireMesh().box(0, .08, .05, .09, .12, .55); m.box(0, .02, -.75, .07, .1, .22); m.box(0, -.22, -.25, .07, .2, .08);
+    m.loft([[.6, .045, .045, .1], [1.15, .035, .035, .1]], 8); m.ring(1.18, .07, .07, 10, 0, .1);
+    m.loft([[.35, .05, .05, .32], [-.15, .05, .05, .32]], 8); return m;
+  },
+  staff() {
+    const m = new WireMesh().loft([[-1.2, .025, .025], [.6, .03, .03]], 6);
+    m.ring(.7, .28, .28, 14); m.ring(.95, .2, .2, 12); m.ring(-1.1, .06, .06, 8);
+    const top = m.pt(0, 0, 1.3), mid = [m.pt(.17, 0, .95), m.pt(0, .17, .95), m.pt(-.17, 0, .95), m.pt(0, -.17, .95)], low = m.pt(0, 0, .6);
+    for (const q of mid) { m.line(top, q); m.line(low, q); } for (let i = 0; i < 4; i++) m.line(mid[i], mid[(i + 1) % 4]); return m;
+  },
+};
+WIRE_BUILD.Starship = WIRE_BUILD.Fighter; WIRE_BUILD.Corvette = WIRE_BUILD.Hauler;
+WIRE_BUILD.royal = WIRE_BUILD.pistol; WIRE_BUILD.alien = WIRE_BUILD.pistol;
+const wireCache = new Map();
+function wireMesh(it) {
+  if (it.holo || it.kind === 'portrait') return null;
+  const k = it.kind === 'tool' ? (it.tool || 'pistol') : (WIRE_BUILD[it.type] ? it.type : /starborn|phoenix|runner/i.test(it.name || '') ? 'Golden Vector' : 'Fighter');
+  if (!wireCache.has(k)) wireCache.set(k, (WIRE_BUILD[k] || WIRE_BUILD.Fighter)().finish());
+  return wireCache.get(k);
+}
+function paintWire(ctx, W, mesh, tint, angle) {
+  const pitch = .38, cx = W / 2, cy = W * .5, k = W * .43;
+  const cp = Math.cos(pitch), sp = Math.sin(pitch), c = Math.cos(angle), s = Math.sin(angle);
+  const proj = ([x, y, z]) => { const x1 = x * c + z * s, z1 = -x * s + z * c; return [cx + x1 * k, cy - (y * cp - z1 * sp) * k, y * sp + z1 * cp]; };
+  // projector ring, as under the corvette holograms
+  ctx.save(); ctx.translate(cx, W * .8); ctx.scale(1, .3);
+  const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, W * .42); gr.addColorStop(0, `rgba(${tint},.2)`); gr.addColorStop(.75, `rgba(${tint},.05)`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, W * .42, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = `rgba(${tint},.4)`; ctx.lineWidth = W * .004; ctx.beginPath(); ctx.arc(0, 0, W * .34, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  const P = mesh.v.map(proj);
+  ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+  for (const [w, a] of [[W * .014, .07], [W * .0045, .55]]) { // soft glow first, then the crisp line
+    ctx.lineWidth = w;
+    for (const [i, j] of mesh.e) {
+      const p = P[i], q = P[j], depth = .45 + .55 * (1 - ((p[2] + q[2]) / 2 + 1) / 2);
+      ctx.strokeStyle = `rgba(${tint},${(a * depth).toFixed(3)})`; ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke();
+    }
+  }
+  const dot = Math.max(1.2, W / 260); ctx.fillStyle = 'rgba(255,255,255,.55)';
+  for (const p of P) ctx.fillRect(p[0] - dot / 2, p[1] - dot / 2, dot, dot);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = 'rgba(255,255,255,.03)'; for (let y = 0; y < W; y += Math.max(3, W / 120)) ctx.fillRect(0, y, W, 1); // scanlines
+}
 function paintCover(canvas, it, angle) {
   const W = canvas.width, ctx = canvas.getContext('2d'), tint = (CLASS_TINT[it.cls] || [79, 193, 176]).join(',');
   paintNebula(ctx, W, it.key);
   if (it.renderImg) { paintRender(ctx, W, it.renderImg); paintBadge(ctx, W, it.cls, null); return; }
+  const wire = wireMesh(it);
   if (it.holo) paintHologram(ctx, W, it.holo, tint, angle != null ? angle : -.65);
+  else if (wire) paintWire(ctx, W, wire, tint, angle != null ? angle : it.kind === 'tool' ? -1.25 : -.95);
   else if (it.kind === 'tool') { if (it.tool === 'staff') paintStaff(ctx, W, tint); else paintShape(ctx, W, TOOL_SHAPES[it.tool] || TOOL_SHAPES.pistol, tint, false, -.12); }
   else paintShape(ctx, W, SHIP_SHAPES[it.type] || SHIP_SHAPES.Starship, tint, true, 0);
   paintBadge(ctx, W, it.cls, null);
@@ -1586,15 +1737,16 @@ function CoverFlow(host, items, opts) {
   }
   function setCentre(c) {
     const prev = cur; cur = c;
+    const ci = items[cur]; angle = !ci || ci.holo ? -.65 : ci.kind === 'tool' ? -1.25 : -.95; // spin on from where the still cover was drawn
     els.forEach((el, i) => { el.classList.toggle('center', i === cur); el.setAttribute('aria-selected', String(i === cur)); });
     posEl.textContent = n ? `${cur + 1} of ${n}` : '';
-    if (items[prev] && items[prev].holo && !items[prev].custom && !items[prev].renderImg) { const cv = els[prev].querySelector('canvas'); if (cv) paintCover(cv, items[prev]); }
+    if (items[prev] && (items[prev].holo || wireMesh(items[prev])) && !items[prev].custom && !items[prev].renderImg) { const cv = els[prev].querySelector('canvas'); if (cv) paintCover(cv, items[prev]); }
     caption(true);
     opts.onChange && opts.onChange(cur);
   }
 
   // one animation loop: the spring, plus the slow turn of a hologram on the centre cover
-  function needsSpin() { const it = items[cur]; return it && it.holo && !it.renderImg && !it.custom && !REDUCED; }
+  function needsSpin() { const it = items[cur]; return it && (it.holo || wireMesh(it)) && !it.renderImg && !it.custom && !REDUCED; }
   function kick() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(tick); } }
   function tick(t) {
     raf = 0;
