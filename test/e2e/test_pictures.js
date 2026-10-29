@@ -15,7 +15,7 @@ const SP = process.argv[2]; // scratch dir with dbroot/NMS (a real save) and sho
     if (sec === 'ships') await p.screenshot({ path: SP + '/shots/b0-picture-dialog.png' });
     const [chooser] = await Promise.all([p.waitForEvent('filechooser'), p.click('#dlgActs button:has-text("Image file")')]);
     await chooser.setFiles(img);
-    await p.waitForSelector('.crop canvas'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(900);
+    await p.waitForSelector('#dlg[open] .crop canvas', { timeout: 60000 }); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(900);
     const has = sec === 'ships' ? await p.$eval('.cf-item.center', (e) => !!e.querySelector('img')) : await p.$eval('.pic-card .tc-art', (e) => !!e.querySelector('img'));
     ok(sec + ': picture added', has);
     await p.screenshot({ path: `${SP}/shots/b-${sec}.png` });
