@@ -44,7 +44,8 @@ One personal library of ship files outside the game, with three views onto it.
 - [x] **Garage**: every ship in every save opened, captured automatically, one file per distinct version (ignoring where it's parked); a replaced ship is captured before it's overwritten
 - [ ] **Testing Facility** (later, owner 2026-10-29): ships you're testing for other creators, kept apart from the main library. Versions of the same ship are grouped, each with test notes, a date, and which test character it's on
 - [x] Reads our own `.ship.json` (now with the whole corvette base), bare ship entries, and corvette builds (a base with Objects, or just the Objects)
-- [ ] TAZ's `.nmsship` and `.so`, and the owner's own `.json`/`.txt` files: waiting on samples
+- [x] TAZ's `.nmsship` (a zip of `objects.json`, `so.json` and `ccd.json`; read and written, matching TAZ's BOM + CRLF JSON) and `.so` (a ship entry: put onto an existing corvette, which keeps its name and build); the owner's `.txt` corvette builds. Checked on the owner's Death n Glory files
+- [ ] Confirm against a `.so` written by TAZ itself (tested with the `so.json` from inside an `.nmsship`)
 - [x] Each entry can store a link (Charon, NMA or anywhere) and notes
 - [ ] Pull artwork, author and description from a linked listing
 - [x] Search, type and tag filters, tags and favourites
@@ -77,7 +78,8 @@ The save file holds no images, so a ship's picture has to come from one of these
 ## Phase 4 — Corvettes: easy loading and the live Blender link [1] [11]
 
 - [ ] Map exactly how a corvette is stored (the ship entry, its PlayerShipBase part list, and the link between them) from the real save
-- [ ] Import and export corvette files in the formats TAZ's optimizer uses (`.nmsship`, `.json`), with the same safety rules: part ordering, camera and boarding cockpit, beam-up landing bay
+- [x] Import and export TAZ's `.nmsship` (Ship library and the ship details' Export .nmsship); part fields are put back in the game's order on import
+- [ ] TAZ's build safety checks (part ordering, camera and boarding cockpit, beam-up landing bay)
 - [ ] **Live Blender link**: Ctrl+S in Blender writes the build straight into the chosen corvette in your save. The app runs quietly in the system tray and receives the build from Blender. Drydock (or a tiny companion add-on) sends it on save, so there's no export, copy, paste or load step
 - [ ] Every live update is backed up, so any version can be rolled back
 - [ ] To test early: whether No Man's Sky picks up the new file when you load the save from the main menu, and how Steam Cloud reacts to a file changing outside the game

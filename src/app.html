@@ -1231,7 +1231,7 @@ function entityDetails(ed, o, i, kind) {
       <button class="btn primary" data-k="saveprof">Save as profile</button><button class="btn" data-k="applyprof">Apply a profile</button>
       ${APP && S.lib && S.lib.game ? '<button class="btn" data-k="parts">Choose parts</button>' : ''}
       <span class="sep"></span>
-      ${isShip && APP ? '<button class="btn" data-k="tolib">Save to library</button>' : ''}<button class="btn" data-k="export">Export</button><label class="btn">Import<input type="file" accept=".json,application/json" data-k="import" hidden></label>
+      ${isShip && APP ? '<button class="btn" data-k="tolib">Save to library</button>' : ''}${isShip && shipBuild(i) ? '<button class="btn" data-k="nmsship">Export .nmsship</button>' : ''}<button class="btn" data-k="export">Export</button><label class="btn">Import<input type="file" accept=".json,application/json" data-k="import" hidden></label>
       <button class="btn danger" data-k="delete">Delete ${isShip ? 'ship' : 'multi-tool'}</button>
     </div>`;
   ed.appendChild(panel);
@@ -1260,6 +1260,7 @@ function entityDetails(ed, o, i, kind) {
   const pb = $k('parts');
   if (pb) pb.onclick = () => { const it = coverItems().find((x) => (kind === 'tool' ? x.kind === 'tool' : x.kind !== 'tool') && x.i === i); if (it && it.scene) partsDialog(it, () => render()); else toast("Corvettes are built from base parts; render them with Blender instead.", true); };
   $k('export').onclick = () => exportEntity(o, i, kind);
+  if ($k('nmsship')) $k('nmsship').onclick = async () => downloadBlob(safeFile(entityName(o, i, kind)) + '.nmsship', await shipNmsship(i));
   if ($k('tolib')) $k('tolib').onclick = () => saveShipToLibrary(i).catch((e) => toast(e.message, true));
   $k('import').onchange = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importEntity(o, i, kind, await f.text()); };
   $k('delete').onclick = () => deleteEntity(o, i, kind);
@@ -3100,7 +3101,8 @@ const ShipLib = {
     this._t = setTimeout(() => api('/api/ships/index', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.index) }).catch((e) => toast("Couldn't save the library notes: " + e.message, true)), 300);
   },
   async files() { const r = await (await api('/api/ships')).json(); this.root = r.root; this.folders = r.folders || []; return r.files || []; },
-  async read(f) { return (await api(this.url(f))).text(); },
+  async read(f) { return (await api(this.url(f))).arrayBuffer(); },
+  async load(f) { return loadShipFile(await this.read(f), f.path); },
   // writes a new file, adding (2), (3)... to the name when it's taken; returns the path used
   async add(src, path, text) {
     const dot = path.search(/(\.ship)?\.[^.\/]+$/), stem = dot > 0 ? path.slice(0, dot) : path, ext = dot > 0 ? path.slice(dot) : '';
@@ -3116,12 +3118,66 @@ const ShipLib = {
 
 // Reads any ship file the library understands: our own .ship.json (ship entry and its corvette base), a bare
 // ship entry like other editors export, or a corvette structure (a base with Objects, or just the Objects).
+// ---- zip files (TAZ's .nmsship is a zip of objects.json, so.json and ccd.json)
+async function unzip(buf) {
+  const u8 = new Uint8Array(buf), dv = new DataView(buf); let e = -1;
+  for (let i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { e = i; break; }
+  if (e < 0) throw new Error('Not a zip file');
+  const out = {}; let p = dv.getUint32(e + 16, true);
+  for (let k = dv.getUint16(e + 10, true); k > 0; k--) {
+    if (dv.getUint32(p, true) !== 0x02014b50) throw new Error('Damaged zip file');
+    const method = dv.getUint16(p + 10, true), size = dv.getUint32(p + 20, true), nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), at = dv.getUint32(p + 42, true);
+    const name = new TextDecoder().decode(u8.subarray(p + 46, p + 46 + nl)); p += 46 + nl + xl + cl;
+    const start = at + 30 + dv.getUint16(at + 26, true) + dv.getUint16(at + 28, true), data = u8.subarray(start, start + size);
+    if (method === 0) out[name] = data;
+    else if (method === 8) out[name] = new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+  }
+  return out;
+}
+const CRC_TABLE = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = (u8) => { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_TABLE[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+async function zip(files) {   // [{ name, data: Uint8Array }] -> Blob (deflated)
+  const parts = [], central = []; let off = 0;
+  const d = new Date(), time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  for (const f of files) {
+    const name = new TextEncoder().encode(f.name), crc = crc32(f.data);
+    const comp = new Uint8Array(await new Response(new Blob([f.data]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
+    const h = new DataView(new ArrayBuffer(30));
+    [[0, 0x04034b50, 4], [4, 20, 2], [6, 0, 2], [8, 8, 2], [10, time, 2], [12, date, 2], [14, crc, 4], [18, comp.length, 4], [22, f.data.length, 4], [26, name.length, 2], [28, 0, 2]].forEach(([o, v, n]) => (n === 4 ? h.setUint32(o, v, true) : h.setUint16(o, v, true)));
+    const c = new DataView(new ArrayBuffer(46));
+    [[0, 0x02014b50, 4], [4, 20, 2], [6, 20, 2], [8, 0, 2], [10, 8, 2], [12, time, 2], [14, date, 2], [16, crc, 4], [20, comp.length, 4], [24, f.data.length, 4], [28, name.length, 2], [30, 0, 2], [32, 0, 2], [34, 0, 2], [36, 0, 2], [38, 0, 4], [42, off, 4]].forEach(([o, v, n]) => (n === 4 ? c.setUint32(o, v, true) : c.setUint16(o, v, true)));
+    parts.push(new Uint8Array(h.buffer), name, comp); central.push(new Uint8Array(c.buffer), name); off += 30 + name.length + comp.length;
+  }
+  const size = central.reduce((n, x) => n + x.length, 0), e = new DataView(new ArrayBuffer(22));
+  [[0, 0x06054b50, 4], [8, files.length, 2], [10, files.length, 2], [12, size, 4], [16, off, 4]].forEach(([o, v, n]) => (n === 4 ? e.setUint32(o, v, true) : e.setUint16(o, v, true)));
+  return new Blob([...parts, ...central, new Uint8Array(e.buffer)], { type: 'application/octet-stream' });
+}
+// TAZ writes its JSON with a byte-order mark, two-space indents and Windows line endings
+const tazJSON = (v) => new TextEncoder().encode('\uFEFF' + C.stringifyJSON(v, '  ').replace(/\n/g, '\r\n'));
+const jsonOf = (u8) => C.parseJSON(new TextDecoder().decode(u8).replace(/^\uFEFF/, ''));
+// each ship slot has its own customisation entry (GcCustomisationComponentData: Ship_01..06 are 3..8, Ship_07..12 are 17..22)
+const shipCcdIndex = (i) => (i < 6 ? 3 + i : 17 + (i - 6));
+
+async function loadShipFile(buf, name) {
+  const u8 = new Uint8Array(buf);
+  if (/\.nmsship$/i.test(name) || (u8[0] === 0x50 && u8[1] === 0x4B)) {
+    let z; try { z = await unzip(buf); } catch (e) { return { error: "This .nmsship file couldn't be opened (" + e.message + ')' }; }
+    const out = { format: 'TAZ .nmsship', ship: null, base: null, build: null, legacy: null, ccd: null };
+    try { if (z['so.json']) out.ship = jsonOf(z['so.json']); if (z['objects.json']) out.build = jsonOf(z['objects.json']); if (z['ccd.json']) out.ccd = jsonOf(z['ccd.json']); } catch (e) { return { error: 'This .nmsship file has damaged JSON (' + e.message + ')' }; }
+    if (!(out.ship instanceof Map) || !Array.isArray(out.build)) return { error: "This .nmsship file is missing its ship or its parts." };
+    out.objects = out.build; return out;
+  }
+  const p = parseShipFile(new TextDecoder().decode(u8));
+  if (!p.error && /\.so$/i.test(name)) p.format = 'TAZ .so';
+  return p;
+}
 function parseShipFile(text) {
   let doc; try { doc = C.parseJSON(text.replace(/^\uFEFF/, '')); } catch (_) { return { error: "Not a format the library reads yet." }; }
   const out = { ship: null, base: null, build: null, legacy: null, format: '' };
   if (doc instanceof Map && doc.has('Harmonious')) {
     out.format = 'Harmonious'; out.ship = doc.get('Ship') || null; out.base = doc.get('CorvetteBase') || null; out.build = doc.get('CorvetteBuild') || null;
     if (typeof doc.get('UseLegacyColours') === 'boolean') out.legacy = doc.get('UseLegacyColours');
+    if (doc.get('Customisation') instanceof Map) out.ccd = doc.get('Customisation');
   } else if (doc instanceof Map && g(doc, 'Resource')) { out.format = 'Ship entry'; out.ship = doc; }
   else if (doc instanceof Map && Array.isArray(g(doc, 'Objects'))) { out.format = 'Corvette build'; out.base = doc; }
   else if (Array.isArray(doc) && doc.length && doc[0] instanceof Map && g(doc[0], 'ObjectID') != null) { out.format = 'Corvette parts'; out.build = doc; }
@@ -3135,9 +3191,11 @@ function shipSummary(p, fileName) {
   const file = p.ship ? str(g(p.ship, 'Resource', 'Filename')) : '';
   const type = p.ship ? shipType(file) : 'Corvette';
   return {
-    name: str(p.ship && g(p.ship, 'Name')) || str(p.base && g(p.base, 'Name')) || fileName.replace(/(\.ship)?\.[^.]+$/, ''),
+    // a name with no letters or digits (TAZ files can have "{") falls back to the file name
+    name: [str(p.ship && g(p.ship, 'Name')), str(p.base && g(p.base, 'Name'))].find((n) => /[\p{L}\p{N}]/u.test(n)) || fileName.replace(/(\.ship)?\.[^.]+$/, ''),
     type, cls: p.ship ? invClass(g(p.ship, 'Inventory')) : '', parts: p.objects ? p.objects.length : 0, format: p.format,
     whole: !!p.ship && (type !== 'Corvette' || !!p.objects), buildOnly: !p.ship && !!p.objects,
+    shipOnly: !!p.ship && type === 'Corvette' && !p.objects,   // a .so: tech, class and inventory for an existing corvette
   };
 }
 function libCoverItem(f, p, sum) {
@@ -3155,7 +3213,25 @@ function shipDoc(i) {
   doc.set('Ship', toPlain(s));
   const arr = g(ps(), 'ShipUsesLegacyColours'); if (Array.isArray(arr)) doc.set('UseLegacyColours', arr[i] === true);
   const b = shipBuild(i); if (b) doc.set('CorvetteBase', toPlain(b));
+  const cc = (g(ps(), 'CharacterCustomisationData') || [])[shipCcdIndex(i)]; if (cc instanceof Map) doc.set('Customisation', toPlain(cc));
   return doc;
+}
+// the ship in slot i as TAZ's .nmsship (so.json, objects.json, ccd.json)
+async function shipNmsship(i) {
+  const s = g(ps(), 'ShipOwnership')[i], b = shipBuild(i), cc = (g(ps(), 'CharacterCustomisationData') || [])[shipCcdIndex(i)];
+  return zip([{ name: 'objects.json', data: tazJSON(toPlain((b && g(b, 'Objects')) || [])) }, { name: 'so.json', data: tazJSON(toPlain(s)) },
+    { name: 'ccd.json', data: tazJSON(cc instanceof Map ? toPlain(cc) : mapOf({ SelectedPreset: '^', CustomData: mapOf({ DescriptorGroups: [], PaletteID: '^', Colours: [], TextureOptions: [], BoneScales: [], Scale: N('1.0') }) })) }]);
+}
+async function libNmsship(p) {
+  return zip([{ name: 'objects.json', data: tazJSON(p.objects || []) }, { name: 'so.json', data: tazJSON(p.ship) },
+    { name: 'ccd.json', data: tazJSON(p.ccd || mapOf({ SelectedPreset: '^', CustomData: mapOf({ DescriptorGroups: [], PaletteID: '^', Colours: [], TextureOptions: [], BoneScales: [], Scale: N('1.0') }) })) }]);
+}
+function downloadBlob(name, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
+// parts from other tools may list their fields in another order; the save keeps the game's order
+function inGameOrder(objs, sample) {
+  if (!(sample instanceof Map)) return objs;
+  const order = [...sample.keys()];
+  return objs.map((o) => { if (!(o instanceof Map)) return o; const m = new Map(); for (const k of order) if (o.has(k)) m.set(k, o.get(k)); for (const [k, v] of o) if (!m.has(k)) m.set(k, v); return m; });
 }
 async function sha(text) { const d = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))); return [...d].map((x) => x.toString(16).padStart(2, '0')).join(''); }
 // what makes two copies of a ship "the same": everything except where it's parked and when its build was touched
@@ -3193,34 +3269,40 @@ async function putShipInSave(p, sum) {
   const opts = list.map((s, i) => {
     const empty = !str(g(s, 'Resource', 'Filename')), nm = str(g(s, 'Name')) || shipType(g(s, 'Resource', 'Filename'));
     if (sum.buildOnly) return isCorv(s) ? `<option value="${i}">Slot ${i + 1}: replace ${esc(nm)}'s build</option>` : '';
+    if (sum.shipOnly) return isCorv(s) ? `<option value="${i}">Slot ${i + 1}: ${esc(nm)} (keeps its build)</option>` : '';
     if (i === primary) return `<option value="${i}" disabled>Slot ${i + 1}: ${esc(nm)} (your current ship)</option>`;
     return `<option value="${i}">Slot ${i + 1}: ${empty ? 'empty' : 'replace ' + esc(nm)}</option>`;
   }).join('');
-  if (!/<option value/.test(opts)) { toast(sum.buildOnly ? 'This file is only a corvette build. Put it onto one of your corvettes: this save has none yet.' : 'No slot available.', true); return; }
+  if (!/<option value/.test(opts)) { toast(sum.buildOnly || sum.shipOnly ? `This file is only a corvette's ${sum.buildOnly ? 'build' : 'tech, class and inventory'}. Put it onto one of your corvettes: this save has none yet.` : 'No slot available.', true); return; }
   const firstEmpty = list.findIndex((s, i) => !str(g(s, 'Resource', 'Filename')) && i !== primary);
-  const ok = await dialog(sum.buildOnly ? 'Put this build on a corvette' : 'Put this ship in the save', `<p><b>${esc(sum.name)}</b>${sum.parts ? ` (${plural(sum.parts, 'part')})` : ''}</p>
+  const ok = await dialog(sum.buildOnly ? 'Put this build on a corvette' : sum.shipOnly ? 'Put this loadout on a corvette' : 'Put this ship in the save', `<p><b>${esc(sum.name)}</b>${sum.parts ? ` (${plural(sum.parts, 'part')})` : ''}</p>
     <label class="field"><span>Where</span><select class="input" id="putSlot">${opts}</select></label>
-    <p class="dim" style="margin-top:12px">${sum.buildOnly ? 'The corvette keeps its name, class and inventories; only its parts change.' : 'A replaced ship is copied to the Garage first, so it is never lost.'} Nothing is written to your game until you press Save to game.</p>`, [['Cancel', false, 'ghost'], ['Put it here', true, 'primary']]);
+    <p class="dim" style="margin-top:12px">${sum.buildOnly ? 'The corvette keeps its name, class and inventories; only its parts change.' : sum.shipOnly ? 'The corvette keeps its name and its build; its tech, class and inventories are replaced. It is copied to the Garage first.' : 'A replaced ship is copied to the Garage first, so it is never lost.'} Nothing is written to your game until you press Save to game.</p>`, [['Cancel', false, 'ghost'], ['Put it here', true, 'primary']]);
   if (!ok) return;
   const i = +$('#putSlot').value;
-  if (!sum.buildOnly && firstEmpty !== i && str(g(list[i], 'Resource', 'Filename'))) await garageCapture();
+  if (str(g(list[i], 'Resource', 'Filename'))) await garageCapture();
   const bases = g(ps(), 'PersistentPlayerBases'), oldBase = shipBuild(i);
   const template = oldBase || bases.find((b) => str(g(b, 'BaseType', 'PersistentBaseTypes')) === 'PlayerShipBase') || null;
   const owner = (oldBase || bases.find((b) => g(b, 'Owner') instanceof Map) || {});
   if (p.ship && !sum.buildOnly) {
+    const keepName = sum.shipOnly ? g(list[i], 'Name') : null;
     list[i] = fromPlain(cloneJSON(p.ship));
+    if (keepName != null) set(list[i], 'Name', keepName);
     const arr = g(ps(), 'ShipUsesLegacyColours'); if (Array.isArray(arr) && typeof p.legacy === 'boolean') arr[i] = p.legacy;
   }
   const corvette = sum.buildOnly || isCorv(list[i]);
   if (corvette && p.objects) {
     let nb;
     if (p.base && g(p.base, 'BaseType')) nb = fromPlain(cloneJSON(p.base));
-    else if (template) { nb = cloneJSON(template); set(nb, 'Objects', fromPlain(cloneJSON(p.objects))); }
+    else if (template) { nb = cloneJSON(template); set(nb, 'Objects', inGameOrder(fromPlain(cloneJSON(p.objects)), (g(template, 'Objects') || [])[0])); }
     else { toast('A corvette build needs another corvette in this save to copy its base layout from. Build any corvette in the game first.', true); return; }
     set(nb, 'UserData', N(i)); set(nb, 'Name', str(g(list[i], 'Name')) || sum.name);
     if (owner instanceof Map && g(owner, 'Owner') instanceof Map) set(nb, 'Owner', cloneJSON(g(owner, 'Owner')));
     if (oldBase) bases[bases.indexOf(oldBase)] = nb; else bases.push(nb);
   } else if (!corvette && oldBase) bases.splice(bases.indexOf(oldBase), 1);
+  // the ship's colours and customisation, when the file has them
+  const ccds = g(ps(), 'CharacterCustomisationData');
+  if (p.ccd instanceof Map && !sum.buildOnly && Array.isArray(ccds) && ccds[shipCcdIndex(i)] instanceof Map) ccds[shipCcdIndex(i)] = fromPlain(cloneJSON(p.ccd));
   markDirty(); renderSide(); toast(`${sum.name} is in slot ${i + 1}. Press Save to game to keep it.`);
 }
 
@@ -3248,7 +3330,7 @@ PAGES.library = (el) => {
     // summaries for new or changed files, a few at a time; cached in library.json
     const todo = items.filter((x) => !x.sum);
     let done = 0;
-    const work = async () => { for (let x; (x = todo.shift());) { try { x.sum = shipSummary(parseShipFile(await ShipLib.read(x.f)), x.f.path.split('/').pop()); } catch (e) { x.sum = { error: e.message, name: x.f.path }; } I.cache[x.id] = { mtime: x.f.mtime, size: x.f.size, sum: x.sum }; done++; if (done % 20 === 0 && alive()) status.textContent = `Reading your ships… ${done} of ${done + todo.length}`; } };
+    const work = async () => { for (let x; (x = todo.shift());) { try { x.sum = shipSummary(await ShipLib.load(x.f), x.f.path.split('/').pop()); } catch (e) { x.sum = { error: e.message, name: x.f.path }; } I.cache[x.id] = { mtime: x.f.mtime, size: x.f.size, sum: x.sum }; done++; if (done % 20 === 0 && alive()) status.textContent = `Reading your ships… ${done} of ${done + todo.length}`; } };
     if (todo.length) { await Promise.all([work(), work(), work(), work()]); ShipLib.saveIndex(); }
     for (const id of Object.keys(I.cache)) if (!items.some((x) => x.id === id)) delete I.cache[id];
     if (!alive()) return;
@@ -3278,7 +3360,7 @@ PAGES.library = (el) => {
   })().catch((e) => { status.textContent = "Couldn't read the ship library: " + e.message; });
   $('#libImport', bar).onchange = async (e) => {
     const fs = [...e.target.files]; e.target.value = ''; let n = 0;
-    for (const f of fs) { try { await ShipLib.add('library', f.name, await f.text()); n++; } catch (err) { toast(`${f.name}: ${err.message}`, true); } }
+    for (const f of fs) { try { await ShipLib.add('library', f.name, await f.arrayBuffer()); n++; } catch (err) { toast(`${f.name}: ${err.message}`, true); } }
     if (n) { toast(`${plural(n, 'file')} added to the library`); render(); }
   };
   const addSave = $('#libAddSave', bar);
@@ -3303,7 +3385,7 @@ function libCard(x, refresh) {
     // the cover is drawn only once the card scrolls into view: corvette files can be large
     const io = new IntersectionObserver(async (ents) => {
       if (!ents.some((en) => en.isIntersecting)) return; io.disconnect();
-      try { const p = parseShipFile(await ShipLib.read(x.f)); x.parsed = p; if (!p.error && card.isConnected) miniCover(card, libCoverItem(x.f, p, s), 220); } catch (_) {}
+      try { const p = await ShipLib.load(x.f); x.parsed = p; if (!p.error && card.isConnected) miniCover(card, libCoverItem(x.f, p, s), 220); } catch (_) {}
     }, { rootMargin: '200px' });
     io.observe(card);
   }
@@ -3311,21 +3393,22 @@ function libCard(x, refresh) {
 }
 async function libDetail(x, refresh) {
   const s = x.sum, m = ShipLib.meta(x.id), f = x.f;
-  const p = x.parsed || (s.error ? { error: s.error } : parseShipFile(await ShipLib.read(f)));
+  const p = x.parsed || (s.error ? { error: s.error } : await ShipLib.load(f));
   x.parsed = p;
   const where = f.src === 'linked' ? f.root + '\\' + f.path.replace(/\//g, '\\') : `${LIB_SRC[f.src]}\\${f.path.replace(/\//g, '\\')}`;
-  const canPut = !p.error && (s.whole || s.buildOnly);
+  const canPut = !p.error && (s.whole || s.buildOnly || s.shipOnly);
   const acts = [['Close', 'close', 'ghost']];
   if (f.src !== 'library') acts.push(['Copy to library', 'copy']);
   acts.push(['Show in folder', 'reveal']);
   if (f.src !== 'linked') acts.push(['Delete', 'delete', 'danger']);
-  if (canPut && S.save) acts.push([s.buildOnly ? 'Put on a corvette…' : 'Put in this save…', 'put', 'primary']);
+  if (!p.error && p.ship && p.objects) acts.push(['Save as .nmsship', 'nmsship']);
+  if (canPut && S.save) acts.push([s.buildOnly ? 'Put on a corvette…' : s.shipOnly ? 'Put on a corvette…' : 'Put in this save…', 'put', 'primary']);
   const shown = dialog(s.name, `<div class="lib-detail">
       <div class="tc lib-art"><div class="tc-art"></div></div>
       <div class="lib-info">
-        <p>${esc([s.type, s.cls && s.cls + ' class', s.parts && plural(s.parts, 'part')].filter(Boolean).join(', ') || s.error || '')}</p>
+        <p>${esc([s.type, s.cls && s.cls + ' class', s.parts && plural(s.parts, 'part')].filter(Boolean).join(', ') || s.error || '')}${s.format ? ` <span class="dim">· ${esc(s.format)}</span>` : ''}</p>
         <p class="dim mono lib-path">${esc(where)}</p>
-        ${p.error ? `<p class="bad-hint">${esc(p.error)} Send a sample to get this format added.</p>` : !canPut ? '<p class="dim">This file has a ship without its corvette build, so it can\'t be put in a save on its own.</p>' : !S.save ? '<p class="dim">Open a save to put this ship in it.</p>' : ''}
+        ${p.error ? `<p class="bad-hint">${esc(p.error)} Send a sample to get this format added.</p>` : s.shipOnly ? '<p class="dim">A corvette loadout (tech, class and inventory) without a build: it goes onto one of your corvettes, which keeps its parts.</p>' : !S.save ? '<p class="dim">Open a save to put this ship in it.</p>' : ''}
         <label class="check"><input type="checkbox" id="ldFav"${m.fav ? ' checked' : ''}> Favourite</label>
         <label class="field"><span>Tags (separate with commas)</span><input class="input" id="ldTags" value="${esc((m.tags || []).join(', '))}"></label>
         <label class="field"><span>Link (Charon, NMA or anywhere)</span><span class="row-in"><input class="input" id="ldLink" type="url" placeholder="https://" value="${esc(m.link || '')}">${m.link ? `<a class="btn small" href="${esc(m.link)}" target="_blank" rel="noopener">Open</a>` : ''}</span></label>
@@ -3339,8 +3422,9 @@ async function libDetail(x, refresh) {
   Object.assign(m, { fav: !!($('#ldFav') && $('#ldFav').checked), tags: [...new Set(tags)], link: /^https?:\/\//i.test(link) ? link : '', notes: $('#ldNotes') ? $('#ldNotes').value : '' });
   ShipLib.saveIndex();
   if (v === 'put') { await putShipInSave(p, s); return; }
+  if (v === 'nmsship') { downloadBlob(safeFile(s.name) + '.nmsship', await libNmsship(p)); return; }
   if (v === 'reveal') { api(ShipLib.url(f, '&reveal=1')).catch((e) => toast(e.message, true)); }
-  if (v === 'copy') { const text = await ShipLib.read(f); await ShipLib.add('library', f.path.split('/').pop(), text); toast('Copied to the library'); render(); return; }
+  if (v === 'copy') { await ShipLib.add('library', f.path.split('/').pop(), await ShipLib.read(f)); toast('Copied to the library'); render(); return; }
   if (v === 'delete') {
     if (await dialog('Delete ' + s.name + '?', `<p>The file moves to the <b>Deleted</b> folder in your ship library, so you can bring it back.</p>`, [['Cancel', false, 'ghost'], ['Delete', true, 'danger']])) {
       await api(ShipLib.url(f), { method: 'DELETE' }); delete ShipLib.index.meta[x.id]; ShipLib.saveIndex(); toast('Moved to Deleted'); render();

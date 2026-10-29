@@ -31,10 +31,18 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   fs.writeFileSync(path.join(linked, 'just the build.json'), JSON.stringify({ Objects: cr.CorvetteBase.Objects.slice(0, 300) }));
   fs.writeFileSync(path.join(linked, 'notes.txt'), 'not a ship');
   fs.mkdirSync(path.join(linked, 'sub')); fs.writeFileSync(path.join(linked, 'sub', 'Formula copy.json'), JSON.stringify({ Harmonious: { kind: 'ship', version: 2 }, Ship: cr.Ship, CorvetteBase: cr.CorvetteBase }));
+  // the owner's real files: a corvette build (.txt), a TAZ .nmsship, and a .so made from its so.json
+  const ATT = '/mnt/user-data/attachments/c7a04859-a3e4-54e4-aad1-f1e3f48b3fdb/';
+  const taz = fs.existsSync(ATT + '1ebbbc19-Death_n_Glory.nmsship');
+  if (taz) {
+    fs.copyFileSync(ATT + '0289520e-Death___Glory_3.txt', path.join(linked, 'Death & Glory 3.txt'));
+    fs.copyFileSync(ATT + '1ebbbc19-Death_n_Glory.nmsship', path.join(linked, 'Death n Glory.nmsship'));
+    fs.copyFileSync(path.join(SP, 'nmsship/so.json'), path.join(linked, 'Death n Glory.so'));
+  }
   await apiJ('/api/ships/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ add: linked }) });
   await p.click('nav button[data-s="library"]'); await p.waitForFunction(() => /ships? shown/.test(document.querySelector('.lib-status').textContent), null, { timeout: 30000 });
   const status = await p.textContent('.lib-status'); console.log(status);
-  ok('library, Garage and linked folder all listed', /1 in the library, 6 in the Garage, 3 in linked folders/.test(status));
+  ok('library, Garage and linked folder all listed', new RegExp(`1 in the library, 6 in the Garage, ${taz ? 6 : 3} in linked folders`).test(status));
   await p.waitForTimeout(2500); await p.screenshot({ path: SP + '/shots/lib0.png' });
   const caps = await p.$$eval('.lib-card .tc-cap', (c) => c.map((x) => x.textContent.replace(/\s+/g, ' ').trim()));
   console.log(caps.slice(0, 12));
@@ -42,6 +50,17 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   ok('an unknown file is listed as not readable', caps.some((c) => /^notes\s*Not readable yet/.test(c)));
   ok('subfolders show on the card', caps.some((c) => /The Cutting Remark.*My ships \/ sub/.test(c)));
   ok('covers drawn', (await p.$$eval('.lib-card .tc-art canvas, .lib-card .tc-art img', (x) => x.length)) >= 6);
+  if (taz) {
+    ok('a TAZ .nmsship is read', caps.some((c) => /^Death n Glory\s*Corvette, S class, 941 parts/.test(c)));
+    ok('a TAZ .so is read', caps.some((c) => /^Death n Glory\s*Corvette, S class My ships/.test(c)));
+    ok('a corvette .txt is read', caps.filter((c) => /^The Cutting Remark\s*Corvette, 2,091 parts My ships/.test(c)).length === 1);
+    // export The Cutting Remark as .nmsship and read it back
+    const back = await p.evaluate(async () => { const b = await shipNmsship(5); const buf = await b.arrayBuffer(); const r = await loadShipFile(buf, 'x.nmsship'); return { parts: r.objects.length, name: str(g(r.ship, 'Name')), ccd: r.ccd instanceof Map, b64: btoa(String.fromCharCode(...new Uint8Array(buf.slice(0, 4)))), bytes: [...new Uint8Array(buf)] }; });
+    fs.writeFileSync(path.join(T, 'export.nmsship'), Buffer.from(back.bytes));
+    const py = require('child_process').execFileSync('python3', ['-c', `import zipfile,json,sys;z=zipfile.ZipFile(sys.argv[1]);print(z.testzip(),sorted(z.namelist()));d=z.read('objects.json');print(d[:3]==b'\\xef\\xbb\\xbf', b'\\r\\n' in d, len(json.loads(d.decode('utf-8-sig'))))`, path.join(T, 'export.nmsship')]).toString().trim();
+    console.log(py);
+    ok('.nmsship export reads back here and in Python', back.parts === 2091 && back.name === 'The Cutting Remark' && back.ccd && /^None \['ccd.json', 'objects.json', 'so.json'\]\nTrue True 2091$/.test(py));
+  }
   // put the library copy of The Cutting Remark into empty slot 7 (index 6)
   await p.click('#libSrc [data-v="library"]'); await p.waitForSelector('.lib-card'); await p.waitForTimeout(500);
   await p.click('.lib-card'); await p.waitForSelector('#dlg[open] .lib-detail');
@@ -58,27 +77,51 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const idx = JSON.parse(fs.readFileSync(path.join(lib, 'library.json')));
   const m = Object.entries(idx.meta).find(([k]) => /^library\|/.test(k));
   ok('tags and favourite are kept', m && m[1].fav === true && m[1].tags.join() === 'favourite,combat');
+  if (taz) {
+    // the .nmsship into empty slot 8 (index 7): ship, 941 parts in the game's field order, customisation in its slot
+    st = await p.evaluate(async () => {
+      const f = { src: 'linked', root: ShipLib.folders[0].dir, path: 'Death n Glory.nmsship' }; const pr = await ShipLib.load(f), sum = shipSummary(pr, f.path);
+      const done = putShipInSave(pr, sum); await new Promise((r) => setTimeout(r, 300)); $('#putSlot').value = '7'; $('#dlgActs .btn.primary').click(); await done;
+      const b = shipBuild(7), o = g(b, 'Objects'), ref = g(shipBuild(5), 'Objects')[0];
+      return { name: str(g(g(ps(), 'ShipOwnership')[7], 'Resource', 'Filename')), parts: o.length, order: [...o[0].keys()].join() === [...ref.keys()].join(), ud: num(g(b, 'UserData')), ccd: !!g(ps(), 'CharacterCustomisationData')[18] };
+    });
+    console.log(JSON.stringify(st));
+    ok('a .nmsship goes into an empty slot with its build', /BIGGS/.test(st.name) && st.parts === 941 && st.order && st.ud === 7 && st.ccd);
+    // the .so onto Yautja Claw (index 3): keeps its name and build, takes the loadout
+    st = await p.evaluate(async () => {
+      const before = g(shipBuild(3), 'Objects').length;
+      const f = { src: 'linked', root: ShipLib.folders[0].dir, path: 'Death n Glory.so' }; const pr = await ShipLib.load(f), sum = shipSummary(pr, f.path);
+      const done = putShipInSave(pr, sum); await new Promise((r) => setTimeout(r, 300));
+      const opts = [...document.querySelectorAll('#putSlot option')].map((o) => o.value);
+      $('#putSlot').value = '3'; $('#dlgActs .btn.primary').click(); await done;
+      const s3 = g(ps(), 'ShipOwnership')[3];
+      return { opts, name: str(g(s3, 'Name')), cls: invClass(g(s3, 'Inventory')), parts: g(shipBuild(3), 'Objects').length, before, shipOnly: sum.shipOnly };
+    });
+    console.log(JSON.stringify(st));
+    ok('a .so only goes onto corvettes and keeps their name and build', st.shipOnly && st.opts.join() === '1,3,4,5,6,7' && st.name === 'Yautja Claw' && st.cls === 'S' && st.parts === st.before);
+  }
   // a build-only file onto corvette Max (slot 5, index 4)
   await p.click('#libSrc [data-v="linked"]'); await p.waitForTimeout(800);
   const cards = await p.$$('.lib-card'); let target;
   for (const c of cards) if (/just the build/.test(await c.textContent())) target = c;
   await target.click(); await p.waitForSelector('#dlg[open] .lib-detail'); await p.click('#dlgActs .btn.primary'); await p.waitForSelector('#putSlot');
   const bopts = await p.$$eval('#putSlot option', (o) => o.map((x) => x.value + ':' + x.textContent)); console.log(bopts);
-  ok('a build can only go on corvettes', bopts.length === 4 || bopts.length === 5);
+  ok('a build can only go on corvettes', bopts.length === (taz ? 6 : 5));
   await p.selectOption('#putSlot', '4'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(300);
   st = await p.evaluate(() => ({ max: g(shipBuild(4), 'Objects').length, name: str(g(g(ps(), 'ShipOwnership')[4], 'Name')), bname: str(g(shipBuild(4), 'Name')) }));
   ok('the build replaces Max\'s parts and keeps the ship', st.max === 300 && st.name === 'Max' && st.bname === 'Max');
   // delete a Garage copy: it moves to Deleted
+  const garageBefore = fs.readdirSync(path.join(lib, 'Garage')).length;
   await p.click('#libSrc [data-v="garage"]'); await p.waitForTimeout(800);
   await p.click('.lib-card'); await p.waitForSelector('#dlg[open] .lib-detail');
   await p.click('#dlgActs .btn.danger'); await p.waitForSelector('#dlg[open]'); await p.click('#dlgActs .btn.danger'); await p.waitForTimeout(800);
-  ok('delete moves the file to Deleted', fs.readdirSync(path.join(lib, 'Garage')).length === 5 && fs.readdirSync(path.join(lib, 'Deleted')).length === 1);
+  ok('delete moves the file to Deleted', fs.readdirSync(path.join(lib, 'Garage')).length === garageBefore - 1 && fs.readdirSync(path.join(lib, 'Deleted')).length === 1);
   // save, reopen, check
   await p.click('#saveBtn'); await p.waitForFunction(() => !S.dirty, null, { timeout: 30000 }).catch(() => {});
   if (await p.$('#dlg[open]')) { await p.click('#dlgActs .btn.primary'); await p.waitForFunction(() => !S.dirty, null, { timeout: 30000 }); }
   await p.reload(); await p.waitForSelector('.slot-row'); await p.click('.slot-row'); await p.waitForSelector('#app:not(.hidden)');
-  st = await p.evaluate(() => ({ name: str(g(g(ps(), 'ShipOwnership')[6], 'Name')), b6: g(shipBuild(6), 'Objects').length, max: g(shipBuild(4), 'Objects').length }));
-  ok('it all survives saving and reopening', st.name === 'The Cutting Remark' && st.b6 === 2091 && st.max === 300);
+  st = await p.evaluate(() => ({ name: str(g(g(ps(), 'ShipOwnership')[6], 'Name')), b6: g(shipBuild(6), 'Objects').length, max: g(shipBuild(4), 'Objects').length, b7: shipBuild(7) && g(shipBuild(7), 'Objects').length }));
+  ok('it all survives saving and reopening', st.name === 'The Cutting Remark' && st.b6 === 2091 && st.max === 300 && (!taz || st.b7 === 941));
   await p.click('nav button[data-s="library"]'); await p.click('#libSrc [data-v="fav"]'); await p.waitForTimeout(1500);
   ok('favourites filter', (await p.$$('.lib-card')).length === 1);
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
