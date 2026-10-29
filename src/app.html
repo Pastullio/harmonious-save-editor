@@ -203,6 +203,16 @@ nav .count { font-family: var(--mono); font-size: 11px; color: var(--faint); }
 .cell .amt { position: absolute; right: 4px; bottom: 6px; font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--ink); pointer-events: none; }
 .cell.has img ~ .amt { color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .8); }
 .cell .fill { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--accent); pointer-events: none; }
+.grid.named { grid-template-columns: repeat(var(--w), minmax(66px, 92px)); }
+.grid.named .cell { aspect-ratio: 5 / 6; }
+.grid.named .cell.has { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px 6px; }
+.grid.named .cell img { width: 54%; height: auto; aspect-ratio: 1; flex: none; }
+.grid.named .cell .nm, .grid.named .cell .qty { flex: none; max-width: 100%; }
+.grid.named .cell.no-icon .nm { margin-top: auto; }
+.cell .nm { font-weight: 500; font-size: 10px; line-height: 1.15; text-align: center; color: var(--ink); overflow-wrap: break-word; hyphens: auto; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; pointer-events: none; }
+.cell .nm.raw { font-family: var(--mono); font-size: 9px; color: var(--dim); }
+.cell .qty { margin-top: auto; font-family: var(--mono); font-size: 9.5px; font-weight: 600; color: var(--dim); pointer-events: none; }
+.db-form { margin: 14px 0 12px; }
 .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 11.5px; color: var(--dim); margin-top: 12px; }
 .legend i { display: inline-block; width: 12px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
 
@@ -313,6 +323,8 @@ dialog.wide { max-width: 1000px; }
   .grid { grid-template-columns: repeat(var(--w), minmax(0, 1fr)); gap: 3px; padding: 6px; width: auto; }
   .nrow { grid-template-columns: 22px 1fr; } .nrow .v { grid-column: 2; }
   .cell .lbl { font-size: 10px; padding: 2px 1px 9px; } .cell .amt { font-size: 10px; right: 2px; bottom: 4px; }
+  .grid.named { grid-template-columns: repeat(var(--w), minmax(0, 1fr)); }
+  .grid.named .cell { aspect-ratio: 1; } .grid.named .cell.has { padding: 3px 2px 5px; } .grid.named .cell img { width: 70%; } .grid.named .cell .nm { display: none; } .cell .qty { font-size: 8px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
@@ -1505,6 +1517,7 @@ function newSlot(inv, x, y, { id, type, amount, max }) {
 }
 function cloneJSON(v) { if (v instanceof Map) { const m = new Map(); for (const [k, x] of v) m.set(k, cloneJSON(x)); return m; } if (Array.isArray(v)) return v.map(cloneJSON); return v; }
 
+const compactNum = (n) => n >= 100000 ? Math.round(n / 1000) + 'k' : n >= 10000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(n);
 function invBlock(el, inv, title) {
   if (!isInv(inv)) return;
   const w = Math.max(1, num(g(inv, 'Width'))), h = Math.max(1, num(g(inv, 'Height')));
@@ -1523,9 +1536,13 @@ function invBlock(el, inv, title) {
     const dmg = num(g(s, 'DamageFactor')) > 0 || g(s, 'FullyInstalled') === false;
     const pct = mx > 0 && amt >= 0 ? Math.min(100, (amt / mx) * 100) : 0;
     const name = info ? info.name : idLabel(id);
-    cells += `<button class="cell has t-${esc(t)}${dmg ? ' damaged' : ''}${sel}" data-x="${x}" data-y="${y}" title="${esc(name)}${t !== 'Technology' ? ' ×' + amt : ''}" aria-label="${esc(name)}">`
-      + (info && info.icon ? `<img data-icon="${esc(info.icon)}" alt="">` : `<span class="lbl">${esc(name)}</span>`)
-      + (t !== 'Technology' && amt > 0 ? `<span class="amt">${amt > 9999 ? Math.round(amt / 1000) + 'k' : amt}</span>` : '')
+    const qty = t !== 'Technology' && amt >= 0 ? compactNum(amt) + (mx > 0 ? '/' + compactNum(mx) : '') : '';
+    const icon = info && info.icon;
+    cells += `<button class="cell has t-${esc(t)}${dmg ? ' damaged' : ''}${S.db && !icon ? ' no-icon' : ''}${sel}" data-x="${x}" data-y="${y}" title="${esc(name)}${qty ? ' · ' + qty : ''}${info ? '' : '\n' + esc(idLabel(id))}" aria-label="${esc(name)}${qty ? ', ' + qty : ''}">`
+      + (S.db
+        // Goatfungus-style: icon, name, then amount/max
+        ? (icon ? `<img data-icon="${esc(icon)}" alt="">` : '') + `<span class="nm${info ? '' : ' raw'}">${esc(name)}</span>` + (qty ? `<span class="qty">${qty}</span>` : '')
+        : `<span class="lbl">${esc(name)}</span>` + (t !== 'Technology' && amt > 0 ? `<span class="amt">${compactNum(amt)}</span>` : ''))
       + (pct ? `<span class="fill" style="width:${pct}%"></span>` : '') + '</button>';
   }
   block.innerHTML = `<div class="inv-head"><h3>${esc(title)} ${cls ? `<span class="badge cls-${esc(cls)}">${esc(cls)}</span>` : ''}</h3>
@@ -1536,7 +1553,7 @@ function invBlock(el, inv, title) {
         <button class="btn small" data-act="repair">Repair</button>
         <button class="btn small ghost" data-act="settings">Size and class</button>
       </div></div>
-    <div class="inv-wrap"><div><div class="grid" style="--w:${w}">${cells}</div>
+    <div class="inv-wrap"><div><div class="grid${S.db ? ' named' : ''}" style="--w:${w}">${cells}</div>
       <div class="legend"><span><i style="background:var(--substance)"></i>Substance</span><span><i style="background:var(--product)"></i>Product</span><span><i style="background:var(--technology)"></i>Technology</span><span><i style="background:var(--danger)"></i>Damaged</span><span><i style="background:var(--accent)"></i>Stack or charge level</span></div></div>
       <div class="insp-slot"></div></div>`;
   el.appendChild(block);
@@ -1678,14 +1695,14 @@ async function zipRead(z, name) {
   const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
-async function loadDbFromJar(buf) {
-  const z = zipIndex(buf);
-  const xmlBytes = await zipRead(z, 'nomanssave/db/items.xml');
-  if (!xmlBytes) throw new Error('items.xml not found inside that file');
-  const doc = new DOMParser().parseFromString(new TextDecoder().decode(xmlBytes), 'text/xml');
-  const typeFor = { substance: 'Substance', product: 'Product', techbox: 'Product', technology: 'Technology' };
+// Goatfungus's NMSSaveEditor.jar holds an item database (names, icons, types) and the icon pictures.
+// The desktop app finds the jar on the PC and serves both from inside it; the browser version reads a
+// jar the user picks and keeps a copy in IndexedDB.
+function parseItemsXml(text) {
+  const doc = new DOMParser().parseFromString(text, 'text/xml');
+  const typeFor = { substance: 'Substance', product: 'Product', techbox: 'Product', technology: 'Technology', 'procedural-product': 'Product', 'procedural-technology': 'Technology' };
   const list = [];
-  for (const el of doc.querySelectorAll('substance, product, technology, techbox')) {
+  for (const el of doc.querySelectorAll('substance, product, technology, techbox, procedural-product, procedural-technology')) {
     const type = typeFor[el.tagName]; const id = el.getAttribute('id'); if (!type || !id) continue;
     list.push({ id, name: el.getAttribute('name') || '', type, icon: el.getAttribute('icon') || '', sub: el.getAttribute('subtitle') || '', template: el.getAttribute('template') || '', parent: (el.parentElement && el.parentElement.getAttribute('name')) || '' });
   }
@@ -1699,7 +1716,23 @@ async function loadDbFromJar(buf) {
     it.hashed = /^\^[0-9A-F]{12}$/.test(it.id);
   }
   for (const it of list) if (!it.name) it.name = it.id;
-  S.db = { list, byId, zip: z, icons: new Map() };
+  return { list, byId, icons: new Map() };
+}
+async function loadDbFromJar(buf) {
+  const z = zipIndex(buf);
+  const xmlBytes = await zipRead(z, 'nomanssave/db/items.xml');
+  if (!xmlBytes) throw new Error('items.xml not found inside that file');
+  S.db = { ...parseItemsXml(new TextDecoder().decode(xmlBytes)), zip: z };
+}
+// desktop app: ask where the jar is (the app looks for it the first time), then load its item list
+async function loadDbFromApp(post) {
+  const opts = post ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(post) } : {};
+  const info = await (await api('/api/itemdb', opts)).json();
+  S.dbInfo = info;
+  if (!info.ready) { S.db = null; return info; }
+  const text = await (await api('/api/itemdb/items.xml')).text();
+  S.db = { ...parseItemsXml(text), app: true };
+  return info;
 }
 function dbItem(id) {
   if (!S.db || !id) return null;
@@ -1708,27 +1741,53 @@ function dbItem(id) {
 }
 async function iconUrl(name) {
   const db = S.db; if (!db) return null;
+  if (db.app) return '/api/itemdb/icon?name=' + encodeURIComponent(name) + '&t=' + encodeURIComponent(window.NMS_APP.token);
   if (db.icons.has(name)) return db.icons.get(name);
   const p = (async () => { const b = await zipRead(db.zip, 'nomanssave/icons/' + name); return b ? URL.createObjectURL(new Blob([b], { type: 'image/png' })) : null; })();
   db.icons.set(name, p); return p;
 }
-function loadIcons(root) { if (!S.db) return; root.querySelectorAll('img[data-icon]').forEach(async (img) => { const u = await iconUrl(img.dataset.icon); if (u) img.src = u; else img.remove(); }); }
-
-(async () => { try { const buf = await IDB.get('jar'); if (buf) await loadDbFromJar(buf); } catch (_) { /* no cached database */ } })();
+function loadIcons(root) {
+  if (!S.db) return;
+  root.querySelectorAll('img[data-icon]').forEach(async (img) => {
+    img.onerror = () => { const c = img.closest('.cell'); if (c) c.classList.add('no-icon'); img.remove(); };
+    const u = await iconUrl(img.dataset.icon); if (u) img.src = u; else img.onerror();
+  });
+}
+const dbReady = (async () => {
+  try {
+    if (window.NMS_APP) await loadDbFromApp();
+    else { const buf = await IDB.get('jar'); if (buf) await loadDbFromJar(buf); }
+  } catch (_) { /* no item database */ }
+  if (S.db && S.save && $('#page')) render(); // a save opened before the list finished loading
+})();
 
 PAGES.items = (el) => {
+  const info = S.dbInfo || {};
+  const status = S.db ? `<h3>${S.db.list.length.toLocaleString()} items loaded</h3><p class="dim">Names and icons show in every inventory.${APP && info.path ? ` Read from <span class="mono">${esc(info.path)}</span>.` : ''}</p>`
+    : `<h3>No item database yet</h3><p class="dim">${APP ? `The app couldn't find <span class="mono">NMSSaveEditor.jar</span> on this PC. Paste where it is, or the folder it's in.` : `Choose <span class="mono">NMSSaveEditor.jar</span> from the folder where you keep that editor.`}</p>`;
+  const controls = APP
+    ? `<form class="row db-form" id="dbForm"><label class="field"><span>Location of NMSSaveEditor.jar</span><input class="input mono" id="dbPath" placeholder="C:\\Users\\you\\Downloads\\NMSSaveEditor\\NMSSaveEditor.jar" value="${esc(info.path || '')}"></label><button class="btn primary" type="submit">Use this file</button></form>
+       <div class="toolbar"><button class="btn" id="dbSearch">Search this PC again</button>${S.db ? '<button class="btn" id="dbForget">Stop using it</button>' : ''}</div>`
+    : (S.db ? `<button class="btn" id="dbForget">Forget item database</button>` : `<label class="btn primary">Choose NMSSaveEditor.jar<input type="file" id="jarPick" accept=".jar,.zip" hidden></label>`);
   el.innerHTML = `<div class="page-head"><div><h1>Item names and icons</h1>
-    <p>The editor works with raw item IDs. To see names and icons, and to search items by name, point it at your own copy of Goatfungus's <span class="mono">NMSSaveEditor.jar</span>. It is read in this tab and remembered for next time.</p></div></div>
-    <div class="panel">${S.db ? `<h3>${S.db.list.length.toLocaleString()} items loaded</h3><p class="dim">Names and icons now show in every inventory.</p><button class="btn" id="dbForget">Forget item database</button>`
-      : `<h3>No item database yet</h3><p class="dim">Choose <span class="mono">NMSSaveEditor.jar</span> from the folder where you keep that editor.</p><label class="btn primary">Choose NMSSaveEditor.jar<input type="file" id="jarPick" accept=".jar,.zip" hidden></label>`}
-    <p class="err" id="dbErr"></p></div>`;
+    <p>Names and icons come from your own copy of Goatfungus's <span class="mono">NMSSaveEditor.jar</span>. ${APP ? 'The app finds it on your PC and reads it in place; nothing is copied.' : 'It is read in this tab and remembered for next time.'}</p></div></div>
+    <div class="panel">${status}${controls}<p class="err" id="dbErr"></p></div>`;
+  const err = (m) => { $('#dbErr', el).textContent = m; };
+  const appSet = async (post, busy) => {
+    err(busy);
+    try { const i = await loadDbFromApp(post); if (i.error) { render(); err(i.error); return; } render(); if (S.db) toast(S.db.list.length.toLocaleString() + ' items loaded'); else if (post.search) err('No NMSSaveEditor.jar turned up in the usual folders.'); }
+    catch (e) { err('Could not read that file: ' + e.message); }
+  };
+  const form = $('#dbForm', el); if (form) form.onsubmit = (e) => { e.preventDefault(); const p = $('#dbPath', el).value.trim(); if (p) appSet({ path: p }, 'Opening…'); };
+  const sb = $('#dbSearch', el); if (sb) sb.onclick = () => appSet({ search: true }, 'Searching…');
   const pick = $('#jarPick', el);
   if (pick) pick.onchange = async (e) => {
     const f = e.target.files[0]; if (!f) return;
     try { const buf = await f.arrayBuffer(); await loadDbFromJar(buf); try { await IDB.put('jar', buf); } catch (_) {} toast(S.db.list.length + ' items loaded'); render(); }
-    catch (err) { $('#dbErr', el).textContent = 'Could not read that file: ' + err.message; }
+    catch (er) { err('Could not read that file: ' + er.message); }
   };
-  const fg = $('#dbForget', el); if (fg) fg.onclick = async () => { await IDB.del('jar'); S.db = null; render(); };
+  const fg = $('#dbForget', el);
+  if (fg) fg.onclick = async () => { if (APP) { await appSet({ path: '' }, ''); return; } await IDB.del('jar'); S.db = null; render(); };
 };
 
 // ------------------------------------------------------------------ raw data explorer
@@ -1865,7 +1924,7 @@ function preview(x) { const k = kind(x); if (k === 'object' || k === 'array') re
 // and the app reads and writes the save folder directly (Chrome's AppData block doesn't apply).
 const APP = window.NMS_APP || null;
 async function api(path, opts = {}) {
-  const r = await fetch(path, { ...opts, headers: { 'X-Token': APP.token, ...(opts.headers || {}) } });
+  const r = await fetch(path, { ...opts, headers: { 'X-Token': window.NMS_APP.token, ...(opts.headers || {}) } });
   if (!r.ok) { const t = await r.text().catch(() => ''); throw new Error(t || r.status + ' ' + r.statusText); }
   return r;
 }

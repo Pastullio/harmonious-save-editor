@@ -91,6 +91,9 @@ func main() {
 	mux.HandleFunc("/api/cover", handleCover)
 	mux.HandleFunc("/api/screenshots", handleScreenshots)
 	mux.HandleFunc("/api/screenshot", handleScreenshot)
+	mux.HandleFunc("/api/itemdb", handleItemDB)
+	mux.HandleFunc("/api/itemdb/items.xml", handleItemXML)
+	mux.HandleFunc("/api/itemdb/icon", handleItemIcon)
 
 	srv := &http.Server{Handler: guard(addr, mux), ReadHeaderTimeout: 10 * time.Second}
 	go func() {

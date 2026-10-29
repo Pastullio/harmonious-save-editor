@@ -34,7 +34,8 @@ type renderSettings struct {
 	Charon  string `json:"charon"` // folder that contains the charon_forge package
 	Size    int    `json:"size"`
 	Samples int    `json:"samples"`
-	Shots   string `json:"shots"` // optional folder of screenshots to pick covers from
+	Shots   string `json:"shots"`            // optional folder of screenshots to pick covers from
+	ItemDB  string `json:"itemdb,omitempty"` // NMSSaveEditor.jar for item names and icons
 }
 
 type renderJob struct {

@@ -11,7 +11,7 @@ Open `dist/nms-save-editor.html` in Chrome or Edge. Nothing is uploaded anywhere
 - Ship and multi-tool names and seeds
 - Any value in the save through the raw data explorer, with search, plus JSON export and import
 
-Item names and icons appear once you point the editor at your own `NMSSaveEditor.jar` (Goatfungus); it is cached in the browser.
+Item names and icons come from your own copy of Goatfungus's `NMSSaveEditor.jar`. The desktop app finds it on your PC by itself (or set its location on the Item names page) and reads it in place; the browser version asks you to pick it once and caches it.
 
 ## Desktop app (recommended on Windows)
 
