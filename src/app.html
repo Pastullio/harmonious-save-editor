@@ -196,6 +196,34 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .tc.loc { padding: 16px 18px; gap: 3px; font-size: 13px; color: var(--dim); }
 .tc.loc .gal { font-family: var(--display); font-weight: 300; font-size: 26px; letter-spacing: .06em; color: var(--ink); line-height: 1.15; margin-top: 4px; }
 .tc.loc .loc-where { color: var(--ink); margin-top: 4px; }
+/* Dock Yard: big tabs and the "new" spotlight */
+.new-pill { font-size: 9.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; background: var(--dot, var(--accent)); color: #fff; margin-left: 6px; }
+.dy-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 10px; }
+@media (max-width: 900px) { .dy-tabs { grid-template-columns: 1fr; } }
+.dy-tab { display: flex; gap: 14px; align-items: flex-start; text-align: left; padding: 16px 18px; border-radius: var(--r-lg); border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; box-shadow: var(--shadow); transition: border-color .15s, transform .15s, background .15s; }
+.dy-tab:hover { border-color: var(--accent); transform: translateY(-1px); }
+.dy-tab[aria-selected="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent), var(--shadow); }
+.dy-ico { flex: none; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.dy-tab[aria-selected="true"] .dy-ico { background: var(--accent); }
+.dy-ico svg { width: 24px; height: 24px; fill: none; stroke: var(--accent); stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
+.dy-tab[aria-selected="true"] .dy-ico svg { stroke: var(--accent-ink); }
+.dy-txt { display: grid; gap: 2px; min-width: 0; }
+.dy-txt b { font-family: var(--display); font-size: 13px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; }
+.dy-n { font-size: 20px; font-weight: 300; font-family: var(--display); }
+.dy-d { font-size: 12.5px; color: var(--dim); line-height: 1.4; }
+.dy-sub { display: flex; gap: 18px; flex-wrap: wrap; margin: 4px 0 16px; font-size: 13.5px; }
+.dy-sub .link[aria-current="true"] { font-weight: 600; text-decoration-thickness: 2px; }
+.dy-spot { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; padding: 18px 22px; margin-bottom: 18px; border-radius: var(--r-lg); color: #fff; background: radial-gradient(120% 140% at 0% 0%, #2a5bd8 0%, #1b2f7a 45%, #0b1430 100%); box-shadow: var(--shadow); position: relative; overflow: hidden; }
+.dy-spot::after { content: ""; position: absolute; inset: 0; background: radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,.7), transparent), radial-gradient(1.5px 1.5px at 70% 60%, rgba(255,255,255,.6), transparent), radial-gradient(1.5px 1.5px at 85% 20%, rgba(255,255,255,.5), transparent), radial-gradient(1px 1px at 45% 80%, rgba(255,255,255,.5), transparent); pointer-events: none; }
+.dy-spot .dy-ico { background: rgba(255,255,255,.14); width: 52px; height: 52px; }
+.dy-spot .dy-ico svg { stroke: #fff; width: 28px; height: 28px; }
+.dy-spot-txt { flex: 1 1 320px; display: grid; gap: 4px; position: relative; z-index: 1; }
+.dy-spot-txt .k { font-size: 10.5px; letter-spacing: .24em; text-transform: uppercase; opacity: .8; }
+.dy-spot-txt b { font-family: var(--display); font-weight: 300; font-size: 24px; letter-spacing: .14em; text-transform: uppercase; }
+.dy-spot-txt span { font-size: 14px; opacity: .92; line-height: 1.5; }
+.dy-spot .btn { position: relative; z-index: 1; }
+.dy-spot .btn.primary { background: #fff; color: #10235f; border-color: #fff; }
+.dy-spot .btn.ghost { color: #fff; }
 /* ship library */
 .ship-bar { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: center; margin-bottom: 10px; }
 .ship-bar #libQ { flex: 1 1 240px; min-width: 200px; }
@@ -940,7 +968,7 @@ function download(bytes, name) { const u = URL.createObjectURL(new Blob([bytes])
 
 // ------------------------------------------------------------------ navigation
 const SECTIONS = [
-  ['overview', 'Overview'], ['hangar', 'Hangar'], ['library', 'Ship library'], ['exosuit', 'Exosuit'], ['ships', 'Starships'], ['tools', 'Multi-tools'],
+  ['overview', 'Overview'], ['hangar', 'Hangar'], ['library', 'Dock Yard'], ['exosuit', 'Exosuit'], ['ships', 'Starships'], ['tools', 'Multi-tools'],
   ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['storage', 'Storage'], ['coords', 'Coordinates'], ['items', 'Item names'], ['raw', 'Raw data'],
 ];
 // Spectrum: each section's colour, sweeping teal through blue, violet, magenta, rose and coral (owner's pick);
@@ -961,7 +989,7 @@ function renderSide() {
   if (m) bits.push(fmtPlay(num(g(common() || p, 'TotalPlayTime')) || m.totalPlayTime));
   $('#saveMeta').textContent = bits.join(', ');
   const counts = { hangar: ships().length + tools().length, ships: ships().length, tools: tools().length, storage: storageInvs().length };
-  $('#nav').innerHTML = SECTIONS.map(([id, label]) => `<button data-s="${id}" ${S.section === id ? 'aria-current="page"' : ''} style="--dot:${secColor(id) || 'var(--line-2)'}"><span class="dot" aria-hidden="true"></span><span class="lbl">${label}</span>${counts[id] != null ? `<span class="count">${counts[id]}</span>` : ''}</button>`).join('');
+  $('#nav').innerHTML = SECTIONS.map(([id, label]) => `<button data-s="${id}" ${S.section === id ? 'aria-current="page"' : ''} style="--dot:${secColor(id) || 'var(--line-2)'}"><span class="dot" aria-hidden="true"></span><span class="lbl">${label}</span>${id === 'library' && APP && !dockyardSeen() ? '<span class="new-pill">New</span>' : counts[id] != null ? `<span class="count">${counts[id]}</span>` : ''}</button>`).join('');
   applySection(S.section);
   $('#nav').querySelectorAll('button').forEach((b) => b.onclick = () => go(b.dataset.s));
   updateStatus();
@@ -971,7 +999,7 @@ function go(section) {
   $('#nav').querySelectorAll('button').forEach((b) => { if (b.dataset.s === section) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   render(); $('#main').scrollTop = 0;
 }
-function render() { const f = PAGES[S.section]; $('#page').innerHTML = ''; f($('#page')); }
+function render() { const f = PAGES[S.section]; $('#page').innerHTML = ''; f($('#page')); if (S.section === 'overview') dockyardSpot($('#page')); }
 
 // ------------------------------------------------------------------ owned things
 const isInv = (v) => v instanceof Map && Array.isArray(g(v, 'Slots')) && Array.isArray(g(v, 'ValidSlotIndices'));
@@ -1029,6 +1057,17 @@ function miniCover(host, it, size, onClick) {
   if (onClick) host.onclick = onClick;
 }
 
+// the Dock Yard is new and nothing like it exists elsewhere, so the Overview points to it until it's been opened or dismissed
+function dockyardSpot(el) {
+  if (!APP || dockyardSeen()) return;
+  try { if (localStorage.getItem('hse-dockyard-spot') === 'hidden') return; } catch (_) {}
+  const d = document.createElement('div'); d.className = 'dy-spot';
+  d.innerHTML = `<span class="dy-ico">${DY_ICONS.library}</span><div class="dy-spot-txt"><span class="k">New</span><b>Dock Yard</b><span>Every ship you own, build or download, in one place. The Garage keeps a copy of every ship from every save automatically, and any ship or corvette can go into any save.</span></div>
+    <button class="btn primary" type="button" data-go>Open the Dock Yard</button><button class="btn ghost small" type="button" data-hide>Not now</button>`;
+  d.querySelector('[data-go]').onclick = () => go('library');
+  d.querySelector('[data-hide]').onclick = () => { try { localStorage.setItem('hse-dockyard-spot', 'hidden'); } catch (_) {} d.remove(); };
+  const head = el.querySelector('.page-head'); if (head) head.after(d); else el.prepend(d);
+}
 PAGES.overview = (el) => {
   const p = ps(), cm = common();
   const cur = [['Units', 'Units'], ['Nanites', 'Nanites'], ['Quicksilver', 'Specials']];
@@ -1231,7 +1270,7 @@ function entityDetails(ed, o, i, kind) {
       <button class="btn primary" data-k="saveprof">Save as profile</button><button class="btn" data-k="applyprof">Apply a profile</button>
       ${APP && S.lib && S.lib.game ? '<button class="btn" data-k="parts">Choose parts</button>' : ''}
       <span class="sep"></span>
-      ${isShip && APP ? '<button class="btn" data-k="tolib">Save to library</button>' : ''}${isShip && shipBuild(i) ? '<button class="btn" data-k="nmsship">Export .nmsship</button>' : ''}<button class="btn" data-k="export">Export</button><label class="btn">Import<input type="file" accept=".json,application/json" data-k="import" hidden></label>
+      ${isShip && APP ? '<button class="btn" data-k="tolib">Save to Dock Yard</button>' : ''}${isShip && shipBuild(i) ? '<button class="btn" data-k="nmsship">Export .nmsship</button>' : ''}<button class="btn" data-k="export">Export</button><label class="btn">Import<input type="file" accept=".json,application/json" data-k="import" hidden></label>
       <button class="btn danger" data-k="delete">Delete ${isShip ? 'ship' : 'multi-tool'}</button>
     </div>`;
   ed.appendChild(panel);
@@ -3084,7 +3123,8 @@ function predictionHtml(p, s) {
     <p class="pred-note dim">Predicted from the address with the game's own rules, so it works for systems nobody has visited. Checked against 1,000 systems players recorded: about 99% right. Names travellers uploaded later aren't included. Biomes, weather and resources aren't predicted yet. Generation research: nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, ported to JavaScript as nms-core by elegra1965 (both MIT).</p>`;
 }
 
-// ------------------------------------------------------------------ ship library
+// ------------------------------------------------------------------ Dock Yard (ship library)
+const dockyardSeen = () => { try { return localStorage.getItem('hse-dockyard-seen') === '1'; } catch (_) { return true; } };
 // One place for every ship: Library (files kept on purpose), Garage (every ship from every save opened,
 // captured automatically) and linked folders the owner already keeps ships in (read only). Files live in
 // Documents\Harmonious Save Editor\Ships; tags, favourites, links and notes live in its library.json.
@@ -3247,17 +3287,17 @@ async function garageCapture() {
   let added = 0;
   for (const { s, i } of ships()) {
     const doc = shipDoc(i), hash = (await shipFingerprint(doc)).slice(0, 10);
-    const path = `${safeFile(str(g(s, 'Name')) || shipType(g(s, 'Resource', 'Filename')))} ${hash}.ship.json`;
+    const nm = str(g(s, 'Name')), path = `${safeFile(/[\p{L}\p{N}]/u.test(nm) ? nm : shipType(g(s, 'Resource', 'Filename')))} ${hash}.ship.json`;
     try { await api(`/api/ships/file?src=garage&path=${encodeURIComponent(path)}&new=1`, { method: 'POST', body: C.stringifyJSON(doc) }); added++; }
     catch (e) { if (!/already exists/.test(e.message)) console.warn('garage', e); }
   }
   if (added) toast(`${plural(added, 'ship')} copied to the Garage`);
   return added;
 }
-async function saveShipToLibrary(i) {
+async function saveShipToLibrary(i, quiet) {
   const doc = shipDoc(i), name = str(g(ps(), 'ShipOwnership')[i] && g(g(ps(), 'ShipOwnership')[i], 'Name')) || 'Ship';
   const p = await ShipLib.add('library', safeFile(name) + '.ship.json', C.stringifyJSON(doc));
-  toast(`${name} saved to the ship library`); return p;
+  if (!quiet) toast(`${name} added to Ship storage in the Dock Yard`); return p;
 }
 
 // Put a library ship into the open save: into an empty slot, or replacing a ship. Corvettes bring their
@@ -3306,22 +3346,45 @@ async function putShipInSave(p, sum) {
   markDirty(); renderSide(); toast(`${sum.name} is in slot ${i + 1}. Press Save to game to keep it.`);
 }
 
-const LIB_SRC = { library: 'Library', garage: 'Garage', linked: 'Linked folder' };
+const LIB_SRC = { library: 'Ship storage', garage: 'Garage', linked: 'Linked folder' };
+// small line icons for the Dock Yard tabs (drawn in the section colour)
+const DY_ICONS = {
+  library: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8.5 12 4l9 4.5v9L12 22l-9-4.5z"/><path d="M3 8.5 12 13l9-4.5M12 13v9"/></svg>',
+  garage: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 10 12 4l10 6v10H2z"/><path d="M6 20v-7h12v7M6 15.5h12M6 18h12"/></svg>',
+  fav: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"/></svg>',
+};
+const DY_TABS = [
+  ['library', 'Ship storage', 'Ships you keep on purpose: imported files and ships you save from your game.'],
+  ['garage', 'Garage', 'A copy of every ship from every save you open, made automatically. Nothing is ever lost.'],
+  ['fav', 'Favourites', 'The ships you star, from anywhere in the Dock Yard.'],
+];
 PAGES.library = (el) => {
-  el.innerHTML = `<div class="page-head"><div><h1>Ship library</h1><p>Every ship you keep, in one place: your library, the folders you already keep ships in, and the Garage, which saves a copy of every ship from every save you open.</p></div></div>`;
-  if (!APP) { el.insertAdjacentHTML('beforeend', '<p class="dim">The ship library keeps files on your PC, so it is part of the desktop app.</p>'); return; }
-  const L = S.shipLib || (S.shipLib = { q: '', src: 'all', type: 'all', tag: '', fav: false, shown: 60 });
+  try { localStorage.setItem('hse-dockyard-seen', '1'); } catch (_) {}
+  const pill = document.querySelector('nav [data-s="library"] .new-pill'); if (pill) pill.remove();
+  el.innerHTML = `<div class="page-head"><div><h1>Dock Yard</h1><p>Every ship you own, build or download, in one place. Store them, keep every version, and move ships and corvettes into any save.</p></div></div>`;
+  if (!APP) { el.insertAdjacentHTML('beforeend', '<p class="dim">The Dock Yard keeps ship files on your PC, so it is part of the desktop app.</p>'); return; }
+  const L = S.shipLib || (S.shipLib = { q: '', src: 'library', type: 'all', tag: '', fav: false, shown: 60 });
+  const tabs = document.createElement('div'); tabs.className = 'dy-tabs'; tabs.setAttribute('role', 'tablist');
+  const isOn = (v) => (v === 'fav' ? L.fav : !L.fav && L.src === v);
+  tabs.innerHTML = DY_TABS.map(([v, t, d]) => `<button type="button" role="tab" class="dy-tab" data-v="${v}" aria-selected="${isOn(v)}"><span class="dy-ico">${DY_ICONS[v]}</span><span class="dy-txt"><b>${t}</b><span class="dy-n" data-n="${v}">…</span><span class="dy-d">${d}</span></span></button>`).join('');
+  el.appendChild(tabs);
+  const sub = document.createElement('div'); sub.className = 'dy-sub';
+  sub.innerHTML = `<button type="button" class="link" data-v="all"${isOn('all') ? ' aria-current="true"' : ''}>All ships</button><button type="button" class="link" data-v="linked"${isOn('linked') ? ' aria-current="true"' : ''}>Linked folders <span data-n="linked"></span></button><button type="button" class="link" id="libFolders">Manage folders</button>`;
+  el.appendChild(sub);
   const bar = document.createElement('div'); bar.className = 'ship-bar';
   bar.innerHTML = `<input class="input" id="libQ" type="search" placeholder="Search names, tags and notes" value="${esc(L.q)}">
-    <div class="seg" id="libSrc">${[['all', 'All'], ['library', 'Library'], ['garage', 'Garage'], ['linked', 'Linked folders'], ['fav', 'Favourites']].map(([v, t]) => `<button type="button" data-v="${v}"${(v === 'fav' ? L.fav : !L.fav && L.src === v) ? ' aria-pressed="true"' : ''}>${t}</button>`).join('')}</div>
     <select class="input" id="libType"><option value="all">All types</option></select>
     <select class="input" id="libTag"><option value="">All tags</option></select>
-    <span class="lib-acts"><label class="btn small">Import files<input type="file" id="libImport" multiple accept=".json,.txt,.nmsship,.so" hidden></label>${S.save ? '<button class="btn small" id="libAddSave" type="button">Add this save\'s ships</button>' : ''}<button class="btn small ghost" id="libFolders" type="button">Folders</button></span>`;
+    <span class="lib-acts"><label class="btn small">Import files<input type="file" id="libImport" multiple accept=".json,.txt,.nmsship,.so" hidden></label>${S.save ? '<button class="btn small" id="libAddSave" type="button">Add this save\'s ships</button>' : ''}<button class="btn small" id="libRender" type="button">Render corvettes</button><button class="btn small ghost" id="libRenderCfg" type="button" title="Blender and Charon Forge">Cover settings</button></span>`;
   el.appendChild(bar);
   const status = document.createElement('p'); status.className = 'dim lib-status'; status.textContent = 'Reading your ships…'; el.appendChild(status);
   const grid = document.createElement('div'); grid.className = 'lib-grid'; el.appendChild(grid);
   const more = document.createElement('div'); more.className = 'lib-more'; el.appendChild(more);
   const alive = () => el.isConnected && S.section === 'library';
+  const pick = (v) => { if (v === 'fav') L.fav = true; else { L.fav = false; L.src = v; } L.shown = 60; render(); };
+  tabs.onclick = (e) => { const b = e.target.closest('[data-v]'); if (b) pick(b.dataset.v); };
+  sub.onclick = (e) => { const b = e.target.closest('[data-v]'); if (b) pick(b.dataset.v); };
+  let current = [];
   (async () => {
     const [files] = await Promise.all([ShipLib.files(), ShipLib.loadIndex()]);
     if (!alive()) return;
@@ -3334,9 +3397,18 @@ PAGES.library = (el) => {
     if (todo.length) { await Promise.all([work(), work(), work(), work()]); ShipLib.saveIndex(); }
     for (const id of Object.keys(I.cache)) if (!items.some((x) => x.id === id)) delete I.cache[id];
     if (!alive()) return;
+    const counts = { library: 0, garage: 0, linked: 0, fav: 0, all: items.length }; items.forEach((x) => { counts[x.f.src]++; if ((I.meta[x.id] || {}).fav) counts.fav++; });
+    el.querySelectorAll('[data-n]').forEach((n) => { const c = counts[n.dataset.n]; n.textContent = n.dataset.n === 'linked' ? `(${c})` : plural(c, 'ship'); });
     const types = [...new Set(items.map((x) => x.sum.type).filter(Boolean))].sort(), tags = [...new Set(items.flatMap((x) => (I.meta[x.id] && I.meta[x.id].tags) || []))].sort();
     $('#libType', bar).innerHTML += types.map((t) => `<option${L.type === t ? ' selected' : ''}>${esc(t)}</option>`).join('');
     $('#libTag', bar).innerHTML += tags.map((t) => `<option${L.tag === t ? ' selected' : ''}>${esc(t)}</option>`).join('');
+    const empty = {
+      library: 'Nothing in Ship storage yet. Use Import files for .json, .txt, .nmsship or .so ships, or Add this save\'s ships.',
+      garage: 'The Garage fills itself: every ship in a save you open is copied here, once per version.',
+      fav: 'No favourites yet. Star a ship anywhere in the Dock Yard to keep it here.',
+      linked: 'Link a folder where you already keep ship files (Manage folders). Its ships show here without being moved or changed.',
+      all: 'No ships yet.',
+    };
     const show = () => {
       const q = L.q.toLowerCase();
       const list = items.filter((x) => {
@@ -3346,26 +3418,42 @@ PAGES.library = (el) => {
         if (L.tag && !(m.tags || []).includes(L.tag)) return false;
         return !q || [x.sum.name, x.f.path, (m.tags || []).join(' '), m.notes || ''].join(' ').toLowerCase().includes(q);
       }).sort((a, b) => !!(I.meta[b.id] || {}).fav - !!(I.meta[a.id] || {}).fav || a.sum.name.localeCompare(b.sum.name) || b.f.mtime - a.f.mtime);
-      const counts = { library: 0, garage: 0, linked: 0 }; items.forEach((x) => counts[x.f.src]++);
-      status.textContent = items.length ? `${plural(list.length, 'ship')} shown · ${counts.library} in the library, ${counts.garage} in the Garage, ${counts.linked} in linked folders` : 'No ships yet. Import files, add a folder you keep ships in, or open a save: its ships go to the Garage automatically.';
+      current = list;
+      const where = L.fav ? 'Favourites' : L.src === 'all' ? 'the Dock Yard' : L.src === 'linked' ? 'linked folders' : LIB_SRC[L.src];
+      status.textContent = list.length ? `${plural(list.length, 'ship')} in ${where}${q || L.type !== 'all' || L.tag ? ' matching your search' : ''}` : q || L.type !== 'all' || L.tag ? 'No ships match your search here.' : empty[L.fav ? 'fav' : L.src];
       grid.replaceChildren(...list.slice(0, L.shown).map((x) => libCard(x, show)));
       more.innerHTML = list.length > L.shown ? `<button class="btn" type="button">Show ${Math.min(60, list.length - L.shown)} more</button>` : '';
       if (more.firstChild) more.firstChild.onclick = () => { L.shown += 60; show(); };
     };
     $('#libQ', bar).oninput = (e) => { L.q = e.target.value; L.shown = 60; show(); };
-    $('#libSrc', bar).onclick = (e) => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.v === 'fav') { L.fav = !L.fav; } else { L.fav = false; L.src = b.dataset.v; } L.shown = 60; render(); };
     $('#libType', bar).onchange = (e) => { L.type = e.target.value; show(); };
     $('#libTag', bar).onchange = (e) => { L.tag = e.target.value; show(); };
     show();
-  })().catch((e) => { status.textContent = "Couldn't read the ship library: " + e.message; });
+  })().catch((e) => { status.textContent = "Couldn't read the Dock Yard: " + e.message; });
   $('#libImport', bar).onchange = async (e) => {
     const fs = [...e.target.files]; e.target.value = ''; let n = 0;
     for (const f of fs) { try { await ShipLib.add('library', f.name, await f.arrayBuffer()); n++; } catch (err) { toast(`${f.name}: ${err.message}`, true); } }
-    if (n) { toast(`${plural(n, 'file')} added to the library`); render(); }
+    if (n) { toast(`${plural(n, 'file')} added to Ship storage`); L.src = 'library'; L.fav = false; render(); }
   };
   const addSave = $('#libAddSave', bar);
-  if (addSave) addSave.onclick = async () => { let n = 0; for (const { i } of ships()) { await saveShipToLibrary(i); n++; } toast(`${plural(n, 'ship')} saved to the library`); render(); };
-  $('#libFolders', bar).onclick = () => libFoldersDialog();
+  if (addSave) addSave.onclick = async () => { let n = 0; for (const { i } of ships()) { await saveShipToLibrary(i, true); n++; } toast(`${plural(n, 'ship')} added to Ship storage`); render(); };
+  $('#libFolders', sub).onclick = () => libFoldersDialog();
+  $('#libRenderCfg', bar).onclick = renderSettingsDialog;
+  // render every corvette shown here with Blender + Charon Forge (renders are cached by build, so repeats are instant)
+  const rb = $('#libRender', bar);
+  rb.onclick = async () => {
+    const setup = await renderSetup().catch(() => null);
+    if (!setup || !setup.ready) { renderSettingsDialog(); return; }
+    const todo = current.filter((x) => !x.sum.error && x.sum.type === 'Corvette' && x.sum.parts);
+    if (!todo.length) { toast('No corvettes here to render.'); return; }
+    rb.disabled = true; let ok = 0, failed = 0;
+    for (const x of todo) {
+      if (rb.isConnected) rb.textContent = `Rendering ${ok + failed + 1} of ${todo.length}…`;
+      try { const p = x.parsed || (x.parsed = await ShipLib.load(x.f)); await renderCorvette(libCoverItem(x.f, p, x.sum), false); ok++; } catch (e) { failed++; console.warn(e); }
+    }
+    if (rb.isConnected) { rb.disabled = false; rb.textContent = 'Render corvettes'; }
+    toast(failed ? `${ok} rendered, ${failed} failed. Open one and choose Render with Blender to see why.` : `${plural(ok, 'corvette')} rendered`, !!failed);
+  };
 };
 function libCard(x, refresh) {
   const m = ShipLib.index.meta[x.id] || {}, s = x.sum;
@@ -3398,7 +3486,8 @@ async function libDetail(x, refresh) {
   const where = f.src === 'linked' ? f.root + '\\' + f.path.replace(/\//g, '\\') : `${LIB_SRC[f.src]}\\${f.path.replace(/\//g, '\\')}`;
   const canPut = !p.error && (s.whole || s.buildOnly || s.shipOnly);
   const acts = [['Close', 'close', 'ghost']];
-  if (f.src !== 'library') acts.push(['Copy to library', 'copy']);
+  if (f.src !== 'library') acts.push(['Copy to Ship storage', 'copy']);
+  if (APP && !p.error && s.type === 'Corvette' && p.objects) acts.push(['Render with Blender', 'render']);
   acts.push(['Show in folder', 'reveal']);
   if (f.src !== 'linked') acts.push(['Delete', 'delete', 'danger']);
   if (!p.error && p.ship && p.objects) acts.push(['Save as .nmsship', 'nmsship']);
@@ -3422,11 +3511,18 @@ async function libDetail(x, refresh) {
   Object.assign(m, { fav: !!($('#ldFav') && $('#ldFav').checked), tags: [...new Set(tags)], link: /^https?:\/\//i.test(link) ? link : '', notes: $('#ldNotes') ? $('#ldNotes').value : '' });
   ShipLib.saveIndex();
   if (v === 'put') { await putShipInSave(p, s); return; }
+  if (v === 'render') {
+    const setup = await renderSetup().catch(() => null);
+    if (!setup || !setup.ready) { renderSettingsDialog(); return; }
+    toast('Blender is rendering ' + s.name + '. This usually takes 10 to 60 seconds.');
+    try { await renderCorvette(libCoverItem(f, p, s), true); toast(s.name + ' rendered'); } catch (e) { toast('Render failed: ' + e.message, true); }
+    return;
+  }
   if (v === 'nmsship') { downloadBlob(safeFile(s.name) + '.nmsship', await libNmsship(p)); return; }
   if (v === 'reveal') { api(ShipLib.url(f, '&reveal=1')).catch((e) => toast(e.message, true)); }
-  if (v === 'copy') { await ShipLib.add('library', f.path.split('/').pop(), await ShipLib.read(f)); toast('Copied to the library'); render(); return; }
+  if (v === 'copy') { await ShipLib.add('library', f.path.split('/').pop(), await ShipLib.read(f)); toast('Copied to Ship storage'); render(); return; }
   if (v === 'delete') {
-    if (await dialog('Delete ' + s.name + '?', `<p>The file moves to the <b>Deleted</b> folder in your ship library, so you can bring it back.</p>`, [['Cancel', false, 'ghost'], ['Delete', true, 'danger']])) {
+    if (await dialog('Delete ' + s.name + '?', `<p>The file moves to the <b>Deleted</b> folder in your Dock Yard, so you can bring it back.</p>`, [['Cancel', false, 'ghost'], ['Delete', true, 'danger']])) {
       await api(ShipLib.url(f), { method: 'DELETE' }); delete ShipLib.index.meta[x.id]; ShipLib.saveIndex(); toast('Moved to Deleted'); render();
     }
     return;
@@ -3435,11 +3531,11 @@ async function libDetail(x, refresh) {
 }
 async function libFoldersDialog() {
   const r = await (await api('/api/ships/folders')).json();
-  const v = await dialog('Ship folders', `<p>Your library is in <span class="mono">${esc(r.root)}</span>.</p>
-    <h4 class="sub-h">Linked folders</h4><p class="dim">Folders where you already keep ships. They show in the library as they are; the app only reads them and never changes them.</p>
+  const v = await dialog('Dock Yard folders', `<p>Your Dock Yard is in <span class="mono">${esc(r.root)}</span>.</p>
+    <h4 class="sub-h">Linked folders</h4><p class="dim">Folders where you already keep ship files, like a folder of .json or .txt ships. Their ships show in the Dock Yard under Linked folders without being copied or moved; the app only reads them and never changes them.</p>
     <ul class="lib-folders">${(r.folders || []).map((d) => `<li><span class="mono">${esc(d)}</span> <button class="link" type="button" data-rm="${esc(d)}">Remove</button></li>`).join('') || '<li class="dim">None yet.</li>'}</ul>
     <label class="field"><span>Add a folder by its path</span><input class="input mono" id="lfPath" placeholder="C:\\Users\\you\\Documents\\NMS ships"></label>`,
-    [['Close', 'close', 'ghost'], ['Open library folder', 'open'], ['Browse…', 'pick'], ['Add path', 'add', 'primary']]);
+    [['Close', 'close', 'ghost'], ['Open Dock Yard folder', 'open'], ['Browse…', 'pick'], ['Add path', 'add', 'primary']]);
   try {
     if (v === 'open') await api('/api/ships/folders?reveal=1');
     if (v === 'pick') { const res = await (await api('/api/ships/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pick: true }) })).json(); if (!res.cancelled) { toast('Folder added'); render(); } }
@@ -3449,7 +3545,7 @@ async function libFoldersDialog() {
 document.addEventListener('click', async (e) => {
   const b = e.target.closest('[data-rm]'); if (!b) return;
   await api('/api/ships/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ remove: b.dataset.rm }) }).catch((err) => toast(err.message, true));
-  b.closest('li').remove(); toast('Folder removed from the library (its files are untouched)'); if (S.section === 'library') render();
+  b.closest('li').remove(); toast('Folder removed from the Dock Yard (its files are untouched)'); if (S.section === 'library') render();
 });
 
 PAGES.coords = (el) => {

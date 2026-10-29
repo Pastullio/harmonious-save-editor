@@ -9,14 +9,18 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const T = path.join(SP, 'libtest'); fs.rmSync(T, { recursive: true, force: true });
   const home = path.join(T, 'home'), root = path.join(T, 'root'), linked = path.join(T, 'My ships');
   fs.mkdirSync(path.join(home, 'Documents'), { recursive: true }); fs.cpSync(SP + '/dbroot/NMS', root, { recursive: true }); fs.mkdirSync(linked);
+  // a library from before the rename (Ships\Library) must move to Dock Yard\Ship storage
+  const oldLib = path.join(home, 'Documents', 'Harmonious Save Editor', 'Ships', 'Library'); fs.mkdirSync(oldLib, { recursive: true });
+  fs.writeFileSync(path.join(oldLib, 'From before.json'), JSON.stringify({ Objects: [{ Timestamp: 1, ObjectID: '^U_PARAGON', UserData: 0, Position: [0, 0, 0], Up: [0, 1, 0], At: [0, 0, 1] }] }));
   const proc = spawn(path.join(__dirname, '../../dist/hse-linux'), ['-no-window', '-root', root, '-port', '47979'], { env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(T, 'cfg') } });
   const url = await new Promise((res) => proc.stdout.on('data', (d) => res(String(d).trim())));
   const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1440, height: 1000 } });
   const errs = []; p.on('pageerror', (e) => errs.push(e.message));
   const apiJ = (u, opts) => p.evaluate(async ([u, opts]) => (await api(u, opts)).json(), [u, opts]);
   await p.goto(url); await p.waitForSelector('.slot-row'); await p.click('.slot-row'); await p.waitForSelector('#app:not(.hidden)');
+  ok('the Dock Yard is announced: New in the menu and a spotlight on the Overview', !!(await p.$('nav [data-s="library"] .new-pill')) && !!(await p.$('.dy-spot')));
   p.on('console', (m) => { if (m.type() === 'warning' || m.type() === 'error') console.log('console:', m.text()); });
-  const lib = path.join(home, 'Documents', 'Harmonious Save Editor', 'Ships');
+  const lib = path.join(home, 'Documents', 'Harmonious Save Editor', 'Dock Yard');
   for (let t = 0; t < 60 && !(fs.existsSync(path.join(lib, 'Garage')) && fs.readdirSync(path.join(lib, 'Garage')).length >= 6); t++) await p.waitForTimeout(500);
   const garage = fs.readdirSync(path.join(lib, 'Garage'));
   console.log(garage);
@@ -27,7 +31,8 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.evaluate(() => garageCapture()); ok('the Garage keeps one copy per version', fs.readdirSync(path.join(lib, 'Garage')).length === 6);
   // library + linked folder
   await p.evaluate(() => saveShipToLibrary(5));
-  ok('save to library', fs.existsSync(path.join(lib, 'Library', 'The Cutting Remark.ship.json')));
+  ok('save to the Dock Yard', fs.existsSync(path.join(lib, 'Ship storage', 'The Cutting Remark.ship.json')));
+  ok('the old Ships\\Library moved to Dock Yard\\Ship storage', fs.existsSync(path.join(lib, 'Ship storage', 'From before.json')) && !fs.existsSync(path.join(home, 'Documents', 'Harmonious Save Editor', 'Ships')));
   fs.writeFileSync(path.join(linked, 'just the build.json'), JSON.stringify({ Objects: cr.CorvetteBase.Objects.slice(0, 300) }));
   fs.writeFileSync(path.join(linked, 'notes.txt'), 'not a ship');
   fs.mkdirSync(path.join(linked, 'sub')); fs.writeFileSync(path.join(linked, 'sub', 'Formula copy.json'), JSON.stringify({ Harmonious: { kind: 'ship', version: 2 }, Ship: cr.Ship, CorvetteBase: cr.CorvetteBase }));
@@ -40,9 +45,12 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
     fs.copyFileSync(path.join(SP, 'nmsship/so.json'), path.join(linked, 'Death n Glory.so'));
   }
   await apiJ('/api/ships/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ add: linked }) });
-  await p.click('nav button[data-s="library"]'); await p.waitForFunction(() => /ships? shown/.test(document.querySelector('.lib-status').textContent), null, { timeout: 30000 });
-  const status = await p.textContent('.lib-status'); console.log(status);
-  ok('library, Garage and linked folder all listed', new RegExp(`1 in the library, 6 in the Garage, ${taz ? 6 : 3} in linked folders`).test(status));
+  await p.click('nav button[data-s="library"]'); await p.waitForFunction(() => /ships? in /.test(document.querySelector('.lib-status').textContent), null, { timeout: 30000 });
+  ok('the New badge goes once the Dock Yard is opened', !(await p.$('nav [data-s="library"] .new-pill')));
+  const counts = await p.$$eval('[data-n]', (n) => n.map((x) => x.dataset.n + '=' + x.textContent).join(' ')); console.log(counts);
+  ok('Ship storage, Garage, Favourites and linked folders counted', counts === `library=2 ships garage=6 ships fav=0 ships linked=(${taz ? 6 : 3})`);
+  ok('Ship storage is the first view', (await p.getAttribute('.dy-tab[data-v="library"]', 'aria-selected')) === 'true' && (await p.$$('.lib-card')).length === 2);
+  await p.click('.dy-sub [data-v="all"]'); await p.waitForFunction(() => document.querySelectorAll('.lib-card').length > 10);
   await p.waitForTimeout(2500); await p.screenshot({ path: SP + '/shots/lib0.png' });
   const caps = await p.$$eval('.lib-card .tc-cap', (c) => c.map((x) => x.textContent.replace(/\s+/g, ' ').trim()));
   console.log(caps.slice(0, 12));
@@ -62,8 +70,10 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
     ok('.nmsship export reads back here and in Python', back.parts === 2091 && back.name === 'The Cutting Remark' && back.ccd && /^None \['ccd.json', 'objects.json', 'so.json'\]\nTrue True 2091$/.test(py));
   }
   // put the library copy of The Cutting Remark into empty slot 7 (index 6)
-  await p.click('#libSrc [data-v="library"]'); await p.waitForSelector('.lib-card'); await p.waitForTimeout(500);
-  await p.click('.lib-card'); await p.waitForSelector('#dlg[open] .lib-detail');
+  await p.click('.dy-tabs [data-v="library"]'); await p.waitForSelector('.lib-card'); await p.waitForTimeout(500);
+  const firstLib = (await p.$$('.lib-card'))[1]; ok('the card is The Cutting Remark', /The Cutting Remark/.test(await firstLib.textContent()));
+  await firstLib.click(); await p.waitForSelector('#dlg[open] .lib-detail');
+  ok('corvettes can be rendered from the Dock Yard', await p.$$eval('#dlgActs button', (b) => b.some((x) => x.textContent === 'Render with Blender')));
   await p.fill('#ldTags', 'favourite, combat'); await p.check('#ldFav'); await p.waitForTimeout(600);
   await p.screenshot({ path: SP + '/shots/lib1-detail.png' });
   await p.click('#dlgActs .btn.primary'); await p.waitForSelector('#putSlot');
@@ -75,7 +85,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   console.log(JSON.stringify(st));
   ok('the corvette lands in the empty slot with its own build', st.name === 'The Cutting Remark' && st.b6 === 2091 && st.b5 === 2091 && st.n === 5 && st.dirty);
   const idx = JSON.parse(fs.readFileSync(path.join(lib, 'library.json')));
-  const m = Object.entries(idx.meta).find(([k]) => /^library\|/.test(k));
+  const m = Object.entries(idx.meta).find(([k]) => /^library\|\|The Cutting/.test(k));
   ok('tags and favourite are kept', m && m[1].fav === true && m[1].tags.join() === 'favourite,combat');
   if (taz) {
     // the .nmsship into empty slot 8 (index 7): ship, 941 parts in the game's field order, customisation in its slot
@@ -100,8 +110,12 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
     console.log(JSON.stringify(st));
     ok('a .so only goes onto corvettes and keeps their name and build', st.shipOnly && st.opts.join() === '1,3,4,5,6,7' && st.name === 'Yautja Claw' && st.cls === 'S' && st.parts === st.before);
   }
+  // Render corvettes without Blender set up opens the cover settings
+  await p.click('.dy-tabs [data-v="library"]'); await p.waitForSelector('#libRender'); await p.click('#libRender'); await p.waitForSelector('#dlg[open]');
+  ok('Render corvettes asks for Blender when it is not set up', /Cover settings/.test(await p.textContent('#dlgTitle')));
+  await p.click('#dlgActs .btn.ghost');
   // a build-only file onto corvette Max (slot 5, index 4)
-  await p.click('#libSrc [data-v="linked"]'); await p.waitForTimeout(800);
+  await p.click('.dy-sub [data-v="linked"]'); await p.waitForTimeout(800);
   const cards = await p.$$('.lib-card'); let target;
   for (const c of cards) if (/just the build/.test(await c.textContent())) target = c;
   await target.click(); await p.waitForSelector('#dlg[open] .lib-detail'); await p.click('#dlgActs .btn.primary'); await p.waitForSelector('#putSlot');
@@ -112,7 +126,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   ok('the build replaces Max\'s parts and keeps the ship', st.max === 300 && st.name === 'Max' && st.bname === 'Max');
   // delete a Garage copy: it moves to Deleted
   const garageBefore = fs.readdirSync(path.join(lib, 'Garage')).length;
-  await p.click('#libSrc [data-v="garage"]'); await p.waitForTimeout(800);
+  await p.click('.dy-tabs [data-v="garage"]'); await p.waitForTimeout(800);
   await p.click('.lib-card'); await p.waitForSelector('#dlg[open] .lib-detail');
   await p.click('#dlgActs .btn.danger'); await p.waitForSelector('#dlg[open]'); await p.click('#dlgActs .btn.danger'); await p.waitForTimeout(800);
   ok('delete moves the file to Deleted', fs.readdirSync(path.join(lib, 'Garage')).length === garageBefore - 1 && fs.readdirSync(path.join(lib, 'Deleted')).length === 1);
@@ -122,10 +136,10 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.reload(); await p.waitForSelector('.slot-row'); await p.click('.slot-row'); await p.waitForSelector('#app:not(.hidden)');
   st = await p.evaluate(() => ({ name: str(g(g(ps(), 'ShipOwnership')[6], 'Name')), b6: g(shipBuild(6), 'Objects').length, max: g(shipBuild(4), 'Objects').length, b7: shipBuild(7) && g(shipBuild(7), 'Objects').length }));
   ok('it all survives saving and reopening', st.name === 'The Cutting Remark' && st.b6 === 2091 && st.max === 300 && (!taz || st.b7 === 941));
-  await p.click('nav button[data-s="library"]'); await p.click('#libSrc [data-v="fav"]'); await p.waitForTimeout(1500);
+  await p.click('nav button[data-s="library"]'); await p.click('.dy-tabs [data-v="fav"]'); await p.waitForTimeout(1500);
   ok('favourites filter', (await p.$$('.lib-card')).length === 1);
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
-  await p.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark')); await p.click('#libSrc [data-v="all"]'); await p.waitForTimeout(2500);
+  await p.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark')); await p.click('.dy-sub [data-v="all"]'); await p.waitForTimeout(2500);
   await p.screenshot({ path: SP + '/shots/lib2-dark.png' });
   await b.close(); proc.kill();
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS'); process.exit(fails.length ? 1 : 0);

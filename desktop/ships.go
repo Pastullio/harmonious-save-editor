@@ -1,11 +1,13 @@
 package main
 
-// Ship library: one place for every ship the owner keeps.
+// Dock Yard (the ship library): one place for every ship the owner keeps.
 //
-//   Documents\Harmonious Save Editor\Ships\Library   ships imported or pulled out of a save
-//   Documents\Harmonious Save Editor\Ships\Garage    every ship seen in any opened save, captured automatically
-//   Documents\Harmonious Save Editor\Ships\Deleted   where deleted library files go (nothing is erased)
-//   Documents\Harmonious Save Editor\Ships\library.json   tags, favourites, links and notes, plus cached summaries
+//   Documents\Harmonious Save Editor\Dock Yard\Ship storage   ships imported or pulled out of a save
+//   Documents\Harmonious Save Editor\Dock Yard\Garage         every ship seen in any opened save, captured automatically
+//   Documents\Harmonious Save Editor\Dock Yard\Deleted        where deleted files go (nothing is erased)
+//   Documents\Harmonious Save Editor\Dock Yard\library.json   tags, favourites, links and notes, plus cached summaries
+//
+// Before it was called Dock Yard this was Ships\Library; migrateShips moves an existing one across once.
 //
 // Linked folders are folders the owner already keeps ships in. They are listed alongside the library
 // but only ever read: the app never writes, moves or deletes anything in them.
@@ -15,11 +17,13 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -27,14 +31,35 @@ var shipExts = map[string]bool{".json": true, ".txt": true, ".nmsship": true, ".
 
 const maxShipFiles = 10000
 
+const storageDir = "Ship storage" // the page calls this source "library"
+
+var migrateOnce sync.Once
+
 func shipsRoot() string {
 	renderMu.Lock()
 	custom := settings.Ships
 	renderMu.Unlock()
-	if custom != "" {
-		return custom
+	root := custom
+	if root == "" {
+		root = filepath.Join(filepath.Dir(fullBackupDir()), "Harmonious Save Editor", "Dock Yard")
 	}
-	return filepath.Join(filepath.Dir(fullBackupDir()), "Harmonious Save Editor", "Ships")
+	migrateOnce.Do(func() { migrateShips(root, custom == "") })
+	return root
+}
+
+// migrateShips renames the old Ships folder to Dock Yard and Library to Ship storage. If anything is
+// in the way it leaves both alone (and logs why), so no file is ever overwritten.
+func migrateShips(root string, renameRoot bool) {
+	if old := filepath.Join(filepath.Dir(root), "Ships"); renameRoot && fileExists(old) && !fileExists(root) {
+		if err := os.Rename(old, root); err != nil {
+			log.Printf("dock yard: couldn't rename %s: %v", old, err)
+		}
+	}
+	if old, nw := filepath.Join(root, "Library"), filepath.Join(root, storageDir); fileExists(old) && !fileExists(nw) {
+		if err := os.Rename(old, nw); err != nil {
+			log.Printf("dock yard: couldn't rename %s: %v", old, err)
+		}
+	}
 }
 
 func shipFolders() []string {
@@ -90,7 +115,7 @@ func shipPath(src, root, rel string, forWrite bool) (string, error) {
 	var base string
 	switch src {
 	case "library":
-		base = filepath.Join(shipsRoot(), "Library")
+		base = filepath.Join(shipsRoot(), storageDir)
 	case "garage":
 		base = filepath.Join(shipsRoot(), "Garage")
 	case "linked":
@@ -126,10 +151,10 @@ func shipPath(src, root, rel string, forWrite bool) (string, error) {
 
 func handleShips(w http.ResponseWriter, r *http.Request) {
 	root := shipsRoot()
-	_ = os.MkdirAll(filepath.Join(root, "Library"), 0o755)
+	_ = os.MkdirAll(filepath.Join(root, storageDir), 0o755)
 	_ = os.MkdirAll(filepath.Join(root, "Garage"), 0o755)
 	files := []shipFile{}
-	scanShips(filepath.Join(root, "Library"), "library", "", &files)
+	scanShips(filepath.Join(root, storageDir), "library", "", &files)
 	scanShips(filepath.Join(root, "Garage"), "garage", "", &files)
 	folders := []shipFolder{}
 	for _, f := range shipFolders() {
@@ -177,7 +202,7 @@ func handleShipFile(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, map[string]string{"path": p})
 	case http.MethodDelete:
-		// deleting moves the file into Ships\Deleted, so it can always be brought back
+		// deleting moves the file into Dock Yard\Deleted, so it can always be brought back
 		trash := filepath.Join(shipsRoot(), "Deleted", time.Now().Format("2006-01-02"))
 		_ = os.MkdirAll(trash, 0o755)
 		dst := filepath.Join(trash, filepath.Base(p))
