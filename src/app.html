@@ -224,6 +224,24 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .warp-row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-top: 18px; }
 .warp-row .dim { flex: 1 1 280px; font-size: 13.5px; }
 .bad-hint { color: var(--spark); margin: 0; }
+.pred { margin: 14px 0 6px; }
+.pred-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.pred-head > div { display: grid; gap: 2px; }
+.pred-head .k { font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+.pred-name { font-family: var(--display); font-weight: 300; font-size: 26px; letter-spacing: .04em; line-height: 1.2; }
+.pill { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--ink); white-space: nowrap; }
+.pred-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 1px; margin: 14px 0; border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; background: var(--line); }
+.pred-grid div { background: var(--surface); padding: 10px 14px; }
+.pred-grid dt { font-size: 12px; color: var(--dim); }
+.pred-grid dd { margin: 2px 0 0; font-weight: 500; }
+.pred-planets { width: 100%; border-collapse: collapse; font-size: 14px; }
+.pred-planets th { text-align: left; font-size: 11px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); padding: 6px 10px; border-bottom: 1px solid var(--line); }
+.pred-planets td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.pred-planets tr.on td { background: var(--accent-soft); }
+.pred-planets td:last-child { text-align: right; }
+.glyphs.tiny { font-size: 15px; gap: 1px; vertical-align: middle; margin-right: 6px; }
+@media (max-width: 720px) { .pred-planets .glyphs { display: none; } }
+.pred-note { font-size: 12.5px; margin: 12px 0 0; }
 .portal { display: flex; gap: 2px; flex-wrap: wrap; margin-top: 3px; }
 .portal i { font-style: normal; font-family: var(--mono); font-size: 12px; width: 21px; height: 26px; display: grid; place-items: center; border-radius: 6px; background: var(--well); color: var(--ink); }
 .journey { grid-template-columns: repeat(6, minmax(0, 1fr)); }
@@ -610,7 +628,7 @@ function aboutDialog() {
     <p>A No Man's Sky save editor for Steam and GOG on PC, by Pastullio the Harmonious. It reads your own game files for item names, icons and models, and backs up every save before it changes it.</p>
     <div class="about-links">${LINKS.map(([t, u]) => `<a class="btn small" href="${u}" target="_blank" rel="noopener">${t}</a>`).join('')}</div>
     <p class="dim" style="margin:12px 0 6px">Built with thanks to</p>
-    <ul class="about-credits"><li>libNOM.map and libNOM.io by zencq (save keys and format)</li><li>MBINCompiler by monkeyman192 and contributors (game table layouts)</li><li>HGPAKtool by monkeyman192 (game archive format)</li><li>Charon Forge by xX-Charon-Xx (corvette renders)</li><li>Pillow (texture decoding), klauspost/compress (zstd), Jost by indestructible type* (typeface)</li></ul>
+    <ul class="about-credits"><li>libNOM.map and libNOM.io by zencq (save keys and format)</li><li>MBINCompiler by monkeyman192 and contributors (game table layouts)</li><li>HGPAKtool by monkeyman192 (game archive format)</li><li>Charon Forge by xX-Charon-Xx (corvette renders)</li><li>nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, and its JavaScript port nms-core by elegra1965 (system and planet prediction; MIT)</li><li>Pillow (texture decoding), klauspost/compress (zstd), Jost by indestructible type* (typeface)</li></ul>
     <p class="dim" style="font-size:13px;margin:12px 0 0">Free software under the GPL-3.0 licence. Not affiliated with Hello Games.</p>`, [['Close', true, 'primary']]);
 }
 document.addEventListener('click', (e) => { if (e.target.closest('.about-btn')) aboutDialog(); });
@@ -2982,13 +3000,63 @@ function warpTo(p) {
   markDirty();
 }
 
+// ------------------------------------------------------------------ system prediction
+// The game builds every system from its address, so the same rules give the same answer before anyone visits.
+// The rules come from open-source research: nms-core (elegra1965, MIT), a port of nms_namegen (Stuart Coyle,
+// hadsh and GoodGuysFree, MIT), checked against 1,000 systems players recorded by hand. Bundled by build.js.
+/*@@NMSGEN@@*/
+const LETTER_MAP_GZ = '@@LETTERMAP@@';
+let letterMapP = null;
+function letterMap() {
+  return (letterMapP = letterMapP || (async () => {
+    const bin = Uint8Array.from(atob(LETTER_MAP_GZ), (c) => c.charCodeAt(0));
+    const text = await new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+    return JSON.parse(text);
+  })());
+}
+const STAR_COLOURS = ['Yellow', 'Green', 'Blue', 'Red', 'Purple'];
+const ECONOMIES = [null, 'Trading', 'Advanced materials', 'Scientific', 'Mining', 'Manufacturing', 'Technology', 'Power generation'];
+const LEVELS = [null, 'Low', 'Medium', 'High'];
+const RACES = ['None', 'Gek', 'Korvax', "Vy'keen"];
+async function predictSystem(p) {
+  const lm = await letterMap();
+  const code = BigInt('0x' + Place.portal({ ...p, planet: 0 })), gi = p.gi;
+  const a = NMSGEN.systemAttributes(code, gi), seeds = NMSGEN.planetSeeds(code, gi), sb = NMSGEN.sellBuy(code, gi);
+  return {
+    name: NMSGEN.systemName(code, gi, lm), region: NMSGEN.regionName(code, gi, lm),
+    star: STAR_COLOURS[a.star_type] || '?', gasGiant: a.gas_giant,
+    race: RACES[a.dominant_race] || 'None', economy: ECONOMIES[a.economy_type] || 'None', wealth: LEVELS[a.wealth] || '', conflict: LEVELS[a.conflict_level] || '',
+    pirate: a.pirate, abandoned: a.abandoned, uncharted: a.uncharted, sell: sb && sb.sell, buy: sb && sb.buy,
+    planets: seeds.planet_seeds.map((s) => NMSGEN.planetName(s, null, lm)), planetCount: seeds.planet_count, moonCount: seeds.moon_count,
+  };
+}
+function predictionHtml(p, s) {
+  const pct = (v) => (v > 0 ? '+' : '') + (Math.round(v * 10) / 10) + '%';
+  const rows = [
+    ['Star', s.star + (s.gasGiant ? ', gas giant system' : '')],
+    ['Dominant race', s.abandoned ? 'None (abandoned system)' : s.race],
+    ['Economy', s.abandoned ? 'None' : s.pirate ? 'Pirate' : `${s.economy}, ${s.wealth.toLowerCase()} wealth`],
+    ['Conflict', s.abandoned ? 'None' : s.pirate ? 'Pirate controlled' : s.conflict],
+    s.sell != null && !s.abandoned && ['Station prices', `sells at ${pct(s.sell)}, buys at ${pct(s.buy)}`],
+    s.uncharted && ['Uncharted', 'Yes'],
+    ['Bodies', `${plural(s.planetCount, 'planet')}${s.moonCount ? ' and ' + plural(s.moonCount, 'moon') : ''}`],
+  ].filter(Boolean);
+  const rest = Place.portal(p).slice(1);
+  return `<div class="pred-head"><div><span class="k">System</span><b class="pred-name">${esc(s.name)}</b><span class="dim">${esc(s.region)}, ${esc(GALAXIES[p.gi])}</span></div><span class="pill">Predicted</span></div>
+    <dl class="pred-grid">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
+    ${s.planets.length ? `<table class="pred-planets"><thead><tr><th>#</th><th>Name</th><th>Portal address</th><th></th></tr></thead><tbody>
+      ${s.planets.map((n, i) => { const code = hexN(i + 1, 1) + rest; return `<tr${p.planet === i + 1 ? ' class="on"' : ''}><td>${i + 1}</td><td>${esc(n)}</td><td>${glyphRow(code, 'tiny')} <span class="mono">${code}</span></td><td><button class="link" type="button" data-planet="${i + 1}">${p.planet === i + 1 ? 'Selected' : 'Use this address'}</button></td></tr>`; }).join('')}
+    </tbody></table>` : '<p class="dim">No planets.</p>'}
+    <p class="pred-note dim">Predicted from the address with the game's own rules, so it works for systems nobody has visited. Checked against 1,000 systems players recorded: about 99% right. Names travellers uploaded later aren't included. Biomes, weather and resources aren't predicted yet. Generation research: nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, ported to JavaScript as nms-core by elegra1965 (both MIT).</p>`;
+}
+
 PAGES.coords = (el) => {
   const here = Place.fromUA(g(ps(), 'UniverseAddress'));
   if (!here) { el.innerHTML = '<div class="page-head"><div><h1>Coordinates</h1></div></div><p class="dim">This save has no location.</p>'; return; }
   const C = S.coords || (S.coords = { p: { ...here }, digits: Place.portal(here) });
   el.innerHTML = `<div class="page-head"><div><h1>Coordinates</h1><p>Find a place by its portal glyphs or its galactic address, see what your save knows about it, and warp there.</p></div></div>
     <div class="panel here-card"><h3>You are here</h3>
-      <div class="here-row"><div><b>${esc(GALAXIES[here.gi] || 'Galaxy ' + (here.gi + 1))}</b><span class="dim"> · galaxy ${here.gi + 1} of 256</span></div>
+      <div class="here-row"><div><b id="hereName"></b><b>${esc(GALAXIES[here.gi] || 'Galaxy ' + (here.gi + 1))}</b><span class="dim"> · galaxy ${here.gi + 1} of 256</span></div>
       ${glyphRow(Place.portal(here), 'small')}<span class="mono">${Place.portal(here)}</span><span class="mono dim">${Place.galactic(here)}</span>
       <button class="btn small" id="hereUse">Start from here</button></div></div>
     <div class="panel"><h3>Destination</h3>
@@ -3007,6 +3075,7 @@ PAGES.coords = (el) => {
     <div class="panel"><h3>About this system</h3><div id="destInfo"></div></div>`;
   const places = knownPlaces();
   const $$ = (s) => el.querySelector(s);
+  predictSystem(here).then((sys) => { const n = $$('#hereName'); if (n) n.textContent = sys.name + ', '; }).catch(() => {});
   const show = (from) => {
     const full = C.digits.length === 12 && Place.fromPortal(C.digits, C.p.gi);
     if (full) C.p = full;
@@ -3021,6 +3090,8 @@ PAGES.coords = (el) => {
     const bits = [c('Planet') && plural(c('Planet'), 'planet'), c('Animal') && plural(c('Animal'), 'creature'), c('Flora') && plural(c('Flora'), 'plant'), c('Mineral') && plural(c('Mineral'), 'mineral'), c('SpacePoi') && plural(c('SpacePoi'), 'point') + ' of interest', c('SpaceStation') && 'its space station'].filter(Boolean);
     info.innerHTML = `
       <div class="dest-sum">${glyphRow(Place.portal(p))}<div><b>${esc(GALAXIES[p.gi])}</b> · <span class="mono">${Place.portal(p)}</span> · <span class="mono">${Place.galactic(p)}</span>${p.planet ? ` · portal on planet ${p.planet}` : ''}</div></div>
+      <div class="pred" id="pred"><p class="dim">Working out this system…</p></div>
+      <h4 class="sub-h">From your save</h4>
       <ul class="place-facts">
         ${k.isHere ? '<li><b>You are in this system now.</b></li>' : ''}${k.freighter ? '<li>Your freighter is here.</li>' : ''}
         ${found ? `<li>You've discovered ${bits.join(', ') || 'this system'} here.</li>` : '<li>You haven\'t discovered anything in this system yet. The game creates its planets, names and resources when someone arrives, so the save has nothing more to show until you go.</li>'}
@@ -3029,6 +3100,12 @@ PAGES.coords = (el) => {
       ${k.places.length ? `<h4 class="sub-h">Places here</h4><ul class="place-facts">${k.places.map((x) => `<li>${esc(x.name)} <span class="dim">(${esc(x.kind)})</span></li>`).join('')}</ul>` : ''}
       <div class="warp-row"><button class="btn primary" id="warpBtn"${k.isHere ? ' disabled' : ''}>Warp here</button>
         <span class="dim">You'll load in your ship, in space, in this system. Nothing changes in the game until you press Save to game, and the app backs up the save first.</span></div>`;
+    const token = (C.token = (C.token || 0) + 1);
+    predictSystem(p).then((sys) => {
+      if (C.token !== token) return;   // the destination changed meanwhile
+      const box = $$('#pred'); if (!box) return; box.innerHTML = predictionHtml(p, sys);
+      box.querySelectorAll('[data-planet]').forEach((b) => b.onclick = () => setDigits(hexN(+b.dataset.planet, 1) + C.digits.slice(1)));
+    }).catch((e) => { const box = $$('#pred'); if (box) box.innerHTML = `<p class="dim">Couldn't predict this system (${esc(e.message)}).</p>`; });
     const wb = $$('#warpBtn');
     if (wb) wb.onclick = async () => {
       const ok = await dialog('Warp to this system?', `<p>${glyphRow(Place.portal(p))}</p><p>Your location becomes <span class="mono">${Place.galactic(p)}</span> in ${esc(GALAXIES[p.gi])}. Next time you load this save you'll be in your ship, in space, in that system. Your current location is kept as the previous one.</p><p class="dim">Then press Save to game.</p>`, [['Cancel', false], ['Warp here', true, 'primary']]);

@@ -105,7 +105,8 @@ The save file holds no images, so a ship's picture has to come from one of these
 
 - [x] Coordinate selector: enter glyphs (tap or type), a portal code or nmsportals link, or a signal-booster address, and see the same place in every form, with the galaxy, address facts (black hole, Atlas, purple star, distance to centre) and what the save knows there (discoveries, bases, stations). Your places picker lists every base and teleport destination
 - [x] Warp: sets the location, keeps the old one as the previous location and arrives in the ship in space (same fields as Goatfungus)
-- [ ] Names show for systems and planets you've discovered; uncharted ones show the address
+- [x] Predicted system for any address, visited or not: system, region and planet names, star colour, planets and moons, race, economy and wealth, conflict, pirate/abandoned/uncharted, station prices (nms-core / nms_namegen, MIT; about 99% against 1,000 player-recorded systems)
+- [ ] Predicted planet details: biome, weather, resources, sentinels, flora and fauna. No open research covers these yet; ATLAS APF does (closed, permission asked of FIBONACCI 2026-10-29). Otherwise this needs our own research
 - [ ] More arrival choices: on the freighter or at a base (warping in space is done)
 - [ ] Planet "qualities" card: copy a planet's details to share or search elsewhere
 

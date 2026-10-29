@@ -54,3 +54,14 @@ node test/test_codec.js <dir>          # codec round-trips against those referen
 node test/test_ui.js <dir> <shots>     # end-to-end in headless Chromium, file mode
 node test/test_folder.js <dir>         # folder mode with a mocked File System Access API
 ```
+
+## Credits
+
+- [libNOM.map and libNOM.io](https://github.com/zencq) by zencq: save keys and format
+- [MBINCompiler](https://github.com/monkeyman192/MBINCompiler) by monkeyman192 and contributors: game table layouts
+- [HGPAKtool](https://github.com/monkeyman192/HGPAKtool) by monkeyman192: game archive format
+- [Charon Forge](https://github.com/xX-Charon-Xx/charon_forge) by xX-Charon-Xx: corvette renders
+- [nms_namegen](https://github.com/hadsh/nms_namegen) by Stuart Coyle, hadsh and GoodGuysFree, and its JavaScript port [nms-core](https://github.com/elegra1965-source/nms-core) by elegra1965: system and planet prediction (MIT, in `vendor/nms-core`)
+- Pillow (texture decoding), klauspost/compress (zstd), Jost by indestructible type* (typeface)
+
+Free software under GPL-3.0. Not affiliated with Hello Games.

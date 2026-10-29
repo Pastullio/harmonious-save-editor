@@ -28,6 +28,18 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   ok('typing an address fills the glyphs', /^0204/.test(await p.inputValue('#fPortal')) && (await p.$$eval('#destGlyphs .glyph:not(.empty)', (x) => x.length)) === 12);
   await p.fill('#fPortal', 'http://nmsportals.github.io/#02458A31ECF9');
   ok('pasting an nmsportals link works', (await p.inputValue('#fGal')) === '04F8:0009:0B1D:0245');
+  // the ATLAS APF screenshot's system: Eissentam (galaxy 10), 115A30E59ECB
+  await p.selectOption('#fGalaxy', '9'); await p.fill('#fPortal', '115A30E59ECB');
+  await p.waitForSelector('#pred .pred-name', { timeout: 20000 });
+  const pred = await p.evaluate(() => ({ name: $('#pred .pred-name').textContent, planets: [...document.querySelectorAll('#pred .pred-planets tbody tr td:nth-child(2)')].map((t) => t.textContent), text: $('#pred').textContent }));
+  console.log(JSON.stringify(pred.planets), pred.text.replace(/\s+/g, ' ').slice(0, 260));
+  ok('predicts the system name', pred.name === 'Iqueri-Rep');
+  ok('predicts the planets', JSON.stringify(pred.planets) === JSON.stringify(['Nadyak Prime', 'Tomi 47/B2', 'Beherylano Dori']));
+  ok('predicts race and pirates', /Korvax/.test(pred.text) && /Pirate controlled/.test(pred.text));
+  await (await p.$('#destInfo')).screenshot({ path: SP + '/shots/co4-predict.png' });
+  await p.click('#pred [data-planet="2"]');
+  ok('picking a planet sets the portal address', (await p.inputValue('#fPortal')) === '215A30E59ECB');
+  await p.selectOption('#fGalaxy', '0'); await p.fill('#fPortal', '02458A31ECF9');
   await p.click('#gBack'); ok('delete last glyph', (await p.inputValue('#fPortal')) === '02458A31ECF');
   await p.click('#keypad button[data-d="9"]');
   // pick a known base and see what the save knows about its system
