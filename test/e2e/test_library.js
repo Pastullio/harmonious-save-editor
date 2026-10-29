@@ -48,7 +48,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.click('nav button[data-s="library"]'); await p.waitForFunction(() => /ships? in /.test(document.querySelector('.lib-status').textContent), null, { timeout: 30000 });
   ok('the New badge goes once the Dock Yard is opened', !(await p.$('nav [data-s="library"] .new-pill')));
   const counts = await p.$$eval('[data-n]', (n) => n.map((x) => x.dataset.n + '=' + x.textContent).join(' ')); console.log(counts);
-  ok('Ship storage, Garage, Favourites and linked folders counted', counts === `library=2 ships garage=6 ships fav=0 ships linked=(${taz ? 6 : 3})`);
+  ok('Ship storage, Garage, Favourites and linked folders counted', counts === `garage=6 ships library=2 ships fav=0 ships linked=(${taz ? 6 : 3})`);
   ok('Ship storage is the first view', (await p.getAttribute('.dy-tab[data-v="library"]', 'aria-selected')) === 'true' && (await p.$$('.lib-card')).length === 2);
   await p.click('.dy-sub [data-v="all"]'); await p.waitForFunction(() => document.querySelectorAll('.lib-card').length > 10);
   await p.waitForTimeout(2500); await p.screenshot({ path: SP + '/shots/lib0.png' });

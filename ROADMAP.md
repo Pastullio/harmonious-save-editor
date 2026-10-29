@@ -84,6 +84,8 @@ The save file holds no images, so a ship's picture has to come from one of these
 - [ ] Every live update is backed up, so any version can be rolled back
 - [ ] To test early: whether No Man's Sky picks up the new file when you load the save from the main menu, and how Steam Cloud reacts to a file changing outside the game
 
+- [x] Supercharge slots (owner, 2026-10-29): button next to Unlock all slots on exosuit and starship technology, per-slot toggle and multi-select; supercharged slots get an animated lightning border (electric blue, no yellow)
+
 ## Phase 5 — Cargo and Loadout Ops [7]
 
 - [ ] Find an item across every inventory (exosuit, ships, freighter, storage containers, exocraft) and see where every stack is

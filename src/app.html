@@ -196,6 +196,33 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .tc.loc { padding: 16px 18px; gap: 3px; font-size: 13px; color: var(--dim); }
 .tc.loc .gal { font-family: var(--display); font-weight: 300; font-size: 26px; letter-spacing: .06em; color: var(--ink); line-height: 1.15; margin-top: 4px; }
 .tc.loc .loc-where { color: var(--ink); margin-top: 4px; }
+/* supercharged slots: electric glow, crackling arcs and a bolt badge (no yellow) */
+:root { --charge: #1597d8; --charge-2: #6b5cff; --charge-hot: #8fe9ff; }
+:root[data-theme="dark"] { --charge: #4fd8ff; --charge-2: #9b8bff; --charge-hot: #e8fbff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --charge: #4fd8ff; --charge-2: #9b8bff; --charge-hot: #e8fbff; } }
+@property --spin { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.cell.charged { border-color: transparent; box-shadow: 0 0 12px -3px var(--charge), inset 0 0 16px -8px var(--charge); overflow: visible; }
+.cell.charged::before { content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 2px; pointer-events: none; z-index: 2;
+  background: conic-gradient(from var(--spin), var(--charge) 0deg, var(--charge-hot) 40deg, var(--charge-2) 120deg, var(--charge) 200deg, var(--charge-hot) 250deg, var(--charge-2) 320deg, var(--charge) 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: charge-spin 4s linear infinite; }
+.cell .arcs { position: absolute; inset: -3px; width: calc(100% + 6px); height: calc(100% + 6px); pointer-events: none; z-index: 3; overflow: visible; filter: drop-shadow(0 0 2px var(--charge)) drop-shadow(0 0 6px var(--charge)) drop-shadow(0 0 10px var(--charge-2)); }
+.cell .arcs path { fill: none; stroke: var(--charge-hot); stroke-width: 1.9; vector-effect: non-scaling-stroke; stroke-linejoin: miter; stroke-linecap: round; }
+.cell .arcs .a1 { stroke-dasharray: 26 95; animation: arc-run 1.9s linear infinite, arc-flicker 1.3s steps(2) infinite; }
+.cell .arcs .a2 { stroke-dasharray: 14 60 20 70; stroke: var(--charge); animation: arc-run 2.7s linear infinite reverse, arc-flicker 1.7s steps(3) infinite; }
+.cell .bolt, .bolt-ico { display: inline-block; width: 13px; height: 13px; background: var(--charge); flex: none;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M13.5 1 4 13.5h6.5L9 23l11-13.5h-6.8z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M13.5 1 4 13.5h6.5L9 23l11-13.5h-6.8z'/%3E%3C/svg%3E") center / contain no-repeat; }
+.cell .bolt { position: absolute; top: 4px; right: 4px; z-index: 4; filter: drop-shadow(0 0 3px var(--charge)); animation: arc-flicker 2.3s steps(4) infinite; }
+.bolt-ico { margin-right: 6px; vertical-align: -2px; }
+.charge-btn { border-color: color-mix(in srgb, var(--charge) 60%, var(--line-2)); box-shadow: 0 0 10px -4px var(--charge); }
+.charge-btn:hover { border-color: var(--charge); box-shadow: 0 0 14px -3px var(--charge); }
+.legend .lg-charge { border: 2px solid var(--charge); background: transparent !important; box-shadow: 0 0 6px var(--charge); }
+.charge-row { margin-top: 4px; padding: 8px 10px; border-radius: var(--r-sm); background: color-mix(in srgb, var(--charge) 10%, transparent); }
+@keyframes charge-spin { to { --spin: 360deg; } }
+@keyframes arc-run { to { stroke-dashoffset: -276; } }
+@keyframes arc-flicker { 0%, 100% { opacity: 1; } 35% { opacity: .35; } 60% { opacity: .9; } 80% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .cell.charged::before, .cell .arcs path, .cell .bolt { animation: none; } }
 /* Dock Yard: big tabs and the "new" spotlight */
 .new-pill { font-size: 9.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; background: var(--dot, var(--accent)); color: #fff; margin-left: 6px; }
 .dy-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 10px; }
@@ -226,7 +253,8 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .dy-spot .btn.ghost { color: #fff; }
 /* ship library */
 .ship-bar { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: center; margin-bottom: 10px; }
-.ship-bar #libQ { flex: 1 1 240px; min-width: 200px; }
+.dy-search { width: min(340px, 100%); align-self: center; }
+.ship-bar { justify-content: flex-start; }
 .ship-bar select { width: auto; }
 .lib-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
 .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--well); flex-wrap: wrap; }
@@ -2556,19 +2584,47 @@ function invGroup(el, list) {
   bar.onclick = (e) => { const b = e.target.closest('button'); if (!b) return; show(b.dataset.t); try { localStorage.setItem('hse-invtab', b.dataset.t); } catch (_) {} };
   show(pick);
 }
+// ---- supercharged slots: SpecialSlots entries of type TechBonus in a technology inventory
+const canCharge = (inv) => isInv(inv) && kOf(inv, 'SpecialSlots') != null && (inv === g(ps(), 'Inventory_TechOnly') || ships().some(({ s }) => g(s, 'Inventory_TechOnly') === inv));
+const chargeKey = (e) => num(g(e, 'Index', 'X')) + ',' + num(g(e, 'Index', 'Y'));
+const isBonus = (e) => str(g(e, 'Type', 'InventorySpecialSlotType')) === 'TechBonus';
+function chargedSet(inv) { const out = new Set(); for (const e of (isInv(inv) && g(inv, 'SpecialSlots')) || []) if (isBonus(e)) out.add(chargeKey(e)); return out; }
+function setCharged(inv, keys, on) {
+  const arr = g(inv, 'SpecialSlots'); if (!Array.isArray(arr)) return 0;
+  const have = chargedSet(inv); let n = 0;
+  if (on) for (const k of keys) {
+    if (have.has(k)) continue;
+    const [x, y] = k.split(',').map(Number), t = new Map(), m = new Map();
+    t.set(keyFor('InventorySpecialSlotType'), 'TechBonus'); m.set(keyFor('Type'), t); m.set(keyFor('Index'), coord(x, y)); arr.push(m); n++;
+  }
+  else for (let i = arr.length - 1; i >= 0; i--) if (isBonus(arr[i]) && keys.has(chargeKey(arr[i]))) { arr.splice(i, 1); n++; }
+  if (n) markDirty(); return n;
+}
+// lightning around a supercharged slot: two jagged arcs, different for every slot, crackling along the edge
+function boltArcs(x, y) {
+  let seed = (x * 73856093) ^ (y * 19349663) ^ 0x5bd1e995; const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
+  const path = () => {
+    const pts = [], step = 7, i = 3, o = 97;
+    for (let t = i; t < o; t += step) pts.push([t, i]); for (let t = i; t < o; t += step) pts.push([o, t]);
+    for (let t = o; t > i; t -= step) pts.push([t, o]); for (let t = o; t > i; t -= step) pts.push([i, t]);
+    return 'M' + pts.map(([px, py]) => [(px + (rnd() - .5) * 5).toFixed(1), (py + (rnd() - .5) * 5).toFixed(1)].join(' ')).join(' L') + ' Z';
+  };
+  return `<svg class="arcs" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="a1" d="${path()}"/><path class="a2" d="${path()}"/></svg><span class="bolt" aria-hidden="true"></span>`;
+}
 function invBlock(el, inv, title, peers) {
   if (!isInv(inv)) return;
   const w = Math.max(1, num(g(inv, 'Width'))), h = Math.max(1, num(g(inv, 'Height')));
   const valid = validSet(inv);
   const items = new Map(); slotsOf(inv).forEach((s) => { const [x, y] = posOf(s); items.set(x + ',' + y, s); });
-  const cls = invClass(inv);
+  const cls = invClass(inv), charged = chargedSet(inv), chargeable = canCharge(inv);
   const block = document.createElement('section'); block.className = 'inv';
   const selHere = S.sel && S.sel.inv === inv;
   let cells = '';
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const key = x + ',' + y, s = items.get(key), ok = valid.has(key);
     const sel = selHere && S.sel.keys.has(key) ? ' sel' : '';
-    if (!s) { cells += `<button class="cell${ok ? '' : ' locked'}${sel}" data-x="${x}" data-y="${y}" aria-label="${ok ? 'Empty slot' : 'Locked slot'} ${x + 1},${y + 1}"></button>`; continue; }
+    const ch = charged.has(key), zap = ch ? boltArcs(x, y) : '', chs = ch ? ' charged' : '';
+    if (!s) { cells += `<button class="cell${ok ? '' : ' locked'}${chs}${sel}" data-x="${x}" data-y="${y}" aria-label="${ok ? 'Empty slot' : 'Locked slot'} ${x + 1},${y + 1}${ch ? ', supercharged' : ''}">${zap}</button>`; continue; }
     const id = idOf(s), t = typeOf(s), info = dbItem(id);
     const amt = num(g(s, 'Amount')), mx = num(g(s, 'MaxAmount'));
     const dmg = num(g(s, 'DamageFactor')) > 0 || g(s, 'FullyInstalled') === false;
@@ -2576,7 +2632,7 @@ function invBlock(el, inv, title, peers) {
     const name = info ? info.name : idLabel(id);
     const qty = t !== 'Technology' && amt >= 0 ? compactNum(amt) + (mx > 0 ? '/' + compactNum(mx) : '') : '';
     const icon = info && info.icon;
-    cells += `<button class="cell has t-${esc(t)}${dmg ? ' damaged' : ''}${S.db && !icon ? ' no-icon' : ''}${sel}" data-x="${x}" data-y="${y}" title="${esc(name)}${qty ? ' · ' + qty : ''}${info ? '' : '\n' + esc(idLabel(id))}" aria-label="${esc(name)}${qty ? ', ' + qty : ''}">`
+    cells += `<button class="cell has t-${esc(t)}${dmg ? ' damaged' : ''}${S.db && !icon ? ' no-icon' : ''}${chs}${sel}" data-x="${x}" data-y="${y}" title="${esc(name)}${qty ? ' · ' + qty : ''}${ch ? ' · supercharged' : ''}${info ? '' : '\n' + esc(idLabel(id))}" aria-label="${esc(name)}${qty ? ', ' + qty : ''}${ch ? ', supercharged' : ''}">${zap}`
       + (S.db
         // Goatfungus-style: icon, name, then amount/max
         ? (icon ? `<img data-icon="${esc(icon)}" alt="">` : '') + `<span class="nm${info ? '' : ' raw'}"><span>${esc(name)}</span></span>` + (qty ? `<span class="qty">${qty}</span>` : '')
@@ -2584,15 +2640,15 @@ function invBlock(el, inv, title, peers) {
       + (pct ? `<span class="fill" style="width:${pct}%"></span>` : '') + '</button>';
   }
   block.innerHTML = `<div class="inv-head"><h3>${esc(title)} ${cls ? `<span class="badge cls-${esc(cls)}">${esc(cls)}</span>` : ''}</h3>
-      <span class="cap">${plural(items.size, 'item')}, ${valid.size} of ${w * h} slots unlocked</span>
+      <span class="cap">${plural(items.size, 'item')}, ${valid.size} of ${w * h} slots unlocked${charged.size ? `, ${charged.size} supercharged` : ''}</span>
       <div class="toolbar">
-        <button class="btn small" data-act="unlock">Unlock all slots</button>
+        <button class="btn small" data-act="unlock">Unlock all slots</button>${chargeable ? '<button class="btn small charge-btn" data-act="charge"><span class="bolt-ico" aria-hidden="true"></span>Supercharge slots</button>' : ''}
         <button class="btn small" data-act="refill">Fill stacks</button>
         <button class="btn small" data-act="repair">Repair</button>
         <button class="btn small ghost" data-act="settings">Size and class</button>
       </div></div>
     <div class="inv-wrap"><div><div class="grid${S.db ? ' named' : ''}" style="--w:${w}">${cells}</div>
-      <div class="legend"><span><i style="background:var(--substance)"></i>Substance</span><span><i style="background:var(--product)"></i>Product</span><span><i style="background:var(--technology)"></i>Technology</span><span><i style="background:var(--danger)"></i>Damaged</span><span><i style="background:var(--accent)"></i>Stack or charge level</span><span class="hint">Ctrl-click or Shift-click to select several</span></div></div>
+      <div class="legend"><span><i style="background:var(--substance)"></i>Substance</span><span><i style="background:var(--product)"></i>Product</span><span><i style="background:var(--technology)"></i>Technology</span><span><i style="background:var(--danger)"></i>Damaged</span><span><i style="background:var(--accent)"></i>Stack or charge level</span>${charged.size || chargeable ? '<span><i class="lg-charge"></i>Supercharged</span>' : ''}<span class="hint">Ctrl-click or Shift-click to select several</span></div></div>
       <div class="insp-slot"></div></div>`;
   el.appendChild(block);
   loadIcons(block);
@@ -2629,6 +2685,14 @@ function invBlock(el, inv, title, peers) {
       for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (!have.has(x + ',' + y)) { arr.push(coord(x, y)); n++; }
       if (n) markDirty(); toast(n ? n + ' slots unlocked' : 'All slots already unlocked');
     }
+    if (a === 'charge') {
+      const all = [...validSet(inv)], have = chargedSet(inv);
+      const v = await dialog('Supercharge slots', `<p>Supercharged slots boost the technology installed in them. The game gives each exosuit and starship a few at random; here you can supercharge every unlocked slot (${all.length}) at once.</p>
+        <p class="dim">${have.size ? `${plural(have.size, 'slot is', 'slots are')} supercharged now.` : 'No slots are supercharged now.'} To pick slots one by one, select them (Ctrl-click or Shift-click) and use Supercharge in the side panel. Nothing is written to your game until you save.</p>`,
+        [['Cancel', null, 'ghost'], ...(have.size ? [['Remove all', 'off', 'danger']] : []), ['Supercharge every slot', 'on', 'primary']]);
+      if (v === 'on') { const n = setCharged(inv, new Set(all), true); toast(n ? plural(n, 'slot') + ' supercharged' : 'Every slot is already supercharged'); }
+      if (v === 'off') { const n = setCharged(inv, have, false); toast(plural(n, 'slot') + ' no longer supercharged'); }
+    }
     if (a === 'refill') { let n = 0; slotsOf(inv).forEach((s) => { if (refill(s)) n++; }); toast(n + ' stacks filled'); }
     if (a === 'repair') { let n = 0; slotsOf(inv).forEach((s) => { if (repair(s)) n++; }); toast(n + ' items repaired'); }
     if (a === 'settings') { await invSettings(inv); }
@@ -2648,6 +2712,7 @@ function bulkInspector(box, inv, title, peers, rerender) {
       <div class="sub">${plural(picked.length, 'item')}${locked.length ? ', ' + locked.length + ' locked' : ''}${keys.size - picked.length - locked.length > 0 ? ', ' + (keys.size - picked.length - locked.length) + ' empty' : ''}</div></div>
     ${picked.length ? `<div class="toolbar"><button class="btn small" data-b="fill">${isTech ? 'Recharge' : 'Fill stacks'}</button><button class="btn small" data-b="fix">Repair</button><button class="btn small danger" data-b="del">Remove ${plural(picked.length, 'item')}</button></div>` : ''}
     ${locked.length ? `<div class="toolbar"><button class="btn small" data-b="unlock">Unlock ${plural(locked.length, 'slot')}</button></div>` : ''}
+    ${canCharge(inv) ? `<div class="toolbar"><button class="btn small charge-btn" data-b="charge"><span class="bolt-ico" aria-hidden="true"></span>Supercharge</button><button class="btn small" data-b="uncharge">Remove supercharge</button></div>` : ''}
     ${picked.length && targets.length ? `<div class="row"><label class="field"><span>Move to</span><select class="input" id="bTo">${targets.map(([, t], i) => `<option value="${i}">${esc(t)}</option>`).join('')}</select></label><button class="btn" data-b="move">Move</button></div>` : ''}
     <p class="dim small-print">Ctrl-click adds or removes a slot, Shift-click selects a range, Ctrl+A selects the whole inventory. Esc clears.</p>`;
   box.appendChild(panel);
@@ -2663,6 +2728,8 @@ function bulkInspector(box, inv, title, peers, rerender) {
     if (act === 'fill') { const n = picked.filter(refill).length; toast(plural(n, isTech ? 'module' : 'stack') + (isTech ? ' recharged' : ' filled')); }
     if (act === 'fix') { const n = picked.filter(repair).length; toast(plural(n, 'item') + ' repaired'); }
     if (act === 'unlock') { const arr = g(inv, 'ValidSlotIndices'); locked.forEach((k) => { const [x, y] = k.split(',').map(Number); arr.push(coord(x, y)); }); toast(plural(locked.length, 'slot') + ' unlocked'); }
+    if (act === 'charge') { const n = setCharged(inv, keys, true); toast(n ? plural(n, 'slot') + ' supercharged' : 'Already supercharged'); rerender(); return; }
+    if (act === 'uncharge') { const n = setCharged(inv, keys, false); toast(plural(n, 'slot') + ' no longer supercharged'); rerender(); return; }
     if (act === 'del') { const arr = slotsOf(inv); picked.forEach((s) => arr.splice(arr.indexOf(s), 1)); toast(plural(picked.length, 'item') + ' removed'); }
     if (act === 'move') { moveSlots(inv, picked, targets[+panel.querySelector('#bTo').value]); return; }
     markDirty(); rerender();
@@ -2770,6 +2837,16 @@ async function invSettings(inv) {
 }
 
 function inspector(box, inv, x, y, rerender) {
+  inspectorBody(box, inv, x, y, rerender);
+  const key = x + ',' + y, panel = box.querySelector('.inspector');
+  if (panel && canCharge(inv) && validSet(inv).has(key)) {
+    const on = chargedSet(inv).has(key), row = document.createElement('label'); row.className = 'check charge-row';
+    row.innerHTML = `<input type="checkbox"${on ? ' checked' : ''}> <span class="bolt-ico" aria-hidden="true"></span>Supercharged slot`;
+    row.querySelector('input').onchange = (e) => { setCharged(inv, new Set([key]), e.target.checked); rerender(); };
+    panel.appendChild(row);
+  }
+}
+function inspectorBody(box, inv, x, y, rerender) {
   const s = slotAt(inv, x, y);
   const valid = validSet(inv).has(x + ',' + y);
   box.innerHTML = '';
@@ -3354,16 +3431,17 @@ const DY_ICONS = {
   fav: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"/></svg>',
 };
 const DY_TABS = [
-  ['library', 'Ship storage', 'Ships you keep on purpose: imported files and ships you save from your game.'],
   ['garage', 'Garage', 'A copy of every ship from every save you open, made automatically. Nothing is ever lost.'],
+  ['library', 'Ship storage', 'Ships you keep on purpose: imported files and ships you save from your game.'],
   ['fav', 'Favourites', 'The ships you star, from anywhere in the Dock Yard.'],
 ];
 PAGES.library = (el) => {
   try { localStorage.setItem('hse-dockyard-seen', '1'); } catch (_) {}
   const pill = document.querySelector('nav [data-s="library"] .new-pill'); if (pill) pill.remove();
-  el.innerHTML = `<div class="page-head"><div><h1>Dock Yard</h1><p>Every ship you own, build or download, in one place. Store them, keep every version, and move ships and corvettes into any save.</p></div></div>`;
-  if (!APP) { el.insertAdjacentHTML('beforeend', '<p class="dim">The Dock Yard keeps ship files on your PC, so it is part of the desktop app.</p>'); return; }
   const L = S.shipLib || (S.shipLib = { q: '', src: 'library', type: 'all', tag: '', fav: false, shown: 60 });
+  el.innerHTML = `<div class="page-head"><div><h1>Dock Yard</h1><p>Every ship you own, build or download, in one place. Store them, keep every version, and move ships and corvettes into any save.</p></div>${APP ? `<input class="input dy-search" id="libQ" type="search" placeholder="Search names, tags and notes" aria-label="Search the Dock Yard" value="${esc(L.q)}">` : ''}</div>`;
+  if (!APP) { el.insertAdjacentHTML('beforeend', '<p class="dim">The Dock Yard keeps ship files on your PC, so it is part of the desktop app.</p>'); return; }
+  const head = el.querySelector('.page-head');
   const tabs = document.createElement('div'); tabs.className = 'dy-tabs'; tabs.setAttribute('role', 'tablist');
   const isOn = (v) => (v === 'fav' ? L.fav : !L.fav && L.src === v);
   tabs.innerHTML = DY_TABS.map(([v, t, d]) => `<button type="button" role="tab" class="dy-tab" data-v="${v}" aria-selected="${isOn(v)}"><span class="dy-ico">${DY_ICONS[v]}</span><span class="dy-txt"><b>${t}</b><span class="dy-n" data-n="${v}">…</span><span class="dy-d">${d}</span></span></button>`).join('');
@@ -3372,8 +3450,7 @@ PAGES.library = (el) => {
   sub.innerHTML = `<button type="button" class="link" data-v="all"${isOn('all') ? ' aria-current="true"' : ''}>All ships</button><button type="button" class="link" data-v="linked"${isOn('linked') ? ' aria-current="true"' : ''}>Linked folders <span data-n="linked"></span></button><button type="button" class="link" id="libFolders">Manage folders</button>`;
   el.appendChild(sub);
   const bar = document.createElement('div'); bar.className = 'ship-bar';
-  bar.innerHTML = `<input class="input" id="libQ" type="search" placeholder="Search names, tags and notes" value="${esc(L.q)}">
-    <select class="input" id="libType"><option value="all">All types</option></select>
+  bar.innerHTML = `<select class="input" id="libType"><option value="all">All types</option></select>
     <select class="input" id="libTag"><option value="">All tags</option></select>
     <span class="lib-acts"><label class="btn small">Import files<input type="file" id="libImport" multiple accept=".json,.txt,.nmsship,.so" hidden></label>${S.save ? '<button class="btn small" id="libAddSave" type="button">Add this save\'s ships</button>' : ''}<button class="btn small" id="libRender" type="button">Render corvettes</button><button class="btn small ghost" id="libRenderCfg" type="button" title="Blender and Charon Forge">Cover settings</button></span>`;
   el.appendChild(bar);
@@ -3425,7 +3502,7 @@ PAGES.library = (el) => {
       more.innerHTML = list.length > L.shown ? `<button class="btn" type="button">Show ${Math.min(60, list.length - L.shown)} more</button>` : '';
       if (more.firstChild) more.firstChild.onclick = () => { L.shown += 60; show(); };
     };
-    $('#libQ', bar).oninput = (e) => { L.q = e.target.value; L.shown = 60; show(); };
+    $('#libQ', head).oninput = (e) => { L.q = e.target.value; L.shown = 60; show(); };
     $('#libType', bar).onchange = (e) => { L.type = e.target.value; show(); };
     $('#libTag', bar).onchange = (e) => { L.tag = e.target.value; show(); };
     show();
