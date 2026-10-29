@@ -186,7 +186,15 @@ nav .count { font-family: var(--mono); font-size: 11px; color: var(--faint); }
 .inv-head { display: flex; gap: 10px 16px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
 .inv-head h3 { margin-right: auto; display: flex; gap: 10px; align-items: center; font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
 .inv-head .cap { font-size: 12.5px; color: var(--dim); }
-.inv-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 22px; align-items: start; }
+.inv-wrap { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; }
+/* the selected slot's details float over the page, on whichever side keeps the slot in view */
+.insp-slot:empty { display: none; }
+.insp-slot { position: fixed; top: 16px; right: 16px; width: min(330px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; z-index: 40; border-radius: var(--r-lg); box-shadow: 0 18px 50px rgba(0, 0, 0, .28); animation: insp-in .18s ease-out; }
+.insp-slot.left { right: auto; left: 16px; }
+.insp-slot .inspector { position: static; padding-top: 22px; }
+.insp-close { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; border: 0; background: none; color: var(--dim); font-size: 18px; line-height: 1; cursor: pointer; z-index: 1; }
+.insp-close:hover { background: var(--hover); color: var(--ink); }
+@keyframes insp-in { from { opacity: 0; transform: translateY(-6px); } }
 .inv-wrap > div { min-width: 0; }
 .grid { display: grid; gap: 6px; grid-template-columns: repeat(var(--w), minmax(46px, 74px)); padding: 12px; background: var(--well); border-radius: var(--r-lg); width: max-content; max-width: 100%; }
 .cell { position: relative; aspect-ratio: 1; border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--field); cursor: pointer; padding: 0; overflow: hidden; display: grid; place-items: center; transition: border-color .12s; }
@@ -203,17 +211,19 @@ nav .count { font-family: var(--mono); font-size: 11px; color: var(--faint); }
 .cell .amt { position: absolute; right: 4px; bottom: 6px; font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--ink); pointer-events: none; }
 .cell.has img ~ .amt { color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .8); }
 .cell .fill { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--accent); pointer-events: none; }
-.grid.named { grid-template-columns: repeat(var(--w), minmax(66px, 92px)); }
-.grid.named .cell { aspect-ratio: 5 / 6; }
-.grid.named .cell.has { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px 6px; }
+.grid.named { width: 100%; max-width: calc(var(--w) * 132px + (var(--w) - 1) * 6px + 24px); grid-template-columns: repeat(var(--w), minmax(0, 1fr)); }
+.grid.named .cell { aspect-ratio: 10 / 11; }
+.grid.named .cell.has { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 5px 7px; }
 /* icon fills the space above; name (always two lines tall) and amount sit at fixed spots at the bottom */
-.grid.named .cell img { width: 54%; height: auto; aspect-ratio: 1; flex: none; margin: auto 0; }
+.grid.named .cell img { width: 56%; height: auto; aspect-ratio: 1; flex: none; margin: auto 0; }
 .grid.named .cell .nm, .grid.named .cell .qty { flex: none; max-width: 100%; }
-.grid.named .cell .nm { height: 2.3em; }
+.grid.named .cell .nm { width: 100%; height: 26px; display: flex; align-items: flex-end; justify-content: center; }
 .grid.named .cell.no-icon .nm { margin-top: auto; }
-.cell .nm { font-weight: 500; font-size: 10px; line-height: 1.15; text-align: center; color: var(--ink); overflow-wrap: break-word; hyphens: auto; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; pointer-events: none; }
-.cell .nm.raw { font-family: var(--mono); font-size: 9px; color: var(--dim); }
-.cell .qty { font-family: var(--mono); font-size: 9.5px; font-weight: 600; color: var(--dim); pointer-events: none; }
+/* names stay on one line, shrinking to fit (fitNames); a name too long even then wraps between words, never inside one */
+.cell .nm { font-weight: 500; font-size: 11px; line-height: 1.15; text-align: center; color: var(--ink); white-space: nowrap; overflow: hidden; pointer-events: none; }
+.cell .nm.two { white-space: normal; word-break: keep-all; overflow-wrap: normal; }
+.cell .nm.raw { font-family: var(--mono); font-size: 9px; color: var(--dim); white-space: normal; word-break: break-all; }
+.cell .qty { font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--dim); pointer-events: none; }
 .db-form { margin: 14px 0 12px; }
 .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 11.5px; color: var(--dim); margin-top: 12px; }
 .legend i { display: inline-block; width: 12px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
@@ -312,7 +322,7 @@ dialog.wide { max-width: 1000px; }
 .hangar-detail .stats span { font-size: 11.5px; color: var(--dim); }
 .hangar-detail .acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: start; }
 @media (max-width: 760px) { .hangar-detail { grid-template-columns: 1fr; } .hangar-detail .acts { justify-content: start; } }
-@media (max-width: 1100px) { .inv-wrap { grid-template-columns: minmax(0, 1fr); } .inspector { position: static; } }
+@media (max-width: 1100px) { .inspector { position: static; } }
 @media (max-width: 760px) {
   #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; height: auto; min-height: 100%; }
   #side { border-right: 0; border-bottom: 1px solid var(--line); }
@@ -1560,6 +1570,7 @@ function invBlock(el, inv, title) {
       <div class="insp-slot"></div></div>`;
   el.appendChild(block);
   loadIcons(block);
+  watchNames(block.querySelector('.grid.named'));
   block.querySelector('.grid').onclick = (e) => {
     const c = e.target.closest('.cell'); if (!c) return;
     S.sel = { inv, x: +c.dataset.x, y: +c.dataset.y };
@@ -1582,6 +1593,48 @@ function invBlock(el, inv, title) {
   });
   if (selHere) inspector(block.querySelector('.insp-slot'), inv, S.sel.x, S.sel.y, () => rerenderBlock(block, inv, title));
 }
+function closeInspector() {
+  S.sel = null;
+  document.querySelectorAll('.cell.sel').forEach((n) => n.classList.remove('sel'));
+  document.querySelectorAll('.insp-slot').forEach((n) => { n.innerHTML = ''; });
+}
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.sel && !document.querySelector('dialog[open]')) closeInspector(); });
+
+// Fit item names on one line by shrinking them a little; if a name still won't fit, wrap it onto two
+// lines between words (never inside a word). Measured with a canvas so it costs no layout passes.
+const fitCtx = document.createElement('canvas').getContext('2d');
+function fitNames(grid) {
+  const nms = grid.querySelectorAll('.nm:not(.raw)'); if (!nms.length) return;
+  const avail = (nms[0].clientWidth - 2) * .95; if (avail <= 0) return; // a little slack: canvas and page text measure slightly differently
+  fitCtx.font = '500 100px ' + getComputedStyle(nms[0]).fontFamily;
+  const memo = new Map(), wid = (t) => { if (!memo.has(t)) memo.set(t, fitCtx.measureText(t).width); return memo.get(t); };
+  const BASE = 11, MIN1 = 8, MIN2 = 7;
+  const lines = (words, fs) => {
+    const k = fs / 100, sp = wid(' ') * k; let line = 0, n = 1;
+    for (const w of words) { const ww = wid(w) * k; if (ww > avail) return Infinity; if (!line) line = ww; else if (line + sp + ww <= avail) line += sp + ww; else { n++; line = ww; } }
+    return n;
+  };
+  for (const n of nms) {
+    const text = n.textContent;
+    const one = Math.floor(Math.min(BASE, (avail * 100) / wid(text)) * 4) / 4;
+    if (one >= MIN1) { n.style.fontSize = one + 'px'; n.classList.remove('two'); continue; }
+    const words = text.split(/\s+/); let fs = 9.5; // two-line names stay near the size of the shrunk one-liners
+    while (fs > MIN2 && lines(words, fs) > 2) fs -= .25;
+    n.style.fontSize = fs + 'px'; n.classList.add('two');
+  }
+  // safety net: anything that still spills over gets nudged down (one layout read for the lot)
+  for (const n of [...nms].filter((n) => n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 1)) {
+    let fs = parseFloat(n.style.fontSize) || BASE;
+    while (fs > MIN2 && (n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 1)) { fs -= .25; n.style.fontSize = fs + 'px'; }
+  }
+}
+const nameObserver = typeof ResizeObserver === 'function' ? new ResizeObserver((es) => es.forEach((e) => fitNames(e.target))) : null;
+function watchNames(grid) {
+  if (!grid) return;
+  if (nameObserver) nameObserver.observe(grid);
+  if (document.fonts) document.fonts.ready.then(() => { if (grid.isConnected) fitNames(grid); });
+}
+
 function rerenderBlock(block, inv, title) { const tmp = document.createElement('div'); invBlock(tmp, inv, title); block.replaceWith(tmp.firstElementChild); }
 
 async function invSettings(inv) {
@@ -1602,6 +1655,13 @@ function inspector(box, inv, x, y, rerender) {
   box.innerHTML = '';
   const panel = document.createElement('div'); panel.className = 'inspector';
   box.appendChild(panel);
+  const close = document.createElement('button'); close.className = 'insp-close'; close.setAttribute('aria-label', 'Close'); close.textContent = '×';
+  close.onclick = closeInspector; box.appendChild(close);
+  requestAnimationFrame(() => { // after the block is on the page
+    const cell = box.closest('.inv') && box.closest('.inv').querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
+    const r = cell && cell.getBoundingClientRect();
+    box.classList.toggle('left', !!r && r.right > innerWidth - 370);
+  });
   if (!valid && !s) {
     panel.innerHTML = `<div class="title">Locked slot</div><p class="dim" style="margin:0">Column ${x + 1}, row ${y + 1}. Unlock it to place items here.</p><button class="btn" id="unl">Unlock this slot</button>`;
     panel.querySelector('#unl').onclick = () => { g(inv, 'ValidSlotIndices').push(coord(x, y)); markDirty(); rerender(); };
