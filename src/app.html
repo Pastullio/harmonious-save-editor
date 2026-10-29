@@ -234,6 +234,35 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .rw-desc { margin: 6px 0 12px; font-size: 13.5px; }
 .rw-row { grid-template-columns: 20px 28px minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); cursor: pointer; }
 .rw-row:hover { background: var(--hover); }
+/* ship slots */
+.slots summary { display: flex; gap: 12px; align-items: center; cursor: pointer; list-style: none; }
+.slots summary::-webkit-details-marker { display: none; }
+.slots summary .k { font-size: 11px; font-weight: 500; letter-spacing: .22em; text-transform: uppercase; }
+.slots summary::after { content: ""; width: 8px; height: 8px; border-right: 2px solid var(--dim); border-bottom: 2px solid var(--dim); transform: rotate(45deg); margin: -4px 4px 0 0; transition: transform .2s; }
+.slots[open] summary::after { transform: rotate(225deg); margin-top: 4px; }
+.slots-bad { font-size: 12.5px; font-weight: 600; color: var(--danger); }
+.slots-hint { font-size: 12.5px; }
+.slot-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
+@media (max-width: 1100px) { .slot-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .slot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.slot-tile { position: relative; display: grid; gap: 3px; align-content: start; text-align: left; min-height: 92px; padding: 10px 12px 10px 12px; border-radius: var(--r); border: 1px solid var(--line); background: var(--field); color: var(--ink); font: inherit; cursor: grab; }
+.slot-tile b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 22px; }
+.slot-tile .dim { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slot-tile.empty { border-style: dashed; background: transparent; cursor: pointer; }
+.slot-tile:hover, .slot-tile.over { border-color: var(--accent); }
+.slot-tile.over { box-shadow: 0 0 0 3px var(--accent-soft); }
+.slot-tile.picked { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+.slot-tile.dragging { opacity: .45; }
+.slot-n { position: absolute; top: 8px; right: 10px; font: 500 11px/1 var(--mono); color: var(--faint); }
+.slot-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.slot-tags i { font-style: normal; font-size: 10.5px; font-weight: 500; letter-spacing: .06em; padding: 2px 7px; border-radius: 999px; background: var(--well); color: var(--dim); }
+.slot-tags i.cur { background: var(--accent); color: var(--accent-ink); }
+.slot-tags i.bad { background: color-mix(in srgb, var(--danger) 18%, transparent); color: var(--danger); }
+.slot-issues h3 { margin: 16px 0 10px; }
+.slot-issues ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.slot-issues li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px 10px; align-items: start; padding: 10px 12px; border-radius: var(--r-sm); background: var(--well); }
+.slot-issues li .sw-ic { background: var(--danger); margin-top: 1px; } .slot-issues li .sw-ic::after { content: "!"; }
+.slot-issues .fixes { grid-column: 2; display: flex; gap: 6px; flex-wrap: wrap; }
 /* plain editors */
 .ed-tabs { margin-bottom: 16px; }
 .ed-tabs .n { font-family: var(--mono); letter-spacing: 0; opacity: .7; margin-left: 4px; }
@@ -1337,8 +1366,9 @@ PAGES.exosuit = (el) => {
   invGroup(el, standardInvs(p, ''));
 };
 
-function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, nameKey, flow, picture, details }) {
+function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, nameKey, flow, picture, details, top }) {
   el.innerHTML = `<div class="page-head"><div><h1>${title}</h1><p>${intro}</p></div></div>`;
+  if (top) top(el);
   if (!list.length) { el.insertAdjacentHTML('beforeend', '<p class="dim">Nothing owned here yet.</p>'); return; }
   const primary = primaryKey ? num(g(ps(), primaryKey)) : -1;
   if (S.pick[key] == null || !list.some((x) => x.i === S.pick[key])) S.pick[key] = (list.find((x) => x.i === primary) || list[0]).i;
@@ -1379,10 +1409,10 @@ function wireSeed(panel, s) {
 }
 
 PAGES.ships = (el) => ownedPage(el, {
-  title: 'Starships', intro: 'Rename ships, change seeds, and manage each ship\'s inventories.', list: ships(), key: 'ship', primaryKey: 'PrimaryShip', nameKey: 'Name', flow: 'ship',
+  title: 'Starships', intro: 'Rename ships, change seeds, arrange and repair ship slots, and manage each ship\'s inventories.', list: ships(), key: 'ship', primaryKey: 'PrimaryShip', nameKey: 'Name', flow: 'ship',
   label: (s, i) => str(g(s, 'Name')) || 'Ship ' + (i + 1), sub: (s) => [modelName(g(s, 'Resource', 'Filename')), invClass(g(s, 'Inventory'))].filter(Boolean).join(', ') + ' class',
   invs: (s) => standardInvs(s, ''),
-  details: (ed, s, i) => entityDetails(ed, s, i, 'ship'),
+  details: (ed, s, i) => entityDetails(ed, s, i, 'ship'), top: shipSlotsPanel,
 });
 PAGES.tools = (el) => ownedPage(el, {
   title: 'Multi-tools', intro: 'Each multi-tool has a single store for its technology.', list: tools(), key: 'tool', primaryKey: 'ActiveMultioolIndex', nameKey: 'Name', flow: 'tool',
@@ -3877,13 +3907,14 @@ function starterObjects(sample) {
     Position: pos.map(f), Up: [f(0), f(1), f(0)], At: [f(0), f(0), f(1)] })));
   return inGameOrder(objs, sample);
 }
-function addCorvette(slot) {
-  const p = ps(), list = g(p, 'ShipOwnership'), bases = g(p, 'PersistentPlayerBases');
+// a corvette ship entry in a slot, copied from a ship already in the save so it has the game's shape
+function makeCorvetteShip(slot, name) {
+  const p = ps(), list = g(p, 'ShipOwnership');
   const isCorv = (s) => /\/BIGGS\//i.test(str(g(s, 'Resource', 'Filename')));
   const tpl = list.find(isCorv) || list.find((s) => str(g(s, 'Resource', 'Filename')) && isInv(g(s, 'Inventory_TechOnly')));
   if (!tpl) throw new Error('This save has no ship to copy the layout from.');
   const ent = cloneJSON(tpl);
-  set(ent, 'Name', 'New corvette');
+  set(ent, 'Name', name || 'New corvette');
   set(g(ent, 'Resource'), 'Filename', 'MODELS/COMMON/SPACECRAFT/BIGGS/BIGGS.SCENE.MBIN');
   const sd = g(g(ent, 'Resource'), 'Seed'); if (Array.isArray(sd)) { sd[0] = true; sd[1] = randomSeed(); }
   for (const k of ['Inventory', 'Inventory_Cargo', 'Inventory_TechOnly']) {
@@ -3892,7 +3923,12 @@ function addCorvette(slot) {
     const c = g(inv, 'Class'); if (c instanceof Map) set(c, 'InventoryClass', 'C');
   }
   list[slot] = ent;
-  const legacy = g(p, 'ShipUsesLegacyColours'); if (Array.isArray(legacy)) legacy[slot] = false;
+  const legacy = g(p, 'ShipUsesLegacyColours'); if (Array.isArray(legacy) && slot < legacy.length) legacy[slot] = false;
+  markDirty();
+}
+// a starter build for the corvette in a slot (replacing any build already pointing there)
+function makeStarterBase(slot, name) {
+  const p = ps(), bases = g(p, 'PersistentPlayerBases');
   // the build: a copy of an existing corvette base (or any base) for the game's layout, with the starter parts
   const shipBases = bases.filter((b) => str(g(b, 'BaseType', 'PersistentBaseTypes')) === 'PlayerShipBase');
   const old = shipBases.filter((b) => num(g(b, 'UserData')) === slot); old.forEach((b) => bases.splice(bases.indexOf(b), 1));
@@ -3903,12 +3939,117 @@ function addCorvette(slot) {
     UserData: N(slot), LastUpdateTimestamp: N(0), RID: '', Owner: mapOf({ LID: '', UID: '', USN: '', PTK: '', TS: N(0) }), Name: '', BaseType: mapOf({ PersistentBaseTypes: 'PlayerShipBase' }),
     LastEditedById: '', LastEditedByUsername: '', ScreenshotAt: [N('0.0'), N('0.0'), N('0.0')], ScreenshotPos: [N('0.0'), N('0.0'), N('0.0')], GameMode: mapOf({ PresetGameMode: 'Normal' }),
     Difficulty: mapOf({ DifficultyPreset: mapOf({ DifficultyPresetType: 'Custom' }), PersistentBaseDifficultyFlags: N(0) }), PlatformToken: '', IsReported: false, IsFeatured: false, AutoPowerSetting: mapOf({ BaseAutoPowerSetting: 'UseDefault' }), Objects: [] }));
-  set(nb, 'UserData', N(slot)); set(nb, 'Name', 'New corvette'); set(nb, 'LastUpdateTimestamp', N(Math.floor(Date.now() / 1000)));
+  set(nb, 'UserData', N(slot)); set(nb, 'Name', name || 'New corvette'); set(nb, 'LastUpdateTimestamp', N(Math.floor(Date.now() / 1000)));
   if (kOf(nb, 'LastEditedById') != null) set(nb, 'LastEditedById', ''); if (kOf(nb, 'LastEditedByUsername') != null) set(nb, 'LastEditedByUsername', '');
   if (owner && owner !== nb) set(nb, 'Owner', cloneJSON(g(owner, 'Owner')));
   set(nb, 'Objects', starterObjects(((btpl && g(btpl, 'Objects')) || [])[0]));
   bases.push(nb);
   markDirty();
+}
+function addCorvette(slot) { makeCorvetteShip(slot); makeStarterBase(slot); }
+
+// ---------------------------------------------------------------- ship slots: arrange and repair
+// A ship's slot index ties together its ShipOwnership entry, ShipUsesLegacyColours, its CharacterCustomisationData
+// entry (shipCcdIndex), its corvette build (PlayerShipBase UserData), PrimaryShip and CorvetteEditAssociatedShipIndex.
+// arrangeShips moves all of them together. order[newSlot] = oldSlot.
+const shipBuilds = () => (g(ps(), 'PersistentPlayerBases') || []).filter((b) => str(g(b, 'BaseType', 'PersistentBaseTypes')) === 'PlayerShipBase');
+const slotHasShip = (s) => !!str(g(s, 'Resource', 'Filename'));
+const slotIsCorvette = (s) => /\/BIGGS\//i.test(str(g(s, 'Resource', 'Filename')));
+function arrangeShips(order) {
+  const p = ps(), list = g(p, 'ShipOwnership'), n = list.length;
+  if (order.length !== n || new Set(order).size !== n || order.some((o) => !(o >= 0 && o < n))) throw new Error('Not a valid slot order');
+  const toNew = new Array(n); order.forEach((o, k) => { toNew[o] = k; });
+  const old = list.slice(); for (let k = 0; k < n; k++) list[k] = old[order[k]];
+  const legacy = g(p, 'ShipUsesLegacyColours');
+  if (Array.isArray(legacy) && legacy.length >= n) { const o = legacy.slice(0, n); for (let k = 0; k < n; k++) legacy[k] = o[order[k]]; }
+  const ccd = g(p, 'CharacterCustomisationData');
+  if (Array.isArray(ccd) && shipCcdIndex(n - 1) < ccd.length) { const o = order.map((x) => ccd[shipCcdIndex(x)]); for (let k = 0; k < n; k++) ccd[shipCcdIndex(k)] = o[k]; }
+  for (const b of shipBuilds()) { const u = num(g(b, 'UserData')); if (u >= 0 && u < n && toNew[u] !== u) set(b, 'UserData', N(toNew[u])); }
+  for (const key of ['PrimaryShip', 'CorvetteEditAssociatedShipIndex']) { const v = g(p, key); if (v != null && num(v) >= 0 && num(v) < n && toNew[num(v)] !== num(v)) set(p, key, N(toNew[num(v)])); }
+  S.pick.ship = null; markDirty();
+}
+function swapShips(a, b) { const n = (g(ps(), 'ShipOwnership') || []).length, order = [...Array(n).keys()]; [order[a], order[b]] = [order[b], order[a]]; arrangeShips(order); }
+// what's wrong with the slots, each with the fixes on offer: [text, [[label, fn], ...]]
+function shipSlotIssues() {
+  const p = ps(), list = g(p, 'ShipOwnership') || [], n = list.length, out = [];
+  const empties = () => list.map((s, i) => (slotHasShip(s) ? -1 : i)).filter((i) => i >= 0);
+  const bname = (b) => '"' + (str(g(b, 'Name')) || 'unnamed') + '"';
+  const parts = (b) => (g(b, 'Objects') || []).length;
+  const builds = shipBuilds(), bySlot = new Map();
+  for (const b of builds) { const u = num(g(b, 'UserData')); bySlot.set(u, [...(bySlot.get(u) || []), b]); }
+  const orphans = builds.filter((b) => { const u = num(g(b, 'UserData')); return !(u >= 0 && u < n) || !slotIsCorvette(list[u]); });
+  const delBuild = (b) => () => { const all = g(p, 'PersistentPlayerBases'); all.splice(all.indexOf(b), 1); markDirty(); };
+  const moveBuild = (b, slot) => () => { set(b, 'UserData', N(slot)); if (!slotHasShip(list[slot])) makeCorvetteShip(slot, str(g(b, 'Name')) || 'Corvette'); markDirty(); };
+  for (const b of orphans) {
+    const u = num(g(b, 'UserData')), s = list[u], e = empties();
+    const fixes = [];
+    if (u >= 0 && u < n && !slotHasShip(s)) fixes.push([`Put a corvette in slot ${u + 1} for it`, moveBuild(b, u)]);
+    else if (e.length) fixes.push([`Move it to empty slot ${e[0] + 1} as a corvette`, moveBuild(b, e[0])]);
+    const bare = list.map((x, i) => i).filter((i) => slotIsCorvette(list[i]) && !bySlot.has(i));
+    if (bare.length) fixes.push([`Attach it to ${str(g(list[bare[0]], 'Name')) || 'the corvette'} in slot ${bare[0] + 1}`, () => { set(b, 'UserData', N(bare[0])); markDirty(); }]);
+    fixes.push(['Delete the build', delBuild(b), 'danger']);
+    out.push([`The corvette build ${bname(b)} (${plural(parts(b), 'part')}) points at slot ${u + 1}, which ${!(u >= 0 && u < n) ? "doesn't exist" : slotHasShip(s) ? "holds a ship that isn't a corvette" : 'is empty'}.`, fixes]);
+  }
+  // builds that share a slot with a bigger one, or point nowhere useful: candidates for corvettes without a build
+  const extras = [];
+  for (const [u, bs] of bySlot) if (bs.length > 1 && u >= 0 && u < n && slotIsCorvette(list[u])) { const keep = bs.reduce((a, b) => (parts(b) > parts(a) ? b : a)); extras.push(...bs.filter((b) => b !== keep)); }
+  const lonely = list.map((x, i) => i).filter((i) => slotIsCorvette(list[i]) && !bySlot.has(i));
+  const sameName = (b, i) => str(g(b, 'Name')).trim().toLowerCase() === str(g(list[i], 'Name')).trim().toLowerCase();
+  for (const [u, bs] of bySlot) {
+    if (bs.length < 2 || !(u >= 0 && u < n) || !slotIsCorvette(list[u])) continue;
+    const keep = bs.reduce((a, b) => (parts(b) > parts(a) ? b : a)), rest = bs.filter((b) => b !== keep), e = empties(), fixes = [];
+    // first choice: send a build back to a corvette that lost its own (matching names first)
+    const homes = rest.map((b) => lonely.find((i) => sameName(b, i)) ?? lonely.find((i) => !rest.some((r) => r !== b && sameName(r, i)))).filter((x) => x != null);
+    if (homes.length === rest.length && new Set(homes).size === homes.length) fixes.push([rest.length > 1 ? 'Send the others to the corvettes without a build' : `Move ${bname(rest[0])} to ${str(g(list[homes[0]], 'Name')) || 'the corvette'} in slot ${homes[0] + 1}`, () => { rest.forEach((b, k) => set(b, 'UserData', N(homes[k]))); markDirty(); }]);
+    if (e.length >= rest.length) fixes.push([`Give the other${rest.length > 1 ? 's' : ''} ${rest.length > 1 ? 'their own slots' : 'its own slot'} (${e.slice(0, rest.length).map((x) => x + 1).join(', ')})`, () => { rest.forEach((b, k) => moveBuild(b, e[k])()); }]);
+    fixes.push([`Keep the biggest (${plural(parts(keep), 'part')}), delete the other${rest.length > 1 ? 's' : ''}`, () => { const all = g(p, 'PersistentPlayerBases'); rest.forEach((b) => all.splice(all.indexOf(b), 1)); markDirty(); }, 'danger']);
+    out.push([`${str(g(list[u], 'Name')) || 'The corvette'} in slot ${u + 1} has ${bs.length} builds pointing at it (${bs.map(bname).join(', ')}); the game uses only one.`, fixes]);
+  }
+  list.forEach((s, i) => {
+    if (!slotIsCorvette(s) || bySlot.has(i)) return;
+    const cands = [...orphans, ...extras].sort((a, b) => sameName(b, i) - sameName(a, i)).slice(0, 2);
+    const fixes = cands.map((b) => [`Attach ${bname(b)}`, () => { set(b, 'UserData', N(i)); markDirty(); }]);
+    fixes.push(['Give it a starter build', () => makeStarterBase(i, str(g(s, 'Name')) || 'Corvette')]);
+    out.push([`${str(g(s, 'Name')) || 'The corvette'} in slot ${i + 1} has no build, so the game shows it without parts.`, fixes]);
+  });
+  const cur = num(g(p, 'PrimaryShip'));
+  if (n && !slotHasShip(list[cur])) {
+    const first = list.findIndex(slotHasShip);
+    out.push([`Your current ship points at slot ${cur + 1}, which is empty.`, first >= 0 ? [[`Make ${str(g(list[first], 'Name')) || 'slot ' + (first + 1)} your current ship`, () => set(p, 'PrimaryShip', N(first))]] : []]);
+  }
+  return out;
+}
+function shipSlotsPanel(el) {
+  const list = g(ps(), 'ShipOwnership'); if (!Array.isArray(list) || !list.length) return;
+  const issues = shipSlotIssues(), used = list.filter(slotHasShip).length, cur = num(g(ps(), 'PrimaryShip'));
+  const SL = S.slots || (S.slots = { open: false, pick: null });
+  const builds = new Map(); for (const b of shipBuilds()) builds.set(num(g(b, 'UserData')), b);
+  const d = document.createElement('details'); d.className = 'panel slots'; d.id = 'shipSlots'; d.open = SL.open || issues.length > 0;
+  d.innerHTML = `<summary><span class="k">Ship slots</span><span class="dim">${used} of ${list.length} used</span>${issues.length ? `<span class="slots-bad">${plural(issues.length, 'problem')} to fix</span>` : ''}<span class="sw-gap"></span><span class="dim slots-hint">Arrange and repair</span></summary>
+    <p class="dim ed-note">Drag a ship onto another slot to swap them, or click one ship and then the slot it should go to. Its corvette build, colours, customisation and current-ship marker move with it.</p>
+    <div class="slot-grid" role="list">${list.map((s, i) => {
+      const has = slotHasShip(s), b = builds.get(i), corv = slotIsCorvette(s);
+      return `<button type="button" class="slot-tile${has ? '' : ' empty'}${SL.pick === i ? ' picked' : ''}" data-slot="${i}" draggable="${has}" role="listitem" aria-label="Slot ${i + 1}: ${has ? esc(str(g(s, 'Name')) || 'unnamed') : 'empty'}">
+        <span class="slot-n">${i + 1}</span>${has ? `<b>${esc(str(g(s, 'Name')) || 'Unnamed')}</b><span class="dim">${esc(corv ? 'Corvette' : modelName(g(s, 'Resource', 'Filename')))} · ${esc(invClass(g(s, 'Inventory')) || '?')}</span>
+        <span class="slot-tags">${i === cur ? '<i class="cur">Current</i>' : ''}${corv ? (b ? `<i>${plural((g(b, 'Objects') || []).length, 'part')}</i>` : '<i class="bad">No build</i>') : ''}</span>` : '<span class="dim">Empty</span>'}</button>`;
+    }).join('')}</div>
+    <div class="toolbar"><button class="btn" type="button" id="slotsPack"${list.some((s, i) => !slotHasShip(s) && list.slice(i).some(slotHasShip)) ? '' : ' disabled'}>Close the gaps</button></div>
+    ${issues.length ? `<div class="slot-issues"><h3>Problems</h3><ul>${issues.map(([t, fixes], k) => `<li><span class="sw-ic"></span><span>${esc(t)}</span><span class="fixes">${fixes.map(([l, , cls], f) => `<button class="btn small${cls ? ' ' + cls : ''}" type="button" data-fix="${k}:${f}">${esc(l)}</button>`).join('')}</span></li>`).join('')}</ul></div>` : '<p class="dim ed-note slots-ok">Every slot checks out: each corvette has one build, and no build points at the wrong slot.</p>'}`;
+  el.appendChild(d);
+  d.ontoggle = () => { SL.open = d.open; };
+  const done = (msg) => { SL.pick = null; renderSide(); toast(msg); render(); requestAnimationFrame(() => { const x = $('#shipSlots'); if (x) x.open = true; }); };
+  const move = (a, b) => { if (a === b) return; try { swapShips(a, b); SL.open = true; done(`Slots ${a + 1} and ${b + 1} swapped`); } catch (e) { toast(e.message, true); } };
+  d.querySelectorAll('.slot-tile').forEach((t) => {
+    const i = +t.dataset.slot;
+    t.onclick = () => { if (SL.pick == null) { if (!slotHasShip(list[i])) return; SL.pick = i; d.querySelectorAll('.slot-tile').forEach((x) => x.classList.toggle('picked', +x.dataset.slot === i)); toast('Now click the slot it should go to'); } else if (SL.pick === i) { SL.pick = null; t.classList.remove('picked'); } else move(SL.pick, i); };
+    t.ondragstart = (e) => { e.dataTransfer.setData('text/plain', String(i)); e.dataTransfer.effectAllowed = 'move'; t.classList.add('dragging'); };
+    t.ondragend = () => t.classList.remove('dragging');
+    t.ondragover = (e) => { e.preventDefault(); t.classList.add('over'); };
+    t.ondragleave = () => t.classList.remove('over');
+    t.ondrop = (e) => { e.preventDefault(); t.classList.remove('over'); const from = +e.dataTransfer.getData('text/plain'); if (Number.isInteger(from)) move(from, i); };
+  });
+  $('#slotsPack', d).onclick = () => { const idx = [...list.keys()], order = [...idx.filter((i) => slotHasShip(list[i])), ...idx.filter((i) => !slotHasShip(list[i]))]; arrangeShips(order); SL.open = true; done('Ships moved to the front, gaps closed'); };
+  d.querySelectorAll('[data-fix]').forEach((b) => b.onclick = () => { const [k, f] = b.dataset.fix.split(':').map(Number); try { issues[k][1][f][1](); SL.open = true; done('Fixed'); } catch (e) { toast(e.message, true); } });
 }
 PAGES.shipwright = (el) => {
   markSeen('shipwright');
@@ -3929,12 +4070,13 @@ PAGES.shipwright = (el) => {
   side.innerHTML = `<h3>Corvettes</h3><div class="sw-list">${corvs.map(({ s, i }) => {
     const h = corvetteHealth(i), worst = h.out.some((x) => x[0] === 'bad') ? 'bad' : h.out.some((x) => x[0] === 'warn') ? 'warn' : 'ok';
     return `<button type="button" class="sw-corv${i === W.slot ? ' on' : ''}" data-i="${i}"><span class="sw-dot ${worst}"></span><span><b>${esc(str(g(s, 'Name')) || 'Corvette')}</b><span class="dim">Slot ${i + 1} · ${plural(h.objs.length, 'part')}</span></span></button>`;
-  }).join('')}</div>${probs.length ? `<div class="sw-probs">${probs.map((t) => `<p class="bad-hint">${esc(t)}</p>`).join('')}</div>` : ''}
+  }).join('')}</div>${probs.length ? `<div class="sw-probs">${probs.map((t) => `<p class="bad-hint">${esc(t)}</p>`).join('')}<button class="btn small" type="button" id="swFixSlots">Fix in Ship slots</button></div>` : ''}
     <div class="sw-side-acts"><button class="btn primary" type="button" id="swAdd">Add corvette</button><button class="btn danger" type="button" id="swDel">Delete corvette</button></div>
     <p class="dim sw-tip">Add corvette puts a starter build in an empty slot for you to paste over. Finished corvettes from files go in through the Dock Yard.</p>`;
   wrap.appendChild(side);
   side.querySelectorAll('[data-i]').forEach((b) => b.onclick = () => { W.slot = +b.dataset.i; W.sel = new Set(); render(); });
   $('#swAdd', side).onclick = doAdd;
+  const fx = $('#swFixSlots', side); if (fx) fx.onclick = () => { (S.slots || (S.slots = {})).open = true; go('ships'); spotlight('#shipSlots'); };
   $('#swDel', side).onclick = () => deleteEntity(g(ps(), 'ShipOwnership')[W.slot], W.slot, 'ship');
   const main = document.createElement('div'); main.className = 'sw-main'; wrap.appendChild(main);
   const i = W.slot, ship = g(ps(), 'ShipOwnership')[i], H = corvetteHealth(i), base = H.base;
@@ -4505,13 +4647,13 @@ const FIND_WORDS = [
   ['rewards', 'Expedition rewards', 'expedition rewards unlock twitch drops platform season quicksilver'], ['rewards', 'Twitch drops', 'twitch drops rewards'],
   ['knowledge', 'Known technology and recipes', 'blueprints recipes technology known learn unlock base parts'], ['knowledge', 'Words', 'words language learn alien'],
   ['companions', 'Companions', 'pets companions creatures eggs trust'], ['bases', 'Bases', 'bases base parts building'], ['bases', 'Settlements', 'settlement settlements overseer'],
-  ['freighter', 'Frigates', 'frigates fleet expeditions'], ['shipwright', 'Corvette builds', 'corvette build optimizer tune'], ['library', 'Dock Yard', 'dock yard ship library garage storage favourites import nmsship'],
+  ['freighter', 'Frigates', 'frigates fleet expeditions'], ['ships', 'Ship slots', 'ship slots arrange reorder swap move order repair broken corvette build'], ['shipwright', 'Corvette builds', 'corvette build optimizer tune'], ['library', 'Dock Yard', 'dock yard ship library garage storage favourites import nmsship'],
   ['exosuit', 'Exosuit inventory', 'exosuit suit inventory slots supercharge'], ['raw', 'Raw data', 'raw json expert'],
 ];
 function findIndex() {
   const out = [], p = ps();
   const push = (label, sub, kind, go2, extra = '') => out.push({ label, sub, kind, go: go2, hay: (label + ' ' + sub + ' ' + extra).toLowerCase() });
-  for (const [s, l, w] of FIND_WORDS) push(l, (SECTIONS.find(([id]) => id === s) || [, ''])[1], 'Page', () => { if (s === 'knowledge') (S.know || (S.know = { tab: 'tech', q: '', race: 0, wq: '' })).tab = /word/i.test(l) ? 'words' : 'tech'; if (s === 'bases') (S.bases || (S.bases = { tab: 'bases' })).tab = /settle/i.test(l) ? 'settlements' : 'bases'; if (s === 'rewards') (S.rw || (S.rw = { q: '' })).tab = /twitch/i.test(l) ? 'twitch' : 'seasons'; go(s); if (s === 'freighter') spotlight('#frigates'); }, w);
+  for (const [s, l, w] of FIND_WORDS) push(l, (SECTIONS.find(([id]) => id === s) || [, ''])[1], 'Page', () => { if (s === 'knowledge') (S.know || (S.know = { tab: 'tech', q: '', race: 0, wq: '' })).tab = /word/i.test(l) ? 'words' : 'tech'; if (s === 'bases') (S.bases || (S.bases = { tab: 'bases' })).tab = /settle/i.test(l) ? 'settlements' : 'bases'; if (s === 'rewards') (S.rw || (S.rw = { q: '' })).tab = /twitch/i.test(l) ? 'twitch' : 'seasons'; if (s === 'ships') (S.slots || (S.slots = {})).open = true; go(s); if (s === 'freighter') spotlight('#frigates'); if (s === 'ships') spotlight('#shipSlots'); }, w);
   for (const [id, l] of SECTIONS) push(l, 'Section', 'Page', () => go(id));
   ships().forEach(({ s, i }) => push(str(g(s, 'Name')) || 'Ship ' + (i + 1), 'Starship, ' + modelName(g(s, 'Resource', 'Filename')), 'Ship', () => { S.pick.ship = i; go('ships'); }));
   tools().forEach(({ s, i }) => push(str(g(s, 'Name')) || 'Multi-tool ' + (i + 1), 'Multi-tool', 'Multi-tool', () => { S.pick.tool = i; go('tools'); }));
