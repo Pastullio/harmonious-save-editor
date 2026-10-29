@@ -1,0 +1,41 @@
+const { chromium } = require('/opt/npm-tools/node_modules/playwright');
+const { spawn } = require('child_process'); const fs = require('fs'); const path = require('path');
+// Real models from game archives. Usage: node test/e2e/test_models.js <scratch> <PCBANKS with model .paks>
+const SP = process.argv[2], BANKS = process.argv[3];
+const cfg = path.join(SP, 'modelcfg'), home = path.join(SP, 'modelhome');
+fs.rmSync(cfg, { recursive: true, force: true }); fs.mkdirSync(home, { recursive: true });
+const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n); if (!c) fails.push(n); };
+(async () => {
+  const proc = spawn(path.join(__dirname, '../../dist/hse-linux'), ['-no-window', '-root', SP + '/dbroot/NMS', '-port', '47973'], { env: { ...process.env, HOME: home, XDG_CONFIG_HOME: cfg, HSE_GAME: BANKS } });
+  const url = await new Promise((res) => proc.stdout.on('data', (d) => res(String(d).trim())));
+  const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] }); const p = await b.newPage({ viewport: { width: 1440, height: 1000 } });
+  const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if ((m.type() === 'warning' || m.type() === 'error') && !/404/.test(m.text())) console.log('console:', m.text()); });
+  await p.goto(url); await p.waitForSelector('.slot-row');
+  await p.waitForFunction(() => S.lib && S.lib.game, null, { timeout: 60000 });
+  ok('WebGL2 available', await p.evaluate(() => GL3D.ok()));
+  await p.click('.slot-row'); await p.waitForSelector('#app:not(.hidden)');
+  await p.click('nav button[data-s="tools"]');
+  await p.waitForFunction(() => document.querySelectorAll('.cf-item').length > 0, null, { timeout: 20000 });
+  await p.waitForTimeout(4000);
+  const loaded = await p.evaluate(() => coverItems().length);
+  await p.screenshot({ path: SP + '/shots/f0-tools.png' });
+  await p.click('nav button[data-s="ships"]'); await p.waitForTimeout(4000);
+  await p.evaluate(() => { const it = coverItems().find((x) => /Golden/.test(x.name)); S.pick.ship = it.i; render(); }); await p.waitForTimeout(3000);
+  await p.screenshot({ path: SP + '/shots/f1-golden.png' });
+  // parts picker on a multitool
+  await p.click('nav button[data-s="tools"]'); await p.waitForTimeout(1500);
+  await p.evaluate(() => { S.pick.tool = 5; render(); }); await p.waitForTimeout(1500);
+  await p.click('[data-k="parts"]'); await p.waitForSelector('.parts-dlg', { timeout: 20000 }); await p.waitForTimeout(1500);
+  const sels = await p.$$eval('.parts-list select', (s) => s.map((x) => x.dataset.g + '=' + x.value));
+  console.log('groups', sels.length, sels.slice(0, 8));
+  ok('parts picker lists choices', sels.length > 3);
+  await p.screenshot({ path: SP + '/shots/f2-parts.png' });
+  const first = await p.$('.parts-list select'); const opts = await first.$$eval('option', (o) => o.map((x) => x.value));
+  await first.selectOption(opts[opts.length - 1]); await p.waitForTimeout(1500);
+  await p.screenshot({ path: SP + '/shots/f3-parts-changed.png' });
+  await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(1500);
+  ok('parts saved', await p.evaluate(async () => Object.keys(await IDB.get('parts:' + coverItems().find((x) => x.kind === 'tool' && x.i === 5).key) || {}).length > 0));
+  ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
+  await b.close(); proc.kill();
+  console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS'); process.exit(fails.length ? 1 : 0);
+})();

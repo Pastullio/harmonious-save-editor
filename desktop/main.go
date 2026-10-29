@@ -95,6 +95,8 @@ func main() {
 	mux.HandleFunc("/api/create", handleCreate)
 	mux.HandleFunc("/api/profiles", handleProfiles)
 	mux.HandleFunc("/api/itemlib", handleItemLib)
+	mux.HandleFunc("/api/model/parts", handleModelParts)
+	mux.HandleFunc("/api/model/mesh", handleModelMesh)
 	mux.HandleFunc("/api/itemlib/items.json", handleItemLibItems)
 	mux.HandleFunc("/api/itemlib/icon", handleItemLibIcon)
 	mux.HandleFunc("/api/backup-all", handleBackupAll)

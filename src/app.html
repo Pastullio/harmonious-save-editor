@@ -212,6 +212,10 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .seed-row { display: flex; gap: 8px; } .seed-row .input { flex: 1; min-width: 0; }
 .check { display: flex; gap: 8px; align-items: center; font-size: 13.5px; padding-bottom: 9px; cursor: pointer; }
 .details-acts { margin-top: 20px; } .details-acts .sep { flex: 1; }
+.parts-dlg { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 18px; align-items: start; }
+.parts-dlg canvas { width: 360px; height: 360px; border-radius: var(--r-lg); background: #06141a; }
+.parts-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 12px; max-height: 360px; overflow: auto; padding-right: 4px; }
+@media (max-width: 760px) { .parts-dlg { grid-template-columns: 1fr; } .parts-dlg canvas { width: 100%; height: auto; } }
 .prof-list { display: grid; gap: 8px; max-height: 50vh; overflow: auto; margin: 6px 0 12px; }
 .prof { display: flex; gap: 12px; align-items: center; justify-content: space-between; border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; background: var(--surface); }
 .prof > div { display: grid; min-width: 0; } .prof .dim { font-size: 12.5px; }
@@ -918,6 +922,9 @@ function miniCover(host, it, size, onClick) {
   if (it.kind === 'corvette') {
     const on = (e) => { if (!host.isConnected) { document.removeEventListener('cover-render', on); return; } if (e.detail.key === it.key && !it.custom) { it.renderImg = e.detail.img; paintCover(cv, it); } };
     document.addEventListener('cover-render', on); loadRender(it);
+  } else if (it.scene) {
+    const on = (e) => { if (!host.isConnected) { document.removeEventListener('cover-model', on); return; } if (e.detail.key === it.key && !it.custom) paintCover(cv, it); };
+    document.addEventListener('cover-model', on); if (it.model) paintCover(cv, it); else loadModel(it);
   }
   if (onClick) host.onclick = onClick;
 }
@@ -1066,7 +1073,7 @@ PAGES.vehicles = (el) => ownedPage(el, {
   title: 'Exocraft', intro: 'Cargo and technology for each exocraft you have summoned.', list: vehicles(), key: 'veh', primaryKey: 'PrimaryVehicle',
   label: (s, i) => str(g(s, 'Name')) || modelName(g(s, 'Resource', 'Filename')) || 'Exocraft ' + (i + 1), sub: (s, i) => 'Bay ' + (i + 1),
   invs: (s) => [[g(s, 'Inventory_TechOnly'), 'Technology'], [g(s, 'Inventory'), 'Cargo']],
-  picture: (s, i) => { const model = modelName(g(s, 'Resource', 'Filename')); return { kind: 'ship', type: 'Exocraft', name: str(g(s, 'Name')) || model || 'Exocraft ' + (i + 1), cls: '', key: 'veh|' + i + '|' + model }; },
+  picture: (s, i) => { const model = modelName(g(s, 'Resource', 'Filename')); return { kind: 'ship', type: 'Exocraft', name: str(g(s, 'Name')) || model || 'Exocraft ' + (i + 1), cls: '', key: 'veh|' + i + '|' + model, seed: str((seedOf(s) || [])[1]), scene: str(g(s, 'Resource', 'Filename')) }; },
 });
 
 // ------------------------------------------------------------------ ship and multi-tool details (type, class, seed, colours, stats)
@@ -1118,6 +1125,7 @@ function entityDetails(ed, o, i, kind) {
       <label class="field"><span>Ship shield <i class="dim">(all ships)</i></span><input class="input mono" inputmode="numeric" data-k="sshield" value="${num(g(p, 'ShipShield'))}"></label>` : ''}</div>
     <div class="toolbar details-acts">
       <button class="btn primary" data-k="saveprof">Save as profile</button><button class="btn" data-k="applyprof">Apply a profile</button>
+      ${APP && S.lib && S.lib.game ? '<button class="btn" data-k="parts">Choose parts</button>' : ''}
       <span class="sep"></span>
       <button class="btn" data-k="export">Export</button><label class="btn">Import<input type="file" accept=".json,application/json" data-k="import" hidden></label>
       <button class="btn danger" data-k="delete">Delete ${isShip ? 'ship' : 'multi-tool'}</button>
@@ -1145,6 +1153,8 @@ function entityDetails(ed, o, i, kind) {
   for (const [k, key] of [['shealth', 'ShipHealth'], ['sshield', 'ShipShield']]) { const inp = $k(k); if (inp) inp.onchange = () => { const v = clampU32(inp.value); inp.value = v; set(p, key, N(v)); }; }
   $k('saveprof').onclick = () => saveProfileDialog(o, i, kind);
   $k('applyprof').onclick = () => applyProfileDialog(o, i, kind);
+  const pb = $k('parts');
+  if (pb) pb.onclick = () => { const it = coverItems().find((x) => (kind === 'tool' ? x.kind === 'tool' : x.kind !== 'tool') && x.i === i); if (it && it.scene) partsDialog(it, () => render()); else toast("Corvettes are built from base parts; render them with Blender instead.", true); };
   $k('export').onclick = () => exportEntity(o, i, kind);
   $k('import').onchange = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importEntity(o, i, kind, await f.text()); };
   $k('delete').onclick = () => deleteEntity(o, i, kind);
@@ -1489,13 +1499,13 @@ function coverItems() {
     const file = g(s, 'Resource', 'Filename'), type = shipType(file), cls = invClass(g(s, 'Inventory')) || '';
     const holo = type === 'Corvette' ? corvetteParts(i) : null;
     const name = str(g(s, 'Name')) || type + ' ' + (i + 1), seed = str((seedOf(s) || [])[1]);
-    out.push({ kind: type === 'Corvette' ? 'corvette' : 'ship', i, obj: s, name, type, cls, holo, seed, current: i === primary,
+    out.push({ kind: type === 'Corvette' ? 'corvette' : 'ship', i, obj: s, name, type, cls, holo, seed, current: i === primary, scene: type === 'Corvette' ? '' : str(file),
       key: `ship|${name}|${seed}|${str(file)}`,
       sub: [type, cls && cls + ' class', holo && holo.objs.toLocaleString() + ' parts', i === primary && 'current ship'].filter(Boolean).join(', ') });
   }
   for (const { s, i } of tools()) {
     const tt = toolType(s), cls = invClass(g(s, 'Store')) || '', name = str(g(s, 'Name')) || tt.label + ' ' + (i + 1), seed = str((seedOf(s) || [])[1]);
-    out.push({ kind: 'tool', i, obj: s, name, type: tt.label, tool: tt.kind, cls, seed, current: i === activeTool,
+    out.push({ kind: 'tool', i, obj: s, name, type: tt.label, tool: tt.kind, cls, seed, current: i === activeTool, scene: str(g(s, 'Resource', 'Filename')),
       key: `tool|${name}|${seed}|${str(g(s, 'Resource', 'Filename'))}`,
       sub: [tt.label, cls && cls + ' class', i === activeTool && 'equipped'].filter(Boolean).join(', ') });
   }
@@ -1650,12 +1660,166 @@ function paintWire(ctx, W, mesh, tint, angle) {
   ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = 'rgba(255,255,255,.03)'; for (let y = 0; y < W; y += Math.max(3, W / 120)) ctx.fillRect(0, y, W, 1); // scanlines
 }
+
+// ------------------------------------------------------------------ real models from the player's game files
+// The desktop app reads ship and multi-tool models from the game's own archives and sends them as one
+// triangle mesh; they are drawn here with WebGL as a shaded hologram. Procedural models are assembled
+// from parts: the owner can pick theirs, otherwise the app makes a stable guess from the seed.
+const GL3D = (() => {
+  let gl = null, cv = null, prog = null, failed = false;
+  const VS = `#version 300 es
+    in vec3 p; uniform vec3 c; uniform float r, yaw, pitch, aspect; out vec3 vp;
+    void main() {
+      vec3 q = (p - c) / r;
+      float cy = cos(yaw), sy = sin(yaw), cp = cos(pitch), sp = sin(pitch);
+      vec3 a = vec3(q.x * cy + q.z * sy, q.y, -q.x * sy + q.z * cy);
+      vec3 b = vec3(a.x, a.y * cp - a.z * sp, a.y * sp + a.z * cp);
+      vp = b; gl_Position = vec4(b.x * .86, b.y * .86 - .02, -b.z * .5, 1.0);
+    }`;
+  const FS = `#version 300 es
+    precision highp float; in vec3 vp; uniform vec3 tint; out vec4 o;
+    void main() {
+      vec3 n = normalize(cross(dFdx(vp), dFdy(vp)));
+      vec3 l = normalize(vec3(-.45, .75, -.5));
+      float d = abs(dot(n, l)), rim = pow(1.0 - abs(n.z), 2.2);
+      vec3 col = tint * (.22 + .62 * d) + vec3(.55, .9, 1.0) * rim * .55;
+      o = vec4(col, .96);
+    }`;
+  function init() {
+    if (gl || failed) return !!gl;
+    cv = document.createElement('canvas');
+    gl = cv.getContext('webgl2', { premultipliedAlpha: false, preserveDrawingBuffer: true, antialias: true });
+    if (!gl) { failed = true; return false; }
+    const sh = (type, src) => { const x = gl.createShader(type); gl.shaderSource(x, src); gl.compileShader(x); if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(x)); return x; };
+    try {
+      prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
+      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+    } catch (e) { console.warn('WebGL', e); gl = null; failed = true; return false; }
+    return true;
+  }
+  function upload(m) {
+    if (m.vao) return;
+    m.vao = gl.createVertexArray(); gl.bindVertexArray(m.vao);
+    const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, m.pos, gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 3, gl.FLOAT, false, 0, 0);
+    const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, m.idx, gl.STATIC_DRAW);
+    gl.bindVertexArray(null);
+  }
+  // draws the mesh into the shared WebGL canvas and returns it, ready for drawImage
+  function render(m, size, yaw, tint) {
+    if (!init()) return null;
+    if (cv.width !== size) { cv.width = cv.height = size; }
+    gl.viewport(0, 0, size, size); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.DEPTH_TEST); gl.useProgram(prog); upload(m);
+    gl.uniform3f(gl.getUniformLocation(prog, 'c'), m.c[0], m.c[1], m.c[2]); gl.uniform1f(gl.getUniformLocation(prog, 'r'), m.r);
+    gl.uniform1f(gl.getUniformLocation(prog, 'yaw'), yaw); gl.uniform1f(gl.getUniformLocation(prog, 'pitch'), .38);
+    gl.uniform3f(gl.getUniformLocation(prog, 'tint'), tint[0] / 255, tint[1] / 255, tint[2] / 255);
+    gl.bindVertexArray(m.vao); gl.drawElements(gl.TRIANGLES, m.idx.length, gl.UNSIGNED_INT, 0); gl.bindVertexArray(null);
+    return cv;
+  }
+  return { render, ok: () => init() };
+})();
+
+const meshCache = new Map(); // url -> Promise<mesh|null>
+function parseMesh(buf) {
+  const dv = new DataView(buf);
+  if (buf.byteLength < 12 || String.fromCharCode(...new Uint8Array(buf, 0, 4)) !== 'HSEM') return null;
+  const nv = dv.getUint32(4, true), ni = dv.getUint32(8, true);
+  const pos = new Float32Array(buf, 12, nv * 3), idx = new Uint32Array(buf, 12 + nv * 12, ni);
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < pos.length; i += 3) for (let k = 0; k < 3; k++) { const v = pos[i + k]; if (v < lo[k]) lo[k] = v; if (v > hi[k]) hi[k] = v; }
+  const c = lo.map((v, k) => (v + hi[k]) / 2);
+  let r = 0; for (let i = 0; i < pos.length; i += 3) r = Math.max(r, Math.hypot(pos[i] - c[0], pos[i + 1] - c[1], pos[i + 2] - c[2]));
+  return { pos, idx, c, r: r || 1, tris: ni / 3 };
+}
+function modelUrl(scene, seed, picks, lod) {
+  return `/api/model/mesh?scene=${encodeURIComponent(scene)}&seed=${encodeURIComponent(seed || '')}&lod=${lod}&picks=${encodeURIComponent(JSON.stringify(picks || {}))}&t=${encodeURIComponent(window.NMS_APP.token)}`;
+}
+function fetchMesh(url) {
+  if (!meshCache.has(url)) meshCache.set(url, fetch(url).then((r) => (r.ok ? r.arrayBuffer() : null)).then((b) => (b ? parseMesh(b) : null)).catch(() => null));
+  return meshCache.get(url);
+}
+const partsOf = async (key) => { try { return (await IDB.get('parts:' + key)) || {}; } catch (_) { return {}; } };
+// fetch the item's real model and tell every view showing it to repaint
+async function loadModel(it) {
+  if (!APP || !it.scene || it.holo || it.kind === 'corvette' || it.modelTried) return;
+  if (!S.lib || !S.lib.game) return; // the game wasn't found
+  it.modelTried = true;
+  const picks = await partsOf(it.key);
+  const m = await fetchMesh(modelUrl(it.scene, it.seed, picks, 1));
+  if (!m) return;
+  it.model = m;
+  document.dispatchEvent(new CustomEvent('cover-model', { detail: { key: it.key } }));
+}
+function paintModel(ctx, W, m, tint, angle) {
+  paintProjector(ctx, W, tint);
+  const t = tint.split(',').map(Number), img = GL3D.render(m, W, angle, t);
+  if (img) ctx.drawImage(img, 0, 0, W, W);
+  ctx.fillStyle = 'rgba(255,255,255,.025)'; for (let y = 0; y < W; y += Math.max(3, W / 120)) ctx.fillRect(0, y, W, 1); // scanlines
+}
+function paintProjector(ctx, W, tint) {
+  ctx.save(); ctx.translate(W / 2, W * .8); ctx.scale(1, .3);
+  const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, W * .42); gr.addColorStop(0, `rgba(${tint},.2)`); gr.addColorStop(.75, `rgba(${tint},.05)`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, W * .42, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = `rgba(${tint},.4)`; ctx.lineWidth = W * .004; ctx.beginPath(); ctx.arc(0, 0, W * .34, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+}
+
+// Parts picker: choose the cockpit, wings, engines... a procedural ship or multi-tool really has
+async function partsDialog(it, onSaved) {
+  let tree;
+  try { tree = await (await api('/api/model/parts?scene=' + encodeURIComponent(it.scene))).json(); }
+  catch (e) { toast("This model's parts couldn't be read: " + e.message, true); return; }
+  const picks = { ...(await partsOf(it.key)) };
+  const nice = (g) => g.replace(/^_+/, '').replace(/_/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2');
+  // the groups that apply under the current choices (one-option groups need no choice)
+  const guess = (g, opts) => { if (picks[g.group] && opts.includes(picks[g.group])) return picks[g.group]; let h = 2166136261; for (const ch of (it.seed || '') + '|' + g.group) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return opts[h % opts.length]; };
+  const visible = (groups, out = []) => {
+    for (const g of groups) {
+      const ids = g.options.map((o) => o.id), cur = guess(g, ids);
+      if (ids.length > 1) out.push({ g, ids, cur });
+      const o = g.options.find((x) => x.id === cur); if (o && o.groups) visible(o.groups, out);
+    }
+    return out;
+  };
+  const W = 360;
+  const body = () => {
+    const rows = visible(tree.groups);
+    return `<div class="parts-dlg"><canvas id="partsPrev" width="${W * 2}" height="${W * 2}"></canvas>
+      <div class="parts-list">${rows.length ? rows.map(({ g, ids, cur }) => `<label class="field"><span>${esc(nice(g.group))}</span><select class="input" data-g="${esc(g.group)}">${ids.map((id) => `<option value="${esc(id)}"${id === cur ? ' selected' : ''}>${esc(id === 'NULL' ? 'None' : nice(id) || 'Default')}</option>`).join('')}</select></label>`).join('')
+        : '<p class="dim">This model has no parts to choose; it always looks the same.</p>'}</div></div>
+      <p class="dim small-print">The game picks these from the ship's seed with code that isn't in its files, so match them to your ship by eye.</p>`;
+  };
+  let angle = it.kind === 'tool' ? -1.25 : -.95, raf = 0, mesh = null, alive = true;
+  const draw = () => {
+    const c = $('#partsPrev'); if (!c || !alive) return;
+    const ctx = c.getContext('2d'), tint = (CLASS_TINT[it.cls] || [79, 193, 176]).join(',');
+    paintNebula(ctx, c.width, it.key); if (mesh) paintModel(ctx, c.width, mesh, tint, angle);
+    angle += .01; raf = requestAnimationFrame(draw);
+  };
+  const refresh = async () => { mesh = await fetchMesh(modelUrl(it.scene, it.seed, picks, 1)); };
+  const wire = () => {
+    $('#dlgBody').querySelectorAll('select[data-g]').forEach((sel) => sel.onchange = async () => {
+      picks[sel.dataset.g] = sel.value;
+      const keep = $('#partsPrev'); $('#dlgBody').innerHTML = body(); $('#partsPrev').replaceWith(keep); wire(); await refresh();
+    });
+  };
+  await refresh();
+  const done = dialog('Parts of ' + it.name, body(), [['Cancel', false, 'ghost'], ['Use the seed\'s guess', 'reset', 'ghost'], ['Save parts', true, 'primary']]);
+  $('#dlg').classList.add('wide'); wire(); raf = requestAnimationFrame(draw);
+  const res = await done; alive = false; cancelAnimationFrame(raf); $('#dlg').classList.remove('wide');
+  if (!res) return;
+  if (res === 'reset') { try { await IDB.del('parts:' + it.key); } catch (_) {} }
+  else { const all = {}; for (const { g, cur } of visible(tree.groups)) all[g.group] = cur; try { await IDB.put('parts:' + it.key, all); } catch (_) {} }
+  it.modelTried = false; it.model = null; await loadModel(it);
+  toast('Parts saved for ' + it.name); onSaved && onSaved();
+}
 function paintCover(canvas, it, angle) {
   const W = canvas.width, ctx = canvas.getContext('2d'), tint = (CLASS_TINT[it.cls] || [79, 193, 176]).join(',');
   paintNebula(ctx, W, it.key);
   if (it.renderImg) { paintRender(ctx, W, it.renderImg); paintBadge(ctx, W, it.cls, null); return; }
   const wire = wireMesh(it);
   if (it.holo) paintHologram(ctx, W, it.holo, tint, angle != null ? angle : -.65);
+  else if (it.model && GL3D.ok()) paintModel(ctx, W, it.model, tint, angle != null ? angle : it.kind === 'tool' ? -1.25 : -.95);
   else if (wire) paintWire(ctx, W, wire, tint, angle != null ? angle : it.kind === 'tool' ? -1.25 : -.95);
   else if (it.kind === 'tool') { if (it.tool === 'staff') paintStaff(ctx, W, tint); else paintShape(ctx, W, TOOL_SHAPES[it.tool] || TOOL_SHAPES.pistol, tint, false, -.12); }
   else paintShape(ctx, W, SHIP_SHAPES[it.type] || SHIP_SHAPES.Starship, tint, true, 0);
@@ -1746,7 +1910,7 @@ function CoverFlow(host, items, opts) {
   }
 
   // one animation loop: the spring, plus the slow turn of a hologram on the centre cover
-  function needsSpin() { const it = items[cur]; return it && (it.holo || wireMesh(it)) && !it.renderImg && !it.custom && !REDUCED; }
+  function needsSpin() { const it = items[cur]; return it && (it.holo || it.model || wireMesh(it)) && !it.renderImg && !it.custom && !REDUCED; }
   function kick() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(tick); } }
   function tick(t) {
     raf = 0;
@@ -1830,7 +1994,12 @@ function CoverFlow(host, items, opts) {
     });
   };
   document.addEventListener('cover-render', onRender);
-  items.forEach((it) => { if (it.kind === 'corvette') loadRender(it); });
+  const onModel = (e) => {
+    if (!root.isConnected) { document.removeEventListener('cover-model', onModel); return; }
+    items.forEach((it, i) => { if (it.key !== e.detail.key) return; const cv = els[i].querySelector('canvas'); if (cv && !it.custom) paintCover(cv, it); if (i === cur) kick(); });
+  };
+  document.addEventListener('cover-model', onModel);
+  items.forEach((it) => { if (it.kind === 'corvette') loadRender(it); else if (it.scene) loadModel(it); });
 
   els.forEach((el, i) => { el.classList.toggle('center', i === cur); el.setAttribute('aria-selected', String(i === cur)); });
   posEl.textContent = n ? `${cur + 1} of ${n}` : '';
@@ -1940,11 +2109,12 @@ async function pictureDialog(it) {
 // a picture card for things without Cover Flow (freighter, exocraft): generated cover until a picture is added
 function pictureCard(host, it, caption) {
   const card = document.createElement('div'); card.className = 'tc pic-card';
-  card.innerHTML = `<div class="tc-art"></div><div class="tc-cap"><span class="k">${esc(caption)}</span><b>${esc(it.name)}</b><span class="tc-acts"><button class="link" type="button">Change picture</button></span></div>`;
+  card.innerHTML = `<div class="tc-art"></div><div class="tc-cap"><span class="k">${esc(caption)}</span><b>${esc(it.name)}</b><span class="tc-acts"><button class="link" type="button">Change picture</button>${APP && it.scene && S.lib && S.lib.game ? '<button class="link parts" type="button">Choose parts</button>' : ''}</span></div>`;
   host.appendChild(card);
   const paint = () => miniCover(card, it, 240);
   paint();
   card.querySelector('.link').onclick = async () => { if (await pictureDialog(it)) { it.custom = false; paint(); } };
+  const pl = card.querySelector('.link.parts'); if (pl) pl.onclick = () => partsDialog(it, paint);
   card.addEventListener('dragover', (e) => { e.preventDefault(); card.classList.add('drop-over'); });
   card.addEventListener('dragleave', () => card.classList.remove('drop-over'));
   card.addEventListener('drop', async (e) => { e.preventDefault(); card.classList.remove('drop-over'); const f = e.dataTransfer.files[0]; if (f && await chooseCover(it, f)) { it.custom = false; paint(); } });
@@ -1980,9 +2150,10 @@ PAGES.hangar = (el) => {
     if (it.holo) stats.push([it.holo.objs.toLocaleString(), 'Build parts']);
     stats.push([it.current ? 'Yes' : 'No', it.kind === 'tool' ? 'Equipped' : 'Current ship']);
     box.innerHTML = `<div class="hangar-detail"><div><h2 style="margin-bottom:10px">${esc(it.name)}</h2><div class="stats">${stats.map(([b, s]) => `<div><b>${esc(b)}</b><span>${s}</span></div>`).join('')}</div></div>
-      <div class="acts"><button class="btn primary" id="hOpen">Open loadout</button>${APP && it.kind === 'corvette' ? `<button class="btn" id="hRender">${it.renderImg ? 'Render again' : 'Render with Blender'}</button>` : ''}${APP ? '<button class="btn" id="hShot">Choose a screenshot</button>' : ''}<label class="btn">Use an image file<input type="file" accept="image/*" id="hCover" hidden></label>${it.custom ? '<button class="btn ghost" id="hReset">Use generated cover</button>' : ''}</div></div>
+      <div class="acts"><button class="btn primary" id="hOpen">Open loadout</button>${APP && it.scene && S.lib && S.lib.game ? '<button class="btn" id="hParts">Choose parts</button>' : ''}${APP && it.kind === 'corvette' ? `<button class="btn" id="hRender">${it.renderImg ? 'Render again' : 'Render with Blender'}</button>` : ''}${APP ? '<button class="btn" id="hShot">Choose a screenshot</button>' : ''}<label class="btn">Use an image file<input type="file" accept="image/*" id="hCover" hidden></label>${it.custom ? '<button class="btn ghost" id="hReset">Use generated cover</button>' : ''}</div></div>
       <p class="dim" id="renderState" style="margin:10px 0 0;font-size:14px" aria-live="polite"></p>`;
     $('#hOpen', box).onclick = () => openLoadout(it);
+    const hp = $('#hParts', box); if (hp) hp.onclick = () => partsDialog(it, () => { flow.refresh(); setTimeout(detail, 50); });
     $('#hCover', box).onchange = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (f && await chooseCover(it, f)) { flow.refresh(); setTimeout(detail, 50); } };
     const hs = $('#hShot', box); if (hs) hs.onclick = async () => { const b = await pickScreenshot(); if (b && await chooseCover(it, b)) { flow.refresh(); setTimeout(detail, 50); } };
     const rs = $('#hReset', box); if (rs) rs.onclick = async () => { if (await setCustomCover(it.key, null)) { flow.refresh(); setTimeout(detail, 50); } };
@@ -2082,7 +2253,7 @@ PAGES.freighter = (el) => {
   const fname = str(g(p, 'PlayerFreighterName')) || 'Freighter', fseed = str((g(p, 'CurrentFreighter', 'Seed') || [])[1]);
   if (isInv(g(p, 'FreighterInventory'))) {
     const row = document.createElement('div'); row.className = 'pic-row'; el.appendChild(row);
-    pictureCard(row, { kind: 'ship', type: 'Freighter', name: fname, cls: invClass(g(p, 'FreighterInventory')), key: 'freighter|' + fseed }, 'Freighter');
+    pictureCard(row, { kind: 'ship', type: 'Freighter', name: fname, cls: invClass(g(p, 'FreighterInventory')), key: 'freighter|' + fseed, seed: fseed, scene: str(g(p, 'CurrentFreighter', 'Filename')) }, 'Freighter');
   }
   if (isInv(g(p, 'FreighterInventory'))) freighterDetails(el, p);
   invGroup(el, standardInvs(p, 'Freighter'));

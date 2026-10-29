@@ -192,7 +192,7 @@ func (p *hgpak) Has(name string) bool {
 type mbin struct{ d []byte }
 
 func openMbin(b []byte, guid uint64, what string) (*mbin, error) {
-	if len(b) < 0x30 || binary.LittleEndian.Uint32(b) != 0xCCCCCCCC {
+	if magic := binary.LittleEndian.Uint32(b); len(b) < 0x30 || (magic != 0xCCCCCCCC && magic != 0xDDDDDDDD) { // DD: geometry files
 		return nil, fmt.Errorf("%s isn't an MBIN file", what)
 	}
 	if g := binary.LittleEndian.Uint64(b[0x10:]); g != guid {
