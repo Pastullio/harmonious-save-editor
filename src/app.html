@@ -201,6 +201,10 @@ nav .count { font-family: var(--mono); font-size: 11px; color: var(--faint); }
 .cell.locked { background: repeating-linear-gradient(135deg, transparent 0 5px, var(--line) 5px 6px); border-style: dashed; border-color: var(--line-2); opacity: .7; }
 .cell:hover { border-color: var(--accent); }
 .cell.sel { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+.grid { user-select: none; -webkit-user-select: none; }
+.grid .cell.sel { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+.legend .hint { margin-left: auto; color: var(--faint); }
+.small-print { font-size: 12px; margin: 0; }
 .cell.has { background: var(--surface); border-color: var(--line-2); }
 .cell.t-Substance { box-shadow: inset 0 3px 0 var(--substance); }
 .cell.t-Product { box-shadow: inset 0 3px 0 var(--product); }
@@ -1548,14 +1552,14 @@ function standardInvs(o, prefix) {
 // Show one inventory at a time with a switch, or all of them together; the choice is remembered.
 function invGroup(el, list) {
   list = list.filter(([inv]) => isInv(inv));
-  if (list.length < 2) { list.forEach(([inv, t]) => invBlock(el, inv, t)); return; }
+  if (list.length < 2) { list.forEach(([inv, t]) => invBlock(el, inv, t, list)); return; }
   let pick = 'all'; try { pick = localStorage.getItem('hse-invtab') || 'all'; } catch (_) {}
   if (pick !== 'all' && !list.some(([, t]) => t === pick)) pick = 'all';
   const bar = document.createElement('div'); bar.className = 'inv-tabs'; bar.setAttribute('role', 'tablist');
   bar.innerHTML = list.map(([inv, t]) => `<button role="tab" data-t="${esc(t)}">${esc(t)} <span class="n">${slotsOf(inv).length}</span></button>`).join('')
     + `<button role="tab" data-t="all">${list.length > 2 ? 'All' : 'Both'}</button>`;
   el.appendChild(bar);
-  const boxes = list.map(([inv, t]) => { const d = document.createElement('div'); d.dataset.t = t; el.appendChild(d); invBlock(d, inv, t); return d; });
+  const boxes = list.map(([inv, t]) => { const d = document.createElement('div'); d.dataset.t = t; el.appendChild(d); invBlock(d, inv, t, list); return d; });
   const show = (t) => {
     bar.querySelectorAll('button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.t === t)));
     boxes.forEach((d) => { d.hidden = t !== 'all' && d.dataset.t !== t; });
@@ -1564,7 +1568,7 @@ function invGroup(el, list) {
   bar.onclick = (e) => { const b = e.target.closest('button'); if (!b) return; show(b.dataset.t); try { localStorage.setItem('hse-invtab', b.dataset.t); } catch (_) {} };
   show(pick);
 }
-function invBlock(el, inv, title) {
+function invBlock(el, inv, title, peers) {
   if (!isInv(inv)) return;
   const w = Math.max(1, num(g(inv, 'Width'))), h = Math.max(1, num(g(inv, 'Height')));
   const valid = validSet(inv);
@@ -1575,7 +1579,7 @@ function invBlock(el, inv, title) {
   let cells = '';
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const key = x + ',' + y, s = items.get(key), ok = valid.has(key);
-    const sel = selHere && S.sel.x === x && S.sel.y === y ? ' sel' : '';
+    const sel = selHere && S.sel.keys.has(key) ? ' sel' : '';
     if (!s) { cells += `<button class="cell${ok ? '' : ' locked'}${sel}" data-x="${x}" data-y="${y}" aria-label="${ok ? 'Empty slot' : 'Locked slot'} ${x + 1},${y + 1}"></button>`; continue; }
     const id = idOf(s), t = typeOf(s), info = dbItem(id);
     const amt = num(g(s, 'Amount')), mx = num(g(s, 'MaxAmount'));
@@ -1600,18 +1604,35 @@ function invBlock(el, inv, title) {
         <button class="btn small ghost" data-act="settings">Size and class</button>
       </div></div>
     <div class="inv-wrap"><div><div class="grid${S.db ? ' named' : ''}" style="--w:${w}">${cells}</div>
-      <div class="legend"><span><i style="background:var(--substance)"></i>Substance</span><span><i style="background:var(--product)"></i>Product</span><span><i style="background:var(--technology)"></i>Technology</span><span><i style="background:var(--danger)"></i>Damaged</span><span><i style="background:var(--accent)"></i>Stack or charge level</span></div></div>
+      <div class="legend"><span><i style="background:var(--substance)"></i>Substance</span><span><i style="background:var(--product)"></i>Product</span><span><i style="background:var(--technology)"></i>Technology</span><span><i style="background:var(--danger)"></i>Damaged</span><span><i style="background:var(--accent)"></i>Stack or charge level</span><span class="hint">Ctrl-click or Shift-click to select several</span></div></div>
       <div class="insp-slot"></div></div>`;
   el.appendChild(block);
   loadIcons(block);
   watchNames(block.querySelector('.grid.named'));
-  block.querySelector('.grid').onclick = (e) => {
-    const c = e.target.closest('.cell'); if (!c) return;
-    S.sel = { inv, x: +c.dataset.x, y: +c.dataset.y };
+  const showSel = () => {
     document.querySelectorAll('.cell.sel').forEach((n) => n.classList.remove('sel'));
     document.querySelectorAll('.insp-slot').forEach((n) => { n.innerHTML = ''; });
-    c.classList.add('sel');
-    inspector(block.querySelector('.insp-slot'), inv, S.sel.x, S.sel.y, () => rerenderBlock(block, inv, title));
+    if (!S.sel || !S.sel.keys.size) { S.sel = null; return; }
+    block.querySelectorAll('.grid .cell').forEach((n) => { if (S.sel.keys.has(n.dataset.x + ',' + n.dataset.y)) n.classList.add('sel'); });
+    const box = block.querySelector('.insp-slot'), again = () => rerenderBlock(block, inv, title, peers);
+    if (S.sel.keys.size === 1) { const [x, y] = [...S.sel.keys][0].split(',').map(Number); inspector(box, inv, x, y, again); }
+    else bulkInspector(box, inv, title, peers, again);
+  };
+  block._showSel = showSel;
+  // click selects one slot; Ctrl (or Cmd) adds or removes a slot; Shift selects everything from the last slot clicked
+  block.querySelector('.grid').onclick = (e) => {
+    const c = e.target.closest('.cell'); if (!c) return;
+    const x = +c.dataset.x, y = +c.dataset.y, k = x + ',' + y, same = S.sel && S.sel.inv === inv;
+    if (e.shiftKey && same) {
+      const [ax, ay] = S.sel.anchor, a = ay * w + ax, b = y * w + x;
+      const keys = e.ctrlKey || e.metaKey ? new Set(S.sel.keys) : new Set();
+      for (let i = Math.min(a, b); i <= Math.max(a, b); i++) keys.add((i % w) + ',' + Math.floor(i / w));
+      S.sel = { inv, keys, anchor: S.sel.anchor };
+    } else if ((e.ctrlKey || e.metaKey) && same) {
+      const keys = new Set(S.sel.keys); keys.has(k) ? keys.delete(k) : keys.add(k);
+      S.sel = { inv, keys, anchor: [x, y] };
+    } else S.sel = { inv, keys: new Set([k]), anchor: [x, y] };
+    showSel();
   };
   block.querySelectorAll('[data-act]').forEach((b) => b.onclick = async () => {
     const a = b.dataset.act;
@@ -1623,16 +1644,92 @@ function invBlock(el, inv, title) {
     if (a === 'refill') { let n = 0; slotsOf(inv).forEach((s) => { if (refill(s)) n++; }); toast(n + ' stacks filled'); }
     if (a === 'repair') { let n = 0; slotsOf(inv).forEach((s) => { if (repair(s)) n++; }); toast(n + ' items repaired'); }
     if (a === 'settings') { await invSettings(inv); }
-    rerenderBlock(block, inv, title);
+    rerenderBlock(block, inv, title, peers);
   });
-  if (selHere) inspector(block.querySelector('.insp-slot'), inv, S.sel.x, S.sel.y, () => rerenderBlock(block, inv, title));
+  if (selHere) requestAnimationFrame(() => { if (block.isConnected && S.sel && S.sel.inv === inv) showSel(); });
+}
+// several slots selected: act on all of them at once
+function bulkInspector(box, inv, title, peers, rerender) {
+  const keys = S.sel.keys, valid = validSet(inv);
+  const picked = slotsOf(inv).filter((s) => keys.has(posOf(s).join(',')));
+  const locked = [...keys].filter((k) => !valid.has(k));
+  const isTech = title === 'Technology';
+  const targets = moveTargets(isTech).filter(([i]) => i !== inv);
+  const panel = document.createElement('div'); panel.className = 'inspector';
+  panel.innerHTML = `<div><div class="title">${plural(keys.size, 'slot')} selected</div>
+      <div class="sub">${plural(picked.length, 'item')}${locked.length ? ', ' + locked.length + ' locked' : ''}${keys.size - picked.length - locked.length > 0 ? ', ' + (keys.size - picked.length - locked.length) + ' empty' : ''}</div></div>
+    ${picked.length ? `<div class="toolbar"><button class="btn small" data-b="fill">${isTech ? 'Recharge' : 'Fill stacks'}</button><button class="btn small" data-b="fix">Repair</button><button class="btn small danger" data-b="del">Remove ${plural(picked.length, 'item')}</button></div>` : ''}
+    ${locked.length ? `<div class="toolbar"><button class="btn small" data-b="unlock">Unlock ${plural(locked.length, 'slot')}</button></div>` : ''}
+    ${picked.length && targets.length ? `<div class="row"><label class="field"><span>Move to</span><select class="input" id="bTo">${targets.map(([, t], i) => `<option value="${i}">${esc(t)}</option>`).join('')}</select></label><button class="btn" data-b="move">Move</button></div>` : ''}
+    <p class="dim small-print">Ctrl-click adds or removes a slot, Shift-click selects a range, Ctrl+A selects the whole inventory. Esc clears.</p>`;
+  box.appendChild(panel);
+  const close = document.createElement('button'); close.className = 'insp-close'; close.setAttribute('aria-label', 'Close'); close.textContent = '×';
+  close.onclick = closeInspector; box.appendChild(close);
+  requestAnimationFrame(() => { // open on the side away from the slot clicked last
+    const [ax, ay] = S.sel ? S.sel.anchor : [0, 0], cell = box.closest('.inv') && box.closest('.inv').querySelector(`.cell[data-x="${ax}"][data-y="${ay}"]`);
+    const r = cell && cell.getBoundingClientRect(); box.classList.toggle('left', !!r && r.right > innerWidth - 370);
+  });
+  panel.onclick = (e) => {
+    const b = e.target.closest('[data-b]'); if (!b) return;
+    const act = b.dataset.b;
+    if (act === 'fill') { const n = picked.filter(refill).length; toast(plural(n, isTech ? 'module' : 'stack') + (isTech ? ' recharged' : ' filled')); }
+    if (act === 'fix') { const n = picked.filter(repair).length; toast(plural(n, 'item') + ' repaired'); }
+    if (act === 'unlock') { const arr = g(inv, 'ValidSlotIndices'); locked.forEach((k) => { const [x, y] = k.split(',').map(Number); arr.push(coord(x, y)); }); toast(plural(locked.length, 'slot') + ' unlocked'); }
+    if (act === 'del') { const arr = slotsOf(inv); picked.forEach((s) => arr.splice(arr.indexOf(s), 1)); toast(plural(picked.length, 'item') + ' removed'); }
+    if (act === 'move') { moveSlots(inv, picked, targets[+panel.querySelector('#bTo').value]); return; }
+    markDirty(); rerender();
+  };
+}
+// every inventory items can be moved into: technology only goes to technology, everything else to cargo and storage
+function moveTargets(tech) {
+  const out = [], p = ps(), add = (inv, name) => { if (isInv(inv)) out.push([inv, name]); };
+  const legacy = (o, pre, name) => { const v = g(o, pre + 'Inventory_Cargo'); if (isInv(v) && slotsOf(v).length) add(v, name + ' old cargo'); };
+  if (tech) {
+    add(g(p, 'Inventory_TechOnly'), 'Exosuit technology');
+    ships().forEach(({ s, i }) => add(g(s, 'Inventory_TechOnly'), (str(g(s, 'Name')) || 'Ship ' + (i + 1)) + ' technology'));
+    add(g(p, 'FreighterInventory_TechOnly'), 'Freighter technology');
+    vehicles().forEach(({ s, i }) => add(g(s, 'Inventory_TechOnly'), (str(g(s, 'Name')) || modelName(g(s, 'Resource', 'Filename')) || 'Exocraft ' + (i + 1)) + ' technology'));
+    return out;
+  }
+  add(g(p, 'Inventory'), 'Exosuit cargo'); legacy(p, '', 'Exosuit');
+  ships().forEach(({ s, i }) => { const n = str(g(s, 'Name')) || 'Ship ' + (i + 1); add(g(s, 'Inventory'), n + ' cargo'); legacy(s, '', n); });
+  add(g(p, 'FreighterInventory'), 'Freighter cargo'); legacy(p, 'Freighter', 'Freighter');
+  vehicles().forEach(({ s, i }) => add(g(s, 'Inventory'), (str(g(s, 'Name')) || modelName(g(s, 'Resource', 'Filename')) || 'Exocraft ' + (i + 1)) + ' cargo'));
+  storageInvs().forEach(({ name, inv }) => add(inv, prettyInvName(name)));
+  return out;
+}
+// move items into the first free unlocked slots of another inventory, in reading order
+function moveSlots(from, picked, [to, toTitle]) {
+  const w = Math.max(1, num(g(to, 'Width'))), used = new Set(slotsOf(to).map((s) => posOf(s).join(',')));
+  const free = [...validSet(to)].filter((k) => !used.has(k)).map((k) => k.split(',').map(Number)).sort((a, b) => (a[1] * w + a[0]) - (b[1] * w + b[0]));
+  const order = [...picked].sort((a, b) => { const [ax, ay] = posOf(a), [bx, by] = posOf(b); return ay - by || ax - bx; });
+  const src = slotsOf(from), dst = slotsOf(to); let n = 0;
+  for (const s of order) {
+    const spot = free.shift(); if (!spot) break;
+    src.splice(src.indexOf(s), 1);
+    const ix = g(s, 'Index'); set(ix, 'X', N(spot[0])); set(ix, 'Y', N(spot[1]));
+    dst.push(s); n++;
+  }
+  if (n) markDirty();
+  toast(n === order.length ? `${plural(n, 'item')} moved to ${toTitle}` : `${n} of ${order.length} moved; ${toTitle} has no more free slots`, n < order.length);
+  S.sel = null; render();
 }
 function closeInspector() {
   S.sel = null;
   document.querySelectorAll('.cell.sel').forEach((n) => n.classList.remove('sel'));
   document.querySelectorAll('.insp-slot').forEach((n) => { n.innerHTML = ''; });
 }
-addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.sel && !document.querySelector('dialog[open]')) closeInspector(); });
+addEventListener('keydown', (e) => {
+  if (!S.sel || document.querySelector('dialog[open]')) return;
+  if (e.key === 'Escape') closeInspector();
+  // Ctrl+A: select every slot of the inventory you're working in (not while typing in a field)
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a' && !e.target.closest('input, textarea, select')) {
+    const cell = document.querySelector('.cell.sel'), block = cell && cell.closest('.inv'); if (!block || !block._showSel) return;
+    e.preventDefault();
+    S.sel = { inv: S.sel.inv, keys: new Set([...block.querySelectorAll('.grid .cell')].map((n) => n.dataset.x + ',' + n.dataset.y)), anchor: [0, 0] };
+    block._showSel();
+  }
+});
 
 // Fit item names on one line by shrinking them a little; if a name still won't fit, wrap it onto two
 // lines between words (never inside a word). Measured with a canvas so it costs no layout passes.
@@ -1670,7 +1767,7 @@ function watchNames(grid) {
   if (document.fonts) document.fonts.ready.then(() => { if (grid.isConnected) fitNames(grid); });
 }
 
-function rerenderBlock(block, inv, title) { const tmp = document.createElement('div'); invBlock(tmp, inv, title); block.replaceWith(tmp.firstElementChild); }
+function rerenderBlock(block, inv, title, peers) { const tmp = document.createElement('div'); invBlock(tmp, inv, title, peers); block.replaceWith(tmp.firstElementChild); }
 
 async function invSettings(inv) {
   const w = num(g(inv, 'Width')), h = num(g(inv, 'Height')), cls = invClass(inv);

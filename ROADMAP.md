@@ -68,8 +68,14 @@ The save file holds no images, so a ship's picture has to come from one of these
 
 - [ ] Find an item across every inventory (exosuit, ships, freighter, storage containers, exocraft) and see where every stack is
 - [ ] Consolidate: pick a destination, see the plan, untick anything to leave alone, then apply. Stack limits come from your character's difficulty settings
-- [ ] Bulk moves between inventories
+- [x] Select several slots (Ctrl-click, Shift-click, Ctrl+A) and fill, repair, remove, unlock or move them to any other inventory in one go
+- [ ] Drag-select and drag-and-drop between inventories
 - [ ] Unlock expedition rewards and Twitch drops (these live in `accountdata.hg`, so the app gains carefully limited write access to it)
+
+## Own item library (so Goatfungus isn't needed)
+
+- [ ] "Build item library from your game": read the owner's own No Man's Sky install (HGPAK archives since 5.5), pull the product, substance and technology tables and the English language file (MBIN), and convert the icons (DDS) to PNG, cached in the app folder. Nothing game-derived is bundled or committed, and it refreshes itself after a game update
+- [ ] Goatfungus's jar stays as a fallback
 
 ## Phase 6 — Streamlined editing (no more digging through JSON) [4]
 
