@@ -11,7 +11,8 @@
 param(
     [string]$GameDir = '',      # the "No Man's Sky" folder, if it can't be found automatically
     [string]$HgpakTool = '',    # a hgpaktool.exe you already have
-    [string]$OutDir = ''        # where the zip goes (default: your Desktop)
+    [string]$OutDir = '',       # where the zip goes (default: your Desktop)
+    [string]$Sets = 'fighters,multitools'  # which model folders: fighters, multitools, freighters, exocraft
 )
 
 $ErrorActionPreference = 'Stop'
@@ -87,18 +88,21 @@ if (-not (Test-Path $HgpakTool)) { Fail "HGPAKtool wasn't found at $HgpakTool." 
 # ---------------------------------------------------------------- 3. pull out the model files
 Push-Location $work
 try {
-    Say 'Extracting fighter and multi-tool models (a few minutes)...'
+    $folders = @{
+        fighters   = 'models/common/spacecraft/fighters'
+        multitools = 'models/common/weapons/multitool'
+        freighters = 'models/common/spacecraft/industrial'
+        exocraft   = 'models/common/vehicles'
+    }
+    $args2 = @('-U', '-q', '-O', (Join-Path $work 'EXTRACTED'))
+    foreach ($set in ($Sets -split ',')) {
+        $f = $folders[$set.Trim()]
+        if (-not $f) { Fail "Unknown set '$set'." }
+        foreach ($ext in '*.scene.mbin', '*.descriptor.mbin', '*.geometry.mbin.pc', '*.geometry.data.mbin.pc') { $args2 += @('-f', "*$f/$ext") }
+    }
+    Say "Extracting models ($Sets), a few minutes..."
     $ext = Join-Path $work 'EXTRACTED'
-    & $HgpakTool -U -q -O $ext `
-        -f '*models/common/spacecraft/fighters/*.scene.mbin' `
-        -f '*models/common/spacecraft/fighters/*.descriptor.mbin' `
-        -f '*models/common/spacecraft/fighters/*.geometry.mbin.pc' `
-        -f '*models/common/spacecraft/fighters/*.geometry.data.mbin.pc' `
-        -f '*models/common/weapons/multitool/*.scene.mbin' `
-        -f '*models/common/weapons/multitool/*.descriptor.mbin' `
-        -f '*models/common/weapons/multitool/*.geometry.mbin.pc' `
-        -f '*models/common/weapons/multitool/*.geometry.data.mbin.pc' `
-        $banks
+    & $HgpakTool @args2 $banks
 } finally { Pop-Location }
 
 # ---------------------------------------------------------------- 4. pack it up
@@ -112,7 +116,7 @@ $total = [Math]::Round((($all | Measure-Object Length -Sum).Sum) / 1MB, 1)
 ) | Set-Content (Join-Path $ext 'about.txt') -Encoding UTF8
 
 if (-not $OutDir) { $OutDir = [Environment]::GetFolderPath('Desktop') }
-$zip = Join-Path $OutDir 'NMS model files for Harmonious.zip'
+$zip = Join-Path $OutDir ("NMS model files for Harmonious (" + ($Sets -replace ',', ', ') + ").zip")
 if (Test-Path $zip) { Remove-Item $zip -Force }
 Compress-Archive -Path (Join-Path $ext '*') -DestinationPath $zip
 $mb = [Math]::Round((Get-Item $zip).Length / 1MB, 1)

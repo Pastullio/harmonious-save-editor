@@ -1069,11 +1069,15 @@ PAGES.tools = (el) => ownedPage(el, {
   invs: (s) => [[g(s, 'Store'), 'Technology']],
   details: (ed, s, i) => entityDetails(ed, s, i, 'tool'),
 });
+// exocraft bays follow the game's vehicle types; saves leave the model empty and the bay decides it
+const EXOCRAFT = [['Roamer', 'buggy/buggy'], ['Nomad', 'bike/bike'], ['Colossus', 'rover/rover'], ['Pilgrim', 'wheeledbike/wheeledbike'], ['Hovercraft', 'hover/hovercraft'], ['Nautilon', 'submarine/submarine'], ['Minotaur', 'mech_suit/mech_suit']];
+const exoName = (s, i) => str(g(s, 'Name')) || (EXOCRAFT[i] || ['Exocraft ' + (i + 1)])[0];
+const exoScene = (s, i) => str(g(s, 'Resource', 'Filename')) || (EXOCRAFT[i] ? `MODELS/COMMON/VEHICLES/${EXOCRAFT[i][1].toUpperCase()}.SCENE.MBIN` : '');
 PAGES.vehicles = (el) => ownedPage(el, {
   title: 'Exocraft', intro: 'Cargo and technology for each exocraft you have summoned.', list: vehicles(), key: 'veh', primaryKey: 'PrimaryVehicle',
-  label: (s, i) => str(g(s, 'Name')) || modelName(g(s, 'Resource', 'Filename')) || 'Exocraft ' + (i + 1), sub: (s, i) => 'Bay ' + (i + 1),
+  label: (s, i) => exoName(s, i), sub: (s, i) => (EXOCRAFT[i] ? EXOCRAFT[i][0] + ', ' : '') + 'bay ' + (i + 1),
   invs: (s) => [[g(s, 'Inventory_TechOnly'), 'Technology'], [g(s, 'Inventory'), 'Cargo']],
-  picture: (s, i) => { const model = modelName(g(s, 'Resource', 'Filename')); return { kind: 'ship', type: 'Exocraft', name: str(g(s, 'Name')) || model || 'Exocraft ' + (i + 1), cls: '', key: 'veh|' + i + '|' + model, seed: str((seedOf(s) || [])[1]), scene: str(g(s, 'Resource', 'Filename')) }; },
+  picture: (s, i) => { const model = modelName(g(s, 'Resource', 'Filename')); return { kind: 'ship', type: 'Exocraft', name: exoName(s, i), cls: '', key: 'veh|' + i + '|' + model, seed: str((seedOf(s) || [])[1]), scene: exoScene(s, i) }; },
 });
 
 // ------------------------------------------------------------------ ship and multi-tool details (type, class, seed, colours, stats)
@@ -2531,13 +2535,13 @@ function moveTargets(tech) {
     add(g(p, 'Inventory_TechOnly'), 'Exosuit technology');
     ships().forEach(({ s, i }) => add(g(s, 'Inventory_TechOnly'), (str(g(s, 'Name')) || 'Ship ' + (i + 1)) + ' technology'));
     add(g(p, 'FreighterInventory_TechOnly'), 'Freighter technology');
-    vehicles().forEach(({ s, i }) => add(g(s, 'Inventory_TechOnly'), (str(g(s, 'Name')) || modelName(g(s, 'Resource', 'Filename')) || 'Exocraft ' + (i + 1)) + ' technology'));
+    vehicles().forEach(({ s, i }) => add(g(s, 'Inventory_TechOnly'), exoName(s, i) + ' technology'));
     return out;
   }
   add(g(p, 'Inventory'), 'Exosuit cargo'); legacy(p, '', 'Exosuit');
   ships().forEach(({ s, i }) => { const n = str(g(s, 'Name')) || 'Ship ' + (i + 1); add(g(s, 'Inventory'), n + ' cargo'); legacy(s, '', n); });
   add(g(p, 'FreighterInventory'), 'Freighter cargo'); legacy(p, 'Freighter', 'Freighter');
-  vehicles().forEach(({ s, i }) => add(g(s, 'Inventory'), (str(g(s, 'Name')) || modelName(g(s, 'Resource', 'Filename')) || 'Exocraft ' + (i + 1)) + ' cargo'));
+  vehicles().forEach(({ s, i }) => add(g(s, 'Inventory'), exoName(s, i) + ' cargo'));
   storageInvs().forEach(({ name, inv }) => add(inv, prettyInvName(name)));
   return out;
 }
