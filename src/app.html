@@ -211,19 +211,29 @@ nav .count { font-family: var(--mono); font-size: 11px; color: var(--faint); }
 .cell .amt { position: absolute; right: 4px; bottom: 6px; font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--ink); pointer-events: none; }
 .cell.has img ~ .amt { color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .8); }
 .cell .fill { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--accent); pointer-events: none; }
-.grid.named { width: 100%; max-width: calc(var(--w) * 132px + (var(--w) - 1) * 6px + 24px); grid-template-columns: repeat(var(--w), minmax(0, 1fr)); }
-.grid.named .cell { aspect-ratio: 10 / 11; }
+.inv-tabs { display: inline-flex; gap: 2px; padding: 3px; margin: 0 0 18px; border-radius: 999px; background: var(--well); }
+.inv-tabs button { border: 0; background: none; padding: 7px 18px; border-radius: 999px; font: inherit; font-size: 11px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); cursor: pointer; }
+.inv-tabs button:hover { color: var(--ink); }
+.inv-tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+.inv-tabs .n { font-family: var(--mono); letter-spacing: 0; opacity: .7; margin-left: 4px; }
+/* cells scale with the window; the columns stay as the game lays them out, since a slot's position matters (adjacency bonuses) */
+.grid.named { width: 100%; max-width: calc(var(--w) * 150px + (var(--w) - 1) * 6px + 24px); grid-template-columns: repeat(var(--w), minmax(0, 1fr)); gap: clamp(3px, .5vw, 7px); }
+.grid.named .cell { aspect-ratio: 10 / 11; container-type: inline-size; }
+@container (max-width: 50px) { .grid.named .cell .nm { display: none !important; } .grid.named .cell img { width: 76%; } }
+.page:has(.grid.named) { max-width: 1720px; }
+@media (max-width: 1280px) { #app { grid-template-columns: 208px 1fr; } .page { padding-left: 22px; padding-right: 22px; } }
 .grid.named .cell.has { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 5px 7px; }
 /* icon fills the space above; name (always two lines tall) and amount sit at fixed spots at the bottom */
 .grid.named .cell img { width: 56%; height: auto; aspect-ratio: 1; flex: none; margin: auto 0; }
 .grid.named .cell .nm, .grid.named .cell .qty { flex: none; max-width: 100%; }
-.grid.named .cell .nm { width: 100%; height: 26px; display: flex; align-items: flex-end; justify-content: center; }
+.grid.named .cell .nm { width: 100%; height: clamp(20px, 25cqw, 34px); display: flex; align-items: flex-end; justify-content: center; }
 .grid.named .cell.no-icon .nm { margin-top: auto; }
 /* names stay on one line, shrinking to fit (fitNames); a name too long even then wraps between words, never inside one */
 .cell .nm { font-weight: 500; font-size: 11px; line-height: 1.15; text-align: center; color: var(--ink); white-space: nowrap; overflow: hidden; pointer-events: none; }
 .cell .nm.two { white-space: normal; word-break: keep-all; overflow-wrap: normal; }
+.cell .nm > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; max-width: 100%; } /* very small cells: a third line becomes "…" */
 .cell .nm.raw { font-family: var(--mono); font-size: 9px; color: var(--dim); white-space: normal; word-break: break-all; }
-.cell .qty { font-family: var(--mono); font-size: 10px; font-weight: 600; color: var(--dim); pointer-events: none; }
+.cell .qty { font-family: var(--mono); font-size: clamp(8px, 9.5cqw, 12.5px); font-weight: 600; color: var(--dim); pointer-events: none; }
 .db-form { margin: 14px 0 12px; }
 .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 11.5px; color: var(--dim); margin-top: 12px; }
 .legend i { display: inline-block; width: 12px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
@@ -323,20 +333,22 @@ dialog.wide { max-width: 1000px; }
 .hangar-detail .acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: start; }
 @media (max-width: 760px) { .hangar-detail { grid-template-columns: 1fr; } .hangar-detail .acts { justify-content: start; } }
 @media (max-width: 1100px) { .inspector { position: static; } }
-@media (max-width: 760px) {
+/* narrower windows: the section list moves above the page so the inventories keep the full width */
+@media (max-width: 960px) {
   #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; height: auto; min-height: 100%; }
   #side { border-right: 0; border-bottom: 1px solid var(--line); }
   nav { display: flex; overflow-x: auto; padding: 8px 10px; }
   nav button { white-space: nowrap; width: auto; }
   nav .count { display: none; }
+}
+@media (max-width: 760px) {
   .page { padding: 22px 16px 48px; }
   h1 { font-size: 20px; letter-spacing: .14em; }
   .currencies, .open-grid { grid-template-columns: 1fr; }
   .grid { grid-template-columns: repeat(var(--w), minmax(0, 1fr)); gap: 3px; padding: 6px; width: auto; }
   .nrow { grid-template-columns: 22px 1fr; } .nrow .v { grid-column: 2; }
   .cell .lbl { font-size: 10px; padding: 2px 1px 9px; } .cell .amt { font-size: 10px; right: 2px; bottom: 4px; }
-  .grid.named { grid-template-columns: repeat(var(--w), minmax(0, 1fr)); }
-  .grid.named .cell { aspect-ratio: 1; } .grid.named .cell.has { padding: 3px 2px 5px; } .grid.named .cell img { width: 70%; } .grid.named .cell .nm { display: none; } .cell .qty { font-size: 8px; }
+  .grid.named .cell.has { padding: 3px 2px 5px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
@@ -825,10 +837,8 @@ function allInvs() {
 
 PAGES.exosuit = (el) => {
   const p = ps();
-  el.innerHTML = `<div class="page-head"><div><h1>Exosuit</h1><p>General, technology and cargo inventories.</p></div></div>`;
-  invBlock(el, g(p, 'Inventory'), 'General');
-  invBlock(el, g(p, 'Inventory_TechOnly'), 'Technology');
-  invBlock(el, g(p, 'Inventory_Cargo'), 'Cargo');
+  el.innerHTML = `<div class="page-head"><div><h1>Exosuit</h1><p>Technology and cargo, as in the game.</p></div></div>`;
+  invGroup(el, standardInvs(p, ''));
 };
 
 function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, nameKey, flow }) {
@@ -859,7 +869,7 @@ function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, 
       panel.querySelector('input').onchange = (e) => { set(cur, nameKey, e.target.value); renderSide(); };
       wireSeed(panel, cur);
     }
-    invs(cur).forEach(([inv, t]) => invBlock(ed, inv, t));
+    invGroup(ed, invs(cur));
   }
   editor();
 }
@@ -873,7 +883,7 @@ function wireSeed(panel, s) {
 PAGES.ships = (el) => ownedPage(el, {
   title: 'Starships', intro: 'Rename ships, change seeds, and manage each ship\'s inventories.', list: ships(), key: 'ship', primaryKey: 'PrimaryShip', nameKey: 'Name', flow: 'ship',
   label: (s, i) => str(g(s, 'Name')) || 'Ship ' + (i + 1), sub: (s) => [modelName(g(s, 'Resource', 'Filename')), invClass(g(s, 'Inventory'))].filter(Boolean).join(', ') + ' class',
-  invs: (s) => [[g(s, 'Inventory'), 'General'], [g(s, 'Inventory_TechOnly'), 'Technology'], [g(s, 'Inventory_Cargo'), 'Cargo']],
+  invs: (s) => standardInvs(s, ''),
 });
 PAGES.tools = (el) => ownedPage(el, {
   title: 'Multi-tools', intro: 'Each multi-tool has a single store for its technology.', list: tools(), key: 'tool', primaryKey: 'ActiveMultioolIndex', nameKey: 'Name', flow: 'tool',
@@ -883,7 +893,7 @@ PAGES.tools = (el) => ownedPage(el, {
 PAGES.vehicles = (el) => ownedPage(el, {
   title: 'Exocraft', intro: 'Cargo and technology for each exocraft you have summoned.', list: vehicles(), key: 'veh', primaryKey: 'PrimaryVehicle',
   label: (s, i) => str(g(s, 'Name')) || modelName(g(s, 'Resource', 'Filename')) || 'Exocraft ' + (i + 1), sub: (s, i) => 'Bay ' + (i + 1),
-  invs: (s) => [[g(s, 'Inventory'), 'Cargo'], [g(s, 'Inventory_TechOnly'), 'Technology']],
+  invs: (s) => [[g(s, 'Inventory_TechOnly'), 'Technology'], [g(s, 'Inventory'), 'Cargo']],
 });
 // ------------------------------------------------------------------ Cover Flow: ships, corvettes and multi-tools
 // Covers are drawn from the save: a corvette becomes a hologram of its real part layout, other ships and
@@ -1468,9 +1478,7 @@ PAGES.freighter = (el) => {
     panel.querySelector('input').onchange = (e) => set(p, 'PlayerFreighterName', e.target.value);
     el.appendChild(panel);
   }
-  invBlock(el, g(p, 'FreighterInventory'), 'General');
-  invBlock(el, g(p, 'FreighterInventory_TechOnly'), 'Technology');
-  invBlock(el, g(p, 'FreighterInventory_Cargo'), 'Cargo');
+  invGroup(el, standardInvs(p, 'Freighter'));
 };
 PAGES.storage = (el) => {
   el.innerHTML = `<div class="page-head"><div><h1>Storage</h1><p>Base storage containers and other standalone inventories found in this save.</p></div></div>`;
@@ -1530,6 +1538,32 @@ function newSlot(inv, x, y, { id, type, amount, max }) {
 function cloneJSON(v) { if (v instanceof Map) { const m = new Map(); for (const [k, x] of v) m.set(k, cloneJSON(x)); return m; } if (Array.isArray(v)) return v.map(cloneJSON); return v; }
 
 const compactNum = (n) => n >= 100000 ? Math.round(n / 1000) + 'k' : n >= 10000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k' : String(n);
+// The game shows two tabs: Technology, and Cargo (stored as "Inventory"). Saves also keep an older
+// "Inventory_Cargo" the game no longer shows; it is listed only when something is still in it.
+function standardInvs(o, prefix) {
+  const old = g(o, prefix + 'Inventory_Cargo');
+  return [[g(o, prefix + 'Inventory_TechOnly'), 'Technology'], [g(o, prefix + 'Inventory'), 'Cargo']]
+    .concat(isInv(old) && slotsOf(old).length ? [[old, 'Old cargo']] : []);
+}
+// Show one inventory at a time with a switch, or all of them together; the choice is remembered.
+function invGroup(el, list) {
+  list = list.filter(([inv]) => isInv(inv));
+  if (list.length < 2) { list.forEach(([inv, t]) => invBlock(el, inv, t)); return; }
+  let pick = 'all'; try { pick = localStorage.getItem('hse-invtab') || 'all'; } catch (_) {}
+  if (pick !== 'all' && !list.some(([, t]) => t === pick)) pick = 'all';
+  const bar = document.createElement('div'); bar.className = 'inv-tabs'; bar.setAttribute('role', 'tablist');
+  bar.innerHTML = list.map(([inv, t]) => `<button role="tab" data-t="${esc(t)}">${esc(t)} <span class="n">${slotsOf(inv).length}</span></button>`).join('')
+    + `<button role="tab" data-t="all">${list.length > 2 ? 'All' : 'Both'}</button>`;
+  el.appendChild(bar);
+  const boxes = list.map(([inv, t]) => { const d = document.createElement('div'); d.dataset.t = t; el.appendChild(d); invBlock(d, inv, t); return d; });
+  const show = (t) => {
+    bar.querySelectorAll('button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.t === t)));
+    boxes.forEach((d) => { d.hidden = t !== 'all' && d.dataset.t !== t; });
+    if (S.sel && boxes.some((d) => d.hidden && d.querySelector('.cell.sel'))) closeInspector();
+  };
+  bar.onclick = (e) => { const b = e.target.closest('button'); if (!b) return; show(b.dataset.t); try { localStorage.setItem('hse-invtab', b.dataset.t); } catch (_) {} };
+  show(pick);
+}
 function invBlock(el, inv, title) {
   if (!isInv(inv)) return;
   const w = Math.max(1, num(g(inv, 'Width'))), h = Math.max(1, num(g(inv, 'Height')));
@@ -1553,7 +1587,7 @@ function invBlock(el, inv, title) {
     cells += `<button class="cell has t-${esc(t)}${dmg ? ' damaged' : ''}${S.db && !icon ? ' no-icon' : ''}${sel}" data-x="${x}" data-y="${y}" title="${esc(name)}${qty ? ' · ' + qty : ''}${info ? '' : '\n' + esc(idLabel(id))}" aria-label="${esc(name)}${qty ? ', ' + qty : ''}">`
       + (S.db
         // Goatfungus-style: icon, name, then amount/max
-        ? (icon ? `<img data-icon="${esc(icon)}" alt="">` : '') + `<span class="nm${info ? '' : ' raw'}">${esc(name)}</span>` + (qty ? `<span class="qty">${qty}</span>` : '')
+        ? (icon ? `<img data-icon="${esc(icon)}" alt="">` : '') + `<span class="nm${info ? '' : ' raw'}"><span>${esc(name)}</span></span>` + (qty ? `<span class="qty">${qty}</span>` : '')
         : `<span class="lbl">${esc(name)}</span>` + (t !== 'Technology' && amt > 0 ? `<span class="amt">${compactNum(amt)}</span>` : ''))
       + (pct ? `<span class="fill" style="width:${pct}%"></span>` : '') + '</button>';
   }
@@ -1608,7 +1642,7 @@ function fitNames(grid) {
   const avail = (nms[0].clientWidth - 2) * .95; if (avail <= 0) return; // a little slack: canvas and page text measure slightly differently
   fitCtx.font = '500 100px ' + getComputedStyle(nms[0]).fontFamily;
   const memo = new Map(), wid = (t) => { if (!memo.has(t)) memo.set(t, fitCtx.measureText(t).width); return memo.get(t); };
-  const BASE = 11, MIN1 = 8, MIN2 = 7;
+  const cw = nms[0].closest('.cell').clientWidth, BASE = Math.max(10, Math.min(13.5, cw * .105)), MIN1 = 8, MIN2 = 7;
   const lines = (words, fs) => {
     const k = fs / 100, sp = wid(' ') * k; let line = 0, n = 1;
     for (const w of words) { const ww = wid(w) * k; if (ww > avail) return Infinity; if (!line) line = ww; else if (line + sp + ww <= avail) line += sp + ww; else { n++; line = ww; } }
@@ -1618,14 +1652,15 @@ function fitNames(grid) {
     const text = n.textContent;
     const one = Math.floor(Math.min(BASE, (avail * 100) / wid(text)) * 4) / 4;
     if (one >= MIN1) { n.style.fontSize = one + 'px'; n.classList.remove('two'); continue; }
-    const words = text.split(/\s+/); let fs = 9.5; // two-line names stay near the size of the shrunk one-liners
+    const words = text.split(/\s+/); let fs = BASE - 1.5; // two-line names stay near the size of the shrunk one-liners
     while (fs > MIN2 && lines(words, fs) > 2) fs -= .25;
     n.style.fontSize = fs + 'px'; n.classList.add('two');
   }
   // safety net: anything that still spills over gets nudged down (one layout read for the lot)
-  for (const n of [...nms].filter((n) => n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 1)) {
+  const spills = (n) => { const t = n.firstElementChild; return n.scrollWidth > n.clientWidth + 1 || t.scrollWidth > t.clientWidth + 1 || t.scrollHeight > t.clientHeight + 1; };
+  for (const n of [...nms].filter(spills)) {
     let fs = parseFloat(n.style.fontSize) || BASE;
-    while (fs > MIN2 && (n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 1)) { fs -= .25; n.style.fontSize = fs + 'px'; }
+    while (fs > MIN2 && spills(n)) { fs -= .25; n.style.fontSize = fs + 'px'; }
   }
 }
 const nameObserver = typeof ResizeObserver === 'function' ? new ResizeObserver((es) => es.forEach((e) => fitNames(e.target))) : null;

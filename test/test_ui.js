@@ -23,14 +23,14 @@ const fx = process.argv[2], shots = process.argv[3];
   await page.click('.inv .cell.has >> nth=0');
   await page.screenshot({ path: shots + '/03-exosuit.png' });
   await page.click('#sFill');
-  const emptyCount = await page.locator('.inv >> nth=0 >> .cell:not(.has):not(.locked)').count();
-  console.log('empty valid cells in exosuit general:', emptyCount);
+  const emptyCount = await page.locator('[data-t="Cargo"] .inv >> .cell:not(.has):not(.locked)').count();
+  console.log('empty valid cells in exosuit cargo:', emptyCount);
   if (emptyCount) {
-    await page.click('.inv >> nth=0 >> .cell:not(.has):not(.locked) >> nth=0');
+    await page.click('[data-t="Cargo"] .inv >> .cell:not(.has):not(.locked) >> nth=0');
     await page.fill('#aId', 'ANTIMATTER'); await page.selectOption('#aType', 'Product'); await page.click('#aAdd');
   }
   // unlock all in tech inventory
-  await page.click('.inv >> nth=1 >> [data-act="unlock"]');
+  await page.click('[data-t="Technology"] .inv >> [data-act="unlock"]');
   // ships page
   await page.click('nav button[data-s="ships"]');
   await page.screenshot({ path: shots + '/04-ships.png' });
