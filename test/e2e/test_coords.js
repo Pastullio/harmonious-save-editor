@@ -49,8 +49,9 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const info = await p.textContent('#destInfo'); console.log(info.replace(/\s+/g, ' ').slice(0, 400));
   ok('shows discoveries and places for a known system', /discovered/.test(info) && /Gas Display/.test(info));
   await p.screenshot({ path: SP + '/shots/co2-known.png', fullPage: true });
+  ok('a warp button at the top of the destination', await p.evaluate(() => { const b = $('#warpTop'); return b && !b.disabled && b.getBoundingClientRect().top < $('#keypad').getBoundingClientRect().top; }));
   // warp
-  await p.click('#warpBtn'); await p.waitForSelector('#dlg[open]'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(300);
+  await p.click('#warpTop'); await p.waitForSelector('#dlg[open]'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(300);
   const after = await p.evaluate(() => ({ ua: Place.fromUA(g(ps(), 'UniverseAddress')), prev: Place.fromUA(g(ps(), 'PreviousUniverseAddress')), st: str(g(S.ctx, 'SpawnStateData', 'LastKnownPlayerState')), dirty: S.dirty }));
   console.log(JSON.stringify(after));
   ok('warp sets the location', after.ua.x === -1714 && after.ua.sys === 1049 && after.ua.gi === 0 && after.ua.planet === 0);

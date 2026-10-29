@@ -45,6 +45,11 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   if (await p.$('#dlg[open]')) { await p.click('#dlgActs .btn.primary'); await p.waitForFunction(() => !S.dirty, null, { timeout: 30000 }); }
   await p.reload(); await p.waitForSelector('.slot-row'); await p.click('.slot-row'); await p.waitForSelector('#app:not(.hidden)');
   ok('supercharging survives saving and reopening', (await bonus()) === 4);
+  // exocraft technology can be supercharged too
+  await p.evaluate(() => { try { localStorage.setItem('hse-invtab', 'all'); } catch (_) {} go('vehicles'); }); await p.waitForSelector('.inv');
+  const exo = await p.$$eval('.inv', (bs) => bs.map((x) => x.querySelector('h3').textContent.trim() + ':' + !!x.querySelector('[data-act="charge"]')));
+  console.log(exo);
+  ok('Supercharge slots on exocraft technology', exo.some((h) => /^Technology.*:true$/.test(h)) && !exo.some((h) => /^Cargo.*:true$/.test(h)));
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
   await b.close(); proc.kill();
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS'); process.exit(fails.length ? 1 : 0);

@@ -87,7 +87,7 @@ The save file holds no images, so a ship's picture has to come from one of these
 - [ ] Every live update is backed up, so any version can be rolled back
 - [ ] To test early: whether No Man's Sky picks up the new file when you load the save from the main menu, and how Steam Cloud reacts to a file changing outside the game
 
-- [x] Supercharge slots (owner, 2026-10-29): button next to Unlock all slots on exosuit and starship technology, per-slot toggle and multi-select; supercharged slots get a steady electric edge and bolt badge; the lightning crackles on hover or selection and once when a slot is charged (owner found a fully charged grid too busy)
+- [x] Supercharge slots (owner, 2026-10-29): button next to Unlock all slots on exosuit and starship technology, per-slot toggle and multi-select; exocraft technology too (owner, 2026-10-29); supercharged slots get a steady electric edge and bolt badge; the lightning crackles on hover or selection and once when a slot is charged (owner found a fully charged grid too busy)
 
 ## Phase 5 — Cargo and Loadout Ops [7]
 

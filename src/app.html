@@ -66,7 +66,7 @@ h1, h2, h3 { font-family: var(--display); margin: 0; }
 h1 { font-size: 27px; font-weight: 300; line-height: 1.15; letter-spacing: .2em; text-transform: uppercase; }
 h2 { font-size: 20px; font-weight: 500; line-height: 1.25; }
 h3 { font-size: 15.5px; font-weight: 500; line-height: 1.3; }
-.label, .panel > h3, .open-card h3 { font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+.label, .panel > h3, .open-card h3, .dest-head h3, .slot-issues h3 { font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
 p { margin: 0 0 .8em; max-width: 68ch; }
 a { color: var(--accent); text-underline-offset: 3px; }
 .dim { color: var(--dim); }
@@ -497,6 +497,10 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .keypad .glyph { font-size: 30px; }
 .keypad span { font-family: var(--mono); font-size: 11px; color: var(--dim); }
 .dest-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.dest-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.dest-head h3 { margin: 0 auto 0 0; }
+.dest-head .dim { font-size: 13px; font-family: var(--mono); }
+.warp-top { padding-inline: 26px; }
 .dest-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 16px; }
 .dest-sum { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-bottom: 8px; }
 .place-facts { margin: 8px 0 0; padding-left: 20px; line-height: 1.6; }
@@ -1201,8 +1205,8 @@ function download(bytes, name) { const u = URL.createObjectURL(new Blob([bytes])
 
 // ------------------------------------------------------------------ navigation
 const SECTIONS = [
-  ['overview', 'Overview'], ['shipwright', 'Shipwright'], ['hangar', 'Hangar'], ['library', 'Dock Yard'], ['exosuit', 'Exosuit'], ['ships', 'Starships'], ['tools', 'Multi-tools'],
-  ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['companions', 'Companions'], ['bases', 'Bases'], ['storage', 'Storage'], ['cargo', 'Cargo'], ['coords', 'Coordinates'],
+  ['overview', 'Overview'], ['shipwright', 'Shipwright'], ['hangar', 'Hangar'], ['library', 'Dock Yard'], ['coords', 'Coordinates'], ['exosuit', 'Exosuit'], ['ships', 'Starships'], ['tools', 'Multi-tools'],
+  ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['companions', 'Companions'], ['bases', 'Bases'], ['storage', 'Storage'], ['cargo', 'Cargo'],
   ['knowledge', 'Knowledge'], ['rewards', 'Rewards'], ['standing', 'Standing'], ['difficulty', 'Difficulty'], ['items', 'Item names'], ['raw', 'Raw data'],
 ];
 // Spectrum: each section's colour, sweeping teal through blue, violet, magenta, rose and coral (owner's pick);
@@ -2794,7 +2798,7 @@ function invGroup(el, list) {
   show(pick);
 }
 // ---- supercharged slots: SpecialSlots entries of type TechBonus in a technology inventory
-const canCharge = (inv) => isInv(inv) && kOf(inv, 'SpecialSlots') != null && (inv === g(ps(), 'Inventory_TechOnly') || ships().some(({ s }) => g(s, 'Inventory_TechOnly') === inv));
+const canCharge = (inv) => isInv(inv) && kOf(inv, 'SpecialSlots') != null && (inv === g(ps(), 'Inventory_TechOnly') || [...ships(), ...vehicles()].some(({ s }) => g(s, 'Inventory_TechOnly') === inv));
 const chargeKey = (e) => num(g(e, 'Index', 'X')) + ',' + num(g(e, 'Index', 'Y'));
 const isBonus = (e) => str(g(e, 'Type', 'InventorySpecialSlotType')) === 'TechBonus';
 function chargedSet(inv) { const out = new Set(); for (const e of (isInv(inv) && g(inv, 'SpecialSlots')) || []) if (isBonus(e)) out.add(chargeKey(e)); return out; }
@@ -2898,7 +2902,7 @@ function invBlock(el, inv, title, peers) {
     }
     if (a === 'charge') {
       const all = [...validSet(inv)], have = chargedSet(inv);
-      const v = await dialog('Supercharge slots', `<p>Supercharged slots boost the technology installed in them. The game gives each exosuit and starship a few at random; here you can supercharge every unlocked slot (${all.length}) at once.</p>
+      const v = await dialog('Supercharge slots', `<p>Supercharged slots boost the technology installed in them. The game gives each exosuit, starship and exocraft a few at random; here you can supercharge every unlocked slot (${all.length}) at once.</p>
         <p class="dim">${have.size ? `${plural(have.size, 'slot is', 'slots are')} supercharged now.` : 'No slots are supercharged now.'} To pick slots one by one, select them (Ctrl-click or Shift-click) and use Supercharge in the side panel. Nothing is written to your game until you save.</p>`,
         [['Cancel', null, 'ghost'], ...(have.size ? [['Remove all', 'off', 'danger']] : []), ['Supercharge every slot', 'on', 'primary']]);
       if (v === 'on') { const n = setCharged(inv, new Set(all), true); toast(n ? plural(n, 'slot') + ' supercharged' : 'Every slot is already supercharged'); }
@@ -5046,7 +5050,7 @@ PAGES.coords = (el) => {
       <div class="here-row"><div><b id="hereName"></b><b>${esc(GALAXIES[here.gi] || 'Galaxy ' + (here.gi + 1))}</b><span class="dim"> · galaxy ${here.gi + 1} of 256</span></div>
       ${glyphRow(Place.portal(here), 'small')}<span class="mono">${Place.portal(here)}</span><span class="mono dim">${Place.galactic(here)}</span>
       <button class="btn small" id="hereUse">Start from here</button></div></div>
-    <div class="panel"><h3>Destination</h3>
+    <div class="panel"><div class="dest-head"><h3>Destination</h3><span class="dim" id="warpTopNote"></span><button class="btn primary warp-top" id="warpTop" type="button" disabled>Warp here</button></div>
       <div class="dest">
         <div class="dest-glyphs" id="destGlyphs" aria-label="Portal code as glyphs"></div>
         <div class="keypad" id="keypad">${GLYPH_NAMES.map((n, i) => `<button type="button" data-d="${hexN(i, 1)}" title="${n}">${glyph(hexN(i, 1))}<span>${hexN(i, 1)}</span></button>`).join('')}</div>
@@ -5071,7 +5075,8 @@ PAGES.coords = (el) => {
     if (from !== 'gal') $$('#fGal').value = full ? Place.galactic(C.p) : '';
     $$('#fGalaxy').value = String(C.p.gi);
     const info = $$('#destInfo');
-    if (!full) { info.innerHTML = `<p class="dim">${C.digits.length ? `${12 - C.digits.length} more glyph${C.digits.length === 11 ? '' : 's'} to go.` : 'Tap glyphs, type a portal code or paste a galactic address.'}</p>`; return; }
+    const wt = $$('#warpTop'), wn = $$('#warpTopNote');
+    if (!full) { wt.disabled = true; wn.textContent = 'Enter all 12 glyphs to warp'; info.innerHTML = `<p class="dim">${C.digits.length ? `${12 - C.digits.length} more glyph${C.digits.length === 11 ? '' : 's'} to go.` : 'Tap glyphs, type a portal code or paste a galactic address.'}</p>`; return; }
     const p = C.p, k = systemKnowledge(p), facts = placeFacts(p);
     const c = (t) => k.counts[t] || 0, found = Object.keys(k.counts).length;
     const bits = [c('Planet') && plural(c('Planet'), 'planet'), c('Animal') && plural(c('Animal'), 'creature'), c('Flora') && plural(c('Flora'), 'plant'), c('Mineral') && plural(c('Mineral'), 'mineral'), c('SpacePoi') && plural(c('SpacePoi'), 'point') + ' of interest', c('SpaceStation') && 'its space station'].filter(Boolean);
@@ -5094,6 +5099,8 @@ PAGES.coords = (el) => {
       box.querySelectorAll('[data-planet]').forEach((b) => b.onclick = () => setDigits(hexN(+b.dataset.planet, 1) + C.digits.slice(1)));
     }).catch((e) => { const box = $$('#pred'); if (box) box.innerHTML = `<p class="dim">Couldn't predict this system (${esc(e.message)}).</p>`; });
     const wb = $$('#warpBtn');
+    wt.disabled = k.isHere; wn.textContent = k.isHere ? 'You are in this system now' : `${GALAXIES[p.gi]} · ${Place.portal(p)}`;
+    if (wb) wt.onclick = () => wb.click();
     if (wb) wb.onclick = async () => {
       const ok = await dialog('Warp to this system?', `<p>${glyphRow(Place.portal(p))}</p><p>Your location becomes <span class="mono">${Place.galactic(p)}</span> in ${esc(GALAXIES[p.gi])}. Next time you load this save you'll be in your ship, in space, in that system. Your current location is kept as the previous one.</p><p class="dim">Then press Save to game.</p>`, [['Cancel', false], ['Warp here', true, 'primary']]);
       if (!ok) return; warpTo(p); toast('Location set. Press Save to game to keep it.'); render();
