@@ -158,7 +158,6 @@ func loadGeometry(geomPath string) (*geomStreams, error) {
 	if err != nil {
 		return nil, err
 	}
-	idx16 := hm.i32(0x20+0x158) != 0
 	stride := int(hm.i32(0x20 + 0x1C))
 	if stride < 8 {
 		stride = 16
@@ -192,7 +191,9 @@ func loadGeometry(geomPath string) (*geomStreams, error) {
 			}
 		}
 		ib := m.d[da+vsz : da+vsz+isz]
-		if idx16 {
+		// The width is per mesh: 16-bit whenever the mesh fits, even in files whose header says 32
+		// (checked on every fighter, multi-tool, freighter and exocraft mesh).
+		if nv <= 65536 {
 			for k := 0; k+1 < len(ib); k += 2 {
 				s.idx = append(s.idx, uint32(binary.LittleEndian.Uint16(ib[k:])))
 			}
@@ -255,9 +256,20 @@ func optionOf(name string) (string, string) {
 	return g, tok
 }
 
+// effect meshes (engine glow, lights, shadow planes, decals, pulses) draw as solid slabs in a hologram
+var effectMaterialRe = regexp.MustCompile(`SHADOW|HOVER_ENGINE|RADIALPULSE|GLOW|LIGHT|DECAL|SCROLLINGBAR|ENTRANCEMARKER|FLAME|BEAM`)
+
+func skipMaterial(m string) bool {
+	if i := strings.LastIndexAny(m, `\/`); i >= 0 {
+		m = m[i+1:]
+	}
+	return effectMaterialRe.MatchString(strings.ToUpper(m))
+}
+
 func skipReference(path string) bool {
-	p := strings.ToUpper(path)
-	return strings.Contains(p, "INTERIOR") || strings.Contains(p, "FLAME") || strings.Contains(p, "/ANIMS/") || strings.Contains(p, `\ANIMS\`)
+	p := strings.ToUpper(strings.ReplaceAll(path, `\`, "/"))
+	return strings.Contains(p, "INTERIOR") || strings.Contains(p, "FLAME") || strings.Contains(p, "SHIELD") ||
+		strings.Contains(p, "/EFFECTS/") || strings.Contains(p, "/DECALS/") || strings.Contains(p, "/ANIMS/") || strings.Contains(p, `\ANIMS\`)
 }
 
 type partGroup struct {
@@ -401,8 +413,14 @@ func buildMesh(scenePath string, picks map[string]string, seed string, lod int, 
 		return err
 	}
 	var geo *geomStreams
-	var walk func(n *sceneNode, m mat4)
-	walk = func(n *sceneNode, m mat4) {
+	// Meshes under a JOINT are skinned: their vertices are already in the model's space (their
+	// AABB attributes say so), so they take the transform from above the skeleton, not the joints'.
+	var walk func(n *sceneNode, m mat4, bind *mat4)
+	walk = func(n *sceneNode, m mat4, bind *mat4) {
+		if n.Type == "JOINT" && bind == nil {
+			b := m
+			bind = &b
+		}
 		m = matMul(m, transformOf(n.T))
 		switch n.Type {
 		case "MODEL":
@@ -417,8 +435,12 @@ func buildMesh(scenePath string, picks map[string]string, seed string, lod int, 
 				if s == nil {
 					s = geo.byHash[n.Attrs["HASH"]]
 				}
-				if s != nil {
-					out.add(s, m)
+				if s != nil && !skipMaterial(n.Attrs["MATERIAL"]) {
+					if bind != nil {
+						out.add(s, *bind)
+					} else {
+						out.add(s, m)
+					}
 				}
 			}
 		case "REFERENCE":
@@ -471,10 +493,10 @@ func buildMesh(scenePath string, picks map[string]string, seed string, lod int, 
 					}
 				}
 			}
-			walk(k, m)
+			walk(k, m, bind)
 		}
 	}
-	walk(root, parent)
+	walk(root, parent, nil)
 	return nil
 }
 
