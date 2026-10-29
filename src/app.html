@@ -584,6 +584,8 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .badge { display: inline-block; font-family: var(--display); font-weight: 600; font-size: 11px; line-height: 1; padding: 4px 7px; border-radius: 6px; color: var(--cls-ink); }
 .badge.big { font-size: 15px; padding: 5px 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
 .inv-head .badge { font-size: 12px; padding: 5px 8px; vertical-align: 2px; }
+.arrive-list { list-style: none; padding: 0; margin: 8px 0 16px; display: grid; gap: 6px; }
+.arrive-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 10px; border-radius: var(--r-sm); background: var(--well); }
 .menu { position: relative; display: inline-block; }
 .menu > summary { list-style: none; } .menu > summary::-webkit-details-marker { display: none; }
 .menu-pop { position: absolute; z-index: 30; top: calc(100% + 6px); right: 0; min-width: 300px; padding: 6px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--line-2); box-shadow: 0 10px 30px rgba(0, 0, 0, .22); display: grid; gap: 2px; }
@@ -1178,6 +1180,7 @@ function openSave(data, meta, name, src) {
   if (!(ps() instanceof Map)) throw new Error('No PlayerStateData found — is this a save file?');
   $('#landing').classList.add('hidden'); $('#app').classList.remove('hidden'); document.body.classList.remove('on-landing');
   renderSide(); go('overview');
+  setTimeout(() => rememberPlanets(), 300);
   if (APP) setTimeout(() => garageCapture().catch((e) => console.warn('garage', e)), 800);
   toast('Loaded ' + name + ' in ' + Math.round(performance.now() - t0) + ' ms' + (meta ? '' : ' (read-only: no meta file)'));
 }
@@ -3481,7 +3484,7 @@ function knownPlaces() {
   for (const b of g(ps(), 'PersistentPlayerBases') || []) add(str(g(b, 'Name')), 'Your base', Place.fromPacked(g(b, 'GalacticAddress')));
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
-function warpTo(p) {
+function warpTo(p, spot) {
   const ctx = ps(), ua = g(ctx, 'UniverseAddress'), prev = g(ctx, 'PreviousUniverseAddress');
   const write = (target, q) => {
     set(target, 'RealityIndex', N(q.gi)); const ga = g(target, 'GalacticAddress');
@@ -3489,10 +3492,71 @@ function warpTo(p) {
   };
   const cur = Place.fromUA(ua);
   if (prev instanceof Map && cur) write(prev, cur);
-  write(ua, { ...p, planet: 0 });
-  // arrive in your ship, in space, like a warp jump (the same as Goatfungus's coordinate editor)
-  const spawn = g(S.ctx, 'SpawnStateData'); if (spawn instanceof Map && kOf(spawn, 'LastKnownPlayerState') != null) set(spawn, 'LastKnownPlayerState', 'InShip');
+  write(ua, { ...p, planet: (spot && spot.planet) || 0 });
+  const spawn = g(S.ctx, 'SpawnStateData');
+  if (spot && spawn instanceof Map) placeAtSpot(spawn, spot);
+  // otherwise arrive in your ship, in space, like a warp jump (the same as Goatfungus's coordinate editor)
+  else if (spawn instanceof Map && kOf(spawn, 'LastKnownPlayerState') != null) set(spawn, 'LastKnownPlayerState', 'InShip');
   markDirty();
+}
+// ---- arriving on foot at a base
+// Bases and teleporters keep their position relative to their planet's centre; the spawn point is relative to the star.
+// The save's PlanetPositions holds the planet centres of the system it was saved in (index = planet - 1, in the same
+// order as PlanetSeeds), so a system's centres are known once the game has saved there. They're remembered per system,
+// but only when PlanetSeeds matches the seeds predicted for the save's address, which proves they belong to it.
+const sysKey = (p) => ['planets', p.gi, p.x, p.y, p.z, p.sys].join(':');
+function savedPlanetCentres() {
+  const here = Place.fromUA(g(ps(), 'UniverseAddress')), pos = g(ps(), 'PlanetPositions'), seeds = g(ps(), 'PlanetSeeds');
+  if (!here || !Array.isArray(pos) || !Array.isArray(seeds)) return null;
+  let want; try { want = NMSGEN.planetSeeds(BigInt('0x' + Place.portal({ ...here, planet: 0 })), here.gi).planet_seeds; } catch (_) { return null; }
+  if (!want.length) return null;
+  for (let i = 0; i < want.length; i++) {
+    const sv = seeds[i], raw = Array.isArray(sv) ? sv[1] : sv;
+    let have; try { have = BigInt(String(raw instanceof Str ? raw : raw instanceof Num ? raw.raw : raw)); } catch (_) { return null; }
+    if (BigInt.asUintN(64, BigInt(want[i])) !== BigInt.asUintN(64, have)) return null;
+  }
+  const centres = want.map((_, i) => (Array.isArray(pos[i]) ? pos[i].slice(0, 3).map(num) : null));
+  return centres.every((c) => c && c.some((v) => v !== 0)) ? { p: here, centres } : null;
+}
+async function rememberPlanets() { const r = savedPlanetCentres(); if (r) { try { await IDB.put(sysKey(r.p), r.centres); } catch (_) {} } }
+async function planetCentres(p) {
+  const r = savedPlanetCentres(); if (r && Place.sameSystem(r.p, p)) return r.centres;
+  try { return (await IDB.get(sysKey(p))) || null; } catch (_) { return null; }
+}
+// places on a planet in this system you can arrive at: your bases, and bases you can teleport to
+function arrivalSpots(p) {
+  const out = [], seen = new Set();
+  const add = (name, kind, at, pos, face) => {
+    if (!at || !Place.sameSystem(at, p) || !at.planet || !Array.isArray(pos)) return;
+    const local = pos.slice(0, 3).map(num), f = Array.isArray(face) ? face.slice(0, 3).map(num) : null;
+    if (Math.hypot(...local) < 1000) return;   // not on a planet surface
+    name = name.replace(/<\/?[A-Z]*>/g, '').trim() || 'Unnamed base';   // drop the game's colour tags
+    const k = name + '|' + local.map(Math.round).join(','); if (seen.has(k)) return; seen.add(k);
+    out.push({ name, kind, planet: at.planet, local, face: f });
+  };
+  for (const b of g(ps(), 'PersistentPlayerBases') || []) {
+    const t = str(g(b, 'BaseType', 'PersistentBaseTypes'));
+    if (/PlanetBase$/.test(t)) add(str(g(b, 'Name')) || 'Unnamed base', t === 'HomePlanetBase' ? 'Your base' : 'Base you visited', Place.fromPacked(g(b, 'GalacticAddress')), g(b, 'Position'), g(b, 'Forward'));
+  }
+  for (const e of g(ps(), 'TeleportEndpoints') || []) {
+    const t = str(g(e, 'TeleporterType')); if (t !== 'Base' && t !== 'ExternalBase') continue;
+    add(str(g(e, 'Name')), teleKind(t), Place.fromUA(g(e, 'UniverseAddress')), g(e, 'Position'), g(e, 'Facing'));
+  }
+  return out.sort((a, b) => (a.kind !== b.kind ? (a.kind === 'Your base' ? -1 : 1) : a.name.localeCompare(b.name)));
+}
+// on foot a little above the base's centre, facing the way the base faces; the ship hovers overhead
+function placeAtSpot(spawn, spot) {
+  const c = spot.centre, L = spot.local, len = Math.hypot(...L), up = L.map((v) => v / len);
+  let at = spot.face && Math.hypot(...spot.face) > 0.5 ? spot.face : null;
+  if (at) { const d = at[0] * up[0] + at[1] * up[1] + at[2] * up[2]; at = at.map((v, i) => v - d * up[i]); const n = Math.hypot(...at); at = n > 1e-3 ? at.map((v) => v / n) : null; }
+  if (!at) { const t = Math.abs(up[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]; const d = t[0] * up[0] + t[1] * up[1] + t[2] * up[2]; at = t.map((v, i) => v - d * up[i]); const n = Math.hypot(...at); at = at.map((v) => v / n); }
+  const point = (h) => [0, 1, 2].map((i) => c[i] + L[i] + up[i] * h);
+  const vec = (key, v) => { const a = g(spawn, key); if (!Array.isArray(a)) return; for (let i = 0; i < 3; i++) a[i] = FL(Math.fround(v[i])); };
+  vec('PlayerPositionInSystem', point(2)); vec('PlayerDeathRespawnPositionInSystem', point(2));
+  vec('PlayerTransformAt', at); vec('PlayerDeathRespawnTransformAt', at);
+  vec('ShipPositionInSystem', point(40)); vec('ShipTransformAt', at); vec('ShipTransformUp', up);
+  if (kOf(spawn, 'ShipHovering') != null) set(spawn, 'ShipHovering', true);
+  if (kOf(spawn, 'LastKnownPlayerState') != null) set(spawn, 'LastKnownPlayerState', 'OnFoot');
 }
 
 // ------------------------------------------------------------------ system prediction
@@ -5307,6 +5371,7 @@ PAGES.coords = (el) => {
         ${facts.map((f) => `<li>${esc(f)}</li>`).join('')}
       </ul>
       ${k.places.length ? `<h4 class="sub-h">Places here</h4><ul class="place-facts">${k.places.map((x) => `<li>${esc(x.name)} <span class="dim">(${esc(x.kind)})</span></li>`).join('')}</ul>` : ''}
+      <div id="arrive"></div>
       <div class="warp-row"><button class="btn primary" id="warpBtn"${k.isHere ? ' disabled' : ''}>Warp here</button>
         <span class="dim">You'll load in your ship, in space, in this system. Nothing changes in the game until you press Save to game, and the app backs up the save first.</span></div>`;
     const token = (C.token = (C.token || 0) + 1);
@@ -5316,6 +5381,19 @@ PAGES.coords = (el) => {
       box.querySelectorAll('[data-planet]').forEach((b) => b.onclick = () => setDigits(hexN(+b.dataset.planet, 1) + C.digits.slice(1)));
       box.querySelectorAll('[data-card]').forEach((b) => b.onclick = () => shareCard(b.dataset.card, p, sys));
     }).catch((e) => { const box = $$('#pred'); if (box) box.innerHTML = `<p class="dim">Couldn't predict this system (${esc(e.message)}).</p>`; });
+    const spots = arrivalSpots(p);
+    if (spots.length) planetCentres(p).then((centres) => {
+      const box = $$('#arrive'); if (!box || C.token !== token) return;
+      const ok = (x) => centres && centres[x.planet - 1];
+      box.innerHTML = `<h4 class="sub-h">Arrive at a base</h4>
+        <p class="dim small-print">${centres ? 'Load on foot at the base, with your ship hovering above it.' : "The game hasn't saved in this system yet, so the app doesn't know where its planets are. Open a save made here once (the app remembers the system), or warp and teleport to the base in the game."}</p>
+        <ul class="arrive-list">${spots.map((x, i) => `<li><span>${esc(x.name)} <span class="dim">(${esc(x.kind)}, planet ${x.planet})</span></span>${ok(x) ? `<button class="btn small" type="button" data-arrive="${i}">Arrive here</button>` : ''}</li>`).join('')}</ul>`;
+      box.querySelectorAll('[data-arrive]').forEach((b) => b.onclick = async () => {
+        const x = spots[+b.dataset.arrive];
+        const go = await dialog('Arrive at ' + x.name + '?', `<p>Next time you load this save you'll be on foot at <b>${esc(x.name)}</b> on planet ${x.planet} of this system, with your ship hovering above. Your current location is kept as the previous one.</p><p class="dim">Then press Save to game.</p>`, [['Cancel', false], ['Arrive here', true, 'primary']]);
+        if (!go) return; warpTo(p, { ...x, centre: centres[x.planet - 1] }); toast('Arrival set. Press Save to game to keep it.'); render();
+      });
+    });
     const wb = $$('#warpBtn');
     wt.disabled = k.isHere; wn.textContent = k.isHere ? 'You are in this system now' : `${GALAXIES[p.gi]} · ${Place.portal(p)}`;
     if (wb) wt.onclick = () => wb.click();
