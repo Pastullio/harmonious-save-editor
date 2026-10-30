@@ -1,6 +1,6 @@
 const { chromium } = require('/opt/npm-tools/node_modules/playwright');
 const { spawn, spawnSync } = require('child_process'); const fs = require('fs'); const path = require('path');
-// Live link: the Blender add-on (run in bpy 4.5) sends a build on "Send now" and on saving the .blend; the editor puts
+// LiveLink: the Blender add-on (run in bpy 4.5) sends a build on "Send now" and on saving the .blend; the editor puts
 // it on the chosen corvette and writes the save with a backup. Usage: node test/e2e/test_live.js <scratch dir>
 // (needs SP/bpyenv with bpy, see CLAUDE.md, and a real save in SP/dbroot/NMS)
 const SP = process.argv[2];
@@ -29,14 +29,14 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.evaluate((i) => { (S.wright || (S.wright = { q: '', sel: new Set(), auto: false, json: false })).slot = i; S.wright.auto = false; go('shipwright'); }, info.to);
   await p.waitForSelector('#liveToggle'); await p.click('#liveToggle');
   await p.waitForSelector('#dlg[open]');
-  ok('turning it on says so, and offers to open the corvette in Blender', /Live link is on/.test(await p.textContent('#dlgTitle')) && new RegExp(info.toName + '.*is linked').test(await p.textContent('#dlgBody')) && /Choose the \.blend/.test(await p.textContent('#dlgActs')));
+  ok('turning it on says so, and offers to open the corvette in Blender', /LiveLink is on/.test(await p.textContent('#dlgTitle')) && new RegExp(info.toName + '.*is linked').test(await p.textContent('#dlgBody')) && /Choose the \.blend/.test(await p.textContent('#dlgActs')));
   await p.screenshot({ path: SP + '/shots/live-dialog.png' });
   await p.click('#dlgActs .btn.primary');   // Choose the .blend file… (the dialog's answer is set by HSE_PICK_FILE)
   for (let k = 0; k < 30 && !fs.existsSync(argsFile); k++) await p.waitForTimeout(100);
   ok('Blender opens with the chosen file', fs.existsSync(argsFile) && fs.readFileSync(argsFile, 'utf8').trim() === blend);
   await p.waitForSelector('#swLive.on');
   ok('the panel and the corvette list show the linked file', /live_test\.blend/.test(await p.textContent('#swLive .live-file')) && /live_test\.blend/.test(await p.textContent('.sw-corv.on')));
-  ok('Live link turns on for the open corvette', /slot/.test(await p.textContent('#swLive .live-state')));
+  ok('LiveLink turns on for the open corvette', /slot/.test(await p.textContent('#swLive .live-state')));
   ok('the sidebar shows Live on Shipwright', !!(await p.$('nav [data-s="shipwright"] .live-pill')));
   ok('and it waits for Blender until the add-on checks in', /Waiting for Blender/.test(await p.textContent('#liveBlender')));
   await p.screenshot({ path: SP + '/shots/live-on.png' });
@@ -64,7 +64,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.click('#liveToggle'); await p.waitForTimeout(300);
   const tok = JSON.parse(fs.readFileSync(liveFile, 'utf8')).token;
   const off = await (await fetch('http://127.0.0.1:48009/api/live/build', { method: 'POST', headers: { 'X-Live-Token': tok }, body: JSON.stringify({ objects: info.objs }) })).json();
-  ok('with Live link off, Blender is told how to turn it on', /Live link is off/.test(off.message));
+  ok('with LiveLink off, Blender is told how to turn it on', /LiveLink is off/.test(off.message));
   // what's on disk
   await open();
   const n = await p.evaluate((i) => g(shipBuild(i), 'Objects').length, info.to);

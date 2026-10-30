@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.30.1535",
+  "version": "2026.10.30.1540",
   "date": "2026-10-30",
   "size": 9808896,
-  "sha256": "3afe8c24242063a31e25c91e26a155b8f6612e4131ed9362969b77fa28c98b89",
-  "notes": "Live link: turning it on offers to open that corvette's Blender file, each corvette remembers which .blend its build came from, and the link ends when you close the editor.",
+  "sha256": "7b97e6472a3024e08216726ebcf58ea7cd631d83ac5e8cfa7241ea024fd3c99a",
+  "notes": "Live link is now called LiveLink.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

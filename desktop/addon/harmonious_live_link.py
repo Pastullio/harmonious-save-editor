@@ -1,14 +1,14 @@
-# Harmonious Live Link - a Blender add-on for Harmonious Save Editor (GPL-3.0, same as the editor).
+# Harmonious LiveLink - a Blender add-on for Harmonious Save Editor (GPL-3.0, same as the editor).
 #
 # Every time you save your .blend (Ctrl+S), this sends the corvette build in the scene to Harmonious Save Editor,
-# which puts it on the corvette you chose (Shipwright > Live link) and writes your save, backing it up first.
+# which puts it on the corvette you chose (Shipwright > LiveLink) and writes your save, backing it up first.
 # The build is read with Charon Forge when it's installed, otherwise with the NMS Base Builder add-on.
 #
 # Install: Blender > Edit > Preferences > Add-ons > Install from Disk, pick this file, tick it.
 # Then: 3D view sidebar (N) > Harmonious.
 
 bl_info = {
-    "name": "Harmonious Live Link",
+    "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
     "version": (1, 0, 0),
     "blender": (4, 2, 0),
@@ -54,9 +54,9 @@ def editor_address():
 
 
 # ---------------------------------------------------------------- is the editor linked?
-# Every few seconds the add-on asks the editor whether Live link is on and for which corvette; the panel shows it,
+# Every few seconds the add-on asks the editor whether LiveLink is on and for which corvette; the panel shows it,
 # and the editor sees Blender check in.
-LINK = {"state": "none", "target": ""}   # none: editor not running; off: running, Live link off; on: linked
+LINK = {"state": "none", "target": ""}   # none: editor not running; off: running, LiveLink off; on: linked
 
 
 def check_link_now():
@@ -174,7 +174,7 @@ class HARMONIOUS_OT_send(bpy.types.Operator):
 
 
 class HARMONIOUS_PT_live(bpy.types.Panel):
-    bl_label = "Live link"
+    bl_label = "LiveLink"
     bl_idname = "HARMONIOUS_PT_live"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
@@ -188,7 +188,7 @@ class HARMONIOUS_PT_live(bpy.types.Panel):
             link.label(text="Linked to " + LINK["target"], icon="LINKED")
             link.label(text="Each save sends the build there")
         elif LINK["state"] == "off":
-            link.label(text="Editor open, Live link off", icon="UNLINKED")
+            link.label(text="Editor open, LiveLink off", icon="UNLINKED")
             link.label(text="Turn it on in Shipwright")
         else:
             link.label(text="Harmonious Save Editor isn't running", icon="ERROR")

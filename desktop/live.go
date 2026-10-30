@@ -1,7 +1,7 @@
 package main
 
-// Live link from Blender: the "Harmonious Live Link" add-on (desktop/addon) sends a corvette build here every time
-// you save in Blender. The editor page, with Live link turned on for one corvette in Shipwright, picks it up, puts it
+// LiveLink from Blender: the "Harmonious LiveLink" add-on (desktop/addon) sends a corvette build here every time
+// you save in Blender. The editor page, with LiveLink turned on for one corvette in Shipwright, picks it up, puts it
 // on that corvette and writes the save (backed up first, like every write). The add-on waits for the page's answer
 // so Blender can say what happened.
 //
@@ -146,7 +146,7 @@ func handleLiveBuild(w http.ResponseWriter, r *http.Request) {
 	}
 	armed, _ := liveArmed()
 	if !armed {
-		writeJSON(w, liveResult{Message: "Live link is off in the editor. Open a save, go to Shipwright and turn on Live link for the corvette to update."})
+		writeJSON(w, liveResult{Message: "LiveLink is off in the editor. Open a save, go to Shipwright and turn on LiveLink for the corvette to update."})
 		return
 	}
 	live.Lock()
