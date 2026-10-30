@@ -3,7 +3,7 @@ const { spawn } = require('child_process'); const fs = require('fs'); const path
 // Arriving on foot at a base: planet centres come from the save (checked against the predicted planet seeds) and are
 // remembered per system, so a save made elsewhere can still arrive there.
 // Usage: node test/e2e/test_arrive.js <scratch dir> <folder with a save pair made on foot at a base> [folder with a save from another system] [plain JSON of a save made aboard the freighter]
-const SP = process.argv[2], AT = process.argv[3], OTHER = process.argv[4] || path.join(SP, 'dbroot/NMS/st_76561190000000001');
+const SP = process.argv[2], AT = process.argv[3], OTHER = process.argv[4] || (() => { const d = path.join(SP, 'dbroot/NMS'); return path.join(d, fs.readdirSync(d).find((x) => /^st_/.test(x))); })();
 const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n); if (!c) fails.push(n); };
 (async () => {
   const cfg = path.join(SP, 'arcfg'), root = path.join(SP, 'arroot'); fs.rmSync(cfg, { recursive: true, force: true }); fs.rmSync(root, { recursive: true, force: true });
