@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -34,6 +35,38 @@ type releaseInfo struct {
 	SHA256  string `json:"sha256"`
 	Notes   string `json:"notes"`
 	Date    string `json:"date"`
+}
+
+// where an update is, for the page's updating screen: stage is downloading, checking, installing or restarting
+var updateProgress = struct {
+	sync.Mutex
+	Stage   string `json:"stage"`
+	Done    int64  `json:"done"`
+	Size    int64  `json:"size"`
+	Version string `json:"version"`
+}{}
+
+func setUpdateStage(stage string) {
+	updateProgress.Lock()
+	updateProgress.Stage = stage
+	updateProgress.Unlock()
+}
+
+// GET: {stage, done, size, version}
+func handleUpdateProgress(w http.ResponseWriter, r *http.Request) {
+	updateProgress.Lock()
+	defer updateProgress.Unlock()
+	writeJSON(w, map[string]any{"stage": updateProgress.Stage, "done": updateProgress.Done, "size": updateProgress.Size, "version": updateProgress.Version})
+}
+
+// counts the bytes as they arrive
+type progressWriter struct{}
+
+func (progressWriter) Write(p []byte) (int, error) {
+	updateProgress.Lock()
+	updateProgress.Done += int64(len(p))
+	updateProgress.Unlock()
+	return len(p), nil
 }
 
 func updateURL() string {
@@ -111,6 +144,16 @@ func handleUpdateInstall(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
+	updateProgress.Lock()
+	updateProgress.Stage, updateProgress.Done, updateProgress.Size, updateProgress.Version = "downloading", 0, rel.Size, rel.Version
+	updateProgress.Unlock()
+	defer func() { // a failed update leaves no stage behind
+		updateProgress.Lock()
+		if updateProgress.Stage != "restarting" {
+			updateProgress.Stage = ""
+		}
+		updateProgress.Unlock()
+	}()
 	exe, err := os.Executable()
 	if err == nil {
 		exe, err = filepath.EvalSymlinks(exe)
@@ -125,6 +168,7 @@ func handleUpdateInstall(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
+	setUpdateStage("installing")
 	os.Remove(oldPath)
 	if err := os.Rename(exe, oldPath); err != nil {
 		os.Remove(newPath)
@@ -137,6 +181,7 @@ func handleUpdateInstall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Printf("updated %s -> %s", appVersion, rel.Version)
+	setUpdateStage("restarting")
 	writeJSON(w, map[string]string{"version": rel.Version})
 	if f, ok := w.(http.Flusher); ok {
 		f.Flush()
@@ -171,13 +216,14 @@ func download(rel *releaseInfo, dest string) error {
 		return err
 	}
 	h := sha256.New()
-	n, err := io.Copy(io.MultiWriter(f, h), io.LimitReader(res.Body, 512<<20))
+	n, err := io.Copy(io.MultiWriter(f, h, progressWriter{}), io.LimitReader(res.Body, 512<<20))
 	if cerr := f.Close(); err == nil {
 		err = cerr
 	}
 	if err != nil {
 		return err
 	}
+	setUpdateStage("checking")
 	if rel.Size > 0 && n != rel.Size {
 		return fmt.Errorf("the download was %d bytes, expected %d", n, rel.Size)
 	}

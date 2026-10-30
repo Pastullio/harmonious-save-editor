@@ -125,6 +125,7 @@ func main() {
 	mux.HandleFunc("/api/live/open", handleLiveOpen)
 	mux.HandleFunc("/api/blend/read", handleBlendRead)
 	mux.HandleFunc("/api/update/install", handleUpdateInstall)
+	mux.HandleFunc("/api/update/progress", handleUpdateProgress)
 	mux.HandleFunc("/api/itemdb/items.xml", handleItemXML)
 	mux.HandleFunc("/api/itemdb/icon", handleItemIcon)
 

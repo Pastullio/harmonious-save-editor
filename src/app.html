@@ -848,6 +848,45 @@ ol.steps { padding-left: 20px; display: grid; gap: 6px; }
 .chip:hover { background: rgba(255, 255, 255, .14); }
 .chip[aria-pressed="true"] { background: #fff; color: #0b5368; }
 .chip .n { font-weight: 400; margin-left: 5px; opacity: .7; font-family: var(--mono); font-size: 11px; }
+/* the updating screen: the traveller walking off into a new version */
+.upd { position: fixed; inset: 0; z-index: 1000; overflow: hidden; color: #fff; font-family: inherit;
+  background: radial-gradient(120% 90% at 78% 40%, #123e4c 0%, #0a2430 38%, #050f16 75%, #03090e 100%); }
+.upd[hidden] { display: none; }
+.upd-sky { position: absolute; inset: 0; opacity: .7;
+  background-image: radial-gradient(1px 1px at 12% 18%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 27% 64%, #cdeffa 50%, transparent 51%), radial-gradient(1.5px 1.5px at 41% 33%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 8% 82%, #9fe7f5 50%, transparent 51%), radial-gradient(1px 1px at 55% 12%, #fff 50%, transparent 51%), radial-gradient(1.5px 1.5px at 63% 88%, #bfefff 50%, transparent 51%), radial-gradient(1px 1px at 33% 92%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 18% 45%, #e0f7ff 50%, transparent 51%), radial-gradient(1px 1px at 90% 8%, #fff 50%, transparent 51%), radial-gradient(1px 1px at 47% 72%, #fff 50%, transparent 51%);
+  animation: upd-twinkle 5s ease-in-out infinite alternate; }
+.upd-streaks i { position: absolute; right: -40%; height: 1.5px; width: 34%; border-radius: 2px; opacity: 0;
+  background: linear-gradient(90deg, transparent, rgba(125, 211, 252, .85) 60%, #fff); animation: upd-warp linear infinite; }
+.upd-art-wrap { position: absolute; right: 4vw; bottom: -2vh; height: 104vh; aspect-ratio: 699 / 1000; animation: upd-float 7s ease-in-out infinite; }
+.upd-art { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 0 40px rgba(94, 234, 212, .18)); user-select: none; -webkit-user-drag: none; }
+.upd-flare { position: absolute; left: 70%; top: 31%; width: 22%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(186,240,255,.55) 12%, rgba(94,234,212,.18) 34%, transparent 66%); mix-blend-mode: screen; animation: upd-pulse 2.8s ease-in-out infinite; }
+.upd-ring { position: absolute; left: 72%; top: 30%; width: 70%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; border: 1px solid rgba(186,240,255,.28); pointer-events: none; animation: upd-ring 3.6s ease-out infinite; }
+.upd-copy { position: absolute; left: clamp(24px, 8vw, 120px); top: 50%; translate: 0 -50%; width: min(460px, calc(100vw - 48px)); }
+.upd-k { display: block; font-size: 11px; letter-spacing: .32em; text-transform: uppercase; color: #7dd3fc; opacity: .85; }
+.upd h1 { margin: 10px 0 4px; font-size: clamp(34px, 5vw, 56px); font-weight: 300; letter-spacing: .3em; text-transform: uppercase; }
+.upd-ver { margin: 0 0 30px; color: rgba(255,255,255,.7); font-size: 15px; }
+.upd-ver b { color: #fff; font-weight: 500; font-variant-numeric: tabular-nums; }
+.upd-bar { position: relative; height: 6px; border-radius: 6px; background: rgba(255,255,255,.1); overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+.upd-bar i { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 6px; background: linear-gradient(90deg, #2dd4bf, #38bdf8 70%, #e0f2fe); box-shadow: 0 0 18px rgba(56, 189, 248, .7); transition: width .3s ease; }
+.upd-bar i::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent); translate: -100% 0; animation: upd-shine 1.6s ease-in-out infinite; }
+.upd.wait .upd-bar i { width: 100% !important; opacity: .35; }
+.upd-stage { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; font-size: 14px; color: rgba(255,255,255,.85); }
+.upd-stage span:last-child { font-variant-numeric: tabular-nums; color: rgba(255,255,255,.6); }
+.upd-note { margin: 26px 0 0; font-size: 13px; color: rgba(255,255,255,.5); line-height: 1.5; }
+.upd.bad .upd-bar i { background: #fb7185; box-shadow: none; }
+@keyframes upd-warp { 0% { transform: translateX(0); opacity: 0; } 10% { opacity: .9; } 85% { opacity: .9; } 100% { transform: translateX(-260vw); opacity: 0; } }
+@keyframes upd-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+@keyframes upd-pulse { 0%, 100% { opacity: .55; scale: .85; } 50% { opacity: 1; scale: 1.08; } }
+@keyframes upd-ring { 0% { opacity: .7; scale: .2; } 100% { opacity: 0; scale: 1; } }
+@keyframes upd-shine { 0% { translate: -100% 0; } 100% { translate: 100% 0; } }
+@keyframes upd-twinkle { from { opacity: .45; } to { opacity: .8; } }
+@media (max-width: 760px) { .upd-art-wrap { right: -18vw; opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .upd *, .upd *::after { animation: none !important; } .upd-streaks { display: none; } }
+/* the art beside the "new version" offer */
+.upd-offer { display: grid; grid-template-columns: minmax(0, 1fr) 128px; gap: 18px; align-items: center; }
+.upd-offer img { width: 128px; height: 183px; object-fit: contain; border-radius: var(--r-sm); background: radial-gradient(90% 70% at 60% 35%, #123e4c, #050f16); padding: 6px 0 0; }
+@media (max-width: 560px) { .upd-offer { grid-template-columns: 1fr; } .upd-offer img { display: none; } }
 .holo-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 12px 0 0; font-size: 12.5px; color: var(--dim); }
 .holo-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .holo-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
@@ -967,7 +1006,12 @@ nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .
 
 <div id="toast" role="status"></div>
 <div id="diskNote" class="disk-note" role="status" hidden></div>
-<div id="liveNote" class="live-note" role="status" aria-live="polite" hidden></div>
+<div id="updScreen" class="upd" hidden role="status" aria-live="polite"><div class="upd-sky"></div><div class="upd-streaks" aria-hidden="true"></div>
+    <div class="upd-art-wrap" aria-hidden="true"><img class="upd-art" src="@@UPDART@@" alt=""><span class="upd-ring"></span><span class="upd-flare"></span></div>
+    <div class="upd-copy"><span class="upd-k">Harmonious Save Editor</span><h1>Updating</h1><p class="upd-ver" id="updVer"></p>
+      <div class="upd-bar"><i id="updBar"></i></div><div class="upd-stage"><span id="updStage">Getting ready</span><span id="updPct"></span></div>
+      <p class="upd-note" id="updNote">Your saves, backups, Dock Yard and settings stay exactly as they are.</p></div></div>
+  <div id="liveNote" class="live-note" role="status" aria-live="polite" hidden></div>
 <dialog id="dlg"><button class="dlg-x" id="dlgX" type="button" aria-label="Close" title="Close">×</button><h3 id="dlgTitle"></h3><div id="dlgBody"></div><div class="acts" id="dlgActs"></div></dialog>
 
 <script>
@@ -6587,19 +6631,47 @@ async function checkForUpdate(manual) {
   let skipped = ''; try { skipped = localStorage.getItem('hse-skip-version') || ''; } catch (_) {}
   if (!manual && skipped === u.latest) return;
   const dirty = S.dirty || (S.acct && S.acct.dirty);
-  const v = await dialog('A new version is available', `<p>Harmonious Save Editor <b>${esc(u.latest)}</b>${u.date ? ` (${esc(u.date)})` : ''} is out. You have ${esc(u.current)}.</p>${u.notes ? `<p>${esc(u.notes)}</p>` : ''}
-    <p class="dim">Updating downloads the new version, checks it, and restarts the editor. Your saves, backups, Dock Yard and settings stay as they are.</p>${dirty ? '<p class="err">You have unsaved changes. Save them first, or they are lost when the editor restarts.</p>' : ''}`,
+  const v = await dialog('A new version is available', `<div class="upd-offer"><div><p>Harmonious Save Editor <b>${esc(u.latest)}</b>${u.date ? ` <span style="white-space:nowrap">(${esc(u.date)})</span>` : ''} is out. You have ${esc(u.current)}.</p>${u.notes ? `<p>${esc(u.notes)}</p>` : ''}
+    <p class="dim">Updating downloads the new version, checks it, and restarts the editor. Your saves, backups, Dock Yard and settings stay as they are.</p></div><img src="${$('#updScreen .upd-art').src}" alt=""></div>${dirty ? '<p class="err">You have unsaved changes. Save them first, or they are lost when the editor restarts.</p>' : ''}`,
     [['Not now', 'later', 'ghost'], ['Update now', 'go', 'primary']]);
   if (v === 'later') { try { localStorage.setItem('hse-skip-version', u.latest); } catch (_) {} return; }
   if (v !== 'go') return;
-  toast('Downloading the new version…');
+  const scr = updatingScreen(u.latest);
   try {
     const r = await api('/api/update/install', { method: 'POST' });
     if (!r.ok) throw new Error((await r.text()).trim());
     S.dirty = false; if (S.acct) S.acct.dirty = false;   // the restart is what the user asked for
-    document.body.innerHTML = `<div class="updated"><h1>Updating</h1><p>The new version is starting in a new window. You can close this one.</p></div>`;
-    setTimeout(() => { try { window.close(); } catch (_) {} }, 2500);
-  } catch (e) { toast('The update failed, nothing was changed: ' + e.message, true); }
+    scr.restarting();
+    setTimeout(() => { try { window.close(); } catch (_) {} }, 4000);
+  } catch (e) { scr.failed(e.message); }
+}
+// the updating screen: the traveller walking off while the new version downloads (real progress from /api/update/progress)
+function updatingScreen(version) {
+  const el = $('#updScreen'), bar = $('#updBar'), stage = $('#updStage'), pct = $('#updPct');
+  el.hidden = false; el.className = 'upd'; $('#updVer').innerHTML = `to version <b>${esc(version)}</b>`;
+  const streaks = el.querySelector('.upd-streaks');
+  if (!streaks.children.length) streaks.innerHTML = Array.from({ length: 16 }, (_, i) => `<i style="top:${(i % 2 ? 72 + ((i * 23) % 24) : 4 + ((i * 37) % 24))}%;animation-duration:${(2.2 + ((i * 7) % 10) / 4).toFixed(2)}s;animation-delay:${(-(i * 0.61) % 4).toFixed(2)}s;width:${18 + ((i * 13) % 30)}%"></i>`).join('');
+  const mb = (n) => (n / 1048576).toFixed(1);
+  const show = (st, done, size) => {
+    const f = size > 0 ? Math.min(1, done / size) : 0;
+    if (st === 'downloading') { bar.style.width = (8 + 80 * f).toFixed(1) + '%'; stage.textContent = 'Downloading'; pct.textContent = size ? `${mb(done)} of ${mb(size)} MB` : ''; }
+    else if (st === 'checking') { bar.style.width = '91%'; stage.textContent = 'Checking it is the real thing'; pct.textContent = ''; }
+    else if (st === 'installing') { bar.style.width = '96%'; stage.textContent = 'Putting it in place'; pct.textContent = ''; }
+  };
+  let live = true;
+  (async () => {
+    while (live) {
+      try { const p = await (await api('/api/update/progress')).json(); if (live) show(p.stage, p.done, p.size); } catch (_) {}
+      await new Promise((ok) => setTimeout(ok, 250));
+    }
+  })();
+  return {
+    restarting() { live = false; bar.style.width = '100%'; stage.textContent = 'Starting the new version'; pct.textContent = '';
+      $('#updNote').textContent = 'It opens in a new window in a moment. You can close this one.'; },
+    failed(msg) { live = false; el.classList.add('bad'); stage.textContent = 'The update failed. Nothing was changed.'; pct.textContent = '';
+      $('#updNote').innerHTML = `${esc(msg)}<br><button class="btn" type="button" id="updBack" style="margin-top:14px">Back to the editor</button>`;
+      $('#updBack').onclick = () => { el.hidden = true; }; },
+  };
 }
 
 // ------------------------------------------------------------------ noticing new saves

@@ -33,7 +33,8 @@ const glyphs = [...'0123456789ABCDEF'].map((d) => JSON.stringify('data:image/png
 const nmsCore = require('./tools/bundle-nms-core.js');
 const systemGen = nmsCore.bundle(), letterMapGz = nmsCore.letterMap();
 const hero = 'data:image/webp;base64,' + fs.readFileSync(path.join(__dirname, 'src/assets/traveller.webp')).toString('base64');
-html = html.replace('/*@@FONTS@@*/', () => fonts).replace('@@HERO@@', () => hero).replace('@@ICON@@', () => icon).replace('@@LOGO@@', () => logo).replace('/*@@GLYPHS@@*/', () => glyphs).replace('/*@@NMSGEN@@*/', () => systemGen).replace('@@LETTERMAP@@', () => letterMapGz).replace('/*@@CODEC@@*/', () => codec).replace('/*@@MAPPING@@*/', () => 'const MAPPING = ' + JSON.stringify(mapping) + ';');
+const updArt = 'data:image/webp;base64,' + fs.readFileSync(path.join(__dirname, 'src/assets/updating.webp')).toString('base64');
+html = html.replace('/*@@FONTS@@*/', () => fonts).replace('@@HERO@@', () => hero).replace('@@UPDART@@', () => updArt).replace('@@ICON@@', () => icon).replace('@@LOGO@@', () => logo).replace('/*@@GLYPHS@@*/', () => glyphs).replace('/*@@NMSGEN@@*/', () => systemGen).replace('@@LETTERMAP@@', () => letterMapGz).replace('/*@@CODEC@@*/', () => codec).replace('/*@@MAPPING@@*/', () => 'const MAPPING = ' + JSON.stringify(mapping) + ';');
 fs.mkdirSync(path.join(__dirname, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(__dirname, 'dist/nms-save-editor.html'), html);
 fs.writeFileSync(path.join(__dirname, 'desktop/index.html'), html); // embedded into the desktop app

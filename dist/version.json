@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.30.1825",
+  "version": "2026.10.30.1837",
   "date": "2026-10-30",
-  "size": 9883136,
-  "sha256": "ce5423a8e8832bcbae0b082301d869b42953a6afcc756075104f52d09447a68f",
-  "notes": "Bases from Blender: Load from a .blend on the Bases page puts a Base Builder file's parts on the base it names, and LiveLink now works for bases (update the Blender add-on too).",
+  "size": 10010112,
+  "sha256": "d61456933ac83242ee3d2126e89b39133cc3e4eb39c8145772fba94e792ebcb6",
+  "notes": "A new updating screen with real download progress, featuring your traveller. Bases from Blender and LiveLink for bases.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

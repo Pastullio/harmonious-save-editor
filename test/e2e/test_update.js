@@ -11,7 +11,10 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const bin = fs.readFileSync(dir + '/pub/hse-new');
   const srv = http.createServer((q, r) => {
     if (q.url === '/version.json') { r.setHeader('content-type', 'application/json'); r.end(JSON.stringify({ version: '2026.12.31.2359', date: '2026-12-31', notes: 'Test release', size: bin.length, sha256: crypto.createHash('sha256').update(bin).digest('hex'), url: `http://127.0.0.1:${srv.address().port}/hse-new` })); return; }
-    if (q.url === '/hse-new') { r.end(bin); return; }
+    if (q.url === '/hse-new') {   // slowly, in 20 pieces over about 4 s, so the updating screen can be seen mid-download
+      r.setHeader('content-length', bin.length); let k = 0; const step = Math.ceil(bin.length / 20);
+      const t = setInterval(() => { r.write(bin.subarray(k, k + step)); k += step; if (k >= bin.length) { clearInterval(t); r.end(); } }, 200); return;
+    }
     r.statusCode = 404; r.end();
   }).listen(0, '127.0.0.1');
   await new Promise((r) => srv.on('listening', r));
@@ -22,10 +25,19 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const errs = []; p.on('pageerror', (e) => errs.push(e.message));
   await p.goto(url); await p.waitForSelector('#dlg[open]', { timeout: 15000 }).catch(() => {});
   ok('a newer version is offered', /new version is available/i.test(await p.textContent('#dlgTitle').catch(() => '')) && /Test release/.test(await p.textContent('#dlgBody')));
+  ok('the offer shows the traveller art', await p.$eval('#dlgBody .upd-offer img', (i) => i.complete && i.naturalWidth > 0).catch(() => false));
+  await p.setViewportSize({ width: 1440, height: 900 }); await p.screenshot({ path: SP + '/shots/update-offer.png' });
   const exited = new Promise((r) => proc.on('exit', r));
   await p.click('#dlgActs .btn.primary');
-  await p.waitForSelector('.updated', { timeout: 30000 }).catch(() => {});
-  ok('the page says it is updating', !!(await p.$('.updated')));
+  await p.waitForSelector('#updScreen:not([hidden])', { timeout: 10000 }).catch(() => {});
+  await p.waitForFunction(() => /MB/.test(document.querySelector('#updPct').textContent) && parseFloat(document.querySelector('#updBar').style.width) > 20, null, { timeout: 15000 }).catch(() => {});
+  const mid = await p.evaluate(() => ({ stage: $('#updStage').textContent, pct: $('#updPct').textContent, w: parseFloat($('#updBar').style.width) }));
+  console.log(mid);
+  ok('the updating screen shows real download progress', mid.stage === 'Downloading' && /of [\d.]+ MB/.test(mid.pct) && mid.w > 8 && mid.w < 90);
+  await p.screenshot({ path: SP + '/shots/update-progress.png' });
+  await p.waitForFunction(() => /Starting the new version/.test(document.querySelector('#updStage').textContent), null, { timeout: 30000 }).catch(() => {});
+  ok('then it says the new version is starting', /Starting the new version/.test(await p.textContent('#updStage')));
+  await p.screenshot({ path: SP + '/shots/update-restarting.png' });
   await exited;
   ok('the new version is put in place (the old one is cleared once the new one starts)', fs.readFileSync(dir + '/hse').equals(bin) && !fs.existsSync(dir + '/hse.new'));
   // the restarted app answers on the same port with the new version
