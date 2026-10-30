@@ -103,6 +103,17 @@ def _objects_of(data):
     return None
 
 
+def whole(v):
+    """A part's whole-number property, kept exact: UserData can pass 32 bits, so builders may keep it as text."""
+    try:
+        return int(str(v).strip() or 0)
+    except (TypeError, ValueError):
+        try:
+            return int(float(v or 0))
+        except (TypeError, ValueError):
+            return 0
+
+
 def scene_parts(scene):
     """The build read straight from the scene, the way the builders write each part: every object carrying an
     ObjectID, in build order, with its matrix turned from Blender's Z-up into the game's Y-up."""
@@ -117,14 +128,7 @@ def scene_parts(scene):
         oid = str(o.get("ObjectID", "")).lstrip("^")
         if not oid:
             continue
-        try:
-            stamp = int(float(o.get("Timestamp", 0) or 0))
-        except (TypeError, ValueError):
-            stamp = 0
-        try:
-            user = int(float(o.get("UserData", 0) or 0))
-        except (TypeError, ValueError):
-            user = 0
+        stamp, user = whole(o.get("Timestamp", 0)), whole(o.get("UserData", 0))
         out.append({"ObjectID": "^" + oid, "Position": list(m.translation), "Up": list(m.col[1].to_3d()),
                     "At": list(m.col[2].to_3d().normalized()), "Timestamp": stamp, "UserData": user})
     return out

@@ -39,6 +39,26 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   console.log('odds', odds);
   if (await p.evaluate(() => !!(S.db && S.db.biomes))) ok('biome odds from the game table, adding up to about 100%', !!odds && Math.abs(odds.match(/\d+(?=%)/g).map(Number).reduce((a, b) => a + b, 0) - 100) <= 4);
   else console.log('SKIP biome odds (no item library with the biome table)');
+  // per planet: prime bodies (after the regular planets) use the prime list; unvisited planets show their likeliest biomes
+  const per = await p.evaluate(async () => {
+    if (!(S.db && S.db.biomes)) return null;
+    // a system with prime bodies, from the save's own discovered planets
+    for (const r of (g(S.save.json, 'DiscoveryManagerData', 'DiscoveryData-v1', 'Store', 'Record') || [])) {
+      if (str(g(r, 'DD', 'DT')) !== 'Planet') continue;
+      const at = Place.fromPacked(g(r, 'DD', 'UA')); if (!at) continue;
+      const s = await predictSystem({ ...at, planet: 0 });
+      if (s.prime.some(Boolean) && s.prime.some((x) => !x)) {
+        const same = (x, y) => JSON.stringify(x) === JSON.stringify(y), pi = s.prime.indexOf(true), ri = s.prime.indexOf(false);
+        return { sums: s.planetOdds.map((o) => o && Math.round(o.reduce((t, [, f]) => t + f, 0) * 100)),
+          lists: same(s.planetOdds[pi], biomeOdds(s.starType, at.gi, true)) && same(s.planetOdds[ri], biomeOdds(s.starType, at.gi, false)) };
+      }
+    }
+    return 'none';
+  });
+  if (per && per !== 'none') {
+    ok('each planet has its own odds, adding up to 100%', per.sums.every((x) => x === 100));
+    ok('regular planets use the regular list and prime bodies the prime list', per.lists);
+  } else console.log('SKIP per-planet odds', per);
   ok('galaxy kinds: Euclid normal, Calypso harsh, Budullangr empty, Eissentam lush, galaxy 255 harsh', (await p.evaluate(() => [0, 2, 6, 9, 254].map(galaxyKind).join())) === 'normal,harsh,empty,lush,harsh');
   ok('predicts the planets', JSON.stringify(pred.planets) === JSON.stringify(['Nadyak Prime', 'Tomi 47/B2', 'Beherylano Dori']));
   ok('predicts race and pirates', /Korvax/.test(pred.text) && /Pirate controlled/.test(pred.text));

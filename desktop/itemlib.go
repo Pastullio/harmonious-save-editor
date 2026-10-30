@@ -24,7 +24,7 @@ import (
 	"time"
 )
 
-const itemlibVersion = 4 // 2: words, frigate traits and settlement perks; 3: expedition, Twitch and platform rewards; 4: biome odds
+const itemlibVersion = 5 // 2: words, frigate traits and settlement perks; 3: expedition, Twitch and platform rewards; 4: biome odds; 5: Dead-to-Exotic share
 
 type libItem struct {
 	ID     string `json:"id"`
@@ -92,10 +92,11 @@ type libPlatform struct {
 // reached when the stat's value is at least Levels[i].Value
 // biome odds per star colour (GcBiomeListPerStarType): weights in GcBiomeType order, not yet normalised
 type libBiomes struct {
-	Star            [][]float64 `json:"star"`      // Yellow, Green, Blue, Red, Purple (GcGalaxyStarTypes)
-	StarPrime       [][]float64 `json:"prime"`     // the same for prime planets
-	AbandonedYellow []float64   `json:"abandoned"` // yellow stars in empty galaxies (7, 19, 27, 39…)
-	LushYellow      []float64   `json:"lush"`      // yellow stars in lush galaxies (10, 12, 30, 32…)
+	Star            [][]float64 `json:"star"`        // Yellow, Green, Blue, Red, Purple (GcGalaxyStarTypes)
+	StarPrime       [][]float64 `json:"prime"`       // the same for prime planets
+	AbandonedYellow []float64   `json:"abandoned"`   // yellow stars in empty galaxies (7, 19, 27, 39…)
+	LushYellow      []float64   `json:"lush"`        // yellow stars in lush galaxies (10, 12, 30, 32…)
+	DeadToWeird     float64     `json:"deadToWeird"` // the share of Dead planets made Exotic instead (ConvertDeadToWeird)
 }
 
 type libRanks struct {
@@ -902,7 +903,7 @@ func parseBiomes(raw []byte) (*libBiomes, error) {
 		return nil, err
 	}
 	const base = 0x20
-	if !m.ok(base, 0x3B8) {
+	if !m.ok(base, 0x3DC) {
 		return nil, errors.New("biomelistperstartype.mbin is too short")
 	}
 	list := func(at int) []float64 {
@@ -922,6 +923,9 @@ func parseBiomes(raw []byte) (*libBiomes, error) {
 		return out
 	}
 	bi := &libBiomes{AbandonedYellow: list(0x2A8), LushYellow: list(0x330)}
+	if f := float64(math.Float32frombits(uint32(m.i32(base + 0x3D8)))); f >= 0 && f <= 1 {
+		bi.DeadToWeird = f
+	}
 	for s := 0; s < 5; s++ {
 		a := list(s * 0x88)
 		if a == nil {

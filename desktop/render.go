@@ -39,6 +39,7 @@ type renderSettings struct {
 	Game        string   `json:"game,omitempty"`        // No Man's Sky folder, when Steam can't find it
 	Ships       string   `json:"ships,omitempty"`       // ship library folder, when not the default in Documents
 	ShipFolders []string `json:"shipFolders,omitempty"` // folders the owner already keeps ships in (read only)
+	AutoRender  *bool    `json:"autoRender,omitempty"`  // render corvettes without a cover on their own (default on)
 }
 
 type renderJob struct {
@@ -54,7 +55,33 @@ var (
 	settingsOnce sync.Once
 )
 
-type renderReq struct{ key, jsonPath string }
+type renderReq struct {
+	key, jsonPath string
+	views         bool // the extra camera angles instead of the main cover (job key: <key>-views)
+}
+
+// the extra camera angles, rendered together in one Blender run after the main cover: name, azimuth, elevation
+var coverViews = []struct {
+	Name       string
+	Azim, Elev float64
+}{{"front", 0, 8}, {"side", 90, 6}, {"back", 180, 14}, {"top", 0, 80}}
+
+func viewSpec() string {
+	parts := make([]string, len(coverViews))
+	for i, v := range coverViews {
+		parts[i] = fmt.Sprintf("%s:%g:%g", v.Name, v.Azim, v.Elev)
+	}
+	return strings.Join(parts, ",")
+}
+
+func viewsDone(key string) bool {
+	for _, v := range coverViews {
+		if !fileExists(filepath.Join(coversDir(), key+"-"+v.Name+".png")) {
+			return false
+		}
+	}
+	return true
+}
 
 func coversDir() string    { return filepath.Join(appDir, "covers") }
 func settingsPath() string { return filepath.Join(appDir, "settings.json") }
@@ -143,10 +170,14 @@ func runRender(req renderReq) {
 		setJob(req.key, "error", "Blender or Charon Forge wasn't found. Set their locations in the render settings.")
 		return
 	}
-	setJob(req.key, "running", "")
+	job := req.key
+	if req.views {
+		job += "-views"
+	}
+	setJob(job, "running", "")
 	script := filepath.Join(appDir, "render_cover.py")
 	if err := os.WriteFile(script, renderScript, 0o644); err != nil {
-		setJob(req.key, "error", err.Error())
+		setJob(job, "error", err.Error())
 		return
 	}
 	renderMu.Lock()
@@ -155,10 +186,13 @@ func runRender(req renderReq) {
 	out := filepath.Join(coversDir(), req.key+".png")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, blender, "-b", "--factory-startup", "--python", script, "--",
-		charon, req.jsonPath, out, fmt.Sprint(size), fmt.Sprint(samples))
+	args := []string{"-b", "--factory-startup", "--python", script, "--", charon, req.jsonPath, out, fmt.Sprint(size), fmt.Sprint(samples)}
+	if req.views {
+		args = append(args, "-35", "22", viewSpec())
+	}
+	cmd := exec.CommandContext(ctx, blender, args...)
 	hideWindow(cmd)
-	logPath := filepath.Join(coversDir(), req.key+".log")
+	logPath := filepath.Join(coversDir(), job+".log")
 	lf, _ := os.Create(logPath)
 	if lf != nil {
 		cmd.Stdout, cmd.Stderr = lf, lf
@@ -168,18 +202,22 @@ func runRender(req renderReq) {
 	if lf != nil {
 		lf.Close()
 	}
-	if err != nil || !fileExists(out) {
+	made := fileExists(out)
+	if req.views {
+		made = viewsDone(req.key)
+	}
+	if err != nil || !made {
 		msg := "Blender stopped before the cover was made"
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			msg = "The render took longer than 10 minutes and was stopped"
 		}
-		setJob(req.key, "error", msg+". Details are in "+logPath)
+		setJob(job, "error", msg+". Details are in "+logPath)
 		log.Printf("render %s failed: %v", req.key, err)
 		return
 	}
 	os.Remove(logPath)
-	log.Printf("rendered cover %s in %s", req.key, time.Since(start).Round(time.Second))
-	setJob(req.key, "done", "")
+	log.Printf("rendered %s in %s", job, time.Since(start).Round(time.Second))
+	setJob(job, "done", "")
 }
 
 // ------------------------------------------------------------------ handlers
@@ -199,6 +237,9 @@ func handleRenderSetup(w http.ResponseWriter, r *http.Request) {
 		}
 		renderMu.Lock()
 		settings.Blender, settings.Charon, settings.Shots = in.Blender, in.Charon, in.Shots
+		if in.AutoRender != nil {
+			settings.AutoRender = in.AutoRender
+		}
 		if in.Size >= 256 && in.Size <= 2048 {
 			settings.Size = in.Size
 		}
@@ -219,6 +260,7 @@ func handleRenderSetup(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{
 		"blender": blender, "charon": charon, "ready": blender != "" && charon != "",
 		"blenderSet": s.Blender, "charonSet": s.Charon, "size": s.Size, "samples": s.Samples, "shots": s.Shots,
+		"autoRender": s.AutoRender == nil || *s.AutoRender,
 	})
 }
 
@@ -230,22 +272,27 @@ func handleRender(w http.ResponseWriter, r *http.Request) {
 	}
 	key := r.URL.Query().Get("key")
 	force := r.URL.Query().Get("force") == "1"
+	views := r.URL.Query().Get("views") == "1"
 	if !keyRe.MatchString(key) {
 		http.Error(w, "bad key", http.StatusBadRequest)
 		return
+	}
+	job := key
+	if views {
+		job = key + "-views"
 	}
 	body, err := io.ReadAll(io.LimitReader(r.Body, 64<<20))
 	if err != nil || !json.Valid(body) {
 		http.Error(w, "the build isn't valid JSON", http.StatusBadRequest)
 		return
 	}
-	if !force && fileExists(filepath.Join(coversDir(), key+".png")) {
-		setJob(key, "done", "")
+	if !force && ((!views && fileExists(filepath.Join(coversDir(), key+".png"))) || (views && viewsDone(key))) {
+		setJob(job, "done", "")
 		writeJSON(w, map[string]string{"state": "done"})
 		return
 	}
 	renderMu.Lock()
-	if j, ok := jobs[key]; ok && (j.State == "queued" || j.State == "running") {
+	if j, ok := jobs[job]; ok && (j.State == "queued" || j.State == "running") {
 		renderMu.Unlock()
 		writeJSON(w, j)
 		return
@@ -258,15 +305,15 @@ func handleRender(w http.ResponseWriter, r *http.Request) {
 	}
 	f.Write(body)
 	f.Close()
-	setJob(key, "queued", "")
+	setJob(job, "queued", "")
 	select {
-	case queue <- renderReq{key, f.Name()}:
+	case queue <- renderReq{key: key, jsonPath: f.Name(), views: views}:
 	default:
 		os.Remove(f.Name())
-		setJob(key, "error", "Too many renders waiting; try again in a moment")
+		setJob(job, "error", "Too many renders waiting; try again in a moment")
 	}
 	renderMu.Lock()
-	j := jobs[key]
+	j := jobs[job]
 	renderMu.Unlock()
 	writeJSON(w, j)
 }
@@ -277,11 +324,16 @@ func handleRenderStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad key", http.StatusBadRequest)
 		return
 	}
+	views := r.URL.Query().Get("views") == "1"
+	job := key
+	if views {
+		job = key + "-views"
+	}
 	renderMu.Lock()
-	j, ok := jobs[key]
+	j, ok := jobs[job]
 	renderMu.Unlock()
 	if !ok {
-		if fileExists(filepath.Join(coversDir(), key+".png")) {
+		if (!views && fileExists(filepath.Join(coversDir(), key+".png"))) || (views && viewsDone(key)) {
 			writeJSON(w, renderJob{State: "done"})
 		} else {
 			writeJSON(w, renderJob{State: "none"})
@@ -298,6 +350,17 @@ func handleCover(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := filepath.Join(coversDir(), key+".png")
+	if v := r.URL.Query().Get("view"); v != "" && v != "hero" {
+		ok := false
+		for _, cv := range coverViews {
+			ok = ok || cv.Name == v
+		}
+		if !ok {
+			http.Error(w, "bad view", http.StatusBadRequest)
+			return
+		}
+		p = filepath.Join(coversDir(), key+"-"+v+".png")
+	}
 	if !fileExists(p) {
 		http.NotFound(w, r)
 		return

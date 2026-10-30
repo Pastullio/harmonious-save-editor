@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.30.1837",
+  "version": "2026.10.30.1923",
   "date": "2026-10-30",
-  "size": 10010112,
-  "sha256": "d61456933ac83242ee3d2126e89b39133cc3e4eb39c8145772fba94e792ebcb6",
-  "notes": "A new updating screen with real download progress, featuring your traveller. Bases from Blender and LiveLink for bases.",
+  "size": 10029568,
+  "sha256": "6cc000e86290e89eff6bfb791c6949aae4e7052d3ea9f559356c452b23507478",
+  "notes": "Load a corvette from a .blend in Shipwright. Corvettes render on their own in the background, and the Hangar can show front, side, back and top views. Each planet in Coordinates now gets its own biome odds (prime planets and Exotic split out). Update the Blender add-on too.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

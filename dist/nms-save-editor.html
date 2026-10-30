@@ -894,6 +894,13 @@ ol.steps { padding-left: 20px; display: grid; gap: 6px; }
 .upd-offer { display: grid; grid-template-columns: minmax(0, 1fr) 128px; gap: 18px; align-items: center; }
 .upd-offer img { width: 128px; height: 183px; object-fit: contain; border-radius: var(--r-sm); background: radial-gradient(90% 70% at 60% 35%, #123e4c, #050f16); padding: 6px 0 0; }
 @media (max-width: 560px) { .upd-offer { grid-template-columns: 1fr; } .upd-offer img { display: none; } }
+.prime-tag { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 11px; letter-spacing: .04em; border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); color: var(--dim); vertical-align: 1px; }
+.view-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 14px 0 0; }
+.view-chips .k { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); margin-right: 6px; }
+.view-chips .chip { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: inherit; font: inherit; font-size: 13px; cursor: pointer; }
+.view-chips .chip.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface)); font-weight: 600; }
+.view-chips .chip:disabled { opacity: .45; cursor: default; }
+.view-chips .link { margin-left: 8px; }
 .holo-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 12px 0 0; font-size: 12.5px; color: var(--dim); }
 .holo-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .holo-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
@@ -1820,6 +1827,7 @@ function openSave(data, meta, name, src) {
   renderSide(); go('overview');
   setTimeout(() => rememberPlanets(), 300);
   if (APP) setTimeout(() => garageCapture().catch((e) => console.warn('garage', e)), 800);
+  if (APP) setTimeout(() => autoRenderCorvettes().catch((e) => console.warn('auto render', e)), 6000);
   toast('Loaded ' + name + ' in ' + Math.round(performance.now() - t0) + ' ms' + (meta ? '' : ' (read-only: no meta file)'));
 }
 $('#ctxSel').onchange = (e) => { S.ctx = g(S.save.json, e.target.value); S.pick = {}; S.sel = null; S.bases = S.pets = S.frig = null; renderSide(); render(); };
@@ -3485,12 +3493,35 @@ PAGES.hangar = (el) => {
     box.innerHTML = `<div class="hangar-detail"><div><h2 style="margin-bottom:10px">${esc(it.name)}</h2><div class="stats">${stats.map(([b, s]) => `<div><b>${s === 'Class' && /^[SABC]$/.test(b) ? `<span class="badge big cls-${b}">${b}</span>` : esc(b)}</b><span>${s}</span></div>`).join('')}</div></div>
       <div class="acts"><button class="btn primary" id="hOpen">Open loadout</button>${APP && it.scene && S.lib && S.lib.game ? '<button class="btn" id="hParts">Choose parts</button>' : ''}${APP && it.kind === 'corvette' ? `<button class="btn" id="hRender">${it.renderImg ? 'Render again' : 'Render with Blender'}</button>` : ''}${APP ? '<button class="btn" id="hShot">Choose a screenshot</button>' : ''}<label class="btn">Use an image file<input type="file" accept="image/*" id="hCover" hidden></label>${it.custom ? '<button class="btn ghost" id="hReset">Use generated cover</button>' : ''}</div></div>
       ${it.holo && it.holo.ids && !it.renderImg && !it.custom ? holoLegend(it) : ''}
+      ${APP && it.kind === 'corvette' && it.renderImg && !it.custom ? `<div class="view-chips" id="hViews"><span class="k">View</span>${COVER_VIEWS.map(([v, l]) => `<button class="chip" type="button" data-v="${v}"${v === 'hero' ? '' : ' disabled'}>${l}</button>`).join('')}<button class="link" type="button" id="hMoreViews" hidden>Render the other angles</button></div>` : ''}
       <p class="dim" id="renderState" style="margin:10px 0 0;font-size:14px" aria-live="polite"></p>`;
     $('#hOpen', box).onclick = () => openLoadout(it);
     const hp = $('#hParts', box); if (hp) hp.onclick = () => partsDialog(it, () => { flow.refresh(); setTimeout(detail, 50); });
     $('#hCover', box).onchange = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (f && await chooseCover(it, f)) { flow.refresh(); setTimeout(detail, 50); } };
     const hs = $('#hShot', box); if (hs) hs.onclick = async () => { const b = await pickScreenshot(); if (b && await chooseCover(it, b)) { flow.refresh(); setTimeout(detail, 50); } };
     const rs = $('#hReset', box); if (rs) rs.onclick = async () => { if (await setCustomCover(it.key, null)) { flow.refresh(); setTimeout(detail, 50); } };
+    const hv = $('#hViews', box);
+    if (hv) (async () => {
+      const p = await buildPayload(it); if (!p || !hv.isConnected) return;
+      const mark = () => hv.querySelectorAll('[data-v]').forEach((b) => b.classList.toggle('on', b.dataset.v === viewOf(p.key)));
+      const ready = (yes) => { hv.querySelectorAll('[data-v]').forEach((b) => { if (b.dataset.v !== 'hero') b.disabled = !yes; }); $('#hMoreViews', hv).hidden = yes; };
+      let st; try { st = await (await api('/api/render-status?key=' + p.key + '&views=1')).json(); } catch (_) { st = {}; }
+      ready(st.state === 'done'); mark();
+      hv.querySelectorAll('[data-v]').forEach((b) => b.onclick = async () => {
+        const img = await renderImg(p.key, b.dataset.v); if (!img) { toast("That angle hasn't been rendered yet.", true); return; }
+        setViewOf(p.key, b.dataset.v); it.renderImg = img; mark();
+        document.dispatchEvent(new CustomEvent('cover-render', { detail: { key: it.key, img } }));
+      });
+      $('#hMoreViews', hv).onclick = async (e) => {
+        const btn = e.target, stEl = $('#renderState', box); btn.disabled = true;
+        const say = (t) => { if (stEl.isConnected) stEl.textContent = t; };
+        try {
+          await renderCorvette(it, false, (state) => say(state === 'queued' ? 'Waiting for Blender…' : `Blender is rendering ${it.name} from ${COVER_VIEWS.length - 1} more angles. This takes a few minutes.`), true);
+          say(''); ready(true); toast(it.name + ': more angles rendered. Pick one above.');
+        } catch (err) { say(err.message); toast('Render failed: ' + err.message, true); }
+        finally { btn.disabled = false; }
+      };
+    })();
     const rb = $('#hRender', box);
     if (rb) rb.onclick = async () => {
       const st = $('#renderState', box); rb.disabled = true;
@@ -3522,7 +3553,14 @@ async function renderAllCorvettes(btn) {
   if (S.section === 'ships' || S.section === 'hangar') render();
 }
 // ------------------------------------------------------------------ corvette renders (desktop app + Blender + Charon Forge)
-const renderImgs = new Map(); // build hash -> loaded Image, or null when there's no render yet
+const renderImgs = new Map(); // build hash|view -> loaded Image, or null when there's no render yet
+// camera angles: the main cover (three-quarter) and the extra ones rendered together on request (render.go coverViews);
+// each corvette's chosen view is remembered per build in localStorage
+const COVER_VIEWS = [['hero', 'Three-quarter'], ['front', 'Front'], ['side', 'Side'], ['back', 'Back'], ['top', 'Top']];
+const viewPrefs = () => { try { return JSON.parse(localStorage.getItem('hse-render-view') || '{}'); } catch (_) { return {}; } };
+const viewOf = (key) => viewPrefs()[key] || 'hero';
+function setViewOf(key, v) { try { const m = viewPrefs(); if (v === 'hero') delete m[key]; else m[key] = v; localStorage.setItem('hse-render-view', JSON.stringify(m)); } catch (_) {} }
+function renderImg(hash, view = 'hero') { const k = hash + '|' + view; if (!renderImgs.has(k)) renderImgs.set(k, fetchRender(hash, view)); return renderImgs.get(k); }
 async function buildPayload(it) {
   if (it._payload) return it._payload;
   const base = it.base || corvetteBase(it.i); if (!base) return null;
@@ -3533,9 +3571,9 @@ async function buildPayload(it) {
   const key = [...digest.subarray(0, 16)].map((x) => x.toString(16).padStart(2, '0')).join('');
   it._payload = { key, text }; return it._payload;
 }
-async function fetchRender(hash) {
+async function fetchRender(hash, view = 'hero') {
   try {
-    const r = await fetch('/api/cover?key=' + hash, { headers: { 'X-Token': APP.token } });
+    const r = await fetch('/api/cover?key=' + hash + (view !== 'hero' ? '&view=' + view : ''), { headers: { 'X-Token': APP.token } });
     if (!r.ok) return null;
     const url = URL.createObjectURL(await r.blob());
     const img = new Image(); img.src = url; await img.decode(); return img;
@@ -3545,36 +3583,59 @@ async function loadRender(it) {
   if (!APP || it.kind !== 'corvette' || !window.crypto || !crypto.subtle) return;
   const p = await buildPayload(it); if (!p) return;
   it.renderKey = p.key;
-  if (!renderImgs.has(p.key)) renderImgs.set(p.key, fetchRender(p.key));
-  const img = await renderImgs.get(p.key);
+  const view = viewOf(p.key);
+  const img = (view !== 'hero' && await renderImg(p.key, view)) || await renderImg(p.key);
   if (img) document.dispatchEvent(new CustomEvent('cover-render', { detail: { key: it.key, img } }));
 }
-async function renderCorvette(it, force, onState) {
+async function renderCorvette(it, force, onState, views) {
   const p = await buildPayload(it); if (!p) throw new Error('No build found for ' + it.name);
-  let st = await (await api('/api/render?key=' + p.key + (force ? '&force=1' : ''), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: p.text })).json();
+  const v = views ? '&views=1' : '';
+  let st = await (await api('/api/render?key=' + p.key + (force ? '&force=1' : '') + v, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: p.text })).json();
   while (st.state === 'queued' || st.state === 'running') {
     onState && onState(st.state);
     await new Promise((r) => setTimeout(r, 1500));
-    st = await (await api('/api/render-status?key=' + p.key)).json();
+    st = await (await api('/api/render-status?key=' + p.key + v)).json();
   }
   if (st.state !== 'done') throw new Error(st.error || 'The render did not finish');
-  renderImgs.set(p.key, fetchRender(p.key));
-  const img = await renderImgs.get(p.key);
+  if (views) { for (const [w] of COVER_VIEWS.slice(1)) renderImgs.delete(p.key + '|' + w); return true; }
+  renderImgs.delete(p.key + '|hero');
+  const img = await renderImg(p.key);
   if (img) document.dispatchEvent(new CustomEvent('cover-render', { detail: { key: it.key, img } }));
   return img;
 }
 async function renderSetup() { return (await api('/api/render-setup')).json(); }
+// Automatic renders: a few seconds after a save opens, corvettes without a cover are rendered one at a time in the
+// background, when Blender and Charon Forge are found and the setting is on. Each one fills in its cover as it lands.
+const AUTO = { running: false, tried: new Set() };
+async function autoRenderCorvettes() {
+  if (!APP || AUTO.running || !S.save || !window.crypto || !crypto.subtle) return;
+  const setup = await renderSetup().catch(() => null);
+  if (!setup || !setup.ready || setup.autoRender === false) return;
+  AUTO.running = true;
+  const save = S.save; let done = 0;
+  try {
+    for (const it of coverItems().filter((x) => x.kind === 'corvette')) {
+      if (S.save !== save) break;   // another save was opened
+      const p = await buildPayload(it); if (!p || AUTO.tried.has(p.key)) continue;
+      AUTO.tried.add(p.key);
+      if (await renderImg(p.key)) continue;   // already has a cover
+      try { await renderCorvette(it, false); done++; } catch (e) { console.warn('auto render', it.name, e); }
+    }
+  } finally { AUTO.running = false; }
+  if (done) toast(`${plural(done, 'corvette cover')} rendered in the background`);
+}
 async function renderSettingsDialog() {
   let s; try { s = await renderSetup(); } catch (e) { toast(e.message, true); return; }
   const ok = await dialog('Cover settings', `<p>Corvettes are rendered by your own Blender with Charon Forge's part models. Leave a box empty to find it automatically.</p>
     <label class="field"><span>Blender (blender.exe)${s.blender ? ', found: ' + esc(s.blender) : ', not found'}</span><input class="input mono" id="rsB" value="${esc(s.blenderSet || '')}" placeholder="C:\\Program Files\\Blender Foundation\\Blender 5.0\\blender.exe"></label>
     <label class="field" style="margin-top:10px"><span>Charon Forge folder${s.charon ? ', found: ' + esc(s.charon) : ', not found'}</span><input class="input mono" id="rsC" value="${esc(s.charonSet || '')}" placeholder="...\\Blender\\5.0\\extensions\\user_default"></label>
     <label class="field" style="margin-top:10px"><span>Screenshot folder (optional; Steam's No Man's Sky folder is used anyway)</span><input class="input mono" id="rsSh" value="${esc(s.shots || '')}" placeholder="D:\\Pictures\\No Man's Sky"></label>
-    <div class="two" style="margin-top:10px"><label class="field"><span>Size (pixels)</span><input class="input" id="rsS" type="number" min="256" max="2048" value="${s.size}"></label><label class="field"><span>Quality (samples)</span><input class="input" id="rsQ" type="number" min="4" max="512" value="${s.samples}"></label></div>`,
+    <div class="two" style="margin-top:10px"><label class="field"><span>Size (pixels)</span><input class="input" id="rsS" type="number" min="256" max="2048" value="${s.size}"></label><label class="field"><span>Quality (samples)</span><input class="input" id="rsQ" type="number" min="4" max="512" value="${s.samples}"></label></div>
+    <label class="check" style="margin-top:12px"><input type="checkbox" id="rsAuto"${s.autoRender !== false ? ' checked' : ''}> Render corvettes without a cover automatically, in the background, when a save opens</label>`,
     [['Cancel', false, 'ghost'], ['Save', true, 'primary']]);
   if (!ok) return;
   try {
-    const r = await (await api('/api/render-setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ blender: $('#rsB').value, charon: $('#rsC').value, shots: $('#rsSh').value, size: +$('#rsS').value, samples: +$('#rsQ').value }) })).json();
+    const r = await (await api('/api/render-setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ blender: $('#rsB').value, charon: $('#rsC').value, shots: $('#rsSh').value, size: +$('#rsS').value, samples: +$('#rsQ').value, autoRender: $('#rsAuto').checked }) })).json();
     toast(r.ready ? 'Render settings saved' : 'Saved, but Blender or Charon Forge still wasn\'t found', !r.ready);
   } catch (e) { toast(e.message, true); }
   if (S.section === 'hangar') render();
@@ -5750,8 +5811,10 @@ const STAR_COLOURS = ['Yellow', 'Green', 'Blue', 'Red', 'Purple'];
 const ECONOMIES = [null, 'Trading', 'Advanced materials', 'Scientific', 'Mining', 'Manufacturing', 'Technology', 'Power generation'];
 const LEVELS = [null, 'Low', 'Medium', 'High'];
 const RACES = ['None', 'Gek', 'Korvax', "Vy'keen"];
-// Biome odds for a planet in a system of this star colour, from the game's own table (GcBiomeListPerStarType, read
-// by the item library). Odds, not a prediction: the game's draw for each planet isn't known yet. Exotic kinds are summed.
+// Biome odds from the game's own table (GcBiomeListPerStarType, read by the item library). Odds, not a prediction: the
+// game's draw for each planet isn't known. Exotic kinds are summed. Per planet (checked 2026-10-30 against the 1,487
+// planets in the owner's save, none outside its odds): the bodies after a system's regular planets are prime bodies and
+// use the prime list (the only way to get Marsh and Volcanic), and a share of Dead planets (ConvertDeadToWeird) is Exotic.
 // Galaxy kinds repeat every 20 galaxies (numbers from 1): lush 10 and 12, harsh 3 and 15, empty 7 and 19, the rest normal
 // (checked against the NMS wiki's lists). Yellow stars in lush and empty galaxies have their own biome lists in the
 // game table (LushYellow, AbandonedYellow).
@@ -5759,10 +5822,11 @@ function galaxyKind(gi) {
   const r = (Number(gi) + 1) % 20;
   return r === 10 || r === 12 ? 'lush' : r === 3 || r === 15 ? 'harsh' : r === 7 || r === 19 ? 'empty' : 'normal';
 }
-function biomeOdds(star, gi) {
+function biomeOdds(star, gi, prime) {
   const b = S.db && S.db.biomes; if (!b || !b.star) return null;
   const kind = galaxyKind(gi);
-  const w = (star === 0 && kind === 'lush' && b.lush) || (star === 0 && kind === 'empty' && b.abandoned) || b.star[star]; if (!w) return null;
+  let w = (prime && b.prime && b.prime[star]) || (star === 0 && kind === 'lush' && b.lush) || (star === 0 && kind === 'empty' && b.abandoned) || b.star[star]; if (!w) return null;
+  if (prime != null) { const d = b.deadToWeird != null ? b.deadToWeird : 0.5; w = w.slice(); w[7] = (w[7] || 0) + (w[6] || 0) * d; w[6] = (w[6] || 0) * (1 - d); }
   const NAME = ['Lush', 'Toxic', 'Scorched', 'Radioactive', 'Frozen', 'Barren', 'Dead', 'Exotic', 'Exotic', 'Exotic', 'Exotic', null, 'Marsh', 'Volcanic', 'Ocean', 'Gas giant', null];
   const sums = new Map(); let total = 0;
   w.forEach((v, k) => { const n = NAME[k]; if (!n || !(v > 0)) return; sums.set(n, (sums.get(n) || 0) + v); total += v; });
@@ -5779,6 +5843,9 @@ async function predictSystem(p) {
     race: RACES[a.dominant_race] || 'None', economy: ECONOMIES[a.economy_type] || 'None', wealth: LEVELS[a.wealth] || '', conflict: LEVELS[a.conflict_level] || '',
     pirate: a.pirate, abandoned: a.abandoned, uncharted: a.uncharted, sell: sb && sb.sell, buy: sb && sb.buy,
     planets: seeds.planet_seeds.map((s) => NMSGEN.planetName(s, null, lm)), planetCount: seeds.planet_count, moonCount: seeds.moon_count,
+    // bodies after the system's regular planets are prime bodies (nms-core's planetSeeds draws them last; a gas-giant system is all prime)
+    prime: seeds.planet_seeds.map((_, k) => !!a.gas_giant || k >= a.planet_count),
+    planetOdds: seeds.planet_seeds.map((_, k) => biomeOdds(a.star_type, gi, !!a.gas_giant || k >= a.planet_count)),
   };
 }
 function predictionHtml(p, s) {
@@ -5798,9 +5865,9 @@ function predictionHtml(p, s) {
   return `<div class="pred-head"><div><span class="k">System</span><b class="pred-name">${esc(s.name)}</b><span class="dim">${esc(s.region)}, ${esc(GALAXIES[p.gi])}</span></div><span class="pred-share"><button class="btn small" type="button" data-card="image">Copy card</button><button class="btn small ghost" type="button" data-card="save">Save card</button><button class="btn small ghost" type="button" data-card="text">Copy as text</button></span><span class="pill">Predicted</span></div>
     <dl class="pred-grid">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
     ${s.planets.length ? `<table class="pred-planets"><thead><tr><th>#</th><th>Name</th><th>Biome</th><th>Portal address</th><th></th></tr></thead><tbody>
-      ${s.planets.map((n, i) => { const code = hexN(i + 1, 1) + rest, bi = (s.biomes || {})[i + 1]; return `<tr${p.planet === i + 1 ? ' class="on"' : ''}><td>${i + 1}</td><td>${esc(n)}</td><td>${bi && bi.biome ? esc(bi.biome + (bi.infested ? ', infested' : '')) : '<span class="dim">Not visited</span>'}</td><td>${glyphRow(code, 'tiny')} <span class="mono">${code}</span></td><td><button class="link" type="button" data-planet="${i + 1}">${p.planet === i + 1 ? 'Selected' : 'Use this address'}</button></td></tr>`; }).join('')}
+      ${s.planets.map((n, i) => { const code = hexN(i + 1, 1) + rest, bi = (s.biomes || {})[i + 1]; return `<tr${p.planet === i + 1 ? ' class="on"' : ''}><td>${i + 1}</td><td>${esc(n)}</td><td>${bi && bi.biome ? esc(bi.biome + (bi.infested ? ', infested' : '')) : (() => { const o = (s.planetOdds || [])[i]; return o ? `<span class="dim" title="${esc('Odds for this planet: ' + o.filter(([, f]) => f >= 0.01).map(([n, f]) => `${n} ${Math.round(f * 100)}%`).join(', '))}">${o[1] && Math.round(o[1][1] * 100) === Math.round(o[0][1] * 100) ? `${esc(o[0][0])} or ${esc(o[1][0])}, ${Math.round(o[0][1] * 100)}% each` : `Most likely ${esc(o[0][0])}, ${Math.round(o[0][1] * 100)}%`}</span>` : '<span class="dim">Not visited</span>'; })()}${(s.prime || [])[i] ? ' <span class="prime-tag" title="A prime body: it draws from the game\'s prime list, the only one with Marsh and Volcanic">Prime</span>' : ''}</td><td>${glyphRow(code, 'tiny')} <span class="mono">${code}</span></td><td><button class="link" type="button" data-planet="${i + 1}">${p.planet === i + 1 ? 'Selected' : 'Use this address'}</button></td></tr>`; }).join('')}
     </tbody></table>` : '<p class="dim">No planets.</p>'}
-    <p class="pred-note dim">Predicted from the address with the game's own rules, so it works for systems nobody has visited. Checked against 1,000 systems players recorded: about 99% right. Names travellers uploaded later aren't included. Biomes in the planet list come from your own discoveries. Biome odds are the game's own chances for a planet around this colour of star in this kind of galaxy (yellow stars in lush and empty galaxies have their own lists), read from your game files; the rarer prime planets use a separate list; which biome each unvisited planet gets is still being researched, and weather and resources aren't predicted yet. Generation research: nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, ported to JavaScript as nms-core by elegra1965 (both MIT).</p>`;
+    <p class="pred-note dim">Predicted from the address with the game's own rules, so it works for systems nobody has visited. Checked against 1,000 systems players recorded: about 99% right. Names travellers uploaded later aren't included. Biomes in the planet list come from your own discoveries; for unvisited planets it shows the likeliest ones from each planet's own odds. Biome odds are the game's own chances for this colour of star in this kind of galaxy (yellow stars in lush and empty galaxies have their own lists), read from your game files. Prime planets, the bodies after a system's regular ones, use the game's prime list, the only one with Marsh and Volcanic, and some Dead planets turn Exotic; this matched every one of the 1,487 planets in the owner's save. The exact biome the game draws for each planet isn't known, and weather and resources aren't predicted yet. Generation research: nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, ported to JavaScript as nms-core by elegra1965 (both MIT).</p>`;
 }
 
 // a shareable card for a place: glyphs, address, the predicted system and its planets (for Discord and the like)
@@ -6941,6 +7008,7 @@ PAGES.shipwright = (el) => {
         <button class="btn" type="button" data-a="copy"${base ? '' : ' disabled'}>Copy all</button>
         <button class="btn" type="button" data-a="paste">Paste all</button>
         <label class="btn">Load file<input type="file" id="swFile" accept=".json,.txt,.nmsship,.nmsbase,.nmsprefab" hidden></label>
+        ${APP ? '<button class="btn" type="button" data-a="blend" title="Reads a Blender file through your Blender (with Charon Forge when it is installed) and puts its build on a corvette">Load from a .blend…</button>' : ''}
         <button class="btn" type="button" data-a="saveas"${base ? '' : ' disabled'}>Save as…</button>
       </div></div>
     <div class="panel sw-health"><h3>Build check</h3><ul>${H.out.map(([k, t, fix]) => `<li class="${k}"><span class="sw-ic"></span><span>${esc(t)}</span>${fix ? `<button class="btn small" type="button" data-a="${fix}">${fix === 'tune' ? 'Tune up' : 'Remove them'}</button>` : ''}</li>`).join('')}</ul></div>
@@ -6965,6 +7033,7 @@ PAGES.shipwright = (el) => {
     try {
       if (a === 'tune') { const objs = g(base, 'Objects'), next = tunedOrder(objs), moved = next.filter((o, k) => o !== objs[k]).length; if (!moved) { toast('Already in the right order'); return; } commit(next, `Tuned up: ${plural(moved, 'part')} moved`); }
       if (a === 'dedupe') { const d = new Set(duplicateParts(g(base, 'Objects'))); commit(g(base, 'Objects').filter((o) => !d.has(o)), `${plural(d.size, 'duplicate')} removed`); }
+      if (a === 'blend') { await loadCorvetteBlend(i); return; }
       if (a === 'copy') { await navigator.clipboard.writeText(plainBuild(base)); toast(`Copied the whole build (${plural(H.objs.length, 'part')})`); }
       if (a === 'paste') {
         let t = ''; try { t = await navigator.clipboard.readText(); } catch (_) { t = null; }
@@ -7315,20 +7384,56 @@ const baseLabel = (b) => str(g(b, 'Name')).trim() || (str(g(b, 'BaseType', 'Pers
 function myUID() { for (const b of g(ps(), 'PersistentPlayerBases') || []) { const u = str(g(b, 'Owner', 'UID')); if (u && u !== '0') return u; } return ''; }
 // Load from a .blend: the app reads the file through the owner's Blender (blend_read.py), and its parts go onto the
 // base the file names (by address and name), or onto the open base when the file names none. Asks first, always.
-async function loadBaseBlend(open) {
-  const t = baseRef(open), cur = liveFileOf(t), dir = cur ? cur.file.replace(/[\\/][^\\/]*$/, '') : '';
-  let r; try { r = await api('/api/live/pick?dir=' + encodeURIComponent(dir), { method: 'POST' }); } catch (e) { toast(e.message, true); return; }
-  const { file } = await r.json(); if (!file) return;
-  const wait = dialog('Reading ' + blendName(file), `<p class="live-state"><span class="live-dot"></span>Blender is opening <b>${esc(blendName(file))}</b> in the background to read its parts. Big bases take a little while.</p>`, [['Cancel', 'cancel', 'ghost']]);
+// pick a .blend and read its build through the owner's Blender (/api/blend/read), with a "reading" dialog; null if cancelled
+async function readBlendFile(cur) {
+  const dir = cur ? cur.file.replace(/[\\/][^\\/]*$/, '') : '';
+  let r; try { r = await api('/api/live/pick?dir=' + encodeURIComponent(dir), { method: 'POST' }); } catch (e) { toast(e.message, true); return null; }
+  const { file } = await r.json(); if (!file) return null;
+  const wait = dialog('Reading ' + blendName(file), `<p class="live-state"><span class="live-dot"></span>Blender is opening <b>${esc(blendName(file))}</b> in the background to read its parts. Big builds take a little while.</p>`, [['Cancel', 'cancel', 'ghost']]);
   let res, cancelled = false, done = false;
   wait.then(() => { if (!done) cancelled = true; });   // closed by the person before Blender answered
   const finish = () => { done = true; if ($('#dlg').open) $('#dlg').close(); };
   try { res = C.parseJSON(await (await api('/api/blend/read', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file }) })).text()); }
-  catch (e) { if (!cancelled) { finish(); toast(e.message, true); } return; }
-  if (cancelled) return;
+  catch (e) { if (!cancelled) { finish(); toast(e.message, true); } return null; }
+  if (cancelled) return null;
   finish(); await new Promise((ok) => setTimeout(ok, 0));
+  const objects = res.get('objects');
+  if (!Array.isArray(objects) || !objects.length) { toast(`${blendName(file)} has no build parts (objects with an ObjectID).`, true); return null; }
+  return { file, res, objects };
+}
+// Load from a .blend in Shipwright: a corvette .blend (Charon Forge, or any scene of parts) onto a corvette; the
+// corvette it's set to in the LiveLink add-on is chosen first, else the one open. Base files go to the Bases page.
+async function loadCorvetteBlend(slot) {
+  const got = await readBlendFile(liveFileOf(slot)); if (!got) return;
+  const { file, res, objects } = got, said = refOf(res.get('base'));
+  if (said) {
+    const hit = findBase(said);
+    const v = await dialog('This is a base', `<p><b>${esc(blendName(file))}</b> is the base <b>${esc(said.name || said.addr)}</b>, not a corvette. Load it on the Bases page instead.</p>`, hit ? [['Cancel', false, 'ghost'], ['Open ' + baseLabel(hit.b) + ' on Bases', true, 'primary']] : [['Close', false]]);
+    if (v && hit) { S.bases = { tab: 'bases', pick: hit.i }; go('bases'); }
+    return;
+  }
+  const corvs = ships().filter(({ s: x, i }) => slotIsCorvette(x) && shipBuild(i));
+  const tg = res.get('target'), tSlot = tg instanceof Map ? num(tg.get('slot')) : null, tName = tg instanceof Map ? str(tg.get('name')) : '';
+  const want = tg instanceof Map ? corvs.find((c) => c.i === tSlot && str(g(c.s, 'Name')) === tName) || corvs.find((c) => str(g(c.s, 'Name')) === tName) : null;
+  const pick = want ? want.i : slot;
+  const note = want ? (want.i === slot ? `<p>The file is set to this corvette in the LiveLink add-on.</p>` : `<p>The file is set to <b>${esc(tName)}</b> in the LiveLink add-on, so that corvette is chosen, not the one you have open.</p>`)
+    : tg instanceof Map ? `<p class="warn">The file is set to <b>${esc(tName)}</b>, which isn't in this save. Choose the corvette it should go on.</p>` : '';
+  const src = str(res.get('source')), how = src === 'Charon Forge' ? ' (read with Charon Forge)' : '';
+  const ok = await dialog('Load ' + blendName(file) + '?', `<p>${plural(objects.length, 'part')} from <b>${esc(blendName(file))}</b>${esc(how)}.</p>${note}
+    <label class="field"><span>Put them on</span><select class="input" id="blendCorv">${corvs.map(({ s: x, i }) => `<option value="${i}"${i === pick ? ' selected' : ''}>${esc(str(g(x, 'Name')) || 'Corvette')} (slot ${i + 1}, ${plural((g(shipBuild(i), 'Objects') || []).length, 'part')})</option>`).join('')}</select></label>
+    <p class="dim small-print">The corvette's build is replaced; the ship keeps its name, class and inventories.${S.wright && S.wright.auto ? ' The parts are tuned up as they go in.' : ''} Nothing is written to your game until you save.</p>`, [['Cancel', false, 'ghost'], ['Replace the build', true, 'primary']]);
+  if (!ok) return;
+  const to = +$('#blendCorv').value, base = shipBuild(to); if (!base) { toast('That corvette has no build to replace.', true); return; }
+  let objs = inGameOrder(fromPlain(objects), (g(base, 'Objects') || [])[0]); if (S.wright && S.wright.auto) objs = tunedOrder(objs);
+  set(base, 'Objects', objs); markDirty();
+  await liveSetFile(to, file);   // remembered for LiveLink's "Open in Blender"
+  if (S.wright) { S.wright.slot = to; S.wright.sel = new Set(); }
+  renderSide(); toast(`${plural(objs.length, 'part')} from ${blendName(file)} put on ${str(g(g(ps(), 'ShipOwnership')[to], 'Name')) || 'the corvette'}. Press Save to game to keep them.`); render();
+}
+async function loadBaseBlend(open) {
+  const got = await readBlendFile(liveFileOf(baseRef(open))); if (!got) return;
+  const { file, res } = got;
   const objects = res.get('objects'), said = refOf(res.get('base'));
-  if (!Array.isArray(objects) || !objects.length) { toast(`${blendName(file)} has no base parts (objects with an ObjectID).`, true); return; }
   const list = playerBases(), hit = findBase(said), pick = hit ? hit.i : list.find(({ b }) => b === open).i;
   const note = said ? (hit ? (hit.b === open ? '' : `<p>This file is the base <b>${esc(said.name)}</b>, so that base is chosen, not the one you have open.</p>`) : `<p class="warn">This file is the base <b>${esc(said.name || said.addr)}</b>, which isn't in this save. Choose the base it should go on.</p>`) : '<p>The file doesn\'t say which base it is (it has no Base Builder details). Choose the base it should go on.</p>';
   const ok = await dialog('Load ' + blendName(file) + '?', `<p>${plural(objects.length, 'part')} from <b>${esc(blendName(file))}</b>.</p>${note}

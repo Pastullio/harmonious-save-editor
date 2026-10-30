@@ -37,12 +37,12 @@ func handleBlendRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	startRenderWorker() // loads the settings that say where Blender is
-	blender, _ := resolveTools()
+	blender, charon := resolveTools()
 	if blender == "" {
 		http.Error(w, "Blender wasn't found. Set where it is in Cover settings.", http.StatusNotFound)
 		return
 	}
-	res, err := readBlend(blender, v.File)
+	res, err := readBlend(blender, charon, v.File)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -51,7 +51,7 @@ func handleBlendRead(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, res)
 }
 
-func readBlend(blender, file string) (map[string]any, error) {
+func readBlend(blender, charon, file string) (map[string]any, error) {
 	blendReadMu.Lock()
 	defer blendReadMu.Unlock()
 	dir, err := os.MkdirTemp("", "hse-blend")
@@ -68,7 +68,11 @@ func readBlend(blender, file string) (map[string]any, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, blender, "-b", "--factory-startup", "--python", script, "--", file, out, dir)
+	args := []string{"-b", "--factory-startup", "--python", script, "--", file, out, dir}
+	if charon != "" {
+		args = append(args, charon)
+	}
+	cmd := exec.CommandContext(ctx, blender, args...)
 	hideWindow(cmd)
 	logb, runErr := cmd.CombinedOutput()
 	b, err := os.ReadFile(out)

@@ -42,7 +42,7 @@ func TestParseBiomes(t *testing.T) {
 		}
 		// the owner's file (2026-10-30): yellow Lush 2 and Dead 2, lush galaxies Lush 4, empty galaxies Dead 4,
 		// purple stars the only ones with Marsh, Volcanic and Ocean
-		if bi.Star[0][0] != 2 || bi.LushYellow[0] != 4 || bi.AbandonedYellow[6] != 4 || bi.Star[4][14] <= 0 || bi.Star[0][14] != 0 {
+		if bi.Star[0][0] != 2 || bi.LushYellow[0] != 4 || bi.AbandonedYellow[6] != 4 || bi.Star[4][14] <= 0 || bi.Star[0][14] != 0 || bi.DeadToWeird != 0.5 {
 			t.Fatalf("the real table doesn't read as expected: %v / %v / %v", bi.Star, bi.LushYellow, bi.AbandonedYellow)
 		}
 	}

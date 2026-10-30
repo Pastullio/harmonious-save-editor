@@ -70,7 +70,9 @@ One personal library of ship files outside the game, with three views onto it.
 - [ ] Their look is generated in-game from the seed, so it can't be rendered outside the game; artwork for fixed-look specials (Golden Vector, Atlas Sceptre, Starborn ships) could come from the web later
 - [x] Artwork from a linked Charon/NMA listing
 - [x] Turntable: cover cards (Overview, ship pages, Dock Yard details) turn while hovered and follow a drag
-- [ ] More camera angles per corvette (left for later: the Blender render takes one fixed view today)
+- [x] More camera angles per corvette: front, side, back and top render together on request, picked in the Hangar (2026-10-30)
+- [x] Automatic corvette renders: corvettes without a cover are rendered in the background when a save opens (setting in Cover settings, 2026-10-30)
+- [x] Shipwright: Load a corvette from a .blend (Charon Forge's serialiser when installed; the corvette the file is set to is chosen) (2026-10-30)
 - [x] Custom covers live on disk in `Dock Yard\Covers` (with `covers.json`); ones the app kept in the browser profile move there by themselves
 - [x] Stretch: a 3D preview of a corvette from its part list. Done as the solid-block hologram at real part sizes (2026-10-30); the true hull needs the snap rules above
 - [x] Glacial look to match the Portal Glyph Banner: icy light theme, deep-teal dark theme (toggle, remembered), Jost, pill buttons, wide-tracked titles; no yellow or purple anywhere
@@ -128,7 +130,8 @@ The save file holds no images, so a ship's picture has to come from one of these
 - [ ] Predicted planet details: biome, weather, resources, sentinels, flora and fauna. Our own research (owner 2026-10-30; ATLAS APF not used):
   - [x] Biome of planets you've discovered, from discovery records (`VP[1]` low 16 bits = GcBiomeType, bit 16 = infested), shown in the planet table
   - [x] Biome odds per star colour from the owner's own `METADATA/SIMULATION/SOLARSYSTEM/BIOMES/BIOMELISTPERSTARTYPE.MBIN` (GcBiomeListPerStarType), labelled as odds; checked against the real file 2026-10-30, and lush and empty galaxies use their own yellow-star lists
-  - [ ] Exact biome: test generation hypotheses offline against the ~1,500 discovered planets in the owner's save (nms-core's planet seeds match all 1,487 records); if none fits, port the draw order from the game's solar-system generator
+  - [x] Per-planet biome odds (2026-10-30): prime bodies use the prime list and Dead can turn Exotic; matches all 1,487 discovered planets in the owner's save
+  - [ ] Exact biome: tried 2026-10-30 against the 1,487 planets (planet seed, the system's stream after the planet seeds, name transform, address hash; several generators and draw positions): nothing beats chance. Needs the draw order from the game's solar-system generator (disassembly)
   - [ ] Weather, sentinels, resources, flora and fauna need planet generation itself (much harder, no labelled data beyond what players note down)
 - [x] Arrive on foot at a base (Coordinates, "Arrive at a base"): works in any system the app has seen a save made in
 - [x] Arrive on the freighter (Coordinates, "Arrive on your freighter"): calls the freighter to the system and spawns you aboard
