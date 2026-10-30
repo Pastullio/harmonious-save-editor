@@ -9,6 +9,17 @@ sys.path.insert(0, addon_dir)
 import harmonious_live_link as h
 
 objs = json.load(open(build_file, encoding="utf-8"))
+
+# the NMS Base Builder add-on on its own: its serialise() takes no arguments
+class OldStyleTool:
+    def serialise(self):
+        return {"Objects": objs, "BaseVersion": 8}
+got, src = h.build_objects(types.SimpleNamespace(nms_base_tool=OldStyleTool()))
+print("BASEBUILDER", src, len(got) == len(objs))
+try:
+    h.build_objects(types.SimpleNamespace())
+except RuntimeError as error:
+    print("NOBUILDER", error)
 fake = types.ModuleType("bl_ext.user_default.charon_forge.builder")
 fake.get_builder = lambda: types.SimpleNamespace(serialise=lambda: {"Objects": objs, "BaseVersion": 8})
 sys.modules[fake.__name__] = fake

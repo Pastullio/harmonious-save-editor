@@ -90,23 +90,50 @@ def redraw():
 
 # ---------------------------------------------------------------- reading the build from the scene
 
+def _objects_of(data):
+    """Objects from whatever a builder returns: a dict with Objects, a bare list, or that as JSON text."""
+    if isinstance(data, (str, bytes)):
+        data = json.loads(data)
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        return data.get("Objects") or data.get("Prefab")
+    return None
+
+
 def build_objects(scene):
     """The build's parts as NMS objects (a list of dicts), or raise with a reason."""
-    # Charon Forge (installed as an extension, so its module name has a prefix like bl_ext.user_default.)
+    problems = []
+    # Charon Forge: installed as an extension, so its package name has a prefix (bl_ext.user_default.charon_forge)
     for name, mod in list(sys.modules.items()):
-        if name.endswith("charon_forge.builder") and hasattr(mod, "get_builder"):
-            data = mod.get_builder().serialise()
-            objects = data.get("Objects") if isinstance(data, dict) else None
+        if "charon" in name.lower() and name.endswith(".builder") and hasattr(mod, "get_builder"):
+            try:
+                objects = _objects_of(mod.get_builder().serialise())
+            except Exception as error:  # noqa: BLE001 - show what the builder said
+                problems.append("Charon Forge: %s" % error)
+                continue
             if objects:
                 return objects, "Charon Forge"
-    # the NMS Base Builder add-on
+            problems.append("Charon Forge found no parts in this scene")
+    # the NMS Base Builder add-on (its serialise() takes no arguments in current versions)
     tool = getattr(scene, "nms_base_tool", None)
     if tool is not None:
-        data = tool.serialise(objects_only=True)
-        objects = data if isinstance(data, list) else (data or {}).get("Objects")
+        try:
+            try:
+                data = tool.serialise()
+            except TypeError:
+                data = tool.serialise(objects_only=True)
+            objects = _objects_of(data)
+        except Exception as error:  # noqa: BLE001
+            problems.append("Base Builder: %s" % error)
+            objects = None
         if objects:
             return objects, "Base Builder"
-    raise RuntimeError("No build found in this scene. Charon Forge or the NMS Base Builder add-on needs to be installed, with parts in the scene.")
+        if not problems or not problems[-1].startswith("Base Builder"):
+            problems.append("the Base Builder found no parts in this scene")
+    if not problems:
+        problems.append("neither Charon Forge nor the NMS Base Builder add-on is installed")
+    raise RuntimeError("No build to send: " + "; ".join(problems) + ".")
 
 
 # ---------------------------------------------------------------- sending

@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.30.1540",
+  "version": "2026.10.30.1548",
   "date": "2026-10-30",
-  "size": 9808896,
-  "sha256": "7b97e6472a3024e08216726ebcf58ea7cd631d83ac5e8cfa7241ea024fd3c99a",
-  "notes": "Live link is now called LiveLink.",
+  "size": 9809920,
+  "sha256": "75e5baff57c6e97d85966ef40c84a51f526f70b031d12226286ca3c18038535f",
+  "notes": "LiveLink add-on fix: reads builds from the NMS Base Builder add-on (no more objects_only error) and finds Charon Forge under any install name.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

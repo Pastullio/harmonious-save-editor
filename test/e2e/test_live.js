@@ -47,9 +47,11 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const py = path.join(SP, 'bpyenv/bin/python');
   // (bpy as a module reports leaked memory and a non-zero status on exit; only its output matters here)
   const outp = spawnSync(py, [path.join(__dirname, 'live_blender.py'), path.join(__dirname, '../../desktop/addon'), SP + '/live_build.json', SP + '/live_test.blend'],
-    { env: { ...process.env, HSE_LIVE_FILE: liveFile }, encoding: 'utf8', timeout: 300000 }).stdout.split('\n').filter((l) => /^(PANEL|LINK|SEND|SAVE) /.test(l));
+    { env: { ...process.env, HSE_LIVE_FILE: liveFile }, encoding: 'utf8', timeout: 300000 }).stdout.split('\n').filter((l) => /^(PANEL|LINK|SEND|SAVE|BASEBUILDER|NOBUILDER) /.test(l));
   console.log(outp.join('\n'));
   ok('the add-on registers its panel', outp.some((l) => l === 'PANEL True'));
+  ok('the Base Builder add-on\'s serialise() (no arguments) is read too', outp.includes('BASEBUILDER Base Builder True'));
+  ok('with no builder, it says what is missing', outp.some((l) => /^NOBUILDER No build to send: neither Charon Forge nor/.test(l)));
   ok('Blender sees it is linked, and to which corvette', outp.some((l) => l.startsWith('LINK on ') && l.includes(info.toName)));
   ok('Send now: the build is written to the corvette', outp.some((l) => l.startsWith('SEND') && new RegExp(`${info.n.toLocaleString()} parts written to ${info.toName}.*backed up`).test(l)));
   ok('saving the .blend sends it again', outp.some((l) => l.startsWith('SAVE') && /written to/.test(l)));
