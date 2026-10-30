@@ -142,6 +142,25 @@ if ($f.ShowDialog($owner) -eq 'OK') { [Console]::Out.Write($f.SelectedPath) }`
 	return strings.TrimSpace(string(out)), nil
 }
 
+// pickFile shows the Windows open-file dialog and returns the chosen file, or "" when the owner cancels.
+func pickFile(title, filter, startDir string) (string, error) {
+	script := `[Console]::OutputEncoding = [Text.Encoding]::UTF8
+Add-Type -AssemblyName System.Windows.Forms
+$owner = New-Object System.Windows.Forms.Form -Property @{TopMost = $true; ShowInTaskbar = $false}
+$f = New-Object System.Windows.Forms.OpenFileDialog
+$f.Title = $env:HSE_TITLE
+$f.Filter = $env:HSE_FILTER
+if ($env:HSE_DIR) { $f.InitialDirectory = $env:HSE_DIR }
+if ($f.ShowDialog($owner) -eq 'OK') { [Console]::Out.Write($f.FileName) }`
+	cmd := exec.Command("powershell", "-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-Command", script)
+	cmd.Env = append(os.Environ(), "HSE_TITLE="+title, "HSE_FILTER="+filter, "HSE_DIR="+startDir)
+	out, err := hidden(cmd).Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
 func fatal(msg string) {
 	user32 := syscall.NewLazyDLL("user32.dll")
 	box := user32.NewProc("MessageBoxW")

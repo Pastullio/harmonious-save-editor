@@ -151,6 +151,7 @@ func handleUpdateInstall(w http.ResponseWriter, r *http.Request) {
 		if err := cmd.Start(); err != nil {
 			log.Printf("could not start the new version: %v", err)
 		}
+		liveShutdown()
 		os.Exit(0)
 	}()
 }

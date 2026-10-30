@@ -16,8 +16,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -178,3 +180,91 @@ func handleLiveAddon(w http.ResponseWriter, r *http.Request) {
 func liveTokenOK(r *http.Request) bool {
 	return liveToken != "" && subtle.ConstantTimeCompare([]byte(r.Header.Get("X-Live-Token")), []byte(liveToken)) == 1
 }
+
+// ---- which .blend each corvette's build comes from, and opening it in Blender
+// live-files.json: page key (account folder|slot|corvette name) -> the .blend it was last sent from or linked to
+
+type liveFile struct {
+	File string `json:"file"`
+	Time int64  `json:"time"` // unix ms
+}
+
+var liveFilesMu sync.Mutex
+
+func liveFilesPath() string { return filepath.Join(appDir, "live-files.json") }
+
+func readLiveFiles() map[string]liveFile {
+	m := map[string]liveFile{}
+	if b, err := os.ReadFile(liveFilesPath()); err == nil {
+		_ = json.Unmarshal(b, &m)
+	}
+	return m
+}
+
+// GET: the whole map; POST {key, file}: remember a file ("" forgets it)
+func handleLiveFiles(w http.ResponseWriter, r *http.Request) {
+	liveFilesMu.Lock()
+	defer liveFilesMu.Unlock()
+	m := readLiveFiles()
+	if r.Method == http.MethodPost {
+		var v struct{ Key, File string }
+		if err := json.NewDecoder(io.LimitReader(r.Body, 8192)).Decode(&v); err != nil || v.Key == "" {
+			http.Error(w, "a key is needed", http.StatusBadRequest)
+			return
+		}
+		if v.File == "" {
+			delete(m, v.Key)
+		} else {
+			m[v.Key] = liveFile{File: v.File, Time: time.Now().UnixMilli()}
+		}
+		b, _ := json.MarshalIndent(m, "", "  ")
+		if err := os.WriteFile(liveFilesPath(), b, 0o644); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	writeJSON(w, m)
+}
+
+// POST: the Windows file dialog for a .blend; {file} or {file: ""} when cancelled
+func handleLivePick(w http.ResponseWriter, r *http.Request) {
+	start := r.URL.Query().Get("dir")
+	f, err := pickFile("Choose the corvette's Blender file", "Blender files (*.blend)|*.blend", start)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotImplemented)
+		return
+	}
+	writeJSON(w, map[string]string{"file": f})
+}
+
+// POST {file}: opens Blender, with that .blend when given
+func handleLiveOpen(w http.ResponseWriter, r *http.Request) {
+	var v struct{ File string }
+	_ = json.NewDecoder(io.LimitReader(r.Body, 8192)).Decode(&v)
+	if v.File != "" && (!strings.EqualFold(filepath.Ext(v.File), ".blend") || !fileExists(v.File)) {
+		http.Error(w, "That Blender file isn't there any more: "+v.File, http.StatusNotFound)
+		return
+	}
+	blender, _ := resolveTools()
+	if blender == "" {
+		http.Error(w, "Blender wasn't found. Set where it is in Cover settings.", http.StatusNotFound)
+		return
+	}
+	args := []string{}
+	if v.File != "" {
+		args = append(args, v.File)
+	}
+	cmd := exec.Command(blender, args...)
+	if v.File != "" {
+		cmd.Dir = filepath.Dir(v.File)
+	}
+	if err := cmd.Start(); err != nil {
+		http.Error(w, "Couldn't start Blender: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	go cmd.Wait() // don't leave a zombie behind on Linux; Blender keeps running after the editor closes
+	writeJSON(w, map[string]bool{"ok": true})
+}
+
+// the link ends with the editor: live.json goes, so the add-on shows the editor isn't running
+func liveShutdown() { os.Remove(filepath.Join(appDir, "live.json")) }

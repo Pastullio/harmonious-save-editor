@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.30.1519",
+  "version": "2026.10.30.1535",
   "date": "2026-10-30",
-  "size": 9793536,
-  "sha256": "48605f4f588db796a8abe9a14deb234fff2d2feefdf992097316d1da86566d2d",
-  "notes": "Live link shows when it's connected: Blender says which corvette it's linked to, the editor shows Blender is linked, and Shipwright gets a Live marker in the sidebar.",
+  "size": 9808896,
+  "sha256": "3afe8c24242063a31e25c91e26a155b8f6612e4131ed9362969b77fa28c98b89",
+  "notes": "Live link: turning it on offers to open that corvette's Blender file, each corvette remembers which .blend its build came from, and the link ends when you close the editor.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

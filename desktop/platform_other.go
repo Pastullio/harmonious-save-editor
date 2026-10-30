@@ -89,6 +89,14 @@ func fatal(msg string) { fmt.Fprintln(os.Stderr, msg); os.Exit(1) }
 
 func revealFile(path string) error { return reveal(filepath.Dir(path)) }
 
+// pickFile: tests set HSE_PICK_FILE to the answer; elsewhere it needs the Windows app
+func pickFile(title, filter, startDir string) (string, error) {
+	if f, ok := os.LookupEnv("HSE_PICK_FILE"); ok {
+		return f, nil
+	}
+	return "", fmt.Errorf("choosing a file needs the Windows app")
+}
+
 func pickFolder(title string) (string, error) {
 	return "", fmt.Errorf("choosing a folder needs the Windows app; type the folder's path instead")
 }

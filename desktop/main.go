@@ -119,6 +119,9 @@ func main() {
 	mux.HandleFunc("/api/live/result", handleLiveResult)
 	mux.HandleFunc("/api/live/build", handleLiveBuild)
 	mux.HandleFunc("/api/live/addon", handleLiveAddon)
+	mux.HandleFunc("/api/live/files", handleLiveFiles)
+	mux.HandleFunc("/api/live/pick", handleLivePick)
+	mux.HandleFunc("/api/live/open", handleLiveOpen)
 	mux.HandleFunc("/api/update/install", handleUpdateInstall)
 	mux.HandleFunc("/api/itemdb/items.xml", handleItemXML)
 	mux.HandleFunc("/api/itemdb/icon", handleItemIcon)
@@ -148,12 +151,15 @@ func watchdog(noWindow bool) {
 		switch {
 		case bye > 0 && now-bye > 8000:
 			log.Print("window closed, exiting")
+			liveShutdown()
 			os.Exit(0)
 		case ping > 0 && now-ping > 3*60*1000:
 			log.Print("no heartbeat for 3 minutes, exiting")
+			liveShutdown()
 			os.Exit(0)
 		case ping == 0 && !noWindow && now-start > 3*60*1000:
 			log.Print("page never connected, exiting")
+			liveShutdown()
 			os.Exit(0)
 		}
 	}

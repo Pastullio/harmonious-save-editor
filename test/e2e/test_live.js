@@ -8,7 +8,11 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
 (async () => {
   const cfg = path.join(SP, 'livecfg'), root = path.join(SP, 'liveroot'); fs.rmSync(cfg, { recursive: true, force: true }); fs.rmSync(root, { recursive: true, force: true });
   fs.cpSync(SP + '/dbroot/NMS', root, { recursive: true });
-  const proc = spawn(path.join(__dirname, '../../dist/hse-linux'), ['-no-window', '-root', root, '-port', '48009'], { env: { ...process.env, HOME: SP + '/modelhome', XDG_CONFIG_HOME: cfg } });
+  // a stand-in Blender that notes what it was asked to open, and the answer the file dialog gives
+  const blend = path.join(SP, 'live_test.blend'), argsFile = path.join(SP, 'blender_args.txt'), fakeBlender = path.join(SP, 'fake-blender-open.sh');
+  fs.writeFileSync(blend, 'not really a blend'); fs.rmSync(argsFile, { force: true });
+  fs.writeFileSync(fakeBlender, `#!/bin/sh\necho "$@" > '${argsFile}'\n`, { mode: 0o755 });
+  const proc = spawn(path.join(__dirname, '../../dist/hse-linux'), ['-no-window', '-root', root, '-port', '48009'], { env: { ...process.env, HOME: SP + '/modelhome', XDG_CONFIG_HOME: cfg, HSE_BLENDER: fakeBlender, HSE_PICK_FILE: blend } });
   const url = await new Promise((res) => proc.stdout.on('data', (d) => res(String(d).trim())));
   const liveFile = path.join(cfg, 'HarmoniousSaveEditor', 'live.json');
   ok('live.json tells the add-on where the editor is', JSON.parse(fs.readFileSync(liveFile, 'utf8')).port === 48009);
@@ -23,7 +27,15 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
     return { from: from.i, to: to.i, toName: str(g(to.s, 'Name')), n: g(shipBuild(from.i), 'Objects').length, objs: JSON.parse(C.stringifyJSON(toPlain(cloneJSON(g(shipBuild(from.i), 'Objects'))))) }; });
   fs.writeFileSync(SP + '/live_build.json', JSON.stringify(info.objs));
   await p.evaluate((i) => { (S.wright || (S.wright = { q: '', sel: new Set(), auto: false, json: false })).slot = i; S.wright.auto = false; go('shipwright'); }, info.to);
-  await p.waitForSelector('#liveToggle'); await p.click('#liveToggle'); await p.waitForSelector('#swLive.on');
+  await p.waitForSelector('#liveToggle'); await p.click('#liveToggle');
+  await p.waitForSelector('#dlg[open]');
+  ok('turning it on says so, and offers to open the corvette in Blender', /Live link is on/.test(await p.textContent('#dlgTitle')) && new RegExp(info.toName + '.*is linked').test(await p.textContent('#dlgBody')) && /Choose the \.blend/.test(await p.textContent('#dlgActs')));
+  await p.screenshot({ path: SP + '/shots/live-dialog.png' });
+  await p.click('#dlgActs .btn.primary');   // Choose the .blend file… (the dialog's answer is set by HSE_PICK_FILE)
+  for (let k = 0; k < 30 && !fs.existsSync(argsFile); k++) await p.waitForTimeout(100);
+  ok('Blender opens with the chosen file', fs.existsSync(argsFile) && fs.readFileSync(argsFile, 'utf8').trim() === blend);
+  await p.waitForSelector('#swLive.on');
+  ok('the panel and the corvette list show the linked file', /live_test\.blend/.test(await p.textContent('#swLive .live-file')) && /live_test\.blend/.test(await p.textContent('.sw-corv.on')));
   ok('Live link turns on for the open corvette', /slot/.test(await p.textContent('#swLive .live-state')));
   ok('the sidebar shows Live on Shipwright', !!(await p.$('nav [data-s="shipwright"] .live-pill')));
   ok('and it waits for Blender until the add-on checks in', /Waiting for Blender/.test(await p.textContent('#liveBlender')));
@@ -58,6 +70,10 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const n = await p.evaluate((i) => g(shipBuild(i), 'Objects').length, info.to);
   ok('the corvette on disk has the Blender build', n === info.n);
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
+  // closing the editor ends the link: the app leaves and takes live.json with it
+  const gone = new Promise((r) => proc.on('exit', r));
+  await p.goto('about:blank'); await Promise.race([gone, new Promise((r) => setTimeout(r, 20000))]);
+  ok('closing the editor turns the link off', proc.exitCode !== null && !fs.existsSync(liveFile));
   await b.close(); proc.kill();
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS'); process.exit(fails.length ? 1 : 0);
 })();
