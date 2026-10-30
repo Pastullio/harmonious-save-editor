@@ -12,7 +12,7 @@ param(
     [string]$GameDir = '',      # the "No Man's Sky" folder, if it can't be found automatically
     [string]$HgpakTool = '',    # a hgpaktool.exe you already have
     [string]$OutDir = '',       # where the zip goes (default: your Desktop)
-    [string]$Sets = 'fighters,multitools'  # which model folders: fighters, multitools, freighters, exocraft, corvettes
+    [string]$Sets = 'fighters,multitools'  # which model folders: fighters, multitools, freighters, exocraft, corvettes, baseparts
 )
 
 $ErrorActionPreference = 'Stop'
@@ -93,8 +93,10 @@ try {
         multitools = 'models/common/weapons/multitool'
         freighters = 'models/common/spacecraft/industrial'
         exocraft   = 'models/common/vehicles'
-        # corvette modules, plus the base-building parts (walls, pipes, lights…) that corvette builds use too
-        corvettes  = 'models/common/spacecraft/biggs|models/planets/biomes/common/buildings/parts/buildableparts'
+        # corvette modules; the base-building parts (walls, pipes, lights…) corvettes also use are a separate set,
+        # so each zip stays under the chat's upload limit
+        corvettes  = 'models/common/spacecraft/biggs'
+        baseparts  = 'models/planets/biomes/common/buildings/parts/buildableparts'
     }
     $args2 = @('-U', '-q', '-O', (Join-Path $work 'EXTRACTED'))
     foreach ($set in ($Sets -split ',')) {
