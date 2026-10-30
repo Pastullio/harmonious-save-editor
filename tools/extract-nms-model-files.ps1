@@ -12,7 +12,7 @@ param(
     [string]$GameDir = '',      # the "No Man's Sky" folder, if it can't be found automatically
     [string]$HgpakTool = '',    # a hgpaktool.exe you already have
     [string]$OutDir = '',       # where the zip goes (default: your Desktop)
-    [string]$Sets = 'fighters,multitools'  # which model folders: fighters, multitools, freighters, exocraft
+    [string]$Sets = 'fighters,multitools'  # which model folders: fighters, multitools, freighters, exocraft, corvettes
 )
 
 $ErrorActionPreference = 'Stop'
@@ -93,12 +93,16 @@ try {
         multitools = 'models/common/weapons/multitool'
         freighters = 'models/common/spacecraft/industrial'
         exocraft   = 'models/common/vehicles'
+        # corvette modules, plus the base-building parts (walls, pipes, lights…) that corvette builds use too
+        corvettes  = 'models/common/spacecraft/biggs|models/planets/biomes/common/buildings/parts/buildableparts'
     }
     $args2 = @('-U', '-q', '-O', (Join-Path $work 'EXTRACTED'))
     foreach ($set in ($Sets -split ',')) {
         $f = $folders[$set.Trim()]
         if (-not $f) { Fail "Unknown set '$set'." }
-        foreach ($ext in '*.scene.mbin', '*.descriptor.mbin', '*.geometry.mbin.pc', '*.geometry.data.mbin.pc') { $args2 += @('-f', "*$f/$ext") }
+        foreach ($folder in ($f -split '\|')) {
+            foreach ($ext in '*.scene.mbin', '*.descriptor.mbin', '*.geometry.mbin.pc', '*.geometry.data.mbin.pc') { $args2 += @('-f', "*$folder/$ext") }
+        }
     }
     Say "Extracting models ($Sets), a few minutes..."
     $ext = Join-Path $work 'EXTRACTED'
