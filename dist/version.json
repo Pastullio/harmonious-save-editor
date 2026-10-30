@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.30.2005",
+  "version": "2026.10.30.2037",
   "date": "2026-10-30",
-  "size": 10029568,
-  "sha256": "ff8414f28df216d02f185c131d7b84b4d17b90ba81cdb6009e6457ff9fd57ac7",
-  "notes": "Hangar grid view: the All / Corvettes / Starships / Multi-tools filters sit on one line again.",
+  "size": 10037248,
+  "sha256": "4c2a4475e82f69b035a0841c90c26b0dbe43e532b895af90e4d1e40cc56a68e0",
+  "notes": "Garage: one card per ship with its versions stacked inside. Fuel, charge, cargo and where a ship is parked no longer count as a new version, and copies that only differ in those can be moved to Deleted in one go.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

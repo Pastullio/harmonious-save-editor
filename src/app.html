@@ -483,6 +483,12 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .lib-card .fav { position: absolute; top: 8px; left: 8px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(4, 16, 22, .55); color: rgba(255, 255, 255, .55); font-size: 16px; cursor: pointer; line-height: 1; }
 .lib-card .fav.on { color: #fff; background: var(--accent); }
 .lib-where { font-size: 11.5px; }
+.ld-vers { margin-top: 14px; }
+.ld-vlist { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow: auto; }
+.ld-ver { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
+.ld-ver:hover { border-color: var(--accent); }
+.ld-ver.on { border-color: var(--accent); background: var(--accent-soft); }
+.ld-extra { margin-top: 8px; font-size: 12.5px; }
 .lib-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .lib-tags i { font-style: normal; font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--ink); }
 .lib-more { display: flex; justify-content: center; margin: 18px 0; }
@@ -4240,7 +4246,56 @@ const ShipLib = {
     throw new Error('Too many files with that name');
   },
   meta(id) { return this.index.meta[id] || (this.index.meta[id] = {}); },
+  // summaries (name, type, class, parts, and for grouping: identity and fingerprint) cached in library.json by file
+  SUM_V: 4,
+  async summarize(files, progress) {
+    await this.loadIndex(); const I = this.index;
+    const items = files.map((f) => { const id = this.id(f), c = I.cache[id]; return { f, id, sum: c && c.v === this.SUM_V && c.mtime === f.mtime && c.size === f.size ? c.sum : null }; });
+    const todo = items.filter((x) => !x.sum), total = todo.length; let done = 0;
+    const work = async () => {
+      for (let x; (x = todo.shift());) {
+        try { const p = await this.load(x.f); x.sum = shipSummary(p, x.f.path.split('/').pop()); if (!p.error) { x.sum.ident = shipIdentity(p); x.sum.fp = await shipFingerprint(p); } }
+        catch (e) { x.sum = { error: e.message, name: x.f.path }; }
+        I.cache[x.id] = { v: this.SUM_V, mtime: x.f.mtime, size: x.f.size, sum: x.sum }; done++; if (progress && done % 20 === 0) progress(done, total);
+      }
+    };
+    if (total) { await Promise.all([work(), work(), work(), work()]); this.saveIndex(); }
+    return items;
+  },
+  async garagePrints() {
+    const items = await this.summarize((await this.files()).filter((f) => f.src === 'garage'));
+    return new Set(items.map((x) => x.sum && x.sum.fp).filter(Boolean));
+  },
 };
+// The Garage shows one card per ship. Its versions stack inside, newest first; copies of a version (the same ship
+// saved again with different fuel, charge or cargo) count as that version and can be tidied away.
+function garageGroups(items) {
+  const out = [], by = new Map();
+  for (const x of items) {
+    const k = x.f.src === 'garage' && !x.sum.error && x.sum.ident;
+    if (!k) { out.push(x); continue; }
+    if (!by.has(k)) { const grp = { group: true, gid: 'garage|ship|' + k, all: [] }; by.set(k, grp); out.push(grp); }
+    by.get(k).all.push(x);
+  }
+  for (const grp of by.values()) {
+    grp.all.sort((a, b) => b.f.mtime - a.f.mtime);
+    const seen = new Map();
+    for (const x of grp.all) { const fp = x.sum.fp || x.id; if (!seen.has(fp)) seen.set(fp, { x, copies: [] }); else seen.get(fp).copies.push(x); }
+    grp.versions = [...seen.values()];
+    grp.extras = grp.versions.flatMap((v) => v.copies);
+  }
+  // a group stands in for its newest version everywhere else on the page
+  return out.map((it) => {
+    if (!it.group) return it;
+    const top = it.all[0], m = ShipLib.meta(it.gid);
+    // notes, tags and stars made on single copies before grouping move to the group once
+    if (!m.merged) {
+      for (const x of it.all) { const o = ShipLib.index.meta[x.id]; if (!o) continue; if (o.fav) m.fav = true; m.tags = [...new Set([...(m.tags || []), ...(o.tags || [])])]; for (const k of ['notes', 'link', 'author', 'desc']) if (o[k] && !m[k]) m[k] = o[k]; }
+      m.merged = true;
+    }
+    return { ...top, f: { ...top.f, coverId: it.gid }, id: it.gid, versions: it.versions, extras: it.extras, all: it.all };
+  });
+}
 
 // Reads any ship file the library understands: our own .ship.json (ship entry and its corvette base), a bare
 // ship entry like other editors export, or a corvette structure (a base with Objects, or just the Objects).
@@ -4329,7 +4384,7 @@ function shipSummary(p, fileName) {
 }
 function libCoverItem(f, p, sum) {
   const file = p.ship ? str(g(p.ship, 'Resource', 'Filename')) : '';
-  const it = { kind: sum.type === 'Corvette' ? 'corvette' : 'ship', i: -1, key: 'lib|' + ShipLib.id(f), name: sum.name, type: sum.type, cls: sum.cls,
+  const it = { kind: sum.type === 'Corvette' ? 'corvette' : 'ship', i: -1, key: 'lib|' + (f.coverId || ShipLib.id(f)), name: sum.name, type: sum.type, cls: sum.cls,
     seed: p.ship ? str((seedOf(p.ship) || [])[1]) : '', scene: sum.type === 'Corvette' ? '' : file };
   if (p.objects) { it.base = p.base || new Map([['Objects', p.objects]]); it.holo = corvetteParts(-1, it.base); }
   return it;
@@ -4363,24 +4418,55 @@ function inGameOrder(objs, sample) {
   return objs.map((o) => { if (!(o instanceof Map)) return o; const m = new Map(); for (const k of order) if (o.has(k)) m.set(k, o.get(k)); for (const [k, v] of o) if (!m.has(k)) m.set(k, v); return m; });
 }
 async function sha(text) { const d = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))); return [...d].map((x) => x.toString(16).padStart(2, '0')).join(''); }
-// what makes two copies of a ship "the same": everything except where it's parked and when its build was touched
-function shipFingerprint(doc) {
-  const c = cloneJSON(doc); c.delete('Harmonious');
-  const s = c.get('Ship'); if (s instanceof Map) for (const k of ['Location', 'Position', 'Direction']) s.delete(k);
-  const b = c.get('CorvetteBase'); if (b instanceof Map) for (const k of ['LastUpdateTimestamp', 'UserData']) b.delete(k);
-  return sha(C.stringifyJSON(c));
+// What makes two copies of a ship "the same version": its model, name, class, colours, installed tech (and where
+// each piece sits) and its build. Playing changes plenty that doesn't count: where it's parked, tech charge and
+// damage, fuel, whatever is in the hold, and where a corvette's build was last flown.
+const SHIP_NOISE = ['Location', 'Position', 'Direction'], BASE_NOISE = ['LastUpdateTimestamp', 'UserData', 'GalacticAddress', 'Position', 'Forward'];
+function shipEssence(p) {
+  const out = new Map();
+  if (p.ship instanceof Map) {
+    const s = toPlain(cloneJSON(p.ship));
+    for (const k of SHIP_NOISE) s.delete(k);
+    for (const [k, inv] of s) {
+      if (!/^Inventory/.test(k) || !(inv instanceof Map) || !Array.isArray(inv.get('Slots'))) continue;
+      // cargo comes and goes; only technology and where it is installed is part of the ship
+      inv.set('Slots', inv.get('Slots').filter((sl) => sl instanceof Map && str(g(sl, 'Type', 'InventoryType')) === 'Technology')
+        .map((sl) => new Map([['Id', sl.get('Id')], ['Index', sl.get('Index')]])));
+    }
+    out.set('Ship', s);
+  }
+  if (typeof p.legacy === 'boolean') out.set('Legacy', p.legacy);
+  if (p.ccd instanceof Map) out.set('Customisation', toPlain(p.ccd));
+  if (p.base instanceof Map) { const b = toPlain(cloneJSON(p.base)); for (const k of BASE_NOISE) b.delete(k); b.delete('Objects'); out.set('Base', b); }
+  if (Array.isArray(p.objects)) out.set('Objects', p.objects.map((o) => { if (!(o instanceof Map)) return o; const m = toPlain(cloneJSON(o)); m.delete('Timestamp'); return m; }));
+  return out;
 }
-// Garage: a copy of every ship in the open save, once per distinct version
+// numbers and text compared by value, so "1.0" and "1" (another tool's rewrite) are the same
+const canonJSON = (v) => v instanceof Map ? Object.fromEntries([...v].map(([k, x]) => [k, canonJSON(x)])) : Array.isArray(v) ? v.map(canonJSON) : v instanceof C.Num ? Number(v.raw) : v instanceof C.Str ? v.value : v;
+const shipFingerprint = async (p) => (await sha(JSON.stringify(canonJSON(shipEssence(p))))).slice(0, 12);
+// one ship over time: its model and seed (a ship keeps both through renames, recolours and refits). Corvettes all
+// start from the same few seeds, so theirs also takes the time stamp in their build's owner record.
+function shipIdentity(p) {
+  if (!(p.ship instanceof Map)) return '';
+  const file = str(g(p.ship, 'Resource', 'Filename')), seed = str((seedOf(p.ship) || [])[1]);
+  if (!file || !seed) return '';
+  const corv = /\/BIGGS\//i.test(file), ts = p.base instanceof Map ? str(g(p.base, 'Owner', 'TS')) : '';
+  if (corv && !ts) return '';
+  return file.toLowerCase() + '|' + seed.toLowerCase() + (corv ? '|' + ts : '');
+}
+// Garage: a copy of every ship in the open save, once per version
 async function garageCapture() {
   if (!APP || !S.save || !window.crypto || !crypto.subtle) return 0;
+  const have = await ShipLib.garagePrints().catch(() => null);
   let added = 0;
   for (const { s, i } of ships()) {
-    const doc = shipDoc(i), hash = (await shipFingerprint(doc)).slice(0, 10);
-    const nm = str(g(s, 'Name')), path = `${safeFile(/[\p{L}\p{N}]/u.test(nm) ? nm : shipType(g(s, 'Resource', 'Filename')))} ${hash}.ship.json`;
-    try { await api(`/api/ships/file?src=garage&path=${encodeURIComponent(path)}&new=1`, { method: 'POST', body: C.stringifyJSON(doc) }); added++; }
+    const text = C.stringifyJSON(shipDoc(i)), fp = await shipFingerprint(parseShipFile(text));
+    if (have && have.has(fp)) continue;
+    const nm = str(g(s, 'Name')), path = `${safeFile(/[\p{L}\p{N}]/u.test(nm) ? nm : shipType(g(s, 'Resource', 'Filename')))} ${fp}.ship.json`;
+    try { await api(`/api/ships/file?src=garage&path=${encodeURIComponent(path)}&new=1`, { method: 'POST', body: text }); added++; if (have) have.add(fp); }
     catch (e) { if (!/already exists/.test(e.message)) console.warn('garage', e); }
   }
-  if (added) toast(`${plural(added, 'ship')} copied to the Garage`);
+  if (added) toast(`${plural(added, 'new ship version')} kept in the Garage`);
   return added;
 }
 async function saveShipToLibrary(i, quiet) {
@@ -4476,17 +4562,14 @@ PAGES.library = (el) => {
   sub.onclick = (e) => { const b = e.target.closest('[data-v]'); if (b) pick(b.dataset.v); };
   let current = [];
   (async () => {
-    const [files] = await Promise.all([ShipLib.files(), ShipLib.loadIndex()]);
+    const files = await ShipLib.files();
     if (!alive()) return;
-    const I = ShipLib.index;
-    const items = files.map((f) => { const id = ShipLib.id(f), c = I.cache[id]; return { f, id, sum: c && c.mtime === f.mtime && c.size === f.size ? c.sum : null }; });
-    // summaries for new or changed files, a few at a time; cached in library.json
-    const todo = items.filter((x) => !x.sum);
-    let done = 0;
-    const work = async () => { for (let x; (x = todo.shift());) { try { x.sum = shipSummary(await ShipLib.load(x.f), x.f.path.split('/').pop()); } catch (e) { x.sum = { error: e.message, name: x.f.path }; } I.cache[x.id] = { mtime: x.f.mtime, size: x.f.size, sum: x.sum }; done++; if (done % 20 === 0 && alive()) status.textContent = `Reading your ships… ${done} of ${done + todo.length}`; } };
-    if (todo.length) { await Promise.all([work(), work(), work(), work()]); ShipLib.saveIndex(); }
-    for (const id of Object.keys(I.cache)) if (!items.some((x) => x.id === id)) delete I.cache[id];
+    const I = ShipLib.index || (await ShipLib.loadIndex());
+    const read = await ShipLib.summarize(files, (d, t) => { if (alive()) status.textContent = `Reading your ships… ${d} of ${t}`; });
+    for (const id of Object.keys(I.cache)) if (!read.some((x) => x.id === id)) delete I.cache[id];
     if (!alive()) return;
+    const items = garageGroups(read);
+    if (items.some((x) => x.versions)) ShipLib.saveIndex();
     const counts = { library: 0, garage: 0, linked: 0, fav: 0, all: items.length }; items.forEach((x) => { counts[x.f.src]++; if ((I.meta[x.id] || {}).fav) counts.fav++; });
     el.querySelectorAll('[data-n]').forEach((n) => { const c = counts[n.dataset.n]; n.textContent = n.dataset.n === 'linked' ? `(${c})` : plural(c, 'ship'); });
     const types = [...new Set(items.map((x) => x.sum.type).filter(Boolean))].sort(), tags = [...new Set(items.flatMap((x) => (I.meta[x.id] && I.meta[x.id].tags) || []))].sort();
@@ -4552,7 +4635,7 @@ function libFlow(host, list, refresh) {
   host.replaceChildren();
   const S0 = S.shipLib, key = S0.flowKey;
   const items = list.map((x) => ({ kind: x.sum.type === 'Corvette' ? 'corvette' : 'ship', i: -1, key: 'lib|' + x.id, name: x.sum.name, type: x.sum.type, cls: x.sum.cls,
-    sub: x.sum.error ? 'Not readable yet' : [x.sum.type, x.sum.cls && x.sum.cls + ' class', x.sum.parts && plural(x.sum.parts, 'part')].filter(Boolean).join(', '), x }));
+    sub: x.sum.error ? 'Not readable yet' : [x.sum.type, x.sum.cls && x.sum.cls + ' class', x.sum.parts && plural(x.sum.parts, 'part'), x.versions && x.versions.length > 1 && plural(x.versions.length, 'version')].filter(Boolean).join(', '), x }));
   const big = Math.max(180, Math.min(320, Math.round((($('#main').clientWidth || 1000) - 80) / 3.8)));
   const start = Math.max(0, items.findIndex((it) => it.x.id === key));
   const fill = async (n) => {
@@ -4576,7 +4659,7 @@ function libCard(x, refresh) {
   card.innerHTML = `<div class="tc-art">${s.error ? '<span class="dim">?</span>' : ''}</div>
     <button class="fav${m.fav ? ' on' : ''}" type="button" title="${m.fav ? 'Remove from favourites' : 'Add to favourites'}" aria-pressed="${!!m.fav}">★</button>
     <div class="tc-cap"><b title="${esc(s.name)}">${esc(s.name)}</b><span>${esc(s.error ? 'Not readable yet' : [s.type, s.cls && s.cls + ' class', s.parts && plural(s.parts, 'part')].filter(Boolean).join(', '))}</span>
-    <span class="lib-where">${esc(where)}${x.f.src === 'garage' ? ' · ' + new Date(x.f.mtime).toLocaleDateString() : ''}</span>
+    <span class="lib-where">${esc(where)}${x.f.src === 'garage' ? ' · ' + new Date(x.f.mtime).toLocaleDateString() : ''}${x.versions && x.versions.length > 1 ? ' · ' + plural(x.versions.length, 'version') : ''}</span>
     ${(m.tags || []).length ? `<span class="lib-tags">${m.tags.map((t) => `<i>${esc(t)}</i>`).join('')}</span>` : ''}</div>`;
   card.querySelector('.fav').onclick = (e) => { e.stopPropagation(); const mm = ShipLib.meta(x.id); mm.fav = !mm.fav; ShipLib.saveIndex(); refresh(); };
   card.onclick = () => libDetail(x, refresh);
@@ -4591,10 +4674,16 @@ function libCard(x, refresh) {
   }
   return card;
 }
-async function libDetail(x, refresh) {
-  const s = x.sum, m = ShipLib.meta(x.id), f = x.f;
-  const p = x.parsed || (s.error ? { error: s.error } : await ShipLib.load(f));
-  x.parsed = p;
+async function libDetail(x, refresh, vi = 0) {
+  // a Garage ship shows one of its versions (the newest unless picked); everything below acts on that version's file
+  const V = x.versions, vx = V ? V[vi].x : x;
+  const s = vx.sum, m = ShipLib.meta(x.id), f = V ? { ...vx.f, coverId: x.id } : x.f;
+  const p = vx.parsed || (s.error ? { error: s.error } : await ShipLib.load(f));
+  vx.parsed = p; if (!V) x.parsed = p;
+  const when = (t) => new Date(t).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+  const versHtml = V ? `<div class="ld-vers"><h4 class="sub-h">${V.length > 1 ? plural(V.length, 'version') : 'One version'}</h4>
+      <div class="ld-vlist">${V.map((v, i) => `<button type="button" class="ld-ver${i === vi ? ' on' : ''}" data-ver="${i}" aria-pressed="${i === vi}"><b>${esc(when(v.x.f.mtime))}${i === 0 ? ' <span class="dim">(newest)</span>' : ''}</b><span class="dim">${esc([v.x.sum.name, v.x.sum.cls && v.x.sum.cls + ' class', v.x.sum.parts && plural(v.x.sum.parts, 'part')].filter(Boolean).join(', '))}${v.copies.length ? ` · seen ${v.copies.length + 1} times` : ''}</span></button>`).join('')}</div>
+      ${x.extras.length ? `<p class="dim ld-extra">${x.extras.length === 1 ? '1 copy only differs' : x.extras.length + ' copies only differ'} in fuel, charge or cargo. <button type="button" class="link" data-ld="tidy">Move ${x.extras.length === 1 ? 'it' : 'them'} to Deleted</button></p>` : ''}</div>` : '';
   const where = f.src === 'linked' ? f.root + '\\' + f.path.replace(/\//g, '\\') : `${LIB_SRC[f.src]}\\${f.path.replace(/\//g, '\\')}`;
   const canPut = !p.error && (s.whole || s.buildOnly || s.shipOnly);
   // actions sit under the picture in groups: using the ship, its picture, exporting, the file itself
@@ -4602,10 +4691,10 @@ async function libDetail(x, refresh) {
     ['Use', [canPut && S.save && [s.buildOnly || s.shipOnly ? 'Put on a corvette…' : 'Put in this save…', 'put', 'primary'], f.src !== 'library' && ['Copy to Ship storage', 'copy']]],
     ['Picture', [APP && !p.error && s.type === 'Corvette' && p.objects && ['Render with Blender', 'render'], APP && m.link && ['Get art from the link', 'meta']]],
     ['Export', [!p.error && p.ship && p.objects && ['.nmsship', 'nmsship'], !p.error && p.ship && ['.so', 'so']]],
-    ['File', [['Show in folder', 'reveal'], f.src !== 'linked' && ['Delete', 'delete', 'danger-text']]],
+    ['File', [['Show in folder', 'reveal'], f.src !== 'linked' && [V && V.length > 1 ? 'Delete this version' : 'Delete', 'delete', 'danger-text']]],
   ].map(([t, l]) => [t, l.filter(Boolean)]).filter(([, l]) => l.length);
   const actsHtml = `<div class="ld-acts">${groups.map(([t, l]) => `<div class="ld-grp"><span class="k">${t}</span><div class="ld-btns">${l.map(([lb, v, cls]) => `<button type="button" class="btn small ${cls || ''}" data-ld="${v}">${lb}</button>`).join('')}</div></div>`).join('')}</div>`;
-  const shown = customDialog({ title: s.name, actions: [], wire: (body, finish) => body.querySelectorAll('[data-ld]').forEach((b) => b.onclick = () => finish(b.dataset.ld)), html: `<div class="lib-detail">
+  const shown = customDialog({ title: s.name, actions: [], wire: (body, finish) => { body.querySelectorAll('[data-ld]').forEach((b) => b.onclick = () => finish(b.dataset.ld)); body.querySelectorAll('[data-ver]').forEach((b) => b.onclick = () => finish('ver:' + b.dataset.ver)); }, html: `<div class="lib-detail">
       <div class="ld-left"><div class="tc lib-art"><div class="tc-art"></div></div>${actsHtml}</div>
       <div class="lib-info">
         <p>${esc([s.type, s.cls && s.cls + ' class', s.parts && plural(s.parts, 'part')].filter(Boolean).join(', ') || s.error || '')}${s.format ? ` <span class="dim">· ${esc(s.format)}</span>` : ''}</p>
@@ -4615,6 +4704,7 @@ async function libDetail(x, refresh) {
         <label class="field"><span>Tags (separate with commas)</span><input class="input" id="ldTags" value="${esc((m.tags || []).join(', '))}"></label>
         <label class="field"><span>Link (Charon, NMA or anywhere)</span><span class="row-in"><input class="input" id="ldLink" type="url" placeholder="https://" value="${esc(m.link || '')}">${m.link ? `<a class="btn small" href="${esc(m.link)}" target="_blank" rel="noopener">Open</a>` : ''}</span></label>
         <label class="field"><span>Notes</span><textarea class="input" id="ldNotes" rows="3">${esc(m.notes || '')}</textarea></label>
+        ${versHtml}
       </div></div>` });
   if (!p.error) { const art = $('#dlgBody .lib-art'); if (art) miniCover(art, libCoverItem(f, p, s), 300); }
   const v = await shown;
@@ -4623,6 +4713,11 @@ async function libDetail(x, refresh) {
   const link = $('#ldLink') ? $('#ldLink').value.trim() : '';
   Object.assign(m, { fav: !!($('#ldFav') && $('#ldFav').checked), tags: [...new Set(tags)], link: /^https?:\/\//i.test(link) ? link : '', notes: $('#ldNotes') ? $('#ldNotes').value : '' });
   ShipLib.saveIndex();
+  if (typeof v === 'string' && v.startsWith('ver:')) { libDetail(x, refresh, +v.slice(4)); return; }
+  if (v === 'tidy') {
+    let n = 0; for (const c of x.extras) { try { await api(ShipLib.url(c.f), { method: 'DELETE' }); n++; } catch (e) { toast(e.message, true); } }
+    toast(`${plural(n, 'copy', 'copies')} moved to the Deleted folder in your Dock Yard`); render(); return;
+  }
   if (v === 'put') { await putShipInSave(p, s); return; }
   if (v === 'render') {
     const setup = await renderSetup().catch(() => null);
@@ -4648,8 +4743,11 @@ async function libDetail(x, refresh) {
   if (v === 'reveal') { api(ShipLib.url(f, '&reveal=1')).catch((e) => toast(e.message, true)); }
   if (v === 'copy') { await ShipLib.add('library', f.path.split('/').pop(), await ShipLib.read(f)); toast('Copied to Ship storage'); render(); return; }
   if (v === 'delete') {
-    if (await dialog('Delete ' + s.name + '?', `<p>The file moves to the <b>Deleted</b> folder in your Dock Yard, so you can bring it back.</p>`, [['Cancel', false, 'ghost'], ['Delete', true, 'danger']])) {
-      await api(ShipLib.url(f), { method: 'DELETE' }); delete ShipLib.index.meta[x.id]; ShipLib.saveIndex(); toast('Moved to Deleted'); render();
+    const gone = V ? [V[vi].x, ...V[vi].copies] : [x], last = !V || V.length === 1;
+    const what = V && !last ? `This version of <b>${esc(s.name)}</b> (${esc(when(vx.f.mtime))})` : 'The file';
+    if (await dialog((V && !last ? 'Delete this version of ' : 'Delete ') + s.name + '?', `<p>${what} moves to the <b>Deleted</b> folder in your Dock Yard, so you can bring it back.</p>`, [['Cancel', false, 'ghost'], ['Delete', true, 'danger']])) {
+      for (const g0 of gone) await api(ShipLib.url(g0.f), { method: 'DELETE' });
+      if (last) delete ShipLib.index.meta[x.id]; ShipLib.saveIndex(); toast('Moved to Deleted'); render();
     }
     return;
   }
