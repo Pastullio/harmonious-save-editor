@@ -33,6 +33,8 @@ var (
 		sync.Mutex
 		armed     bool
 		target    string
+		kind      string          // "corvette" or "base"
+		base      json.RawMessage // {name, address} of the base LiveLink is on for
 		slot      int
 		corvettes json.RawMessage // [{slot, name}] in the open save, for the add-on's corvette list
 		seen      time.Time       // the page's last poll; a closed page stops being "armed"
@@ -77,6 +79,8 @@ func handleLiveArm(w http.ResponseWriter, r *http.Request) {
 	var v struct {
 		Armed     bool            `json:"armed"`
 		Target    string          `json:"target"`
+		Kind      string          `json:"kind"`
+		Base      json.RawMessage `json:"base"`
 		Slot      int             `json:"slot"`
 		Corvettes json.RawMessage `json:"corvettes"`
 	}
@@ -86,6 +90,10 @@ func handleLiveArm(w http.ResponseWriter, r *http.Request) {
 	}
 	live.Lock()
 	live.armed, live.target, live.slot, live.seen = v.Armed, v.Target, v.Slot, time.Now()
+	live.kind, live.base = v.Kind, v.Base
+	if live.kind == "" {
+		live.kind = "corvette"
+	}
 	if len(v.Corvettes) > 0 {
 		live.corvettes = v.Corvettes
 	}
@@ -141,12 +149,15 @@ func handleLiveBuild(w http.ResponseWriter, r *http.Request) {
 		live.Unlock()
 		armed, target := liveArmed()
 		live.Lock()
-		slot, corvettes := live.slot, live.corvettes
+		slot, corvettes, kind, base := live.slot, live.corvettes, live.kind, live.base
 		live.Unlock()
 		if corvettes == nil {
 			corvettes = json.RawMessage("[]")
 		}
-		writeJSON(w, map[string]any{"ok": true, "armed": armed, "target": target, "slot": slot, "corvettes": corvettes, "version": appVersion})
+		if base == nil {
+			base = json.RawMessage("null")
+		}
+		writeJSON(w, map[string]any{"ok": true, "armed": armed, "target": target, "slot": slot, "corvettes": corvettes, "kind": kind, "base": base, "version": appVersion})
 		return
 	}
 	if r.Method != http.MethodPost {
@@ -160,7 +171,7 @@ func handleLiveBuild(w http.ResponseWriter, r *http.Request) {
 	}
 	armed, _ := liveArmed()
 	if !armed {
-		writeJSON(w, liveResult{Message: "LiveLink is off in the editor. Open a save, go to Shipwright and turn on LiveLink for the corvette to update."})
+		writeJSON(w, liveResult{Message: "LiveLink is off in the editor. Open a save and turn on LiveLink for the corvette (in Shipwright) or the base (on the Bases page) to update."})
 		return
 	}
 	live.Lock()
@@ -243,7 +254,7 @@ func handleLiveFiles(w http.ResponseWriter, r *http.Request) {
 // POST: the Windows file dialog for a .blend; {file} or {file: ""} when cancelled
 func handleLivePick(w http.ResponseWriter, r *http.Request) {
 	start := r.URL.Query().Get("dir")
-	f, err := pickFile("Choose the corvette's Blender file", "Blender files (*.blend)|*.blend", start)
+	f, err := pickFile("Choose the Blender file", "Blender files (*.blend)|*.blend", start)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotImplemented)
 		return

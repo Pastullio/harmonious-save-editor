@@ -56,7 +56,7 @@ def editor_address():
 # ---------------------------------------------------------------- is the editor linked?
 # Every few seconds the add-on asks the editor whether LiveLink is on and for which corvette; the panel shows it,
 # and the editor sees Blender check in.
-LINK = {"state": "none", "target": "", "slot": -1, "corvettes": []}   # none: editor not running; off: running, LiveLink off; on: linked
+LINK = {"state": "none", "target": "", "slot": -1, "corvettes": [], "kind": "corvette", "base": None}   # none: editor not running; off: running, LiveLink off; on: linked
 
 
 def check_link_now():
@@ -71,7 +71,8 @@ def check_link_now():
         with urllib.request.urlopen(req, timeout=3) as res:
             info = json.loads(res.read().decode("utf-8"))
         LINK.update(state="on" if info.get("armed") else "off", target=info.get("target") or "",
-                    slot=int(info.get("slot", -1)), corvettes=info.get("corvettes") or LINK["corvettes"])
+                    slot=int(info.get("slot", -1)), corvettes=info.get("corvettes") or LINK["corvettes"],
+                    kind=info.get("kind") or "corvette", base=info.get("base"))
     except (urllib.error.URLError, OSError, ValueError):
         LINK.update(state="none", target="")
 
@@ -129,9 +130,69 @@ def scene_parts(scene):
     return out
 
 
+def base_info(scene):
+    """The base a NMS Base Builder scene holds ({name, address}), or None for anything else (a corvette build).
+    The Base Builder keeps them in the scene's nms_base_tool properties, readable without the add-on."""
+    tool = scene.get("nms_base_tool") if hasattr(scene, "get") else None
+    if tool is None:
+        return None
+    try:
+        name = str(tool.get("string_base", "") or "")
+        address = str(tool.get("string_address", "") or "")
+    except Exception:  # noqa: BLE001
+        return None
+    if not name and not address:
+        return None
+    return {"name": name, "address": address}
+
+
+def same_base(a, b):
+    """Two {name, address} refer to the same base: the same address (hex or decimal), or the same name when one has none."""
+    if not a or not b:
+        return False
+    def num(v):
+        try:
+            return int(str(v), 0)
+        except (TypeError, ValueError):
+            return None
+    na, nb = num(a.get("address")), num(b.get("address"))
+    if na is not None and nb is not None:
+        return na == nb and (not a.get("name") or not b.get("name") or a.get("name") == b.get("name"))
+    return bool(a.get("name")) and a.get("name") == b.get("name")
+
+
+def base_objects(scene):
+    problems = []
+    tool = getattr(scene, "nms_base_tool", None)
+    if tool is not None and hasattr(tool, "serialise"):
+        try:
+            try:
+                data = tool.serialise()
+            except TypeError:
+                data = tool.serialise(objects_only=True)
+            objects = _objects_of(data)
+            if objects:
+                return objects, "Base Builder"
+        except Exception as error:  # noqa: BLE001
+            problems.append("Base Builder: %s" % error)
+    try:
+        objects = scene_parts(scene)
+    except Exception as error:  # noqa: BLE001
+        objects = None
+        problems.append("reading the scene: %s" % error)
+    if objects:
+        return objects, "the scene"
+    problems.append("there are no base parts (objects with an ObjectID) in this scene")
+    raise RuntimeError("No base to send: " + "; ".join(problems) + ".")
+
+
 def build_objects(scene):
     """The build's parts as NMS objects (a list of dicts), or raise with a reason."""
     problems = []
+    if base_info(scene) is not None:
+        # a base: the Base Builder's own serialiser, else the parts as they sit in the scene (corvette builders
+        # such as Charon Forge don't apply to it)
+        return base_objects(scene)
     # a builder add-on's own serialiser (Charon Forge first; its package name has an install prefix such as
     # bl_ext.user_default., so look for any loaded module that offers get_builder)
     mods = [(n, m) for n, m in list(sys.modules.items()) if m is not None and callable(getattr(m, "get_builder", None)) and n != __name__]
@@ -194,7 +255,10 @@ def send(scene):
         return
     payload = {"objects": objects, "name": os.path.splitext(os.path.basename(bpy.data.filepath))[0],
                "file": bpy.data.filepath, "source": source}
-    if scene.harmonious_target_slot >= 0:   # the corvette this .blend is for; the editor won't write anywhere else unasked
+    base = base_info(scene)
+    if base is not None:   # a base names itself; the editor checks it against the base LiveLink is on for
+        payload["base"] = base
+    elif scene.harmonious_target_slot >= 0:   # the corvette this .blend is for; the editor won't write anywhere else unasked
         payload["target"] = {"slot": scene.harmonious_target_slot, "name": scene.harmonious_target_name}
     body = json.dumps(payload).encode("utf-8")
     url, token = addr
@@ -305,11 +369,24 @@ class HARMONIOUS_PT_live(bpy.types.Panel):
             link.label(text="Each save sends the build there")
         elif LINK["state"] == "off":
             link.label(text="Editor open, LiveLink off", icon="UNLINKED")
-            link.label(text="Turn it on in Shipwright")
+            link.label(text="Turn it on in Shipwright or on Bases")
         else:
             link.label(text="Harmonious Save Editor isn't running", icon="ERROR")
-        # which corvette this .blend updates (saved in the file, so each version keeps its corvette)
         scene = context.scene
+        base = base_info(scene)
+        if base is not None:
+            # a base file says which base it is; warn when the editor is on for something else
+            col = layout.column(align=True)
+            col.label(text="This file is the base:")
+            col.label(text=base["name"] or base["address"], icon="HOME")
+            if LINK["state"] == "on" and not (LINK.get("kind") == "base" and same_base(base, LINK.get("base"))):
+                warn = layout.box()
+                warn.alert = True
+                warn.label(text="The editor is on for " + ("a corvette" if LINK.get("kind") != "base" else "another base"), icon="ERROR")
+                warn.label(text="It will ask before writing")
+            self.draw_send(context, layout)
+            return
+        # which corvette this .blend updates (saved in the file, so each version keeps its corvette)
         col = layout.column(align=True)
         col.label(text="This file updates:")
         current = "%s (slot %d)" % (scene.harmonious_target_name, scene.harmonious_target_slot + 1) if scene.harmonious_target_slot >= 0 else "Choose a corvette"
@@ -319,14 +396,19 @@ class HARMONIOUS_PT_live(bpy.types.Panel):
             warn.alert = True
             warn.label(text="The editor is on for a different corvette", icon="ERROR")
             warn.label(text="It will ask before writing")
+        self.draw_send(context, layout)
+
+    def draw_send(self, context, layout):
         layout.prop(context.scene, "harmonious_live_on", text="Send on save (Ctrl+S)")
         row = layout.row()
         row.enabled = LINK["state"] == "on"
         row.operator(HARMONIOUS_OT_send.bl_idname, icon="EXPORT")
         box = layout.box()
         box.label(text="Last send", icon="INFO")
-        for line in wrap(STATE["status"], 34):
-            box.label(text=line)
+        lines = box.column(align=True)   # tight lines, not one widely spaced row each
+        lines.scale_y = 0.8
+        for line in wrap(STATE["status"], 40):
+            lines.label(text=line)
 
 
 def wrap(text, width):

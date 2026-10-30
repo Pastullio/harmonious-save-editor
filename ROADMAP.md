@@ -89,7 +89,7 @@ The save file holds no images, so a ship's picture has to come from one of these
 - [x] Add corvette / Delete corvette in Shipwright (owner, 2026-10-29): a corvette ship entry copied from one in the save (C class, empty inventories, new seed) plus a starter build of the essentials (reactor, thruster, weapon, landing gear, landing bay, cockpit, walkway, Paragon core) to paste a real build over
 - [x] Ship slot manager (Starships page): swap slots by drag or click, close gaps; a ship's build, colours, customisation, current-ship marker and corvette-workshop link move with it. Repairs: builds pointing at empty, missing or non-corvette slots, several builds on one corvette, corvettes without a build, current ship on an empty slot (the first fix offered never deletes a build)
 - [x] BBA's `.nmsprefab` (load into Dock Yard/Shipwright, "Add a prefab" on Bases)
-- [ ] BBA's `.nmsbase` (needs a sample)
+- [x] Bases from Blender instead of `.nmsbase` (the owner has none; their Base Builder `.blend` files hold the whole base): "Load from a .blend…" on the Bases page puts a file's parts on the base it names, and LiveLink works for bases too, with the same wrong-target checks (2026-10-30)
 - [x] **Live Blender link**: Ctrl+S in Blender writes the build straight into the chosen corvette in your save, through the Harmonious LiveLink add-on (Charon Forge or the Base Builder add-on reads the scene). Turned on per corvette in Shipwright while the editor is open
 - [x] Every live update is backed up, so any version can be rolled back
 - [ ] To test early: whether No Man's Sky picks up the new file when you load the save from the main menu, and how Steam Cloud reacts to a file changing outside the game

@@ -765,6 +765,9 @@ dialog.wide { max-width: 1000px; }
 .qf-bar h3 { margin: 0; }
 .qf-bar .toolbar { margin: 0; }
 .live { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.panel > .live { margin-top: 0; padding-top: 0; border-top: 0; }
+.base-live .sw-side-acts { display: flex; flex-wrap: wrap; }
+.base-live .live-last, .base-live .live-file { max-width: 560px; }
 .live h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--accent); }
 .live-state { margin: 0 0 10px; font-size: 13.5px; line-height: 1.45; }
 .live-state .live-dot { display: inline-block; margin-right: 8px; vertical-align: 1px; }
@@ -1427,7 +1430,7 @@ function renderSide() {
   $('#saveMeta').textContent = bits.join(', ');
   const counts = { hangar: ships().length + tools().length, ships: ships().length, tools: tools().length, storage: storageInvs().length };
   const label = Object.fromEntries(SECTIONS);
-  const btn = (id) => `<button data-s="${id}" ${S.section === id ? 'aria-current="page"' : ''} style="--dot:${secColor(id) || 'var(--line-2)'}"><span class="dot" aria-hidden="true"></span><span class="lbl">${label[id]}</span>${id === 'shipwright' && LIVE.on ? '<span class="live-pill" title="LiveLink from Blender is on"><span class="live-dot"></span>Live</span>' : NEW_SECTIONS[id] && APP && !seenSection(id) ? '<span class="new-pill">New</span>' : counts[id] != null ? `<span class="count">${counts[id]}</span>` : ''}</button>`;
+  const btn = (id) => `<button data-s="${id}" ${S.section === id ? 'aria-current="page"' : ''} style="--dot:${secColor(id) || 'var(--line-2)'}"><span class="dot" aria-hidden="true"></span><span class="lbl">${label[id]}</span>${LIVE.on && id === (LIVE.kind === 'base' ? 'bases' : 'shipwright') ? '<span class="live-pill" title="LiveLink from Blender is on"><span class="live-dot"></span>Live</span>' : NEW_SECTIONS[id] && APP && !seenSection(id) ? '<span class="new-pill">New</span>' : counts[id] != null ? `<span class="count">${counts[id]}</span>` : ''}</button>`;
   $('#nav').innerHTML = NAV_GROUPS.map((gr) => `<div class="nav-group" style="--tint:${gr.tint}">${gr.ids.filter((id) => label[id]).map(btn).join('')}</div>`).join('');
   applySection(S.section);
   $('#nav').querySelectorAll('button').forEach((b) => b.onclick = () => go(b.dataset.s));
@@ -4898,10 +4901,33 @@ function shipSlotsPanel(el) {
 // ---------------------------------------------------------------- live link from Blender
 // With LiveLink on for a corvette, every build the Blender add-on sends (each Ctrl+S in Blender) replaces that
 // corvette's parts and, unless turned off, is written straight to the save (the app backs up the old pair each time).
-const LIVE = { on: false, slot: null, write: true, log: [], loop: 0, files: null };
+const LIVE = { on: false, kind: 'corvette', slot: null, base: null, write: true, log: [], loop: 0, files: null };
+// LiveLink targets are a corvette (its slot number) or a base ({name, addr}: the base's name and its galactic address
+// as a decimal string, which is how a Base Builder .blend names its base too)
+const rawNum = (x) => (x != null && typeof x === 'object' ? C.stringifyJSON(x).replace(/"/g, '') : String(x == null ? '' : x)).trim();
+const addrKey = (v) => { try { const t = rawNum(v); return t ? BigInt(t).toString() : ''; } catch (_) { return ''; } };
+const baseRef = (b) => ({ name: str(g(b, 'Name')), addr: addrKey(g(b, 'GalacticAddress')) });
+const sameBase = (a, b) => !!a && !!b && (a.addr && b.addr ? a.addr === b.addr && (!a.name || !b.name || a.name === b.name) : !!a.name && a.name === b.name);
+// the base in the save a ref points at: same name and address, else the same address, else the same name (only when unambiguous)
+function findBase(ref) {
+  if (!ref) return null;
+  const list = playerBases(), one = (xs) => (xs.length === 1 ? xs[0] : null);
+  return list.find(({ b }) => sameBase(baseRef(b), ref) && str(g(b, 'Name')) === ref.name)
+    || (ref.addr ? one(list.filter(({ b }) => baseRef(b).addr === ref.addr)) : null)
+    || (ref.name ? one(list.filter(({ b }) => str(g(b, 'Name')) === ref.name)) : null);
+}
+const isBaseT = (t) => t != null && typeof t === 'object';
+const liveIsOn = (t) => LIVE.on && (isBaseT(t) ? LIVE.kind === 'base' && sameBase(LIVE.base, t) : LIVE.kind !== 'base' && LIVE.slot === t);
+function liveTName(t) { if (isBaseT(t)) return t.name || 'the base'; const sh = (g(ps(), 'ShipOwnership') || [])[t]; return str(sh && g(sh, 'Name')) || 'Corvette'; }
+const liveTWhere = (t) => (isBaseT(t) ? 'base' : `slot ${t + 1}`);
+const liveCur = () => (LIVE.kind === 'base' ? LIVE.base : LIVE.slot);
 // which .blend each corvette's build comes from (kept by the app in live-files.json, keyed by account, slot and name)
 const blendName = (f) => String(f || '').split(/[\\/]/).pop();
-function liveKey(slot) { const sh = (g(ps(), 'ShipOwnership') || [])[slot]; return `${(S.appAcct && S.appAcct.path) || (S.src && S.src.dir) || ''}|${slot}|${sh ? str(g(sh, 'Name')) : ''}`; }
+function liveKey(slot) {
+  const acct = (S.appAcct && S.appAcct.path) || (S.src && S.src.dir) || '';
+  if (isBaseT(slot)) return `${acct}|base|${slot.addr}|${slot.name}`;
+  const sh = (g(ps(), 'ShipOwnership') || [])[slot]; return `${acct}|${slot}|${sh ? str(g(sh, 'Name')) : ''}`;
+}
 function liveFileOf(slot) { return (LIVE.files && LIVE.files[liveKey(slot)]) || null; }
 async function liveLoadFiles(force) {
   if (LIVE.files && !force) return LIVE.files;
@@ -4926,45 +4952,47 @@ async function liveOpenBlender(file) {
 // right after turning the link on: say so, and offer to open the corvette's .blend
 async function liveOnDialog(slot) {
   await liveLoadFiles();
-  const sh = g(ps(), 'ShipOwnership')[slot], name = str(g(sh, 'Name')) || 'This corvette', cur = liveFileOf(slot);
-  const body = `<p class="live-state"><span class="live-dot"></span><b>${esc(name)}</b> (slot ${slot + 1}) is linked. Every time you save in Blender, the build is written into this corvette${LIVE.write ? ', backing up your save first' : ''}.</p>
+  const name = liveTName(slot), cur = liveFileOf(slot), kw = isBaseT(slot) ? 'base' : 'corvette';
+  const body = `<p class="live-state"><span class="live-dot"></span><b>${esc(name)}</b> (${liveTWhere(slot)}) is linked. Every time you save in Blender, the build is written into this ${kw}${LIVE.write ? ', backing up your save first' : ''}.</p>
     ${cur ? `<div class="live-file"><span class="k">Blender file</span><b>${esc(blendName(cur.file))}</b><span class="mono dim small-print">${esc(cur.file)}</span><span class="dim small-print">Last linked ${esc(new Date(cur.time).toLocaleString())}</span></div><p>Open it in Blender?</p>`
-      : '<p>No Blender file is linked to this corvette yet. Choose the .blend it\'s built in, and it opens in Blender and is remembered for next time.</p>'}
+      : `<p>No Blender file is linked to this ${kw} yet. Choose the .blend it's built in, and it opens in Blender and is remembered for next time.</p>`}
     <p class="dim small-print">LiveLink turns off when you close the editor.</p>`;
   const v = await dialog('LiveLink is on', body, cur ? [['Not now', 'no', 'ghost'], ['Choose another file…', 'pick'], ['Open in Blender', 'open', 'primary']] : [['Not now', 'no', 'ghost'], ['Open Blender empty', 'empty'], ['Choose the .blend file…', 'pick', 'primary']]);
   if (v === 'open') await liveOpenBlender(cur.file);
   else if (v === 'pick') { const f = await livePickFile(slot); if (f) await liveOpenBlender(f); }
   else if (v === 'empty') await liveOpenBlender('');
-  if (S.section === 'shipwright') render();
+  if (S.section === 'shipwright' || S.section === 'bases') render();
 }
-function livePanelHtml(corvs) {
-  const target = corvs.find((c) => c.i === LIVE.slot);
-  const on = LIVE.on && target;
-  return `<div class="live${on ? ' on' : ''}" id="swLive"><h3>LiveLink ${hint('Save your build in Blender (Ctrl+S) and it lands on this corvette in your save, backed up first every time. Needs the Harmonious LiveLink add-on in Blender, with Charon Forge or the NMS Base Builder add-on.')}</h3>
-    ${on ? `<p class="live-state"><span class="live-dot"></span>Receiving into <b>${esc(str(g(target.s, 'Name')) || 'Corvette')}</b>, slot ${target.i + 1}</p><p class="live-blender${LIVE.blender ? ' ok' : ''}" id="liveBlender">${liveBlenderText()}</p>` : '<p class="dim small-print">Off. Turn it on for the corvette you have open.</p>'}
-    ${on && LIVE.last ? `<div class="live-last${LIVE.last.ok ? '' : ' bad'}${Date.now() - LIVE.last.at < 8000 ? ' fresh' : ''}"><span class="k">Last build</span><b>${LIVE.last.ok ? `✓ ${LIVE.last.parts.toLocaleString()} parts ${LIVE.last.written ? 'written to the game' : 'put on the corvette'}` : '✗ Not written'}</b>${!LIVE.last.ok && LIVE.last.message ? `<span class="small-print">${esc(LIVE.last.message)}</span>` : ''}<span class="dim small-print">${esc(LIVE.last.time)}${LIVE.last.file ? ' · ' + esc(blendName(LIVE.last.file)) : ''}</span></div>` : on ? '<div class="live-last waiting"><span class="k">Last build</span><span class="dim small-print">Nothing received yet. Save in Blender (Ctrl+S) or press Send now.</span></div>' : ''}
-    ${on ? (() => { const f = liveFileOf(target.i); return `<div class="live-file"><span class="k">Blender file</span>${f ? `<b title="${esc(f.file)}">${esc(blendName(f.file))}</b>` : '<span class="dim small-print">None linked yet</span>'}<span class="live-file-acts">${f ? '<button class="link" type="button" id="liveOpen">Open in Blender</button>' : ''}<button class="link" type="button" id="livePick">${f ? 'Change' : 'Choose the .blend…'}</button></span></div>`; })() : ''}
+// the LiveLink panel for the corvette (slot number) or base ({name, addr}) that is open
+function livePanelHtml(t) {
+  const on = liveIsOn(t), kw = isBaseT(t) ? 'base' : 'corvette';
+  return `<div class="live${on ? ' on' : ''}" id="swLive"><h3>LiveLink ${hint(`Save your build in Blender (Ctrl+S) and it lands on this ${kw} in your save, backed up first every time. Needs the Harmonious LiveLink add-on in Blender${isBaseT(t) ? '. Base Builder files say which base they are, and the editor checks it' : ', with Charon Forge or the NMS Base Builder add-on'}.`)}</h3>
+    ${on ? `<p class="live-state"><span class="live-dot"></span>Receiving into <b>${esc(liveTName(t))}</b>, ${liveTWhere(t)}</p><p class="live-blender${LIVE.blender ? ' ok' : ''}" id="liveBlender">${liveBlenderText()}</p>` : LIVE.on ? `<p class="dim small-print">On for ${esc(liveTName(liveCur()))} (${liveTWhere(liveCur())}). Turn it on here to switch.</p>` : `<p class="dim small-print">Off. Turn it on for the ${kw} you have open.</p>`}
+    ${on && LIVE.last ? `<div class="live-last${LIVE.last.ok ? '' : ' bad'}${Date.now() - LIVE.last.at < 8000 ? ' fresh' : ''}"><span class="k">Last build</span><b>${LIVE.last.ok ? `✓ ${LIVE.last.parts.toLocaleString()} parts ${LIVE.last.written ? 'written to the game' : 'put on the ' + kw}` : '✗ Not written'}</b>${!LIVE.last.ok && LIVE.last.message ? `<span class="small-print">${esc(LIVE.last.message)}</span>` : ''}<span class="dim small-print">${esc(LIVE.last.time)}${LIVE.last.file ? ' · ' + esc(blendName(LIVE.last.file)) : ''}</span></div>` : on ? '<div class="live-last waiting"><span class="k">Last build</span><span class="dim small-print">Nothing received yet. Save in Blender (Ctrl+S) or press Send now.</span></div>' : ''}
+    ${on ? (() => { const f = liveFileOf(t); return `<div class="live-file"><span class="k">Blender file</span>${f ? `<b title="${esc(f.file)}">${esc(blendName(f.file))}</b>` : '<span class="dim small-print">None linked yet</span>'}<span class="live-file-acts">${f ? '<button class="link" type="button" id="liveOpen">Open in Blender</button>' : ''}<button class="link" type="button" id="livePick">${f ? 'Change' : 'Choose the .blend…'}</button></span></div>`; })() : ''}
     <label class="check"><input type="checkbox" id="liveWrite"${LIVE.write ? ' checked' : ''}> Write to the game as each build arrives</label>
-    <div class="sw-side-acts"><button class="btn${on ? '' : ' primary'}" type="button" id="liveToggle">${on ? 'Turn off' : 'Turn on for this corvette'}</button><button class="btn ghost" type="button" id="liveAddon">Get the Blender add-on</button></div>
+    <div class="sw-side-acts"><button class="btn${on ? '' : ' primary'}" type="button" id="liveToggle">${on ? 'Turn off' : 'Turn on for this ' + kw}</button><button class="btn ghost" type="button" id="liveAddon">Get the Blender add-on</button></div>
     ${LIVE.log.length ? `<ul class="live-log">${LIVE.log.slice(0, 5).map((e) => `<li class="${e.ok ? '' : 'bad'}"><span class="mono">${esc(e.time)}</span> ${esc(e.text)}</li>`).join('')}</ul>` : ''}</div>`;
 }
-function wireLivePanel(side, corvs) {
-  const W = S.wright;
+function wireLivePanel(side, t) {
   $('#liveWrite', side).onchange = (e) => { LIVE.write = e.target.checked; };
   $('#liveAddon', side).onclick = () => { const a = document.createElement('a'); a.href = '/api/live/addon?t=' + encodeURIComponent(window.NMS_APP.token); a.download = 'harmonious_live_link.py'; a.click();
-    dialog('Install the Blender add-on', '<ol class="steps"><li>In Blender, open <b>Edit › Preferences › Add-ons</b>.</li><li>Choose <b>Install from Disk</b> (in the menu at the top right) and pick <span class="mono">harmonious_live_link.py</span> from your Downloads.</li><li>Tick <b>Harmonious LiveLink</b>. Its panel is in the 3D view sidebar (press N), under <b>LiveLink</b>.</li><li>Here, turn LiveLink on for the corvette to update. Then every Ctrl+S in Blender sends the build.</li></ol>', [['Close', false]]); };
-  $('#liveToggle', side).onclick = () => { if (LIVE.on && LIVE.slot === W.slot) { liveStop(); render(); } else { liveStart(W.slot); render(); liveOnDialog(W.slot); } };
-  const lo = $('#liveOpen', side); if (lo) lo.onclick = () => liveOpenBlender((liveFileOf(LIVE.slot) || {}).file);
-  const lp = $('#livePick', side); if (lp) lp.onclick = async () => { const f = await livePickFile(LIVE.slot); if (f) { render(); liveOpenBlender(f); } };
-  if (!LIVE.files) liveLoadFiles().then(() => { if (S.section === 'shipwright') render(); });
+    dialog('Install the Blender add-on', '<ol class="steps"><li>In Blender, open <b>Edit › Preferences › Add-ons</b>.</li><li>Choose <b>Install from Disk</b> (in the menu at the top right) and pick <span class="mono">harmonious_live_link.py</span> from your Downloads.</li><li>Tick <b>Harmonious LiveLink</b>. Its panel is in the 3D view sidebar (press N), under <b>LiveLink</b>.</li><li>Here, turn LiveLink on for the corvette (Shipwright) or base (Bases) to update. Then every Ctrl+S in Blender sends the build.</li></ol>', [['Close', false]]); };
+  $('#liveToggle', side).onclick = () => { if (liveIsOn(t)) { liveStop(); render(); } else { liveStart(t); render(); liveOnDialog(t); } };
+  const lo = $('#liveOpen', side); if (lo) lo.onclick = () => liveOpenBlender((liveFileOf(t) || {}).file);
+  const lp = $('#livePick', side); if (lp) lp.onclick = async () => { const f = await livePickFile(t); if (f) { render(); liveOpenBlender(f); } };
+  if (!LIVE.files) liveLoadFiles().then(() => { if (S.section === 'shipwright' || S.section === 'bases') render(); });
 }
 async function liveArm() {
-  const t = LIVE.on ? g(ps(), 'ShipOwnership')[LIVE.slot] : null;
   const corvettes = S.save ? ships().filter(({ s }) => slotIsCorvette(s)).map(({ s, i }) => ({ slot: i, name: str(g(s, 'Name')) || 'Corvette' })) : [];
-  await api('/api/live/arm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ armed: !!LIVE.on, slot: LIVE.on ? LIVE.slot : -1, corvettes, target: t ? `${str(g(t, 'Name')) || 'Corvette'}, slot ${LIVE.slot + 1}` : '' }) }).catch(() => {});
+  const isBase = LIVE.on && LIVE.kind === 'base', cur = liveCur();
+  await api('/api/live/arm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ armed: !!LIVE.on, kind: isBase ? 'base' : 'corvette', slot: LIVE.on && !isBase ? LIVE.slot : -1,
+    base: isBase ? { name: LIVE.base.name, address: LIVE.base.addr } : null, corvettes, target: LIVE.on ? `${liveTName(cur)}, ${liveTWhere(cur)}` : '' }) }).catch(() => {});
 }
 function liveStart(slot) {
-  LIVE.on = true; LIVE.slot = slot; liveArm(); renderSide(); toast('LiveLink on: save in Blender to send the build');
+  LIVE.on = true;
+  if (isBaseT(slot)) { LIVE.kind = 'base'; LIVE.base = { ...slot }; } else { LIVE.kind = 'corvette'; LIVE.slot = slot; }
+  liveArm(); renderSide(); toast('LiveLink on: save in Blender to send the build');
   clearInterval(LIVE.watch); LIVE.watch = setInterval(liveWatch, 3000); liveWatch();
   const run = ++LIVE.loop;
   (async () => {
@@ -4978,8 +5006,8 @@ function liveStart(slot) {
       LIVE.log.unshift({ time, ok: res.ok, text: res.message });
       LIVE.last = { ...res, time, at: Date.now() };
       liveArrival(LIVE.last);
-      api('/api/live/result', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ok: res.ok, message: res.message, target: res.ok ? { slot: res.slot, name: res.name } : undefined }) }).catch(() => {});
-      if (S.section === 'shipwright') render();
+      api('/api/live/result', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ok: res.ok, message: res.message, target: res.ok && !res.base ? { slot: res.slot, name: res.name } : undefined }) }).catch(() => {});
+      if (S.section === 'shipwright' || S.section === 'bases') render();
     }
   })();
 }
@@ -4988,7 +5016,7 @@ function liveArrival(r) {
   const box = $('#liveNote'); clearTimeout(LIVE.noteT);
   box.className = 'live-note' + (r.ok ? '' : ' bad');
   box.innerHTML = r.ok
-    ? `<span class="ln-ic">✓</span><div><b>Build received from Blender</b><span>${r.parts.toLocaleString()} parts${r.file ? ` from <b>${esc(blendName(r.file))}</b>` : ''} → <b>${esc(r.name)}</b>, slot ${r.slot + 1}</span><span class="dim">${r.written ? `Written to the game at ${esc(r.time)}, your save backed up first.${r.running ? ' The game is running: load the save from the main menu to see it.' : ''}` : `Put on the corvette at ${esc(r.time)}. Press Save to game to keep it.`}</span></div><button class="link" type="button" data-k="close" aria-label="Close">×</button>`
+    ? `<span class="ln-ic">✓</span><div><b>Build received from Blender</b><span>${r.parts.toLocaleString()} parts${r.file ? ` from <b>${esc(blendName(r.file))}</b>` : ''} → <b>${esc(r.name)}</b>, ${r.base ? 'base' : 'slot ' + (r.slot + 1)}</span><span class="dim">${r.written ? `Written to the game at ${esc(r.time)}, your save backed up first.${r.running ? ' The game is running: load the save from the main menu to see it.' : ''}` : `Put on the ${r.base ? 'base' : 'corvette'} at ${esc(r.time)}. Press Save to game to keep it.`}</span></div><button class="link" type="button" data-k="close" aria-label="Close">×</button>`
     : `<span class="ln-ic">!</span><div><b>A build from Blender didn't go in</b><span>${esc(r.message)}</span></div><button class="link" type="button" data-k="close" aria-label="Close">×</button>`;
   box.hidden = false;
   box.querySelector('[data-k="close"]').onclick = () => { box.hidden = true; };
@@ -5003,6 +5031,7 @@ async function liveWatch() {
 }
 async function liveApply(body) {
   if (!S.save || !S.src || S.src.kind !== 'app') return { ok: false, message: 'No save is open in the editor.' };
+  if (LIVE.kind === 'base' || (body instanceof Map && body.get('base') instanceof Map)) return liveApplyBase(body);
   const list = g(ps(), 'ShipOwnership') || [], ship = list[LIVE.slot], base = shipBuild(LIVE.slot);
   if (!ship || !slotIsCorvette(ship) || !base) return { ok: false, message: `Slot ${LIVE.slot + 1} isn't a corvette with a build any more. Turn LiveLink on again for the right one.` };
   const objects = body instanceof Map ? body.get('objects') : null;
@@ -5053,6 +5082,57 @@ async function liveWrite(body, objects) {
     return { ok: true, parts: objs.length, file: from, name, slot: LIVE.slot, written: true, running, message: `${plural(objs.length, 'part')}${fromTxt} written to ${name} (slot ${LIVE.slot + 1}), the old save backed up first.${running ? ' The game is running: load the save from the main menu to see it.' : ''}` };
   } catch (e) { return { ok: false, message: `Put on ${name}, but not written: ${e.message}` }; }
 }
+// ---- LiveLink for bases: a Base Builder .blend names its base (name and address), so it is checked against the base
+// LiveLink is on for; a build from a file that names no base is asked about unless it is the base's linked file
+const refOf = (m) => (m instanceof Map ? { name: str(m.get('name')), addr: addrKey(m.get('address')) } : null);
+async function liveApplyBase(body) {
+  const objects = body instanceof Map ? body.get('objects') : null;
+  if (!Array.isArray(objects) || !objects.length || !objects.every((o) => o instanceof Map && o.get('ObjectID') != null)) return { ok: false, message: 'The build from Blender has no parts the editor can read.' };
+  const from = str(body.get('file') || ''), bn = blendName(from) || 'the Blender scene', said = refOf(body.get('base'));
+  if (LIVE.kind !== 'base') {
+    // a base file while LiveLink is on for a corvette
+    const cName = liveTName(LIVE.slot), hit = findBase(said);
+    if (!hit) return { ok: false, message: `${bn} is the base ${said.name || said.addr}, which isn't in this save, and LiveLink is on for the corvette ${cName}. Nothing written.` };
+    const v = await dialog('This is a base', `<p><b>${esc(bn)}</b> is the base <b>${esc(said.name)}</b>, but LiveLink is on for the corvette <b>${esc(cName)}</b> (slot ${LIVE.slot + 1}).</p><p>Nothing is written until you choose.</p>`,
+      [["Don't write", 'no', 'ghost'], [`Switch LiveLink to ${said.name || 'the base'}`, 'switch', 'primary']]);
+    if (v !== 'switch') return { ok: false, message: `Not written: ${bn} is the base ${said.name}, but LiveLink is on for the corvette ${cName}.` };
+    LIVE.kind = 'base'; LIVE.base = baseRef(hit.b); liveArm();
+  }
+  let hit = findBase(LIVE.base);
+  if (!hit) return { ok: false, message: `The base ${LIVE.base.name} isn't in this save any more. Turn LiveLink on again for the right one.` };
+  if (said && !sameBase(said, baseRef(hit.b))) {
+    // the file is another base: switch to it, or don't write
+    const other = findBase(said), name = baseLabel(hit.b);
+    if (!other) return { ok: false, message: `${bn} is the base ${said.name || said.addr}, which isn't in this save. Nothing written to ${name}.` };
+    const v = await dialog('Which base?', `<p><b>${esc(bn)}</b> is the base <b>${esc(baseLabel(other.b))}</b>, but LiveLink is on for <b>${esc(name)}</b>.</p><p>Nothing is written until you choose.</p>`,
+      [["Don't write", 'no', 'ghost'], [`Switch LiveLink to ${baseLabel(other.b)}`, 'switch', 'primary']]);
+    if (v !== 'switch') return { ok: false, message: `Not written: ${bn} is the base ${said.name}, but LiveLink is on for ${name}. Switch in the editor, or open ${name}'s file in Blender.` };
+    LIVE.base = baseRef(other.b); liveArm(); hit = other;
+  } else if (!said) {
+    // a file that names no base (a corvette build, or a scene without the Base Builder's details): ask
+    const cur = liveFileOf(LIVE.base), name = baseLabel(hit.b);
+    if (!(cur && from && cur.file === from)) {
+      const v = await dialog('Put this build on ' + name + '?', `<p>A build from <b>${esc(bn)}</b> just arrived for the base <b>${esc(name)}</b>. The file doesn't say which base it is${body.get('target') instanceof Map ? ` (it is set to the corvette ${esc(str(body.get('target').get('name')))})` : ''}.</p><p>Its parts replace the base's ${plural((g(hit.b, 'Objects') || []).length, 'part')}.</p>`,
+        [["Don't write", 'no', 'ghost'], ['Yes, put it on ' + name, 'yes', 'primary']]);
+      if (v !== 'yes') return { ok: false, message: `Not written to ${name}: ${bn} doesn't say which base it is.` };
+    }
+  }
+  return liveWriteBase(body, objects, hit.b);
+}
+async function liveWriteBase(body, objects, b) {
+  const objs = inGameOrder(fromPlain(cloneJSON(objects)), (g(b, 'Objects') || [])[0]);
+  set(b, 'Objects', objs); markDirty();
+  const name = baseLabel(b), from = str(body.get('file') || ''), fromTxt = from ? ` from ${blendName(from)}` : '';
+  if (from) await liveSetFile(baseRef(b), from);   // this base's build now comes from this .blend
+  const res = { ok: true, base: true, parts: objs.length, file: from, name };
+  if (!LIVE.write) return { ...res, written: false, message: `${plural(objs.length, 'part')}${fromTxt} put on the base ${name}. Press Save to game in the editor to keep them.` };
+  try {
+    const out = encodeSave(); await appWriteFiles(out);
+    S.dirty = false; DISK.save = null; renderSide();
+    let running = false; try { running = (await (await api('/api/game-running')).json()).running; } catch (_) {}
+    return { ...res, written: true, running, message: `${plural(objs.length, 'part')}${fromTxt} written to the base ${name}, the old save backed up first.${running ? ' The game is running: load the save from the main menu to see it.' : ''}` };
+  } catch (e) { return { ok: false, message: `Put on ${name}, but not written: ${e.message}` }; }
+}
 addEventListener('pagehide', () => { if (LIVE.on && window.NMS_APP) navigator.sendBeacon('/api/live/arm?t=' + encodeURIComponent(window.NMS_APP.token), new Blob([JSON.stringify({ armed: false })], { type: 'application/json' })); });
 
 PAGES.shipwright = (el) => {
@@ -5076,13 +5156,13 @@ PAGES.shipwright = (el) => {
     return `<button type="button" class="sw-corv${i === W.slot ? ' on' : ''}${LIVE.last && LIVE.last.ok && LIVE.last.slot === i && Date.now() - LIVE.last.at < 8000 ? ' landed' : ''}" data-i="${i}"><span class="sw-dot ${worst}"></span><span><b>${esc(str(g(s, 'Name')) || 'Corvette')}</b><span class="dim">Slot ${i + 1} · ${plural(h.objs.length, 'part')}</span>${APP && liveFileOf(i) ? `<span class="sw-blend" title="${esc(liveFileOf(i).file)}">${esc(blendName(liveFileOf(i).file))}</span>` : ''}</span></button>`;
   }).join('')}</div>${probs.length ? `<div class="sw-probs">${probs.map((t) => `<p class="bad-hint">${esc(t)}</p>`).join('')}<button class="btn small" type="button" id="swFixSlots">Fix in Ship slots</button></div>` : ''}
     <div class="sw-side-acts"><button class="btn primary" type="button" id="swAdd">Add corvette</button><button class="btn danger" type="button" id="swDel">Delete corvette</button></div>
-    ${APP ? livePanelHtml(corvs) : ''}
+    ${APP ? livePanelHtml(W.slot) : ''}
 `;
   side.querySelector('h3').insertAdjacentHTML('beforeend', ' ' + hint('Add corvette puts a starter build in an empty slot for you to paste over. Finished corvettes from files go in through the Dock Yard.'));
   wrap.appendChild(side);
   side.querySelectorAll('[data-i]').forEach((b) => b.onclick = () => { W.slot = +b.dataset.i; W.sel = new Set(); render(); });
   $('#swAdd', side).onclick = doAdd;
-  if (APP) wireLivePanel(side, corvs);
+  if (APP) wireLivePanel(side, W.slot);
   const fx = $('#swFixSlots', side); if (fx) fx.onclick = () => { (S.slots || (S.slots = {})).open = true; go('ships'); spotlight('#shipSlots'); };
   $('#swDel', side).onclick = () => deleteEntity(g(ps(), 'ShipOwnership')[W.slot], W.slot, 'ship');
   const main = document.createElement('div'); main.className = 'sw-main'; wrap.appendChild(main);
@@ -5468,6 +5548,35 @@ const BASE_KINDS = { HomePlanetBase: 'Planet base', FreighterBase: 'Freighter', 
 function playerBases() { return (g(ps(), 'PersistentPlayerBases') || []).map((b, i) => ({ b, i })).filter(({ b }) => str(g(b, 'BaseType', 'PersistentBaseTypes')) !== 'PlayerShipBase'); }
 const baseLabel = (b) => str(g(b, 'Name')).trim() || (str(g(b, 'BaseType', 'PersistentBaseTypes')) === 'FreighterBase' ? str(g(ps(), 'PlayerFreighterName')) || 'Freighter' : 'Unnamed base');
 function myUID() { for (const b of g(ps(), 'PersistentPlayerBases') || []) { const u = str(g(b, 'Owner', 'UID')); if (u && u !== '0') return u; } return ''; }
+// Load from a .blend: the app reads the file through the owner's Blender (blend_read.py), and its parts go onto the
+// base the file names (by address and name), or onto the open base when the file names none. Asks first, always.
+async function loadBaseBlend(open) {
+  const t = baseRef(open), cur = liveFileOf(t), dir = cur ? cur.file.replace(/[\\/][^\\/]*$/, '') : '';
+  let r; try { r = await api('/api/live/pick?dir=' + encodeURIComponent(dir), { method: 'POST' }); } catch (e) { toast(e.message, true); return; }
+  const { file } = await r.json(); if (!file) return;
+  const wait = dialog('Reading ' + blendName(file), `<p class="live-state"><span class="live-dot"></span>Blender is opening <b>${esc(blendName(file))}</b> in the background to read its parts. Big bases take a little while.</p>`, [['Cancel', 'cancel', 'ghost']]);
+  let res, cancelled = false, done = false;
+  wait.then(() => { if (!done) cancelled = true; });   // closed by the person before Blender answered
+  const finish = () => { done = true; if ($('#dlg').open) $('#dlg').close(); };
+  try { res = C.parseJSON(await (await api('/api/blend/read', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file }) })).text()); }
+  catch (e) { if (!cancelled) { finish(); toast(e.message, true); } return; }
+  if (cancelled) return;
+  finish(); await new Promise((ok) => setTimeout(ok, 0));
+  const objects = res.get('objects'), said = refOf(res.get('base'));
+  if (!Array.isArray(objects) || !objects.length) { toast(`${blendName(file)} has no base parts (objects with an ObjectID).`, true); return; }
+  const list = playerBases(), hit = findBase(said), pick = hit ? hit.i : list.find(({ b }) => b === open).i;
+  const note = said ? (hit ? (hit.b === open ? '' : `<p>This file is the base <b>${esc(said.name)}</b>, so that base is chosen, not the one you have open.</p>`) : `<p class="warn">This file is the base <b>${esc(said.name || said.addr)}</b>, which isn't in this save. Choose the base it should go on.</p>`) : '<p>The file doesn\'t say which base it is (it has no Base Builder details). Choose the base it should go on.</p>';
+  const ok = await dialog('Load ' + blendName(file) + '?', `<p>${plural(objects.length, 'part')} from <b>${esc(blendName(file))}</b>.</p>${note}
+    <label class="field"><span>Put them on</span><select class="input" id="blendBase">${list.map(({ b, i }) => `<option value="${i}"${i === pick ? ' selected' : ''}>${esc(baseLabel(b))} (${plural((g(b, 'Objects') || []).length, 'part')})</option>`).join('')}</select></label>
+    <p class="dim small-print">The base's parts are replaced; it keeps its name, place and owner. Nothing is written to your game until you save.</p>`, [['Cancel', false, 'ghost'], ['Replace the parts', true, 'primary']]);
+  if (!ok) return;
+  const target = g(ps(), 'PersistentPlayerBases')[+$('#blendBase').value];
+  if (said && !sameBase(said, baseRef(target)) && !(await dialog('A different base?', `<p><b>${esc(blendName(file))}</b> is the base <b>${esc(said.name)}</b>, and you chose <b>${esc(baseLabel(target))}</b>. Put its parts there anyway?</p>`, [['Cancel', false, 'ghost'], ['Yes, replace them', true, 'danger']]))) return;
+  set(target, 'Objects', inGameOrder(fromPlain(objects), (g(target, 'Objects') || [])[0])); markDirty();
+  await liveSetFile(baseRef(target), file);   // remembered for LiveLink's "Open in Blender"
+  S.bases.pick = playerBases().find(({ b }) => b === target).i; renderSide();
+  toast(`${plural(objects.length, 'part')} from ${blendName(file)} put on ${baseLabel(target)}. Press Save to game to keep them.`); render();
+}
 PAGES.bases = (el) => {
   const B = S.bases || (S.bases = { tab: 'bases', pick: null, set: null });
   const sets = g(ps(), 'SettlementStatesV2') || [], me = myUID(), setList = sets.map((s, i) => ({ s, i })).filter(({ s }) => str(g(s, 'Name')) || str(g(s, 'SeedValue')) !== '0');
@@ -5490,9 +5599,11 @@ PAGES.bases = (el) => {
         <label class="field"><span>Built by</span><input class="input" disabled value="${esc(str(g(b, 'Owner', 'USN')) || 'You')}"></label>
       </div>
       ${at && kind !== 'FreighterBase' ? `<div class="base-where"><span class="k">Where</span>${glyphRow(code, 'small')}<span class="mono">${code}</span><span class="dim">${esc(GALAXIES[at.gi] || '')}${at.planet ? ', planet ' + at.planet : ''}</span><button class="link" type="button" id="bCoords">Open in Coordinates</button></div>` : ''}
-      <div class="sw-acts"><button class="btn" type="button" data-a="copy">Copy parts</button><button class="btn" type="button" data-a="paste">Paste parts</button><label class="btn">Load parts from a file<input type="file" id="bFile" accept=".json,.txt,.nmsbase,.nmsprefab" hidden></label><label class="btn" title="Adds a Base Building App prefab (or any parts file) to this base, keeping what's there">Add a prefab<input type="file" id="bPrefab" accept=".nmsprefab,.json,.txt" hidden></label><button class="btn" type="button" data-a="save">Save to a file</button><span class="sw-gap"></span><button class="btn danger" type="button" data-a="del">Delete base</button></div></div>
+      <div class="sw-acts"><button class="btn" type="button" data-a="copy">Copy parts</button><button class="btn" type="button" data-a="paste">Paste parts</button><label class="btn">Load parts from a file<input type="file" id="bFile" accept=".json,.txt,.nmsbase,.nmsprefab" hidden></label>${APP ? '<button class="btn" type="button" data-a="blend" title="Reads a Blender file through your Blender (with the Base Builder add-on or not) and puts its parts on the base it names">Load from a .blend…</button>' : ''}<label class="btn" title="Adds a Base Building App prefab (or any parts file) to this base, keeping what's there">Add a prefab<input type="file" id="bPrefab" accept=".nmsprefab,.json,.txt" hidden></label><button class="btn" type="button" data-a="save">Save to a file</button><span class="sw-gap"></span><button class="btn danger" type="button" data-a="del">Delete base</button></div></div>
+    ${APP ? `<div class="panel base-live">${livePanelHtml(baseRef(b))}</div>` : ''}
     <div class="panel"><h3>Most used parts</h3>${top.length ? `<div class="base-parts">${top.map(([id, n]) => { const it = dbItem(id); return `<div><span class="ic">${it && it.icon ? `<img data-icon="${esc(it.icon)}" alt="">` : ''}</span><span class="nm">${esc(it ? it.name : id.replace(/^\^/, ''))}</span><span class="mono dim">${n.toLocaleString()}</span></div>`; }).join('')}</div>` : '<p class="dim">No parts yet.</p>'}</div>`;
   loadIcons(main);
+  if (APP) wireLivePanel(main, baseRef(b));
   $('#bName', main).onchange = (e) => { set(b, 'Name', e.target.value); render(); };
   const co = $('#bCoords', main); if (co) co.onclick = () => { S.coords = { p: { ...at }, digits: code }; go('coords'); };
   const replace = async (text, how) => {
@@ -5505,6 +5616,7 @@ PAGES.bases = (el) => {
   main.querySelectorAll('[data-a]').forEach((btn) => btn.onclick = async () => {
     const a = btn.dataset.a;
     try {
+      if (a === 'blend') { await loadBaseBlend(b); return; }
       if (a === 'copy') { await navigator.clipboard.writeText(C.stringifyJSON(objs.map((o) => toPlain(cloneJSON(o))), '  ')); toast(`Copied ${plural(objs.length, 'part')}`); }
       if (a === 'save') downloadText(safeFile(baseLabel(b)) + '.json', C.stringifyJSON(toPlain(cloneJSON(b)), '  '));
       if (a === 'paste') {

@@ -123,6 +123,7 @@ func main() {
 	mux.HandleFunc("/api/live/files", handleLiveFiles)
 	mux.HandleFunc("/api/live/pick", handleLivePick)
 	mux.HandleFunc("/api/live/open", handleLiveOpen)
+	mux.HandleFunc("/api/blend/read", handleBlendRead)
 	mux.HandleFunc("/api/update/install", handleUpdateInstall)
 	mux.HandleFunc("/api/itemdb/items.xml", handleItemXML)
 	mux.HandleFunc("/api/itemdb/icon", handleItemIcon)

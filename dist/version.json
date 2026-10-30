@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.30.1756",
+  "version": "2026.10.30.1825",
   "date": "2026-10-30",
-  "size": 9854976,
-  "sha256": "42344264df36d2339cb60d456f50abab008e4b76c75c9bc6d28a356bd35df565",
-  "notes": "Corvette covers: a solid hologram with every part at its real size from your game files, coloured by part type (key in the Hangar).",
+  "size": 9883136,
+  "sha256": "ce5423a8e8832bcbae0b082301d869b42953a6afcc756075104f52d09447a68f",
+  "notes": "Bases from Blender: Load from a .blend on the Bases page puts a Base Builder file's parts on the base it names, and LiveLink now works for bases (update the Blender add-on too).",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
