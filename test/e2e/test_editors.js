@@ -85,8 +85,18 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.click(`.ed-list [data-k="${nearIdx}"]`); await p.waitForTimeout(200);
   await p.click('.sw-acts [data-a="del"]'); await p.click('#dlgActs .btn.danger');
   ok('delete a base', await p.evaluate(() => g(ps(), 'PersistentPlayerBases').length === 22 && !g(ps(), 'PersistentPlayerBases').some((b) => str(g(b, 'Name')) === 'near perfect')));
-  await p.click('.ed-tabs [data-t="settlements"]'); await p.waitForSelector('#sName');
-  ok('settlements listed', (await p.$$eval('.ed-list [data-k]', (x) => x.length)) >= 90);
+  await p.click('.ed-tabs [data-t="settlements"]'); await p.waitForSelector('[data-st-tab]');
+  const owned0 = await p.evaluate(() => { const me = myUID(); return (g(ps(), 'SettlementStatesV2') || []).filter((x) => me && str(g(x, 'Owner', 'UID')) === me).length; });
+  if (!owned0) {
+    ok('no settlement of your own: Owned says so', /don't run a settlement/.test(await p.textContent('#page')));
+    await p.click('[data-st-tab="visited"]'); await p.waitForSelector('.ro-grid');
+    ok('visited settlements listed, view only', (await p.$$eval('.ed-list [data-k]', (x) => x.length)) >= 90 && !(await p.$('#sName')) && !(await p.$('[data-st]')) && !(await p.$('#sFix')));
+    await shot('settlements-visited');
+    // make one of them yours to check the editor
+    await p.evaluate(() => { const st = g(ps(), 'SettlementStatesV2').find((x) => str(g(x, 'Name'))); set(g(st, 'Owner'), 'UID', myUID()); S.bases.setTab = 'owned'; S.bases.set = null; render(); });
+  }
+  await p.waitForSelector('#sName');
+  ok('your settlements are editable', !!(await p.$('[data-st="5"]')));
   const sIdx = await p.evaluate(() => S.bases.set);
   await p.fill('[data-st="5"]', '777'); await p.press('[data-st="5"]', 'Tab');
   await p.click('#sFix');

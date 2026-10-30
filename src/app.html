@@ -180,7 +180,7 @@ nav .count { font-family: var(--mono); font-size: 11px; color: var(--faint); }
 /* overview */
 .currencies { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
 .cur { border: 1px solid var(--line); border-radius: var(--r-lg); padding: 14px 16px; background: var(--surface); display: grid; gap: 8px; box-shadow: var(--shadow); }
-.cur .lbl { display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+.cur .lbl { display: flex; justify-content: flex-start; align-items: center; font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
 .cur .lbl span { color: var(--faint); font-size: 11px; letter-spacing: 0; text-transform: none; }
 .cur .quick { display: flex; gap: 6px; flex-wrap: wrap; }
 .facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; margin-bottom: 20px; box-shadow: var(--shadow); }
@@ -486,7 +486,14 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .lib-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .lib-tags i { font-style: normal; font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--ink); }
 .lib-more { display: flex; justify-content: center; margin: 18px 0; }
-.lib-detail { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; align-items: start; }
+.lib-detail { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 22px; align-items: start; }
+.ld-left { display: grid; gap: 14px; }
+.ld-acts { display: grid; gap: 12px; }
+.ld-grp { display: grid; gap: 6px; }
+.ld-grp .k { font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+.ld-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.ld-btns .btn { flex: 1 1 auto; white-space: nowrap; }
+.ld-btns .btn.primary { flex-basis: 100%; }
 @media (max-width: 680px) { .lib-detail { grid-template-columns: 1fr; } }
 .lib-detail .lib-art { box-shadow: none; }
 .lib-info { display: grid; gap: 10px; }
@@ -494,7 +501,7 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .lib-path { font-size: 12px; word-break: break-all; }
 .row-in { display: flex; gap: 8px; }
 .row-in .input { flex: 1; }
-#dlg:has(.lib-detail) { width: min(720px, calc(100vw - 32px)); }
+#dlg:has(.lib-detail) { width: min(760px, calc(100vw - 32px)); max-width: none; }
 .lib-folders { margin: 8px 0 14px; padding-left: 18px; display: grid; gap: 6px; font-size: 13.5px; }
 /* portal glyphs: the owner's Portal Glyph Banner artwork, drawn as masks so they take the text colour */
 .glyph { display: inline-block; width: 1em; height: 1em; background: currentColor; -webkit-mask: var(--g) center / contain no-repeat; mask: var(--g) center / contain no-repeat; font-style: normal; flex: none; }
@@ -734,6 +741,18 @@ dialog.wide { max-width: 1000px; }
 .crop .zoom input { flex: 1; }
 
 /* ---------------- Cover Flow (the stage is always night sky, like the banner's Sky preview) */
+.set-switch { margin: 0 0 16px; }
+.set-switch .n { font-family: var(--mono); font-size: 11px; opacity: .75; margin-left: 4px; }
+.ro-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 18px; margin: 12px 0 0; }
+.ro-grid dt { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+.ro-grid dd { margin: 2px 0 0; font-family: var(--mono); }
+.hint { display: inline-grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; border: 1px solid var(--line-2); background: var(--surface); color: var(--dim); font: 600 10.5px/1 var(--body, inherit); letter-spacing: 0; text-transform: none; cursor: help; vertical-align: 1px; margin-left: 6px; }
+.hint:hover, .hint:focus-visible { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); outline: none; }
+.tip-pop { position: fixed; z-index: 3000; max-width: 300px; padding: 9px 12px; border-radius: 10px; background: var(--ink); color: var(--surface); font-size: 12.5px; line-height: 1.45; letter-spacing: 0; text-transform: none; box-shadow: 0 10px 28px rgba(0, 0, 0, .25); pointer-events: none; }
+.tip-pop[hidden] { display: none; }
+.qf-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; padding-top: 14px; padding-bottom: 14px; }
+.qf-bar h3 { margin: 0; }
+.qf-bar .toolbar { margin: 0; }
 .arch { margin-top: 18px; }
 .arch h3 { font-size: 13px; letter-spacing: .18em; text-transform: uppercase; font-weight: 500; margin: 0 0 8px; }
 .arch-list { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px; }
@@ -969,6 +988,46 @@ function dialog(title, bodyHtml, actions) {
     d.showModal();
   });
 }
+
+// ------------------------------------------------------------------ help tips
+// Descriptions of a panel or field sit behind a small "?" next to its name; the page's own description stays visible.
+const hint = (text) => `<span class="hint" tabindex="0" role="img" aria-label="${esc(text)}" data-tip="${esc(text)}">?</span>`;
+// notes written as paragraphs (.ed-note, .pred-note) and long bracketed field labels become tips on the nearest heading
+function hintify(root) {
+  root.querySelectorAll('p.ed-note:not([data-keep]), p.pred-note').forEach((p) => {
+    const box = p.closest('.panel, details, .ed-side, aside, .cf, .lib-detail') || p.parentElement;
+    const head = box && [...box.querySelectorAll('h2, h3, summary .k, .sw-title b')].filter((h) => h.compareDocumentPosition(p) & Node.DOCUMENT_POSITION_FOLLOWING).pop();
+    if (!head || head.querySelector('.hint[data-from-note]')) return;
+    const text = p.textContent.trim(); if (!text) return;
+    head.insertAdjacentHTML('beforeend', ' ' + hint(text)); head.lastElementChild.dataset.fromNote = '1'; p.remove();
+  });
+  root.querySelectorAll('label.field > span:first-child:not([data-hinted])').forEach((sp) => {
+    if (sp.children.length) return;
+    const m = sp.textContent.match(/^(.+?) \(([^)]+)\)$/); if (!m || !(/[;,]/.test(m[2]) || m[2].trim().split(/\s+/).length >= 3)) return;
+    sp.dataset.hinted = '1'; sp.innerHTML = esc(m[1]) + ' ' + hint(m[2].replace(/^./, (c) => c.toUpperCase()) + '.');
+  });
+}
+(() => {
+  let t = 0, anchor = null; const run = () => { t = 0; if (anchor && !anchor.isConnected) { tip.hidden = true; anchor = null; } const pg = document.getElementById('page'); if (pg) hintify(pg); const db = document.getElementById('dlgBody'); if (db) hintify(db); };
+  new MutationObserver(() => { if (!t) t = requestAnimationFrame(run); }).observe(document.body, { childList: true, subtree: true });
+  // one floating tip, so panels that clip their contents can't cut it off
+  const tip = document.createElement('div'); tip.className = 'tip-pop'; tip.setAttribute('role', 'tooltip'); tip.hidden = true;
+  const show = (h) => {
+    anchor = h; if (!tip.isConnected) document.body.appendChild(tip);
+    tip.textContent = h.dataset.tip; tip.hidden = false;
+    const r = h.getBoundingClientRect(), w = tip.offsetWidth, ht = tip.offsetHeight;
+    let x = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), innerWidth - w - 8), y = r.bottom + 8;
+    if (y + ht > innerHeight - 8) y = r.top - ht - 8;
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  };
+  document.addEventListener('mouseover', (e) => { const h = e.target.closest && e.target.closest('.hint'); if (h) show(h); });
+  document.addEventListener('mouseout', (e) => { if (e.target.closest && e.target.closest('.hint')) tip.hidden = true; });
+  document.addEventListener('focusin', (e) => { const h = e.target.closest && e.target.closest('.hint'); if (h) show(h); });
+  document.addEventListener('focusout', (e) => { if (e.target.closest && e.target.closest('.hint')) tip.hidden = true; });
+  addEventListener('scroll', () => { tip.hidden = true; }, true);
+  // a tip inside a <summary> mustn't open or close its panel
+  document.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('.hint')) e.preventDefault(); }, true);
+})();
 
 // ------------------------------------------------------------------ light and dark mode
 const isDark = () => { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; };
@@ -1411,18 +1470,18 @@ PAGES.overview = (el) => {
   el.innerHTML = `
     <div class="page-head"><div><h1>Overview</h1><p>Your traveller at a glance, currencies, and the save's name as it appears in the load menu.</p></div></div>
     <div class="trav" id="trav"></div>
+    <div class="panel qf-bar"><h3>Quick fixes ${hint('Applies to every inventory in this context: exosuit, ships, multi-tools, freighter, exocraft and storage.')}</h3>
+      <div class="toolbar"><button class="btn" id="repairAll">Repair all technology</button><button class="btn" id="rechargeAll">Recharge all technology</button><button class="btn" id="refillAll">Fill every stack</button></div></div>
     <div class="facts journey" id="journey"></div>
     <div class="currencies">${cur.map(([label, key]) => `
-      <div class="cur"><div class="lbl">${label}<span>max 4,294,967,295</span></div>
+      <div class="cur"><div class="lbl">${label} ${hint('Up to 4,294,967,295')}</div>
         <input class="input num" inputmode="numeric" data-cur="${key}" value="${num(g(p, key))}" aria-label="${label}">
         <div class="quick"><button class="btn small" data-add="${key}" data-n="1000000">+1M</button><button class="btn small" data-add="${key}" data-n="100000000">+100M</button><button class="btn small" data-add="${key}" data-n="max">Max</button></div></div>`).join('')}
     </div>
-    <div class="panel"><h3>Save name</h3><div class="row">
-      <label class="field"><span>Shown in the game's load screen</span><input class="input" id="nameIn" maxlength="42" value="${esc(str(g(cm || p, 'SaveName')))}"></label>
+    <div class="panel"><h3>Save name ${hint("Shown in the game's load screen")}</h3><div class="row">
+      <label class="field"><input class="input" id="nameIn" maxlength="42" aria-label="Save name" value="${esc(str(g(cm || p, 'SaveName')))}"></label>
     </div></div>
-    <div class="place-facts" id="facts"></div>
-    <div class="panel"><h3>Quick fixes</h3><p class="dim">Applies to every inventory in this context: exosuit, ships, multi-tools, freighter, exocraft and storage.</p>
-      <div class="toolbar"><button class="btn" id="repairAll">Repair all technology</button><button class="btn" id="rechargeAll">Recharge all technology</button><button class="btn" id="refillAll">Fill every stack</button></div></div>`;
+    <div class="place-facts" id="facts"></div>`;
   const facts = [];
   const pt = num(g(cm || p, 'TotalPlayTime')); if (pt) facts.push([fmtPlay(pt).replace(' played', ''), 'Play time']);
   facts.push([ships().length, 'Starships'], [tools().length, 'Multi-tools'], [(g(p, 'PersistentPlayerBases') || []).length, 'Bases']);
@@ -2373,14 +2432,14 @@ async function moveCoversToDisk() {
 
 /** Cover Flow widget. opts: { size, index, onChange(i), onOpen(i), caption } */
 // Cover Flow can be swapped for a plain grid of large cards (the owner's option; remembered per computer).
-const coverView = () => { try { return localStorage.getItem('hse-covers') === 'grid' ? 'grid' : 'flow'; } catch (_) { return 'flow'; } };
+const coverView = () => { try { return localStorage.getItem('hse-cover-view') === 'grid' ? 'grid' : 'flow'; } catch (_) { return 'flow'; } };
 function viewSwitch() {
   const v = coverView();
   return `<div class="view-switch" role="group" aria-label="How to show covers"><button type="button" data-view="flow" aria-pressed="${v === 'flow'}">Cover Flow</button><button type="button" data-view="grid" aria-pressed="${v === 'grid'}">Grid</button></div>`;
 }
 document.addEventListener('click', (e) => {
   const b = e.target.closest('.view-switch [data-view]'); if (!b) return;
-  try { localStorage.setItem('hse-covers', b.dataset.view); } catch (_) {}
+  try { localStorage.setItem('hse-cover-view', b.dataset.view); } catch (_) {}
   if (S.save || S.section) render();
 });
 // Cover Flow or the grid, with the same interface (index, go, focus, refresh)
@@ -4177,17 +4236,16 @@ async function libDetail(x, refresh) {
   x.parsed = p;
   const where = f.src === 'linked' ? f.root + '\\' + f.path.replace(/\//g, '\\') : `${LIB_SRC[f.src]}\\${f.path.replace(/\//g, '\\')}`;
   const canPut = !p.error && (s.whole || s.buildOnly || s.shipOnly);
-  const acts = [['Close', 'close', 'ghost']];
-  if (f.src !== 'library') acts.push(['Copy to Ship storage', 'copy']);
-  if (APP && !p.error && s.type === 'Corvette' && p.objects) acts.push(['Render with Blender', 'render']);
-  acts.push(['Show in folder', 'reveal']);
-  if (f.src !== 'linked') acts.push(['Delete', 'delete', 'danger']);
-  if (!p.error && p.ship && p.objects) acts.push(['Save as .nmsship', 'nmsship']);
-  if (!p.error && p.ship) acts.push(['Save as .so', 'so']);
-  if (APP && m.link) acts.push(['Get art from the link', 'meta']);
-  if (canPut && S.save) acts.push([s.buildOnly ? 'Put on a corvette…' : s.shipOnly ? 'Put on a corvette…' : 'Put in this save…', 'put', 'primary']);
-  const shown = dialog(s.name, `<div class="lib-detail">
-      <div class="tc lib-art"><div class="tc-art"></div></div>
+  // actions sit under the picture in groups: using the ship, its picture, exporting, the file itself
+  const groups = [
+    ['Use', [canPut && S.save && [s.buildOnly || s.shipOnly ? 'Put on a corvette…' : 'Put in this save…', 'put', 'primary'], f.src !== 'library' && ['Copy to Ship storage', 'copy']]],
+    ['Picture', [APP && !p.error && s.type === 'Corvette' && p.objects && ['Render with Blender', 'render'], APP && m.link && ['Get art from the link', 'meta']]],
+    ['Export', [!p.error && p.ship && p.objects && ['.nmsship', 'nmsship'], !p.error && p.ship && ['.so', 'so']]],
+    ['File', [['Show in folder', 'reveal'], f.src !== 'linked' && ['Delete', 'delete', 'danger-text']]],
+  ].map(([t, l]) => [t, l.filter(Boolean)]).filter(([, l]) => l.length);
+  const actsHtml = `<div class="ld-acts">${groups.map(([t, l]) => `<div class="ld-grp"><span class="k">${t}</span><div class="ld-btns">${l.map(([lb, v, cls]) => `<button type="button" class="btn small ${cls || ''}" data-ld="${v}">${lb}</button>`).join('')}</div></div>`).join('')}</div>`;
+  const shown = customDialog({ title: s.name, actions: [], wire: (body, finish) => body.querySelectorAll('[data-ld]').forEach((b) => b.onclick = () => finish(b.dataset.ld)), html: `<div class="lib-detail">
+      <div class="ld-left"><div class="tc lib-art"><div class="tc-art"></div></div>${actsHtml}</div>
       <div class="lib-info">
         <p>${esc([s.type, s.cls && s.cls + ' class', s.parts && plural(s.parts, 'part')].filter(Boolean).join(', ') || s.error || '')}${s.format ? ` <span class="dim">· ${esc(s.format)}</span>` : ''}</p>
         <p class="dim mono lib-path">${esc(where)}</p>${m.author || m.desc ? `<p class="lib-by">${m.author ? `By <b>${esc(m.author)}</b>` : ''}${m.desc ? `<span class="dim">${esc(m.desc)}</span>` : ''}</p>` : ''}
@@ -4196,7 +4254,7 @@ async function libDetail(x, refresh) {
         <label class="field"><span>Tags (separate with commas)</span><input class="input" id="ldTags" value="${esc((m.tags || []).join(', '))}"></label>
         <label class="field"><span>Link (Charon, NMA or anywhere)</span><span class="row-in"><input class="input" id="ldLink" type="url" placeholder="https://" value="${esc(m.link || '')}">${m.link ? `<a class="btn small" href="${esc(m.link)}" target="_blank" rel="noopener">Open</a>` : ''}</span></label>
         <label class="field"><span>Notes</span><textarea class="input" id="ldNotes" rows="3">${esc(m.notes || '')}</textarea></label>
-      </div></div>`, acts);
+      </div></div>` });
   if (!p.error) { const art = $('#dlgBody .lib-art'); if (art) miniCover(art, libCoverItem(f, p, s), 300); }
   const v = await shown;
   // keep whatever was typed, whichever button closed the dialog
@@ -4574,7 +4632,7 @@ function shipSlotsPanel(el) {
     }).join('')}</div>
     ${archivedHtml()}
     <div class="toolbar"><button class="btn" type="button" id="slotsPack"${list.some((s, i) => !slotHasShip(s) && list.slice(i).some(slotHasShip)) ? '' : ' disabled'}>Close the gaps</button></div>
-    ${issues.length ? `<div class="slot-issues"><h3>Problems</h3><ul>${issues.map(([t, fixes], k) => `<li><span class="sw-ic"></span><span>${esc(t)}</span><span class="fixes">${fixes.map(([l, , cls], f) => `<button class="btn small${cls ? ' ' + cls : ''}" type="button" data-fix="${k}:${f}">${esc(l)}</button>`).join('')}</span></li>`).join('')}</ul></div>` : '<p class="dim ed-note slots-ok">Every slot checks out: each corvette has one build, and no build points at the wrong slot.</p>'}`;
+    ${issues.length ? `<div class="slot-issues"><h3>Problems</h3><ul>${issues.map(([t, fixes], k) => `<li><span class="sw-ic"></span><span>${esc(t)}</span><span class="fixes">${fixes.map(([l, , cls], f) => `<button class="btn small${cls ? ' ' + cls : ''}" type="button" data-fix="${k}:${f}">${esc(l)}</button>`).join('')}</span></li>`).join('')}</ul></div>` : '<p class="dim ed-note slots-ok" data-keep>Every slot checks out: each corvette has one build, and no build points at the wrong slot.</p>'}`;
   el.appendChild(d);
   d.ontoggle = () => { SL.open = d.open; };
   const done = (msg) => { SL.pick = null; renderSide(); toast(msg); render(); requestAnimationFrame(() => { const x = $('#shipSlots'); if (x) x.open = true; }); };
@@ -4613,7 +4671,8 @@ PAGES.shipwright = (el) => {
     return `<button type="button" class="sw-corv${i === W.slot ? ' on' : ''}" data-i="${i}"><span class="sw-dot ${worst}"></span><span><b>${esc(str(g(s, 'Name')) || 'Corvette')}</b><span class="dim">Slot ${i + 1} · ${plural(h.objs.length, 'part')}</span></span></button>`;
   }).join('')}</div>${probs.length ? `<div class="sw-probs">${probs.map((t) => `<p class="bad-hint">${esc(t)}</p>`).join('')}<button class="btn small" type="button" id="swFixSlots">Fix in Ship slots</button></div>` : ''}
     <div class="sw-side-acts"><button class="btn primary" type="button" id="swAdd">Add corvette</button><button class="btn danger" type="button" id="swDel">Delete corvette</button></div>
-    <p class="dim sw-tip">Add corvette puts a starter build in an empty slot for you to paste over. Finished corvettes from files go in through the Dock Yard.</p>`;
+`;
+  side.querySelector('h3').insertAdjacentHTML('beforeend', ' ' + hint('Add corvette puts a starter build in an empty slot for you to paste over. Finished corvettes from files go in through the Dock Yard.'));
   wrap.appendChild(side);
   side.querySelectorAll('[data-i]').forEach((b) => b.onclick = () => { W.slot = +b.dataset.i; W.sel = new Set(); render(); });
   $('#swAdd', side).onclick = doAdd;
@@ -5012,7 +5071,7 @@ PAGES.bases = (el) => {
   if (B.pick == null || !list.some((x) => x.i === B.pick)) B.pick = list.length ? list[0].i : null;
   const { main } = listDetail(el, { title: 'Bases', pick: String(B.pick), onPick: (k) => { B.pick = +k; render(); }, empty: 'No bases in this save.',
     items: list.map(({ b, i }) => ({ key: String(i), name: baseLabel(b), sub: (BASE_KINDS[str(g(b, 'BaseType', 'PersistentBaseTypes'))] || humanize(str(g(b, 'BaseType', 'PersistentBaseTypes')))) + ' · ' + plural((g(b, 'Objects') || []).length, 'part') })),
-    extra: '<p class="dim sw-tip">Corvette builds are bases too; they are in Shipwright.</p>' });
+    extra: '<p class="dim ed-note">Corvette builds are bases too; they are in Shipwright.</p>' });
   if (B.pick == null) return;
   const b = g(ps(), 'PersistentPlayerBases')[B.pick], kind = str(g(b, 'BaseType', 'PersistentBaseTypes')), objs = g(b, 'Objects') || [];
   const at = Place.fromPacked(g(b, 'GalacticAddress')), code = at ? Place.portal(at) : '';
@@ -5068,18 +5127,33 @@ PAGES.bases = (el) => {
   };
 };
 const SETTLE_STATS = ['Max population', 'Happiness', 'Production', 'Upkeep', 'Sentinels', 'Debt', 'Alert', 'Bug attacks'];   // GcSettlementStatType
+// Settlements you run can be edited; ones you've only visited belong to other players, so they're shown, never changed.
 function settlementsEditor(el, B, list, me) {
-  const mine = (s) => me && str(g(s, 'Owner', 'UID')) === me;
-  list = list.slice().sort((a, b) => (mine(b.s) - mine(a.s)) || str(g(a.s, 'Name')).localeCompare(str(g(b.s, 'Name'))));
-  if (B.set == null || !list.some((x) => x.i === B.set)) B.set = list.length ? list[0].i : null;
-  const { main } = listDetail(el, { title: 'Settlements', pick: String(B.set), onPick: (k) => { B.set = +k; render(); }, empty: 'No settlements in this save.',
-    items: list.map(({ s, i }) => ({ key: String(i), name: str(g(s, 'Name')) || 'Unnamed settlement', sub: (mine(s) ? 'Yours' : 'Visited' + (str(g(s, 'Owner', 'USN')) ? ', run by ' + str(g(s, 'Owner', 'USN')) : '')), dot: mine(s) ? 'ok' : '' })) });
+  const mine = (s) => !!me && str(g(s, 'Owner', 'UID')) === me;
+  list = list.slice().sort((a, b) => str(g(a.s, 'Name')).localeCompare(str(g(b.s, 'Name'))));
+  const owned = list.filter((x) => mine(x.s)), visited = list.filter((x) => !mine(x.s));
+  if (!B.setTab) B.setTab = 'owned';
+  el.insertAdjacentHTML('beforeend', `<div class="view-switch set-switch" role="tablist" aria-label="Settlements"><button type="button" data-st-tab="owned" aria-pressed="${B.setTab === 'owned'}">Owned <span class="n">${owned.length}</span></button><button type="button" data-st-tab="visited" aria-pressed="${B.setTab === 'visited'}">Visited <span class="n">${visited.length}</span></button></div>`);
+  el.querySelectorAll('[data-st-tab]').forEach((b) => b.onclick = () => { B.setTab = b.dataset.stTab; B.set = null; render(); });
+  const cur = B.setTab === 'owned' ? owned : visited;
+  if (B.setTab === 'owned' && !owned.length) { el.insertAdjacentHTML('beforeend', `<div class="panel"><p style="margin:0">You don't run a settlement in this save.</p><p class="dim" style="margin:6px 0 0">${visited.length ? `The ${plural(visited.length, 'settlement')} you've visited ${visited.length === 1 ? 'is' : 'are'} under Visited, to look at only: they belong to other players.` : 'Become a settlement overseer in the game and it shows here.'}</p></div>`); return; }
+  if (B.set == null || !cur.some((x) => x.i === B.set)) B.set = cur.length ? cur[0].i : null;
+  const { main } = listDetail(el, { title: B.setTab === 'owned' ? 'Your settlements' : 'Visited', pick: String(B.set), onPick: (k) => { B.set = +k; render(); }, empty: 'No settlements here.',
+    items: cur.map(({ s, i }) => ({ key: String(i), name: str(g(s, 'Name')) || 'Unnamed settlement', sub: mine(s) ? 'Yours' : (str(g(s, 'Owner', 'USN')) ? 'Run by ' + str(g(s, 'Owner', 'USN')) : 'Visited'), dot: mine(s) ? 'ok' : '' })) });
   if (B.set == null) return;
   const s = g(ps(), 'SettlementStatesV2')[B.set], stats = g(s, 'Stats') || [], perks = g(s, 'Perks') || [];
   const at = Place.fromPacked(g(s, 'UniverseAddress')), code = at ? Place.portal(at) : '';
   const perkInfo = (id) => (S.db && S.db.perks && S.db.perks.get(id)) || null;
+  if (!mine(s)) {   // look, don't touch
+    main.innerHTML = `<div class="panel sw-bar"><div class="sw-title"><b>${esc(str(g(s, 'Name')) || 'Unnamed settlement')}</b><span class="dim">${str(g(s, 'Owner', 'USN')) ? 'Run by ' + esc(str(g(s, 'Owner', 'USN'))) : 'Another player\'s settlement'} · view only</span></div>
+        <dl class="ro-grid"><div><dt>Population</dt><dd>${num(g(s, 'Population'))}</dd></div><div><dt>Race</dt><dd>${esc(raceLabel(str(g(s, 'Race', 'AlienRace'))))}</dd></div></dl>
+        ${at ? `<div class="base-where"><span class="k">Where</span>${glyphRow(code, 'small')}<span class="mono">${code}</span><span class="dim">${esc(GALAXIES[at.gi] || '')}${at.planet ? ', planet ' + at.planet : ''}</span><button class="link" type="button" id="sCoords">Open in Coordinates</button></div>` : ''}</div>
+      <div class="panel"><h3>Settlement stats</h3><dl class="ro-grid">${SETTLE_STATS.map((l, k) => k < stats.length ? `<div><dt>${l}</dt><dd>${num(stats[k])}</dd></div>` : '').join('')}</dl></div>
+      <div class="panel"><h3>Perks</h3>${perks.length ? `<ul class="perks">${perks.map((id) => { const pi = perkInfo(str(id)); return `<li class="${pi && pi.negative ? 'neg' : ''}"><span><b>${esc(pi ? pi.name : str(id).replace(/^\^/, ''))}</b>${pi && pi.desc ? `<span class="dim">${esc(pi.desc)}</span>` : ''}</span></li>`; }).join('')}</ul>` : '<p class="dim">No perks.</p>'}</div>`;
+    const co = $('#sCoords', main); if (co) co.onclick = () => { S.coords = { p: { ...at }, digits: code }; go('coords'); };
+    return;
+  }
   main.innerHTML = `<div class="panel sw-bar"><div class="sw-title"><b>${esc(str(g(s, 'Name')) || 'Unnamed settlement')}</b><span class="dim">${mine(s) ? 'Your settlement' : 'Visited'}${str(g(s, 'Owner', 'USN')) && !mine(s) ? ', run by ' + esc(str(g(s, 'Owner', 'USN'))) : ''}</span></div>
-      ${mine(s) ? '' : '<p class="dim ed-note">Someone else runs this settlement, so changes here only affect your own copy of it.</p>'}
       <div class="details-grid">
         <label class="field wide"><span>Name</span><input class="input" id="sName" maxlength="63" value="${esc(str(g(s, 'Name')))}"></label>
         <label class="field"><span>Population</span><input class="input mono" id="sPop" inputmode="numeric" value="${num(g(s, 'Population'))}"></label>

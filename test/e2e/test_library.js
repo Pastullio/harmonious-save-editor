@@ -17,7 +17,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1440, height: 1000 } });
   const errs = []; p.on('pageerror', (e) => errs.push(e.message));
   const apiJ = (u, opts) => p.evaluate(async ([u, opts]) => (await api(u, opts)).json(), [u, opts]);
-  await p.goto(url); await p.evaluate(() => localStorage.setItem('hse-covers', 'grid'));   /* these checks use the grid of cards; Cover Flow is covered in test_add.js */
+  await p.goto(url); await p.evaluate(() => localStorage.setItem('hse-cover-view', 'grid'));   /* these checks use the grid of cards; Cover Flow is covered in test_add.js */
   await p.waitForSelector('.slot-row'); await p.click('.slot-row'); await p.waitForSelector('#app:not(.hidden)');
   ok('the Dock Yard is announced: New in the menu and a spotlight on the Overview', !!(await p.$('nav [data-s="library"] .new-pill')) && !!(await p.$('.dy-spot')));
   p.on('console', (m) => { if (m.type() === 'warning' || m.type() === 'error') console.log('console:', m.text()); });
@@ -74,10 +74,11 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.click('.dy-tabs [data-v="library"]'); await p.waitForSelector('.lib-card'); await p.waitForTimeout(500);
   const firstLib = (await p.$$('.lib-card'))[1]; ok('the card is The Cutting Remark', /The Cutting Remark/.test(await firstLib.textContent()));
   await firstLib.click(); await p.waitForSelector('#dlg[open] .lib-detail');
-  ok('corvettes can be rendered from the Dock Yard', await p.$$eval('#dlgActs button', (b) => b.some((x) => x.textContent === 'Render with Blender')));
+  ok('corvettes can be rendered from the Dock Yard', await p.$$eval('.lib-detail [data-ld]', (b) => b.some((x) => x.textContent === 'Render with Blender')));
+  ok('the card\'s actions are grouped under the picture', (await p.$$eval('.ld-grp .k', (x) => x.map((e) => e.textContent))).join() === 'Use,Picture,Export,File' && (await p.$$('#dlgActs:not([hidden]) button')).length === 0);
   await p.fill('#ldTags', 'favourite, combat'); await p.check('#ldFav'); await p.waitForTimeout(600);
   await p.screenshot({ path: SP + '/shots/lib1-detail.png' });
-  await p.click('#dlgActs .btn.primary'); await p.waitForSelector('#putSlot');
+  await p.click('.lib-detail [data-ld="put"]'); await p.waitForSelector('#putSlot');
   const slotOpts = await p.$$eval('#putSlot option', (o) => o.map((x) => x.textContent + (x.disabled ? ' (disabled)' : '')));
   console.log(slotOpts);
   ok('the current ship cannot be replaced', slotOpts.some((t) => /current ship.*disabled/.test(t)));
@@ -119,7 +120,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.click('.dy-sub [data-v="linked"]'); await p.waitForTimeout(800);
   const cards = await p.$$('.lib-card'); let target;
   for (const c of cards) if (/just the build/.test(await c.textContent())) target = c;
-  await target.click(); await p.waitForSelector('#dlg[open] .lib-detail'); await p.click('#dlgActs .btn.primary'); await p.waitForSelector('#putSlot');
+  await target.click(); await p.waitForSelector('#dlg[open] .lib-detail'); await p.click('.lib-detail [data-ld="put"]'); await p.waitForSelector('#putSlot');
   const bopts = await p.$$eval('#putSlot option', (o) => o.map((x) => x.value + ':' + x.textContent)); console.log(bopts);
   ok('a build can only go on corvettes', bopts.length === (taz ? 6 : 5));
   await p.selectOption('#putSlot', '4'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(300);
@@ -129,7 +130,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const garageBefore = fs.readdirSync(path.join(lib, 'Garage')).length;
   await p.click('.dy-tabs [data-v="garage"]'); await p.waitForTimeout(800);
   await p.click('.lib-card'); await p.waitForSelector('#dlg[open] .lib-detail');
-  await p.click('#dlgActs .btn.danger'); await p.waitForSelector('#dlg[open]'); await p.click('#dlgActs .btn.danger'); await p.waitForTimeout(800);
+  await p.click('.lib-detail [data-ld="delete"]'); await p.waitForSelector('#dlg[open]'); await p.click('#dlgActs .btn.danger'); await p.waitForTimeout(800);
   ok('delete moves the file to Deleted', fs.readdirSync(path.join(lib, 'Garage')).length === garageBefore - 1 && fs.readdirSync(path.join(lib, 'Deleted')).length === 1);
   // save, reopen, check
   await p.click('#saveBtn'); await p.waitForFunction(() => !S.dirty, null, { timeout: 30000 }).catch(() => {});
