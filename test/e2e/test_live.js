@@ -46,23 +46,45 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   // Blender
   const py = path.join(SP, 'bpyenv/bin/python');
   // (bpy as a module reports leaked memory and a non-zero status on exit; only its output matters here)
-  const outp = spawnSync(py, [path.join(__dirname, 'live_blender.py'), path.join(__dirname, '../../desktop/addon'), SP + '/live_build.json', SP + '/live_test.blend'],
-    { env: { ...process.env, HSE_LIVE_FILE: liveFile }, encoding: 'utf8', timeout: 300000 }).stdout.split('\n').filter((l) => /^(PANEL|LINK|SEND|SAVE|BASEBUILDER|NOBUILDER|SCENE) /.test(l));
+  // Blender runs alongside: the editor asks twice (a .blend with no corvette set; a .blend set to another corvette)
+  let stdout = '';
+  const bp = spawn(py, ['-u', path.join(__dirname, 'live_blender.py'), path.join(__dirname, '../../desktop/addon'), SP + '/live_build.json', SP + '/live_test.blend'], { env: { ...process.env, HSE_LIVE_FILE: liveFile } });
+  bp.stdout.on('data', (d) => { stdout += d; process.stdout.write('[bpy] ' + d); }); let stderr = ''; bp.stderr.on('data', (d) => { stderr += d; });
+  const bpDone = new Promise((r) => bp.on('exit', r));
+  await p.waitForSelector('#dlg[open]', { timeout: 120000 });
+  const askT = await p.textContent('#dlgTitle');
+  ok('a .blend with no corvette set: the editor asks before writing', new RegExp('Put this build in ' + info.toName).test(askT));
+  await p.screenshot({ path: SP + '/shots/live-ask.png' });
+  await p.click('#dlgActs .btn.primary');   // Yes, put it in …
+  await p.waitForSelector('#dlg:not([open])', { state: 'attached' });
+  await p.waitForSelector('#dlg[open]', { timeout: 120000 }).catch(() => { console.log(stdout, stderr.split('\n').filter((l) => !/leak|Freeing|Error: Not freed/.test(l)).slice(-30).join('\n')); });
+  const whichT = await p.textContent('#dlgTitle'), whichB = await p.textContent('#dlgBody');
+  ok('a .blend set to another corvette: the editor asks which one', /Which corvette\?/.test(whichT) && whichB.includes(info.toName));
+  await p.screenshot({ path: SP + '/shots/live-which.png' });
+  const diskBefore = await p.evaluate((i) => g(shipBuild(i), 'Objects').length, info.to);
+  await p.click('#dlgActs .btn.ghost');   // Don't write
+  await Promise.race([bpDone, new Promise((r) => setTimeout(r, 120000))]);
+  const outp = stdout.split('\n').filter((l) => /^(PANEL|LINK|SEND|SAVE|BASEBUILDER|NOBUILDER|SCENE|ASK|TARGET|CORVETTES|MISMATCH|POPUPERR|WARNED) /.test(l));
   console.log(outp.join('\n'));
   ok('the add-on registers its panel', outp.some((l) => l === 'PANEL True'));
   ok('the Base Builder add-on\'s serialise() (no arguments) is read too', outp.includes('BASEBUILDER Base Builder True'));
   ok('without a builder add-on, the parts are read from the scene (Z-up to Y-up)', outp.includes('SCENE the scene ^B_COK_D [1.0, 3.0, -2.0] [0.0, 0.0, -1.0]'));
   ok('with nothing to read, it says what is missing', outp.some((l) => /^NOBUILDER No build to send: .*no build parts/.test(l)));
   ok('Blender sees it is linked, and to which corvette', outp.some((l) => l.startsWith('LINK on ') && l.includes(info.toName)));
+  ok('Blender gets the save\'s corvette list', outp.some((l) => /^CORVETTES [2-9]\d* /.test(l) || /^CORVETTES \d{2,} /.test(l)));
+  ok('after "Yes", it is written', outp.some((l) => l.startsWith('ASK') && /written to/.test(l)));
+  ok('the panel\'s list sets the corvette for this .blend', outp.some((l) => l === `TARGET ${info.to} ${info.toName}`));
+  ok('switching corvettes in the add-on warns that LiveLink is on for another one', outp.some((l) => l.startsWith('WARNED LiveLink in the editor is on for ' + info.toName)));
+  ok('"Don\'t write" leaves the save alone and Blender says why', outp.some((l) => l.startsWith('MISMATCH') && /Not written/.test(l)) && await p.evaluate(([i, n]) => g(shipBuild(i), 'Objects').length === n, [info.to, diskBefore]));
   ok('Send now: the build is written to the corvette', outp.some((l) => l.startsWith('SEND') && new RegExp(`${info.n.toLocaleString()} parts written to ${info.toName}.*backed up`).test(l)));
   ok('saving the .blend sends it again', outp.some((l) => l.startsWith('SAVE') && /written to/.test(l)));
   const backupsAfter = countBackups();
-  ok('each write is backed up', backupsAfter >= backupsBefore + 2);
+  ok('each write is backed up', backupsAfter >= backupsBefore + 3);
   await p.waitForTimeout(500);
   await p.waitForSelector('#liveBlender.ok', { timeout: 8000 }).catch(() => {});
   ok('the editor shows Blender is linked', /Blender is linked/.test(await p.textContent('#liveBlender')));
-  ok('a card says the build arrived, whatever page you are on', await p.$eval('#liveNote', (e) => !e.hidden && /Build received from Blender/.test(e.textContent) && /written to the game/i.test(e.textContent)));
-  ok('the LiveLink panel shows the last build', /written to the game/.test(await p.textContent('#swLive .live-last')));
+  ok('a card says what happened to the last build (not written), whatever page you are on', await p.$eval('#liveNote', (e) => !e.hidden && /Not written/.test(e.textContent)));
+  ok('the LiveLink panel shows the last build', /Not written/.test(await p.textContent('#swLive .live-last')));
   await p.screenshot({ path: SP + '/shots/live-landed.png' });
   ok('the editor lists what arrived', (await p.$$('#swLive .live-log li')).length >= 2);
   await p.screenshot({ path: SP + '/shots/live-log.png' });

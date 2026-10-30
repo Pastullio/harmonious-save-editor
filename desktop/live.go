@@ -31,14 +31,16 @@ var (
 	liveToken string
 	live      = struct {
 		sync.Mutex
-		armed   bool
-		target  string
-		seen    time.Time      // the page's last poll; a closed page stops being "armed"
-		blender time.Time      // the add-on's last check-in
-		file    string         // the .blend it's working on
-		next    chan liveBuild // builds waiting for the page
-		waiting map[int]chan liveResult
-		id      int
+		armed     bool
+		target    string
+		slot      int
+		corvettes json.RawMessage // [{slot, name}] in the open save, for the add-on's corvette list
+		seen      time.Time       // the page's last poll; a closed page stops being "armed"
+		blender   time.Time       // the add-on's last check-in
+		file      string          // the .blend it's working on
+		next      chan liveBuild  // builds waiting for the page
+		waiting   map[int]chan liveResult
+		id        int
 	}{next: make(chan liveBuild, 1), waiting: map[int]chan liveResult{}}
 )
 
@@ -48,9 +50,10 @@ type liveBuild struct {
 }
 
 type liveResult struct {
-	ID      int    `json:"id"`
-	OK      bool   `json:"ok"`
-	Message string `json:"message"`
+	ID      int             `json:"id"`
+	OK      bool            `json:"ok"`
+	Message string          `json:"message"`
+	Target  json.RawMessage `json:"target,omitempty"` // {slot, name}: the corvette this .blend goes to, for the add-on to keep
 }
 
 // writes live.json so the Blender add-on can find this run of the editor
@@ -72,15 +75,20 @@ func liveArmed() (bool, string) {
 // POST from the page: {armed, target}
 func handleLiveArm(w http.ResponseWriter, r *http.Request) {
 	var v struct {
-		Armed  bool   `json:"armed"`
-		Target string `json:"target"`
+		Armed     bool            `json:"armed"`
+		Target    string          `json:"target"`
+		Slot      int             `json:"slot"`
+		Corvettes json.RawMessage `json:"corvettes"`
 	}
-	if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&v); err != nil {
+	if err := json.NewDecoder(io.LimitReader(r.Body, 64<<10)).Decode(&v); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	live.Lock()
-	live.armed, live.target, live.seen = v.Armed, v.Target, time.Now()
+	live.armed, live.target, live.slot, live.seen = v.Armed, v.Target, v.Slot, time.Now()
+	if len(v.Corvettes) > 0 {
+		live.corvettes = v.Corvettes
+	}
 	live.Unlock()
 	writeJSON(w, map[string]bool{"ok": true})
 }
@@ -132,7 +140,13 @@ func handleLiveBuild(w http.ResponseWriter, r *http.Request) {
 		live.blender, live.file = time.Now(), r.URL.Query().Get("file")
 		live.Unlock()
 		armed, target := liveArmed()
-		writeJSON(w, map[string]any{"ok": true, "armed": armed, "target": target, "version": appVersion})
+		live.Lock()
+		slot, corvettes := live.slot, live.corvettes
+		live.Unlock()
+		if corvettes == nil {
+			corvettes = json.RawMessage("[]")
+		}
+		writeJSON(w, map[string]any{"ok": true, "armed": armed, "target": target, "slot": slot, "corvettes": corvettes, "version": appVersion})
 		return
 	}
 	if r.Method != http.MethodPost {

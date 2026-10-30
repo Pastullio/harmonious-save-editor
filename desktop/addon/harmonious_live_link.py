@@ -56,7 +56,7 @@ def editor_address():
 # ---------------------------------------------------------------- is the editor linked?
 # Every few seconds the add-on asks the editor whether LiveLink is on and for which corvette; the panel shows it,
 # and the editor sees Blender check in.
-LINK = {"state": "none", "target": ""}   # none: editor not running; off: running, LiveLink off; on: linked
+LINK = {"state": "none", "target": "", "slot": -1, "corvettes": []}   # none: editor not running; off: running, LiveLink off; on: linked
 
 
 def check_link_now():
@@ -70,7 +70,8 @@ def check_link_now():
         req = urllib.request.Request(url + "?" + q, headers={"X-Live-Token": token})
         with urllib.request.urlopen(req, timeout=3) as res:
             info = json.loads(res.read().decode("utf-8"))
-        LINK.update(state="on" if info.get("armed") else "off", target=info.get("target") or "")
+        LINK.update(state="on" if info.get("armed") else "off", target=info.get("target") or "",
+                    slot=int(info.get("slot", -1)), corvettes=info.get("corvettes") or LINK["corvettes"])
     except (urllib.error.URLError, OSError, ValueError):
         LINK.update(state="none", target="")
 
@@ -191,8 +192,11 @@ def send(scene):
     except Exception as error:  # noqa: BLE001 - whatever the builder raises, show it
         set_status(str(error))
         return
-    body = json.dumps({"objects": objects, "name": os.path.splitext(os.path.basename(bpy.data.filepath))[0],
-                       "file": bpy.data.filepath, "source": source}).encode("utf-8")
+    payload = {"objects": objects, "name": os.path.splitext(os.path.basename(bpy.data.filepath))[0],
+               "file": bpy.data.filepath, "source": source}
+    if scene.harmonious_target_slot >= 0:   # the corvette this .blend is for; the editor won't write anywhere else unasked
+        payload["target"] = {"slot": scene.harmonious_target_slot, "name": scene.harmonious_target_name}
+    body = json.dumps(payload).encode("utf-8")
     url, token = addr
     STATE["busy"] = True
     set_status("Sending %d parts..." % len(objects))
@@ -204,14 +208,24 @@ def send(scene):
             with urllib.request.urlopen(req, timeout=120) as res:
                 answer = json.loads(res.read().decode("utf-8"))
             text = answer.get("message") or ("Sent" if answer.get("ok") else "The editor didn't take the build")
+            if answer.get("ok") and isinstance(answer.get("target"), dict):
+                STATE["target"] = answer["target"]   # the editor confirmed the corvette: this .blend remembers it
         except (urllib.error.URLError, OSError, ValueError) as error:
             text = "Couldn't reach Harmonious Save Editor: %s" % error
         STATE["status"] = text
         STATE["busy"] = False
-        # redraw the panel from Blender's main thread
-        bpy.app.timers.register(lambda: (set_status(text), None)[1], first_interval=0.01)
+        # back on Blender's main thread: remember the corvette in the scene (saved with the .blend) and redraw
+        bpy.app.timers.register(lambda: (apply_answer(), set_status(text), None)[2], first_interval=0.01)
 
     threading.Thread(target=worker, daemon=True).start()
+
+
+def apply_answer():
+    t = STATE.pop("target", None)
+    scene = bpy.context.scene
+    if t and scene is not None:
+        scene.harmonious_target_slot = int(t.get("slot", -1))
+        scene.harmonious_target_name = t.get("name", "")
 
 
 @persistent
@@ -230,6 +244,48 @@ class HARMONIOUS_OT_send(bpy.types.Operator):
 
     def execute(self, context):
         send(context.scene)
+        return {"FINISHED"}
+
+
+def switch_warning(armed, name):
+    return ["LiveLink in the editor is on for %s." % armed,
+            "Turn it on for %s in Shipwright," % name,
+            "or the editor will ask before writing to it."]
+
+
+_TARGET_ITEMS = []   # kept alive: Blender needs the enum items to outlive the callback
+
+
+def target_items(self, context):
+    _TARGET_ITEMS.clear()
+    _TARGET_ITEMS.append(("-1|", "Not set", "This file isn't set to a corvette yet"))
+    for c in LINK["corvettes"]:
+        _TARGET_ITEMS.append(("%d|%s" % (c["slot"], c["name"]), "%s (slot %d)" % (c["name"], c["slot"] + 1), ""))
+    return _TARGET_ITEMS
+
+
+class HARMONIOUS_OT_target(bpy.types.Operator):
+    bl_idname = "harmonious.live_target"
+    bl_label = "Corvette"
+    bl_description = "The corvette in your save that this .blend updates"
+    bl_property = "target"
+
+    target: bpy.props.EnumProperty(items=target_items)
+
+    def execute(self, context):
+        slot, _, name = self.target.partition("|")
+        scene = context.scene
+        scene.harmonious_target_slot, scene.harmonious_target_name = int(slot), name
+        if int(slot) >= 0 and LINK["state"] == "on" and LINK["slot"] != int(slot):
+            lines = switch_warning(LINK["target"], name)
+            STATE["warning"] = lines
+            if context.window is not None and not bpy.app.background:   # no popups when Blender runs in the background
+
+                def draw(menu, _context):
+                    for line in lines:
+                        menu.layout.label(text=line)
+                context.window_manager.popup_menu(draw, title="You switched corvettes", icon="ERROR")
+        set_status("This file now goes to %s" % name if int(slot) >= 0 else "This file isn't set to a corvette")
         return {"FINISHED"}
 
 
@@ -252,6 +308,17 @@ class HARMONIOUS_PT_live(bpy.types.Panel):
             link.label(text="Turn it on in Shipwright")
         else:
             link.label(text="Harmonious Save Editor isn't running", icon="ERROR")
+        # which corvette this .blend updates (saved in the file, so each version keeps its corvette)
+        scene = context.scene
+        col = layout.column(align=True)
+        col.label(text="This file updates:")
+        current = "%s (slot %d)" % (scene.harmonious_target_name, scene.harmonious_target_slot + 1) if scene.harmonious_target_slot >= 0 else "Choose a corvette"
+        col.operator_menu_enum(HARMONIOUS_OT_target.bl_idname, "target", text=current, icon="MOD_BUILD")
+        if scene.harmonious_target_slot >= 0 and LINK["state"] == "on" and LINK["slot"] != scene.harmonious_target_slot:
+            warn = layout.box()
+            warn.alert = True
+            warn.label(text="The editor is on for a different corvette", icon="ERROR")
+            warn.label(text="It will ask before writing")
         layout.prop(context.scene, "harmonious_live_on", text="Send on save (Ctrl+S)")
         row = layout.row()
         row.enabled = LINK["state"] == "on"
@@ -273,7 +340,7 @@ def wrap(text, width):
     return lines + ([cur] if cur else [])
 
 
-CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_PT_live)
+CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_PT_live)
 
 
 def register():
@@ -282,6 +349,8 @@ def register():
     bpy.types.Scene.harmonious_live_on = bpy.props.BoolProperty(
         name="Send on save", default=True,
         description="Send the build to Harmonious Save Editor every time this file is saved")
+    bpy.types.Scene.harmonious_target_slot = bpy.props.IntProperty(name="Corvette slot", default=-1)
+    bpy.types.Scene.harmonious_target_name = bpy.props.StringProperty(name="Corvette")
     if on_save not in bpy.app.handlers.save_post:
         bpy.app.handlers.save_post.append(on_save)
     if not bpy.app.timers.is_registered(link_timer):
@@ -294,5 +363,7 @@ def unregister():
     if on_save in bpy.app.handlers.save_post:
         bpy.app.handlers.save_post.remove(on_save)
     del bpy.types.Scene.harmonious_live_on
+    del bpy.types.Scene.harmonious_target_slot
+    del bpy.types.Scene.harmonious_target_name
     for cls in reversed(CLASSES):
         bpy.utils.unregister_class(cls)

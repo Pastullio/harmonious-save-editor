@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.30.1601",
+  "version": "2026.10.30.1638",
   "date": "2026-10-30",
-  "size": 9815040,
-  "sha256": "d15f698545bda0725f919faf22caca6528c950e789a7de62b070a957493dccb0",
-  "notes": "LiveLink: when a build arrives from Blender, a card at the top of the editor says so, and the LiveLink panel shows the last build.",
+  "size": 9822720,
+  "sha256": "7efaf42b37f7a2c3fce27126cf27d4343b4dcbca93c1375b87e61863b0d259be",
+  "notes": "LiveLink won't put a build in the wrong corvette: each .blend remembers its corvette (pick it in the Blender add-on), and the editor asks before writing anywhere else. Update the Blender add-on too.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

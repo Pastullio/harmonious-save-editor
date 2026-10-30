@@ -6470,7 +6470,7 @@ function livePanelHtml(corvs) {
   const on = LIVE.on && target;
   return `<div class="live${on ? ' on' : ''}" id="swLive"><h3>LiveLink ${hint('Save your build in Blender (Ctrl+S) and it lands on this corvette in your save, backed up first every time. Needs the Harmonious LiveLink add-on in Blender, with Charon Forge or the NMS Base Builder add-on.')}</h3>
     ${on ? `<p class="live-state"><span class="live-dot"></span>Receiving into <b>${esc(str(g(target.s, 'Name')) || 'Corvette')}</b>, slot ${target.i + 1}</p><p class="live-blender${LIVE.blender ? ' ok' : ''}" id="liveBlender">${liveBlenderText()}</p>` : '<p class="dim small-print">Off. Turn it on for the corvette you have open.</p>'}
-    ${on && LIVE.last ? `<div class="live-last${LIVE.last.ok ? '' : ' bad'}${Date.now() - LIVE.last.at < 8000 ? ' fresh' : ''}"><span class="k">Last build</span><b>${LIVE.last.ok ? `✓ ${LIVE.last.parts.toLocaleString()} parts ${LIVE.last.written ? 'written to the game' : 'put on the corvette'}` : "✗ Didn't go in"}</b><span class="dim small-print">${esc(LIVE.last.time)}${LIVE.last.file ? ' · ' + esc(blendName(LIVE.last.file)) : ''}</span></div>` : on ? '<div class="live-last waiting"><span class="k">Last build</span><span class="dim small-print">Nothing received yet. Save in Blender (Ctrl+S) or press Send now.</span></div>' : ''}
+    ${on && LIVE.last ? `<div class="live-last${LIVE.last.ok ? '' : ' bad'}${Date.now() - LIVE.last.at < 8000 ? ' fresh' : ''}"><span class="k">Last build</span><b>${LIVE.last.ok ? `✓ ${LIVE.last.parts.toLocaleString()} parts ${LIVE.last.written ? 'written to the game' : 'put on the corvette'}` : '✗ Not written'}</b>${!LIVE.last.ok && LIVE.last.message ? `<span class="small-print">${esc(LIVE.last.message)}</span>` : ''}<span class="dim small-print">${esc(LIVE.last.time)}${LIVE.last.file ? ' · ' + esc(blendName(LIVE.last.file)) : ''}</span></div>` : on ? '<div class="live-last waiting"><span class="k">Last build</span><span class="dim small-print">Nothing received yet. Save in Blender (Ctrl+S) or press Send now.</span></div>' : ''}
     ${on ? (() => { const f = liveFileOf(target.i); return `<div class="live-file"><span class="k">Blender file</span>${f ? `<b title="${esc(f.file)}">${esc(blendName(f.file))}</b>` : '<span class="dim small-print">None linked yet</span>'}<span class="live-file-acts">${f ? '<button class="link" type="button" id="liveOpen">Open in Blender</button>' : ''}<button class="link" type="button" id="livePick">${f ? 'Change' : 'Choose the .blend…'}</button></span></div>`; })() : ''}
     <label class="check"><input type="checkbox" id="liveWrite"${LIVE.write ? ' checked' : ''}> Write to the game as each build arrives</label>
     <div class="sw-side-acts"><button class="btn${on ? '' : ' primary'}" type="button" id="liveToggle">${on ? 'Turn off' : 'Turn on for this corvette'}</button><button class="btn ghost" type="button" id="liveAddon">Get the Blender add-on</button></div>
@@ -6488,7 +6488,8 @@ function wireLivePanel(side, corvs) {
 }
 async function liveArm() {
   const t = LIVE.on ? g(ps(), 'ShipOwnership')[LIVE.slot] : null;
-  await api('/api/live/arm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ armed: !!LIVE.on, target: t ? `${str(g(t, 'Name')) || 'Corvette'}, slot ${LIVE.slot + 1}` : '' }) }).catch(() => {});
+  const corvettes = S.save ? ships().filter(({ s }) => slotIsCorvette(s)).map(({ s, i }) => ({ slot: i, name: str(g(s, 'Name')) || 'Corvette' })) : [];
+  await api('/api/live/arm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ armed: !!LIVE.on, slot: LIVE.on ? LIVE.slot : -1, corvettes, target: t ? `${str(g(t, 'Name')) || 'Corvette'}, slot ${LIVE.slot + 1}` : '' }) }).catch(() => {});
 }
 function liveStart(slot) {
   LIVE.on = true; LIVE.slot = slot; liveArm(); renderSide(); toast('LiveLink on: save in Blender to send the build');
@@ -6505,7 +6506,7 @@ function liveStart(slot) {
       LIVE.log.unshift({ time, ok: res.ok, text: res.message });
       LIVE.last = { ...res, time, at: Date.now() };
       liveArrival(LIVE.last);
-      api('/api/live/result', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ok: res.ok, message: res.message }) }).catch(() => {});
+      api('/api/live/result', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ok: res.ok, message: res.message, target: res.ok ? { slot: res.slot, name: res.name } : undefined }) }).catch(() => {});
       if (S.section === 'shipwright') render();
     }
   })();
@@ -6534,6 +6535,38 @@ async function liveApply(body) {
   if (!ship || !slotIsCorvette(ship) || !base) return { ok: false, message: `Slot ${LIVE.slot + 1} isn't a corvette with a build any more. Turn LiveLink on again for the right one.` };
   const objects = body instanceof Map ? body.get('objects') : null;
   if (!Array.isArray(objects) || !objects.length || !objects.every((o) => o instanceof Map && o.get('ObjectID') != null)) return { ok: false, message: "The build from Blender has no parts the editor can read." };
+  // never put a build on the wrong corvette: the .blend says which corvette it's for (chosen in the add-on), and a
+  // build that names another one, or a .blend this corvette hasn't taken builds from, is asked about first
+  { const ok = await liveConfirmTarget(body); if (ok !== true) return ok; }
+  return liveWrite(body, objects);
+}
+async function liveConfirmTarget(body) {
+  const list = g(ps(), 'ShipOwnership') || [], ship = list[LIVE.slot], name = str(g(ship, 'Name')) || 'this corvette';
+  const from = str(body.get('file') || ''), bn = blendName(from) || 'the Blender scene';
+  const tg = body.get('target'), tSlot = tg instanceof Map ? num(tg.get('slot')) : null, tName = tg instanceof Map ? str(tg.get('name')) : '';
+  const corvs = ships().filter(({ s: x }) => slotIsCorvette(x));
+  if (tg instanceof Map && !(tSlot === LIVE.slot && tName === name)) {
+    // the .blend is set to another corvette: switch to it, or don't write
+    const want = corvs.find((c) => str(g(c.s, 'Name')) === tName && c.i === tSlot) || corvs.find((c) => str(g(c.s, 'Name')) === tName);
+    if (!want) return { ok: false, message: `${bn} is set to ${tName} (slot ${tSlot + 1}), which isn't in this save. Nothing written. Pick a corvette in the add-on's list.` };
+    const v = await dialog('Which corvette?', `<p><b>${esc(bn)}</b> is set to <b>${esc(tName)}</b> (slot ${want.i + 1}), but LiveLink is on for <b>${esc(name)}</b> (slot ${LIVE.slot + 1}).</p><p>Nothing is written until you choose.</p>`,
+      [['Don\'t write', 'no', 'ghost'], [`Switch LiveLink to ${tName}`, 'switch', 'primary']]);
+    if (v !== 'switch') return { ok: false, message: `Not written: ${bn} is set to ${tName}, but LiveLink is on for ${name}. Switch in the editor, or pick ${name} in the add-on.` };
+    LIVE.slot = want.i; if (S.wright) S.wright.slot = want.i; liveArm(); return true;
+  }
+  if (!(tg instanceof Map)) {
+    // the .blend hasn't been pointed at a corvette yet: ask, unless this corvette's builds already come from it
+    const cur = liveFileOf(LIVE.slot);
+    if (cur && from && cur.file === from) return true;
+    const v = await dialog('Put this build in ' + name + '?', `<p>A build from <b>${esc(bn)}</b> just arrived for <b>${esc(name)}</b> (slot ${LIVE.slot + 1}).</p>${cur ? `<p>${esc(name)}'s builds have come from <b>${esc(blendName(cur.file))}</b> until now.</p>` : `<p>${esc(name)} hasn't taken a build from Blender before.</p>`}<p>If you say yes, this .blend is set to ${esc(name)} so its next saves go straight in. You can change it in the add-on's corvette list.</p>`,
+      [['Don\'t write', 'no', 'ghost'], ['Yes, put it in ' + name, 'yes', 'primary']]);
+    if (v !== 'yes') return { ok: false, message: `Not written to ${name}. Pick the right corvette in the add-on's list, or turn LiveLink on for it in the editor.` };
+  }
+  return true;
+}
+async function liveWrite(body, objects) {
+  const list = g(ps(), 'ShipOwnership') || [], ship = list[LIVE.slot], base = shipBuild(LIVE.slot);
+  if (!ship || !slotIsCorvette(ship) || !base) return { ok: false, message: `Slot ${LIVE.slot + 1} isn't a corvette with a build any more.` };
   let objs = inGameOrder(fromPlain(cloneJSON(objects)), (g(base, 'Objects') || [])[0]);
   if (S.wright && S.wright.auto) objs = tunedOrder(objs);
   set(base, 'Objects', objs); markDirty();
