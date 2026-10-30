@@ -42,6 +42,7 @@ var (
 	byeAt    atomic.Int64 // unix ms the page said goodbye (0 = not)
 	appDir   string
 	backups  string
+	srvRef   *http.Server
 	roots    []string
 )
 
@@ -58,6 +59,7 @@ func main() {
 		log.SetOutput(io.MultiWriter(f, os.Stderr))
 	}
 
+	cleanOldVersion()
 	roots = defaultRoots()
 	if *rootFlag != "" {
 		roots = []string{*rootFlag}
@@ -107,10 +109,13 @@ func main() {
 	mux.HandleFunc("/api/ships/folders", handleShipFolders)
 	mux.HandleFunc("/api/covers/custom", handleCustomCover)
 	mux.HandleFunc("/api/linkmeta", handleLinkMeta)
+	mux.HandleFunc("/api/update", handleUpdate)
+	mux.HandleFunc("/api/update/install", handleUpdateInstall)
 	mux.HandleFunc("/api/itemdb/items.xml", handleItemXML)
 	mux.HandleFunc("/api/itemdb/icon", handleItemIcon)
 
 	srv := &http.Server{Handler: guard(addr, mux), ReadHeaderTimeout: 10 * time.Second}
+	srvRef = srv
 	go func() {
 		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			fatal("The editor stopped unexpectedly: " + err.Error())
@@ -176,7 +181,7 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	inject := fmt.Sprintf(`<script>window.NMS_APP = {token: %q, version: "1"};</script>`, token)
+	inject := fmt.Sprintf(`<script>window.NMS_APP = {token: %q, version: %q};</script>`, token, appVersion)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	io.WriteString(w, strings.Replace(indexHTML, "<!--@@APP@@-->", inject, 1))
 }

@@ -17,7 +17,8 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1440, height: 1000 } });
   const errs = []; p.on('pageerror', (e) => errs.push(e.message));
   const apiJ = (u, opts) => p.evaluate(async ([u, opts]) => (await api(u, opts)).json(), [u, opts]);
-  await p.goto(url); await p.waitForSelector('.slot-row'); await p.click('.slot-row'); await p.waitForSelector('#app:not(.hidden)');
+  await p.goto(url); await p.evaluate(() => localStorage.setItem('hse-covers', 'grid'));   /* these checks use the grid of cards; Cover Flow is covered in test_add.js */
+  await p.waitForSelector('.slot-row'); await p.click('.slot-row'); await p.waitForSelector('#app:not(.hidden)');
   ok('the Dock Yard is announced: New in the menu and a spotlight on the Overview', !!(await p.$('nav [data-s="library"] .new-pill')) && !!(await p.$('.dy-spot')));
   p.on('console', (m) => { if (m.type() === 'warning' || m.type() === 'error') console.log('console:', m.text()); });
   const lib = path.join(home, 'Documents', 'Harmonious Save Editor', 'Dock Yard');

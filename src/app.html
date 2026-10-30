@@ -710,6 +710,11 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); opacity: 0; background: var(--ink); color: var(--bg); padding: 11px 20px; border-radius: 999px; transition: .2s; pointer-events: none; z-index: 40; max-width: 90vw; box-shadow: 0 10px 30px rgba(0, 0, 0, .25); }
 #toast.show { opacity: 1; transform: translateX(-50%); }
 #toast.bad { background: var(--danger); color: #fff; }
+#dlg { position: fixed; }
+.dlg-x { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 50%; border: 0; background: none; color: var(--dim); font-size: 22px; line-height: 1; cursor: pointer; z-index: 2; }
+.dlg-x:hover { background: var(--hover); color: var(--ink); }
+#dlgTitle { padding-right: 40px; }
+#dlgActs[hidden] { display: none; }
 dialog { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 26px; max-width: 540px; width: calc(100% - 32px); box-shadow: 0 30px 80px rgba(5, 30, 40, .35); }
 dialog::backdrop { background: rgba(6, 30, 40, .45); backdrop-filter: blur(2px); }
 dialog h3 { font-size: 18px; margin-bottom: 8px; }
@@ -729,6 +734,22 @@ dialog.wide { max-width: 1000px; }
 .crop .zoom input { flex: 1; }
 
 /* ---------------- Cover Flow (the stage is always night sky, like the banner's Sky preview) */
+.arch { margin-top: 18px; }
+.arch h3 { font-size: 13px; letter-spacing: .18em; text-transform: uppercase; font-weight: 500; margin: 0 0 8px; }
+.arch-list { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px; }
+.arch-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 12px; border-radius: var(--r-sm); background: var(--well); }
+.arch-list .fixes { display: flex; gap: 6px; }
+.updated { max-width: 520px; margin: 18vh auto; padding: 0 24px; text-align: center; }
+.view-row { display: flex; justify-content: flex-end; margin: -6px 0 10px; }
+.view-switch { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--well); }
+.view-switch button { border: 0; background: none; padding: 5px 14px; border-radius: 999px; font: inherit; font-size: 12.5px; font-weight: 500; color: var(--dim); cursor: pointer; }
+.view-switch button:hover { color: var(--ink); }
+.view-switch button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.cg { margin-bottom: 24px; }
+.cg-chips { display: inline-block; border-radius: 999px; background: var(--stage); margin-bottom: 14px; }
+.cg-chips .cf-chips { margin: 0; }
+.cg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+.cg-card[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent), var(--shadow); }
 .cf { position: relative; border-radius: var(--r-lg); overflow: hidden; margin-bottom: 24px; background: var(--stage); box-shadow: var(--shadow); color: #fff; }
 .cf::before { content: ""; position: absolute; inset: 0; background: radial-gradient(80% 50% at 50% 115%, rgba(120, 220, 240, .22), transparent 70%); pointer-events: none; }
 .cf-stage { position: relative; height: calc(var(--cs) * 1.5); perspective: calc(var(--cs) * 4); perspective-origin: 50% 38%; outline: none; touch-action: pan-y; cursor: grab; user-select: none; }
@@ -874,7 +895,7 @@ nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .
 
 <div id="toast" role="status"></div>
 <div id="diskNote" class="disk-note" role="status" hidden></div>
-<dialog id="dlg"><h3 id="dlgTitle"></h3><div id="dlgBody"></div><div class="acts" id="dlgActs"></div></dialog>
+<dialog id="dlg"><button class="dlg-x" id="dlgX" type="button" aria-label="Close" title="Close">×</button><h3 id="dlgTitle"></h3><div id="dlgBody"></div><div class="acts" id="dlgActs"></div></dialog>
 
 <script>
 /*@@CODEC@@*/
@@ -938,7 +959,11 @@ function dialog(title, bodyHtml, actions) {
   return new Promise((resolve) => {
     const d = $('#dlg'); $('#dlgTitle').textContent = title; $('#dlgBody').innerHTML = bodyHtml;
     const acts = $('#dlgActs'); acts.innerHTML = '';
-    actions.forEach(([label, value, cls]) => { const b = document.createElement('button'); b.className = 'btn ' + (cls || ''); b.textContent = label; b.onclick = () => { d.close(); resolve(value); }; acts.appendChild(b); });
+    // closing sits in the top-right corner (the ×), never as a button at the bottom
+    const closer = actions.find(([label]) => label === 'Close');
+    $('#dlgX').onclick = () => { d.close(); resolve(closer ? closer[1] : null); };
+    actions.filter((a) => a !== closer).forEach(([label, value, cls]) => { const b = document.createElement('button'); b.className = 'btn ' + (cls || ''); b.textContent = label; b.onclick = () => { d.close(); resolve(value); }; acts.appendChild(b); });
+    acts.hidden = !acts.children.length;
     // a dialog opened right after another one closes would otherwise get the old one's late close event
     d.onclose = () => { if (!d.open) resolve(null); };
     d.showModal();
@@ -967,13 +992,13 @@ function drawResources() { const h = $('#sideRes'); if (h) h.innerHTML = RESOURC
 drawResources();
 const LINKS = [['GitHub', 'https://github.com/Pastullio/harmonious-save-editor'], ['Discord', 'https://discord.gg/3PfZfPYDn'], ['YouTube', 'https://www.youtube.com/@PastullioTheHarmonious'], ['Patreon', 'https://www.patreon.com/pastullio'], ['Buy me a coffee', 'https://buymeacoffee.com/pastullio']];
 function aboutDialog() {
-  const ver = window.NMS_APP ? 'Desktop app' : 'Browser version';
+  const ver = window.NMS_APP ? 'Desktop app' + (window.NMS_APP.version && window.NMS_APP.version !== '1' ? ' · version ' + window.NMS_APP.version : '') : 'Browser version';
   dialog('About', `<div class="about-sky"><img src="@@LOGO@@" alt="Harmonious Save Editor"><div class="ver">${ver}</div></div>
     <p>A No Man's Sky save editor for Steam and GOG on PC, by Pastullio the Harmonious. It reads your own game files for item names, icons and models, and backs up every save before it changes it.</p>
     <div class="about-links">${LINKS.map(([t, u]) => `<a class="btn small" href="${u}" target="_blank" rel="noopener">${t}</a>`).join('')}</div>
     <p class="dim" style="margin:12px 0 6px">Built with thanks to</p>
     <ul class="about-credits"><li>libNOM.map and libNOM.io by zencq (save keys and format)</li><li>MBINCompiler by monkeyman192 and contributors (game table layouts)</li><li>HGPAKtool by monkeyman192 (game archive format)</li><li>Charon Forge by xX-Charon-Xx (corvette renders)</li><li>nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, and its JavaScript port nms-core by elegra1965 (system and planet prediction; MIT)</li><li>Pillow (texture decoding), klauspost/compress (zstd), Jost by indestructible type* (typeface)</li></ul>
-    <p class="dim" style="font-size:13px;margin:12px 0 0">Free software under the GPL-3.0 licence. Not affiliated with Hello Games.</p>`, [['Close', true, 'primary']]);
+    <p class="dim" style="font-size:13px;margin:12px 0 0">Free software under the GPL-3.0 licence. Not affiliated with Hello Games.</p>`, window.NMS_APP ? [['Close', false], ['Check for updates', 'upd', 'primary']] : [['Close', true, 'primary']]).then((v) => { if (v === 'upd') checkForUpdate(true); });
 }
 document.addEventListener('click', (e) => { if (e.target.closest('.about-btn')) aboutDialog(); });
 syncThemeButtons();
@@ -1256,7 +1281,7 @@ function download(bytes, name) { const u = URL.createObjectURL(new Blob([bytes])
 
 // ------------------------------------------------------------------ navigation
 const SECTIONS = [
-  ['overview', 'Overview'], ['shipwright', 'Shipwright'], ['coords', 'Coordinates'], ['library', 'Dock Yard'], ['hangar', 'Hangar'],
+  ['overview', 'Overview'], ['shipwright', 'Shipwright'], ['coords', 'Coordinates'], ['hangar', 'Hangar'], ['library', 'Dock Yard'],
   ['exosuit', 'Exosuit'], ['tools', 'Multi-tools'], ['ships', 'Starships'], ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['companions', 'Companions'],
   ['bases', 'Bases'], ['storage', 'Storage'], ['cargo', 'Cargo'],
   ['knowledge', 'Knowledge'], ['rewards', 'Rewards'], ['standing', 'Standing'], ['difficulty', 'Difficulty'],
@@ -1264,7 +1289,7 @@ const SECTIONS = [
 ];
 // The sidebar in groups of related pages, each with a faint tint of its own colour behind it.
 const NAV_GROUPS = [
-  { tint: '#2fc3d6', ids: ['overview', 'shipwright', 'coords', 'library', 'hangar'] },          // getting around and your fleet
+  { tint: '#2fc3d6', ids: ['overview', 'shipwright', 'coords', 'hangar', 'library'] },          // getting around and your fleet
   { tint: '#a37bff', ids: ['exosuit', 'tools', 'ships', 'freighter', 'vehicles', 'companions'] }, // what you carry and ride
   { tint: '#ff8a70', ids: ['bases', 'storage', 'cargo'] },                                         // where things are kept
   { tint: '#7ba2ff', ids: ['knowledge', 'rewards', 'standing', 'difficulty'] },                   // progress and settings
@@ -1273,7 +1298,7 @@ const NAV_GROUPS = [
 // Spectrum: each section's colour sweeps down the sidebar, teal and aqua through blue, violet, magenta, rose and coral
 // (owner's pick), then sky, periwinkle and steel for progress and settings, mint (item names) and slate (raw data).
 // One bright base per section; light mode darkens it automatically.
-const SECTION_COLORS = { overview: '#2fc3d6', shipwright: '#36d6c3', coords: '#3cb6ea', library: '#4ea8ff', hangar: '#6598ff', exosuit: '#7d8bff', tools: '#a37bff', ships: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', companions: '#ff7690', bases: '#ff8079', storage: '#ff8a70', cargo: '#ffa086', knowledge: '#5ab8f0', rewards: '#7ba2ff', standing: '#9a8cff', difficulty: '#a3b3cf', items: '#3fd9a3', raw: '#8fb3c4' };
+const SECTION_COLORS = { overview: '#2fc3d6', shipwright: '#36d6c3', coords: '#3cb6ea', hangar: '#4ea8ff', library: '#6598ff', exosuit: '#7d8bff', tools: '#a37bff', ships: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', companions: '#ff7690', bases: '#ff8079', storage: '#ff8a70', cargo: '#ffa086', knowledge: '#5ab8f0', rewards: '#7ba2ff', standing: '#9a8cff', difficulty: '#a3b3cf', items: '#3fd9a3', raw: '#8fb3c4' };
 const secColor = (id) => SECTION_COLORS[id];
 function applySection(id) {
   const c = secColor(id);
@@ -1467,8 +1492,10 @@ PAGES.exosuit = (el) => {
   invGroup(el, standardInvs(p, ''));
 };
 
-function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, nameKey, flow, picture, details, top }) {
-  el.innerHTML = `<div class="page-head"><div><h1>${title}</h1><p>${intro}</p></div></div>`;
+function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, nameKey, flow, picture, details, top, actions = [] }) {
+  actions = actions.filter(Boolean);
+  el.innerHTML = `<div class="page-head"><div><h1>${title}</h1><p>${intro}</p></div>${actions.length ? `<div class="toolbar">${actions.map(([l, id], k) => `<button class="btn${k ? '' : ' primary'}" type="button" id="${id}">${l}</button>`).join('')}</div>` : ''}</div>`;
+  for (const [, id, fn] of actions) $('#' + id, el).onclick = (e) => fn(e.currentTarget);
   if (top) top(el);
   if (!list.length) { el.insertAdjacentHTML('beforeend', '<p class="dim">Nothing owned here yet.</p>'); return; }
   const primary = primaryKey ? num(g(ps(), primaryKey)) : -1;
@@ -1477,7 +1504,7 @@ function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, 
   if (flow) {
     const items = coverItems().filter((x) => (flow === 'tool' ? x.kind === 'tool' : x.kind !== 'tool'));
     const host = document.createElement('div'); el.appendChild(host);
-    CoverFlow(host, items, { size: 170, index: Math.max(0, items.findIndex((x) => x.i === S.pick[key])), label: title,
+    Covers(host, items, { size: 170, gridSize: 180, index: Math.max(0, items.findIndex((x) => x.i === S.pick[key])), label: title,
       onChange: (n) => { S.pick[key] = items[n].i; S.sel = null; editor(); }, onOpen: () => ed.scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth' }) });
   } else {
     const pick = document.createElement('div'); pick.className = 'picker';
@@ -1514,12 +1541,14 @@ PAGES.ships = (el) => ownedPage(el, {
   label: (s, i) => str(g(s, 'Name')) || 'Ship ' + (i + 1), sub: (s) => [modelName(g(s, 'Resource', 'Filename')), invClass(g(s, 'Inventory'))].filter(Boolean).join(', ') + ' class',
   invs: (s) => standardInvs(s, ''),
   details: (ed, s, i) => entityDetails(ed, s, i, 'ship'), top: shipSlotsPanel,
+  actions: [['Add a ship', 'addShip', addShipDialog], APP && ships().some((x) => isCorvetteEntry(x.s)) && ['Render corvettes', 'renderCorv', renderAllCorvettes]],
 });
 PAGES.tools = (el) => ownedPage(el, {
   title: 'Multi-tools', intro: 'Each multi-tool has a single store for its technology.', list: tools(), key: 'tool', primaryKey: 'ActiveMultioolIndex', nameKey: 'Name', flow: 'tool',
   label: (s, i) => str(g(s, 'Name')) || 'Multi-tool ' + (i + 1), sub: (s) => (invClass(g(s, 'Store')) || '?') + ' class',
   invs: (s) => [[g(s, 'Store'), 'Technology']],
   details: (ed, s, i) => entityDetails(ed, s, i, 'tool'),
+  actions: [['Add a multi-tool', 'addTool', addToolDialog]],
 });
 // exocraft bays follow the game's vehicle types; saves leave the model empty and the bay decides it
 const EXOCRAFT = [['Roamer', 'buggy/buggy'], ['Nomad', 'bike/bike'], ['Colossus', 'rover/rover'], ['Pilgrim', 'wheeledbike/wheeledbike'], ['Hovercraft', 'hover/hovercraft'], ['Nautilon', 'submarine/submarine'], ['Minotaur', 'mech_suit/mech_suit']];
@@ -1530,6 +1559,7 @@ PAGES.vehicles = (el) => ownedPage(el, {
   label: (s, i) => exoName(s, i), sub: (s, i) => (EXOCRAFT[i] ? EXOCRAFT[i][0] + ', ' : '') + 'bay ' + (i + 1),
   invs: (s) => [[g(s, 'Inventory_TechOnly'), 'Technology'], [g(s, 'Inventory'), 'Cargo']],
   picture: (s, i) => { const model = modelName(g(s, 'Resource', 'Filename')); return { kind: 'ship', type: 'Exocraft', name: exoName(s, i), cls: '', key: 'veh|' + i + '|' + model, seed: str((seedOf(s) || [])[1]), scene: exoScene(s, i) }; },
+  actions: [['Add exocraft', 'addExo', addExoDialog]],
 });
 
 // ------------------------------------------------------------------ ship and multi-tool details (type, class, seed, colours, stats)
@@ -2342,6 +2372,43 @@ async function moveCoversToDisk() {
 }
 
 /** Cover Flow widget. opts: { size, index, onChange(i), onOpen(i), caption } */
+// Cover Flow can be swapped for a plain grid of large cards (the owner's option; remembered per computer).
+const coverView = () => { try { return localStorage.getItem('hse-covers') === 'grid' ? 'grid' : 'flow'; } catch (_) { return 'flow'; } };
+function viewSwitch() {
+  const v = coverView();
+  return `<div class="view-switch" role="group" aria-label="How to show covers"><button type="button" data-view="flow" aria-pressed="${v === 'flow'}">Cover Flow</button><button type="button" data-view="grid" aria-pressed="${v === 'grid'}">Grid</button></div>`;
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('.view-switch [data-view]'); if (!b) return;
+  try { localStorage.setItem('hse-covers', b.dataset.view); } catch (_) {}
+  if (S.save || S.section) render();
+});
+// Cover Flow or the grid, with the same interface (index, go, focus, refresh)
+function Covers(host, items, opts) {
+  host.insertAdjacentHTML('beforeend', `<div class="view-row">${viewSwitch()}</div>`);
+  return coverView() === 'grid' ? CoverGrid(host, items, opts) : CoverFlow(host, items, opts);
+}
+function CoverGrid(host, items, opts) {
+  let cur = Math.max(0, Math.min(items.length - 1, opts.index || 0));
+  const root = document.createElement('div'); root.className = 'cg';
+  root.innerHTML = (opts.chips ? `<div class="cg-chips">${opts.chips}</div>` : '') + (items.length ? '' : '<p class="dim">Nothing here yet.</p>');
+  const grid = document.createElement('div'); grid.className = 'cg-grid'; root.appendChild(grid); host.appendChild(root);
+  const size = Math.min(260, opts.gridSize || 220);
+  const cards = items.map((it, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'tc cg-card'; b.setAttribute('aria-pressed', String(i === cur));
+    b.innerHTML = `<div class="tc-art"></div><div class="tc-cap"><b title="${esc(it.name)}">${esc(it.name)}</b><span>${esc(it.sub || '')}</span></div>`;
+    b.onclick = () => { if (i === cur) { opts.onOpen && opts.onOpen(i); return; } go(i); };
+    b.ondblclick = () => opts.onOpen && opts.onOpen(i);
+    grid.appendChild(b);
+    // covers are drawn once the card scrolls into view
+    const io = new IntersectionObserver((ents) => { if (ents.some((en) => en.isIntersecting)) { io.disconnect(); if (b.isConnected) miniCover(b, it, size); } }, { rootMargin: '300px' });
+    io.observe(b);
+    return b;
+  });
+  function go(i) { cur = i; cards.forEach((c, k) => c.setAttribute('aria-pressed', String(k === i))); opts.onChange && opts.onChange(i); }
+  if (items.length && opts.onChange) setTimeout(() => opts.onChange(cur), 0);
+  return { get index() { return cur; }, go, focus: () => cards[cur] && cards[cur].focus({ preventScroll: true }), refresh() { const b = cards[cur]; if (b) miniCover(b, items[cur], size); } };
+}
 function CoverFlow(host, items, opts) {
   const size = opts.size || 260, n = items.length;
   const root = document.createElement('div'); root.className = 'cf'; root.style.setProperty('--cs', size + 'px');
@@ -2514,10 +2581,13 @@ function customDialog({ title, html, wide, actions, wire }) {
     d.classList.toggle('wide', !!wide);
     $('#dlgTitle').textContent = title; $('#dlgBody').innerHTML = html;
     const acts = $('#dlgActs'); acts.innerHTML = '';
-    (actions || [['Cancel', null, 'ghost']]).forEach(([label, value, cls]) => {
+    const list = actions || [['Cancel', null, 'ghost']], closer = list.find(([label]) => label === 'Close');
+    $('#dlgX').onclick = () => finish(closer ? (typeof closer[1] === 'function' ? closer[1]() : closer[1]) : null);
+    list.filter((a) => a !== closer).forEach(([label, value, cls]) => {
       const b = document.createElement('button'); b.className = 'btn ' + (cls || ''); b.textContent = label;
       b.onclick = () => finish(typeof value === 'function' ? value() : value); acts.appendChild(b);
     });
+    acts.hidden = !acts.children.length;
     d.onclose = () => { if (!d.open) finish(null); };
     if (wire) wire($('#dlgBody'), finish);
     d.showModal();
@@ -2632,7 +2702,7 @@ PAGES.hangar = (el) => {
   const chips = `<div class="cf-chips">${groups.map(([id, label, l]) => `<button class="chip" data-f="${id}" aria-pressed="${S.hangar.filter === id}">${label}<span class="n">${l.length}</span></button>`).join('')}</div>`;
   const start = Math.max(0, list.findIndex((x) => x.key === S.hangar.key));
   const big = Math.max(180, Math.min(340, Math.round((($('#main').clientWidth || 1000) - 80) / 3.6)));
-  const flow = CoverFlow($('#cfHost', el), list, { size: big, index: start, label: 'Hangar', chips, onChange: (i) => { S.hangar.key = list[i].key; detail(); }, onOpen: (i) => openLoadout(list[i]) });
+  const flow = Covers($('#cfHost', el), list, { size: big, index: start, label: 'Hangar', chips, onChange: (i) => { S.hangar.key = list[i].key; detail(); }, onOpen: (i) => openLoadout(list[i]) });
   el.querySelectorAll('.chip').forEach((c) => c.onclick = () => { S.hangar.filter = c.dataset.f; render(); });
   function detail() {
     const it = list[flow.index], box = $('#hangarDetail', el);
@@ -2665,19 +2735,22 @@ PAGES.hangar = (el) => {
   detail(); flow.focus();
   const ra = $('#renderAll', el), rc = $('#renderCfg', el);
   if (rc) rc.onclick = renderSettingsDialog;
-  if (ra) ra.onclick = async () => {
-    const setup = await renderSetup().catch(() => null);
-    if (!setup || !setup.ready) { renderSettingsDialog(); return; }
-    const todo = all.filter((x) => x.kind === 'corvette');
-    ra.disabled = true; let done = 0, failed = 0;
-    for (const it of todo) {
-      ra.textContent = `Rendering ${done + failed + 1} of ${todo.length}…`;
-      try { await renderCorvette(it, false); done++; } catch (e) { failed++; console.warn(e); }
-    }
-    if (ra.isConnected) { ra.disabled = false; ra.textContent = 'Render all corvettes'; }
-    toast(failed ? `${done} rendered, ${failed} failed. Open a corvette and choose Render with Blender to see why.` : `${done} corvettes rendered`, !!failed);
-  };
+  if (ra) ra.onclick = () => renderAllCorvettes(ra);
 };
+// renders every corvette's cover with Blender (Hangar and Starships)
+async function renderAllCorvettes(btn) {
+  const setup = await renderSetup().catch(() => null);
+  if (!setup || !setup.ready) { renderSettingsDialog(); return; }
+  const todo = coverItems().filter((x) => x.kind === 'corvette'), label = btn.textContent;
+  btn.disabled = true; let done = 0, failed = 0;
+  for (const it of todo) {
+    btn.textContent = `Rendering ${done + failed + 1} of ${todo.length}…`;
+    try { await renderCorvette(it, false); done++; } catch (e) { failed++; console.warn(e); }
+  }
+  if (btn.isConnected) { btn.disabled = false; btn.textContent = label; }
+  toast(failed ? `${done} rendered, ${failed} failed. Open a corvette in the Hangar and choose Render with Blender to see why.` : `${done} corvettes rendered`, !!failed);
+  if (S.section === 'ships' || S.section === 'hangar') render();
+}
 // ------------------------------------------------------------------ corvette renders (desktop app + Blender + Charon Forge)
 const renderImgs = new Map(); // build hash -> loaded Image, or null when there's no render yet
 async function buildPayload(it) {
@@ -3482,12 +3555,20 @@ function placeFacts(p) {
   return out;
 }
 // what this save knows about a system: discoveries, bases and teleport destinations there
+// GcBiomeType, as the player would name them
+const BIOMES = ['Lush', 'Toxic', 'Scorched', 'Radioactive', 'Frozen', 'Barren', 'Dead', 'Exotic', 'Exotic (red)', 'Exotic (green)', 'Exotic (blue)', 'Test', 'Marsh', 'Volcanic', 'Ocean', 'Gas giant'];
 function systemKnowledge(p) {
   const recs = g(S.save.json, 'DiscoveryManagerData', 'DiscoveryData-v1', 'Store', 'Record') || [];
-  const counts = {}, planets = new Set();
+  const counts = {}, planets = new Set(), biomes = {};
   for (const r of recs) {
     const at = Place.fromPacked(g(r, 'DD', 'UA')); if (!Place.sameSystem(at, p)) continue;
-    const t = str(g(r, 'DD', 'DT')); counts[t] = (counts[t] || 0) + 1; if (t === 'Planet') planets.add(at.planet);
+    const t = str(g(r, 'DD', 'DT')); counts[t] = (counts[t] || 0) + 1;
+    if (t === 'Planet') {
+      planets.add(at.planet);
+      // a planet's record keeps its seed and its biome: VP[1] low 16 bits = GcBiomeType, bit 16 = infested
+      const vp = g(r, 'DD', 'VP'), v = Array.isArray(vp) ? vp[1] : null;
+      try { const f = BigInt(v instanceof Num ? v.raw : String(v)); biomes[at.planet] = { biome: BIOMES[Number(f & 0xFFFFn)] || '', infested: ((f >> 16n) & 1n) === 1n }; } catch (_) {}
+    }
   }
   const places = [];
   for (const e of g(ps(), 'TeleportEndpoints') || []) {
@@ -3499,7 +3580,7 @@ function systemKnowledge(p) {
     if (Place.sameSystem(at, p) && name && !places.some((x) => x.name === name)) places.push({ name, kind: 'Base' + (at.planet ? ', planet ' + at.planet : '') });
   }
   const here = Place.fromUA(g(ps(), 'UniverseAddress')), fr = Place.fromUA(g(ps(), 'FreighterUniverseAddress'));
-  return { counts, planets: planets.size, places, isHere: Place.sameSystem(here, p), freighter: Place.sameSystem(fr, p) };
+  return { counts, planets: planets.size, biomes, places, isHere: Place.sameSystem(here, p), freighter: Place.sameSystem(fr, p) };
 }
 const teleKind = (t) => ({ Spacestation: 'Space station', ExternalBase: 'Base you visited', Base: 'Base', Freighter: 'Freighter' }[t] || t);
 // every named place in the save, for the "Your places" picker
@@ -3645,10 +3726,10 @@ function predictionHtml(p, s) {
   const rest = Place.portal(p).slice(1);
   return `<div class="pred-head"><div><span class="k">System</span><b class="pred-name">${esc(s.name)}</b><span class="dim">${esc(s.region)}, ${esc(GALAXIES[p.gi])}</span></div><span class="pred-share"><button class="btn small" type="button" data-card="image">Copy card</button><button class="btn small ghost" type="button" data-card="save">Save card</button><button class="btn small ghost" type="button" data-card="text">Copy as text</button></span><span class="pill">Predicted</span></div>
     <dl class="pred-grid">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
-    ${s.planets.length ? `<table class="pred-planets"><thead><tr><th>#</th><th>Name</th><th>Portal address</th><th></th></tr></thead><tbody>
-      ${s.planets.map((n, i) => { const code = hexN(i + 1, 1) + rest; return `<tr${p.planet === i + 1 ? ' class="on"' : ''}><td>${i + 1}</td><td>${esc(n)}</td><td>${glyphRow(code, 'tiny')} <span class="mono">${code}</span></td><td><button class="link" type="button" data-planet="${i + 1}">${p.planet === i + 1 ? 'Selected' : 'Use this address'}</button></td></tr>`; }).join('')}
+    ${s.planets.length ? `<table class="pred-planets"><thead><tr><th>#</th><th>Name</th><th>Biome</th><th>Portal address</th><th></th></tr></thead><tbody>
+      ${s.planets.map((n, i) => { const code = hexN(i + 1, 1) + rest, bi = (s.biomes || {})[i + 1]; return `<tr${p.planet === i + 1 ? ' class="on"' : ''}><td>${i + 1}</td><td>${esc(n)}</td><td>${bi && bi.biome ? esc(bi.biome + (bi.infested ? ', infested' : '')) : '<span class="dim">Not visited</span>'}</td><td>${glyphRow(code, 'tiny')} <span class="mono">${code}</span></td><td><button class="link" type="button" data-planet="${i + 1}">${p.planet === i + 1 ? 'Selected' : 'Use this address'}</button></td></tr>`; }).join('')}
     </tbody></table>` : '<p class="dim">No planets.</p>'}
-    <p class="pred-note dim">Predicted from the address with the game's own rules, so it works for systems nobody has visited. Checked against 1,000 systems players recorded: about 99% right. Names travellers uploaded later aren't included. Biomes, weather and resources aren't predicted yet. Generation research: nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, ported to JavaScript as nms-core by elegra1965 (both MIT).</p>`;
+    <p class="pred-note dim">Predicted from the address with the game's own rules, so it works for systems nobody has visited. Checked against 1,000 systems players recorded: about 99% right. Names travellers uploaded later aren't included. Biomes come from your own discoveries; predicting them for planets you haven't visited is still being researched, and weather and resources aren't predicted yet. Generation research: nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, ported to JavaScript as nms-core by elegra1965 (both MIT).</p>`;
 }
 
 // a shareable card for a place: glyphs, address, the predicted system and its planets (for Discord and the like)
@@ -3967,7 +4048,9 @@ PAGES.library = (el) => {
     <span class="lib-acts"><label class="btn small">Import files<input type="file" id="libImport" multiple accept=".json,.txt,.nmsship,.so" hidden></label>${S.save ? '<button class="btn small" id="libAddSave" type="button">Add this save\'s ships</button>' : ''}<button class="btn small" id="libRender" type="button">Render corvettes</button><button class="btn small ghost" id="libRenderCfg" type="button" title="Blender and Charon Forge">Cover settings</button></span>`;
   el.appendChild(bar);
   const status = document.createElement('p'); status.className = 'dim lib-status'; status.textContent = 'Reading your ships…'; el.appendChild(status);
+  status.insertAdjacentHTML('afterend', `<div class="view-row">${viewSwitch()}</div>`);
   const grid = document.createElement('div'); grid.className = 'lib-grid'; el.appendChild(grid);
+  const flowHost = document.createElement('div'); el.insertBefore(flowHost, grid);
   const more = document.createElement('div'); more.className = 'lib-more'; el.appendChild(more);
   const alive = () => el.isConnected && S.section === 'library';
   const pick = (v) => { if (v === 'fav') L.fav = true; else { L.fav = false; L.src = v; } L.shown = 60; render(); };
@@ -4010,6 +4093,8 @@ PAGES.library = (el) => {
       current = list;
       const where = L.fav ? 'Favourites' : L.src === 'all' ? 'the Dock Yard' : L.src === 'linked' ? 'linked folders' : LIB_SRC[L.src];
       status.textContent = list.length ? `${plural(list.length, 'ship')} in ${where}${q || L.type !== 'all' || L.tag ? ' matching your search' : ''}` : q || L.type !== 'all' || L.tag ? 'No ships match your search here.' : empty[L.fav ? 'fav' : L.src];
+      if (coverView() === 'flow' && list.length) { grid.replaceChildren(); more.innerHTML = ''; libFlow(flowHost, list, show); return; }
+      flowHost.replaceChildren();
       grid.replaceChildren(...list.slice(0, L.shown).map((x) => libCard(x, show)));
       more.innerHTML = list.length > L.shown ? `<button class="btn" type="button">Show ${Math.min(60, list.length - L.shown)} more</button>` : '';
       if (more.firstChild) more.firstChild.onclick = () => { L.shown += 60; show(); };
@@ -4044,6 +4129,24 @@ PAGES.library = (el) => {
     toast(failed ? `${ok} rendered, ${failed} failed. Open one and choose Render with Blender to see why.` : `${plural(ok, 'corvette')} rendered`, !!failed);
   };
 };
+// the Dock Yard as Cover Flow: covers start plain (name and type) and fill in from the file as they come near the centre
+function libFlow(host, list, refresh) {
+  host.replaceChildren();
+  const S0 = S.shipLib, key = S0.flowKey;
+  const items = list.map((x) => ({ kind: x.sum.type === 'Corvette' ? 'corvette' : 'ship', i: -1, key: 'lib|' + x.id, name: x.sum.name, type: x.sum.type, cls: x.sum.cls,
+    sub: x.sum.error ? 'Not readable yet' : [x.sum.type, x.sum.cls && x.sum.cls + ' class', x.sum.parts && plural(x.sum.parts, 'part')].filter(Boolean).join(', '), x }));
+  const big = Math.max(180, Math.min(320, Math.round((($('#main').clientWidth || 1000) - 80) / 3.8)));
+  const start = Math.max(0, items.findIndex((it) => it.x.id === key));
+  const fill = async (n) => {
+    const it = items[n]; if (!it || it.filled || it.x.sum.error) return; it.filled = true;
+    try { const p = it.x.parsed || (it.x.parsed = await ShipLib.load(it.x.f)); if (!p.error) { const full = libCoverItem(it.x.f, p, it.x.sum); for (const k of ['base', 'holo', 'seed', 'scene']) if (full[k] != null) it[k] = full[k]; } } catch (_) { return; }
+    if (flow.index === n) flow.refresh();
+  };
+  const flow = CoverFlow(host, items, { size: big, index: start, label: 'Dock Yard',
+    onChange: (n) => { S0.flowKey = items[n].x.id; for (let d = 0; d <= 2; d++) { fill(n + d); if (d) fill(n - d); } },
+    onOpen: (n) => libDetail(items[n].x, refresh) });
+  fill(start);
+}
 function libCard(x, refresh) {
   const m = ShipLib.index.meta[x.id] || {}, s = x.sum;
   const card = document.createElement('div'); card.className = 'tc lib-card' + (s.error ? ' bad' : ''); card.tabIndex = 0;
@@ -4272,6 +4375,61 @@ function makeStarterBase(slot, name) {
   markDirty();
 }
 function addCorvette(slot) { makeCorvetteShip(slot); makeStarterBase(slot); }
+const isCorvetteEntry = (sh) => /\/BIGGS\//i.test(str(g(sh, 'Resource', 'Filename')));
+// a copy of a ship already in the save, with its colours, customisation and (for a corvette) its build
+function duplicateShip(src, slot) {
+  const P = ps(), list = g(P, 'ShipOwnership'), from = list[src];
+  const ent = cloneJSON(from); set(ent, 'Name', (str(g(from, 'Name')) || shipType(g(from, 'Resource', 'Filename'))) + ' copy'); list[slot] = ent;
+  const legacy = g(P, 'ShipUsesLegacyColours'); if (Array.isArray(legacy) && slot < legacy.length) legacy[slot] = legacy[src];
+  const ccds = g(P, 'CharacterCustomisationData');
+  if (Array.isArray(ccds) && ccds[shipCcdIndex(src)] instanceof Map && ccds[shipCcdIndex(slot)] instanceof Map) ccds[shipCcdIndex(slot)] = cloneJSON(ccds[shipCcdIndex(src)]);
+  const b = shipBuild(src);
+  if (b) { const bases = g(P, 'PersistentPlayerBases'); shipBuilds().filter((x) => num(g(x, 'UserData')) === slot).forEach((x) => bases.splice(bases.indexOf(x), 1)); const nb = cloneJSON(b); set(nb, 'UserData', N(slot)); set(nb, 'Name', str(g(ent, 'Name'))); bases.push(nb); }
+  markDirty();
+}
+async function addShipDialog() {
+  const list = g(ps(), 'ShipOwnership') || [];
+  const empty = list.map((s, i) => i).filter((i) => !str(g(list[i], 'Resource', 'Filename')));
+  if (!empty.length) { toast(`All ${list.length} ship slots are in use. Delete a ship first, or replace one from the Dock Yard.`, true); return; }
+  const have = ships();
+  const ok = await dialog('Add a ship', `<label class="field"><span>What</span><select class="input" id="addWhat">
+      <option value="corvette">A new corvette with a starter build</option>
+      ${have.map(({ s, i }) => `<option value="${i}">A copy of ${esc(str(g(s, 'Name')) || shipType(g(s, 'Resource', 'Filename')))}${isCorvetteEntry(s) ? ', build included' : ''}</option>`).join('')}</select></label>
+    <label class="field" style="margin-top:12px"><span>Slot</span><select class="input" id="addSlot">${empty.map((i) => `<option value="${i}">Slot ${i + 1}</option>`).join('')}</select></label>
+    <p class="dim" style="margin-top:12px">A copy keeps the ship's look, class, technology and cargo. To bring in a ship from a file or from another save, use the Dock Yard.</p>`, [['Cancel', false, 'ghost'], ['Add', true, 'primary']]);
+  if (!ok) return;
+  const what = $('#addWhat').value, slot = +$('#addSlot').value;
+  try { if (what === 'corvette') addCorvette(slot); else duplicateShip(+what, slot); }
+  catch (e) { toast(e.message, true); return; }
+  S.pick.ship = slot; S.sel = null; renderSide(); render(); toast(`Added to slot ${slot + 1}. Press Save to game to keep it.`);
+}
+// multi-tools: a copy of one you have, in a free slot
+async function addToolDialog() {
+  const list = g(ps(), 'Multitools') || [], used = new Set(tools().map((x) => x.i));
+  const empty = list.map((s, i) => i).filter((i) => !used.has(i));
+  if (!empty.length) { toast(`All ${list.length} multi-tool slots are in use. The game has no more; delete one first.`, true); return; }
+  const have = tools();
+  const ok = await dialog('Add a multi-tool', `<label class="field"><span>A copy of</span><select class="input" id="addWhat">${have.map(({ s, i }) => `<option value="${i}">${esc(str(g(s, 'Name')) || 'Multi-tool ' + (i + 1))}</option>`).join('')}</select></label>
+    <p class="dim" style="margin-top:12px">It goes in slot ${empty[0] + 1}, with the same look, class and technology. Rename it after.</p>`, [['Cancel', false, 'ghost'], ['Add', true, 'primary']]);
+  if (!ok) return;
+  const src = list[+$('#addWhat').value], ent = cloneJSON(src), slot = empty[0];
+  set(ent, 'Name', (str(g(src, 'Name')) || 'Multi-tool') + ' copy'); list[slot] = ent;
+  markDirty(); S.pick.tool = slot; S.sel = null; renderSide(); render(); toast(`Added to slot ${slot + 1}. Press Save to game to keep it.`);
+}
+// exocraft come from their geobays: learning a geobay's blueprint lets you build it and summon that exocraft
+async function addExoDialog() {
+  const lib = S.lib && S.lib.byId, known = new Set((g(ps(), 'KnownProducts') || []).map(str));
+  const bays = lib ? Object.values(lib).filter((it) => it.type === 'Product' && /geobay|nautilon chamber|exocraft summoning/i.test(it.name || '')) : [];
+  const vs = g(ps(), 'VehicleOwnership') || [];
+  const rows = EXOCRAFT.map(([n], i) => { const v = vs[i], has = v instanceof Map && ((g(v, 'Inventory_TechOnly', 'Slots') || []).length || (g(v, 'Inventory', 'Slots') || []).length); return `<li>${n} <span class="dim">${has ? '(set up)' : '(not yet)'}</span></li>`; }).join('');
+  const missing = bays.filter((b) => !known.has(b.id));
+  const body = `<p>Exocraft are summoned from the geobay you build for each one. Learning a geobay's blueprint lets you build it at any base, then summon that exocraft.</p><ul class="place-facts">${rows}</ul>`
+    + (!lib ? '<p class="dim">The item library isn\'t loaded, so the blueprints can\'t be listed here.</p>' : !bays.length ? '<p class="dim">No geobays found in the item library.</p>' : missing.length ? `<p>Blueprints you don't know yet: ${missing.map((b) => '<b>' + esc(b.name) + '</b>').join(', ')}.</p>` : '<p>You already know every geobay blueprint.</p>');
+  const ok = await dialog('Add exocraft', body, missing.length ? [['Cancel', false, 'ghost'], ['Learn the blueprints', true, 'primary']] : [['Close', false]]);
+  if (!ok) return;
+  const kp = g(ps(), 'KnownProducts'); for (const b of missing) kp.push(b.id);
+  markDirty(); toast(`${plural(missing.length, 'blueprint')} learned. Build the geobays in the game to summon them.`);
+}
 
 // ---------------------------------------------------------------- ship slots: arrange and repair
 // A ship's slot index ties together its ShipOwnership entry, ShipUsesLegacyColours, its CharacterCustomisationData
@@ -4344,6 +4502,62 @@ function shipSlotIssues() {
   }
   return out;
 }
+// ---- archived ships (ArchivedShipOwnership): the game keeps a fixed list of entries, filled ones first.
+// Each entry holds the ship (Ownership, with its name moved to ArchivedName), its customisation, legacy-colour flag,
+// type and class. Restoring puts all of that back into an empty ship slot; archiving does the reverse.
+const archList = () => g(ps(), 'ArchivedShipOwnership');
+const archFilled = (e) => e instanceof Map && !!str(g(e, 'Ownership', 'Resource', 'Filename'));
+const SHIP_CLASS_BY_DIR = [[/\/BIGGS\//i, 'Corvette'], [/BIOPARTS|BIOSHIP/i, 'Alien'], [/S-CLASS/i, 'Royal'], [/SAILSHIP/i, 'Sail'], [/SENTINELSHIP/i, 'Robot'], [/DROPSHIP/i, 'Dropship'], [/SCIENTIFIC/i, 'Scientific'], [/SHUTTLE/i, 'Shuttle'], [/FIGHTERS/i, 'Fighter']];
+const shipClassOf = (file) => (SHIP_CLASS_BY_DIR.find(([re]) => re.test(file)) || [, 'Fighter'])[1];
+function archivedHtml() {
+  const a = archList(); if (!Array.isArray(a)) return '';
+  const full = a.map((e, k) => ({ e, k })).filter(({ e }) => archFilled(e));
+  return `<div class="arch"><h3>Archived ships <span class="dim">${full.length} of ${a.length}</span></h3>
+    ${full.length ? `<ul class="arch-list">${full.map(({ e, k }) => `<li><span><b>${esc(str(g(e, 'ArchivedName')) || 'Unnamed')}</b> <span class="dim">${esc(modelName(g(e, 'Ownership', 'Resource', 'Filename')))} · ${esc(str(g(e, 'ArchivedInventoryClass', 'InventoryClass')) || '?')} class</span></span><span class="fixes"><button class="btn small" type="button" data-unarch="${k}">Restore</button><button class="btn small ghost danger-text" type="button" data-archdel="${k}">Delete</button></span></li>`).join('')}</ul>` : '<p class="dim small-print">No archived ships.</p>'}
+    <button class="btn small" type="button" id="archShip">Archive a ship</button></div>`;
+}
+function emptyArchEntry() { const a = archList(); const e = a.find((x) => !archFilled(x)); return e ? cloneJSON(e) : null; }
+function compactArchive() { const a = archList(); const filled = a.filter(archFilled), empties = a.filter((x) => !archFilled(x)); a.splice(0, a.length, ...filled, ...empties); }
+function restoreArchived(k, slot) {
+  const P = ps(), a = archList(), e = a[k], list = g(P, 'ShipOwnership');
+  const tpl = emptyArchEntry() || cloneJSON(e);
+  const ship = cloneJSON(g(e, 'Ownership')); set(ship, 'Name', str(g(e, 'ArchivedName'))); list[slot] = ship;
+  const legacy = g(P, 'ShipUsesLegacyColours'); if (Array.isArray(legacy) && slot < legacy.length) legacy[slot] = g(e, 'UsesLegacyColours') === true;
+  const ccds = g(P, 'CharacterCustomisationData'); if (Array.isArray(ccds) && ccds[shipCcdIndex(slot)] instanceof Map && g(e, 'Customisation') instanceof Map) ccds[shipCcdIndex(slot)] = cloneJSON(g(e, 'Customisation'));
+  a[k] = tpl; compactArchive(); markDirty();
+}
+function archiveShip(i) {
+  const P = ps(), a = archList(), list = g(P, 'ShipOwnership'), s = list[i];
+  const k = a.findIndex((x) => !archFilled(x)); if (k < 0) throw new Error('The archive is full. Restore or delete an archived ship first.');
+  const e = a[k], blank = cloneJSON(g(e, 'Ownership')), blankCcd = cloneJSON(g(e, 'Customisation'));
+  const own = cloneJSON(s); set(own, 'Name', ''); set(e, 'Ownership', own); set(e, 'ArchivedName', str(g(s, 'Name')));
+  const ccds = g(P, 'CharacterCustomisationData'), cc = Array.isArray(ccds) ? ccds[shipCcdIndex(i)] : null;
+  if (cc instanceof Map) { set(e, 'Customisation', cloneJSON(cc)); if (blankCcd instanceof Map) ccds[shipCcdIndex(i)] = blankCcd; }
+  const legacy = g(P, 'ShipUsesLegacyColours'); if (Array.isArray(legacy)) { set(e, 'UsesLegacyColours', legacy[i] === true); legacy[i] = false; }
+  if (g(e, 'ArchivedClass') instanceof Map) set(g(e, 'ArchivedClass'), 'ShipClass', shipClassOf(str(g(s, 'Resource', 'Filename'))));
+  if (g(e, 'ArchivedInventoryClass') instanceof Map) set(g(e, 'ArchivedInventoryClass'), 'InventoryClass', invClass(g(s, 'Inventory')) || 'C');
+  list[i] = blank; compactArchive(); markDirty();
+}
+function wireArchived(d, done) {
+  const list = g(ps(), 'ShipOwnership'), cur = num(g(ps(), 'PrimaryShip'));
+  d.querySelectorAll('[data-unarch]').forEach((b) => b.onclick = async () => {
+    const k = +b.dataset.unarch, e = archList()[k], empty = list.map((x, i) => i).filter((i) => !slotHasShip(list[i]));
+    if (!empty.length) { toast('Every ship slot is taken. Archive or delete a ship first.', true); return; }
+    const ok = await dialog('Restore ' + (str(g(e, 'ArchivedName')) || 'this ship') + '?', `<label class="field"><span>Slot</span><select class="input" id="unSlot">${empty.map((i) => `<option value="${i}">Slot ${i + 1}</option>`).join('')}</select></label>`, [['Cancel', false, 'ghost'], ['Restore', true, 'primary']]);
+    if (!ok) return; const slot = +$('#unSlot').value; restoreArchived(k, slot); done(`Restored to slot ${slot + 1}`);
+  });
+  d.querySelectorAll('[data-archdel]').forEach((b) => b.onclick = async () => {
+    const k = +b.dataset.archdel, e = archList()[k];
+    if (!(await dialog('Delete an archived ship?', `<p><b>${esc(str(g(e, 'ArchivedName')) || 'This ship')}</b> is removed from the archive for good. The Garage in the Dock Yard keeps copies of ships from saves you've opened, not archived ones.</p>`, [['Cancel', false, 'ghost'], ['Delete', true, 'danger']]))) return;
+    archList()[k] = emptyArchEntry() || e; if (archList()[k] === e) { toast('No empty archive entry to copy from.', true); return; } compactArchive(); markDirty(); done('Archived ship deleted');
+  });
+  const ab = $('#archShip', d); if (ab) ab.onclick = async () => {
+    const can = list.map((s, i) => ({ s, i })).filter(({ s, i }) => slotHasShip(s) && i !== cur && !slotIsCorvette(s));
+    if (!can.length) { toast('No ship to archive: corvettes and your current ship stay in their slots.', true); return; }
+    const ok = await dialog('Archive a ship', `<label class="field"><span>Ship</span><select class="input" id="arSlot">${can.map(({ s, i }) => `<option value="${i}">Slot ${i + 1}: ${esc(str(g(s, 'Name')) || modelName(g(s, 'Resource', 'Filename')))}</option>`).join('')}</select></label><p class="dim" style="margin-top:12px">The ship leaves its slot and waits in the archive with its technology, cargo and colours. Corvettes and your current ship can't be archived here.</p>`, [['Cancel', false, 'ghost'], ['Archive', true, 'primary']]);
+    if (!ok) return; try { const i = +$('#arSlot').value; archiveShip(i); done(`Slot ${i + 1} archived`); } catch (e) { toast(e.message, true); }
+  };
+}
 function shipSlotsPanel(el) {
   const list = g(ps(), 'ShipOwnership'); if (!Array.isArray(list) || !list.length) return;
   const issues = shipSlotIssues(), used = list.filter(slotHasShip).length, cur = num(g(ps(), 'PrimaryShip'));
@@ -4358,6 +4572,7 @@ function shipSlotsPanel(el) {
         <span class="slot-n">${i + 1}</span>${has ? `<b>${esc(str(g(s, 'Name')) || 'Unnamed')}</b><span class="dim">${esc(corv ? 'Corvette' : modelName(g(s, 'Resource', 'Filename')))} · ${esc(invClass(g(s, 'Inventory')) || '?')}</span>
         <span class="slot-tags">${i === cur ? '<i class="cur">Current</i>' : ''}${corv ? (b ? `<i>${plural((g(b, 'Objects') || []).length, 'part')}</i>` : '<i class="bad">No build</i>') : ''}</span>` : '<span class="dim">Empty</span>'}</button>`;
     }).join('')}</div>
+    ${archivedHtml()}
     <div class="toolbar"><button class="btn" type="button" id="slotsPack"${list.some((s, i) => !slotHasShip(s) && list.slice(i).some(slotHasShip)) ? '' : ' disabled'}>Close the gaps</button></div>
     ${issues.length ? `<div class="slot-issues"><h3>Problems</h3><ul>${issues.map(([t, fixes], k) => `<li><span class="sw-ic"></span><span>${esc(t)}</span><span class="fixes">${fixes.map(([l, , cls], f) => `<button class="btn small${cls ? ' ' + cls : ''}" type="button" data-fix="${k}:${f}">${esc(l)}</button>`).join('')}</span></li>`).join('')}</ul></div>` : '<p class="dim ed-note slots-ok">Every slot checks out: each corvette has one build, and no build points at the wrong slot.</p>'}`;
   el.appendChild(d);
@@ -4373,6 +4588,7 @@ function shipSlotsPanel(el) {
     t.ondragleave = () => t.classList.remove('over');
     t.ondrop = (e) => { e.preventDefault(); t.classList.remove('over'); const from = +e.dataTransfer.getData('text/plain'); if (Number.isInteger(from)) move(from, i); };
   });
+  wireArchived(d, done);
   $('#slotsPack', d).onclick = () => { const idx = [...list.keys()], order = [...idx.filter((i) => slotHasShip(list[i])), ...idx.filter((i) => !slotHasShip(list[i]))]; arrangeShips(order); SL.open = true; done('Ships moved to the front, gaps closed'); };
   d.querySelectorAll('[data-fix]').forEach((b) => b.onclick = () => { const [k, f] = b.dataset.fix.split(':').map(Number); try { issues[k][1][f][1](); SL.open = true; done('Fixed'); } catch (e) { toast(e.message, true); } });
 }
@@ -4889,6 +5105,20 @@ const PET_TRAITS = ['Helpfulness', 'Aggression', 'Independence'];   // GcCreatur
 const PET_MOODS = ['Hunger', 'Loneliness'];                          // GcCreaturePetMood, 0 to 1
 const isPet = (p) => p instanceof Map && str(g(p, 'CreatureID')) !== '^' && str(g(p, 'CreatureID')) !== '';
 const petName = (p, i) => str(g(p, 'CustomName')) || humanize(str(g(p, 'CreatureID')).replace(/^\^/, '').toLowerCase().replace(/_/g, ' ')) || 'Companion ' + (i + 1);
+// a copy of a companion you have, in a free unlocked slot (born now, same look and temperament)
+async function addPetDialog(pets, slots) {
+  const have = pets.map((p, i) => ({ p, i })).filter(({ p }) => isPet(p));
+  const free = pets.map((p, i) => i).filter((i) => !isPet(pets[i]) && (!Array.isArray(slots) || slots[i] !== false));
+  if (!have.length) { toast('Adopt or tame a companion in the game first; new ones are copied from one you have.', true); return; }
+  if (!free.length) { toast(Array.isArray(slots) && slots.includes(false) ? 'Every unlocked companion slot is taken. Unlock more slots first.' : 'Every companion slot is taken.', true); return; }
+  const ok = await dialog('Add a companion', `<label class="field"><span>A copy of</span><select class="input" id="addWhat">${have.map(({ p, i }) => `<option value="${i}">${esc(petName(p, i))}</option>`).join('')}</select></label>
+    <p class="dim" style="margin-top:12px">It goes in slot ${free[0] + 1}, looking and behaving the same. Rename it after.</p>`, [['Cancel', false, 'ghost'], ['Add', true, 'primary']]);
+  if (!ok) return;
+  const src = pets[+$('#addWhat').value], ent = cloneJSON(src), slot = free[0], now = N(Math.floor(Date.now() / 1000));
+  if (kOf(ent, 'CustomName') != null) set(ent, 'CustomName', (str(g(src, 'CustomName')) || petName(src, 0)) + ' copy');
+  if (kOf(ent, 'BirthTime') != null) set(ent, 'BirthTime', now);
+  pets[slot] = ent; markDirty(); (S.pets || (S.pets = {})).pick = slot; renderSide(); render(); toast(`Added to slot ${slot + 1}. Press Save to game to keep it.`);
+}
 PAGES.companions = (el) => {
   const pets = g(ps(), 'Pets') || [], list = pets.map((p, i) => ({ p, i })).filter(({ p }) => isPet(p)), eggs = (g(ps(), 'Eggs') || []).filter(isPet).length;
   const slots = g(ps(), 'UnlockedPetSlots');
@@ -4899,6 +5129,8 @@ PAGES.companions = (el) => {
   const { side, main } = listDetail(el, { title: 'Companions', pick: String(P.pick), onPick: (k) => { P.pick = +k; render(); }, empty: 'No companions yet.',
     items: list.map(({ p, i }) => ({ key: String(i), name: petName(p, i), sub: humanize(str(g(p, 'CreatureID')).replace(/^\^/, '').toLowerCase().replace(/_/g, ' ')) + ' · ' + Math.round(num(g(p, 'Trust')) * 100) + '% trust' })),
     extra: `<p class="dim sw-tip">${plural(list.length, 'companion')}${eggs ? ', ' + plural(eggs, 'egg') : ''}${Array.isArray(slots) ? `, ${slots.length - locked} of ${slots.length} slots unlocked` : ''}.</p>${locked ? '<div class="sw-side-acts"><button class="btn" type="button" id="pSlots">Unlock every slot</button></div>' : ''}` });
+  el.querySelector('.page-head').insertAdjacentHTML('beforeend', '<div class="toolbar"><button class="btn primary" type="button" id="addPet">Add a companion</button></div>');
+  $('#addPet', el).onclick = () => addPetDialog(pets, slots);
   const us = $('#pSlots', side); if (us) us.onclick = () => { for (let k = 0; k < slots.length; k++) slots[k] = true; markDirty(); toast('Every companion slot unlocked'); render(); };
   if (P.pick == null) return;
   const p = pets[P.pick], traits = g(p, 'Traits') || [], moods = g(p, 'Moods') || [];
@@ -5419,7 +5651,7 @@ PAGES.coords = (el) => {
     const token = (C.token = (C.token || 0) + 1);
     predictSystem(p).then((sys) => {
       if (C.token !== token) return;   // the destination changed meanwhile
-      const box = $$('#pred'); if (!box) return; box.innerHTML = predictionHtml(p, sys);
+      const box = $$('#pred'); if (!box) return; box.innerHTML = predictionHtml(p, { ...sys, biomes: k.biomes });
       box.querySelectorAll('[data-planet]').forEach((b) => b.onclick = () => setDigits(hexN(+b.dataset.planet, 1) + C.digits.slice(1)));
       box.querySelectorAll('[data-card]').forEach((b) => b.onclick = () => shareCard(b.dataset.card, p, sys));
     }).catch((e) => { const box = $$('#pred'); if (box) box.innerHTML = `<p class="dim">Couldn't predict this system (${esc(e.message)}).</p>`; });
@@ -5684,6 +5916,7 @@ async function appInit() {
   $('#backupsBtn').onclick = () => api('/api/reveal?what=backups', { method: 'POST' }).catch((e) => toast(e.message, true));
   $('#otherForm').onsubmit = (e) => { e.preventDefault(); const p = $('#otherPath').value.trim().replace(/^"|"$/g, ''); if (p) appListAccount({ name: p.split(/[\\/]/).filter(Boolean).pop() || p, path: p }); };
   await appLoadRoots();
+  setTimeout(() => checkForUpdate(false), 4000);
 }
 
 async function appLoadRoots() {
@@ -5740,6 +5973,33 @@ async function appWrite(out) {
     toast('Saved. The previous files are in backups\\' + res.backupName);
   } catch (e) { toast('Save failed, your files were not changed: ' + e.message, true); }
   finally { updateStatus(); }
+}
+
+// ------------------------------------------------------------------ updates
+// The app compares itself with the published version.json. A newer build is offered once per version
+// ("Not now" remembers it); About has "Check for updates" to ask again.
+async function checkForUpdate(manual) {
+  if (!APP) return;
+  let u; try { u = await (await api('/api/update')).json(); } catch (e) { if (manual) toast("Couldn't check for updates: " + e.message, true); return; }
+  if (u.dev) { if (manual) toast('This is a development build, so it doesn\'t update itself.'); return; }
+  if (u.error) { if (manual) toast("Couldn't check for updates: " + u.error, true); return; }
+  if (!u.newer) { if (manual) toast(`You have the newest version (${u.current}).`); return; }
+  let skipped = ''; try { skipped = localStorage.getItem('hse-skip-version') || ''; } catch (_) {}
+  if (!manual && skipped === u.latest) return;
+  const dirty = S.dirty || (S.acct && S.acct.dirty);
+  const v = await dialog('A new version is available', `<p>Harmonious Save Editor <b>${esc(u.latest)}</b>${u.date ? ` (${esc(u.date)})` : ''} is out. You have ${esc(u.current)}.</p>${u.notes ? `<p>${esc(u.notes)}</p>` : ''}
+    <p class="dim">Updating downloads the new version, checks it, and restarts the editor. Your saves, backups, Dock Yard and settings stay as they are.</p>${dirty ? '<p class="err">You have unsaved changes. Save them first, or they are lost when the editor restarts.</p>' : ''}`,
+    [['Not now', 'later', 'ghost'], ['Update now', 'go', 'primary']]);
+  if (v === 'later') { try { localStorage.setItem('hse-skip-version', u.latest); } catch (_) {} return; }
+  if (v !== 'go') return;
+  toast('Downloading the new version…');
+  try {
+    const r = await api('/api/update/install', { method: 'POST' });
+    if (!r.ok) throw new Error((await r.text()).trim());
+    S.dirty = false; if (S.acct) S.acct.dirty = false;   // the restart is what the user asked for
+    document.body.innerHTML = `<div class="updated"><h1>Updating</h1><p>The new version is starting in a new window. You can close this one.</p></div>`;
+    setTimeout(() => { try { window.close(); } catch (_) {} }, 2500);
+  } catch (e) { toast('The update failed, nothing was changed: ' + e.message, true); }
 }
 
 // ------------------------------------------------------------------ noticing new saves
