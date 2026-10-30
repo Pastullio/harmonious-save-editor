@@ -765,6 +765,22 @@ dialog.wide { max-width: 1000px; }
 .live-file b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .live-file-acts { display: flex; gap: 14px; margin-top: 4px; }
 .sw-blend { display: block; font-size: 11.5px; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 190px; }
+.live-last { display: grid; gap: 2px; margin: 0 0 10px; padding: 10px 12px; border-radius: var(--r-sm); background: color-mix(in srgb, var(--ok) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--ok) 35%, transparent); font-size: 13px; }
+.live-last .k { font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+.live-last b { color: var(--ok); font-weight: 600; }
+.live-last.bad { background: color-mix(in srgb, var(--danger) 10%, var(--surface)); border-color: color-mix(in srgb, var(--danger) 35%, transparent); }
+.live-last.bad b { color: var(--danger); }
+.live-last.waiting { background: var(--well); border-color: transparent; }
+.live-last.fresh, .sw-corv.landed { animation: landed 1.2s ease-out 2; }
+@keyframes landed { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent); } 100% { box-shadow: 0 0 0 12px color-mix(in srgb, var(--ok) 0%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .live-last.fresh, .sw-corv.landed { animation: none; } }
+.live-note { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); z-index: 70; width: min(560px, calc(100vw - 32px)); display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: start; padding: 14px 16px; border-radius: var(--r-lg); background: var(--surface); border: 2px solid var(--ok); box-shadow: 0 14px 40px rgba(0, 0, 0, .25); font-size: 13.5px; }
+.live-note[hidden] { display: none; }
+.live-note.bad { border-color: var(--danger); }
+.live-note div { display: grid; gap: 3px; }
+.live-note .ln-ic { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--ok); color: #fff; font-weight: 700; }
+.live-note.bad .ln-ic { background: var(--danger); }
+.live-note .link { font-size: 20px; line-height: 1; text-decoration: none; color: var(--dim); }
 .live-blender { margin: -4px 0 10px 17px; font-size: 12.5px; color: var(--dim); }
 .live-blender.ok { color: var(--ok); }
 .live-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--ok); }
@@ -934,6 +950,7 @@ nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .
 
 <div id="toast" role="status"></div>
 <div id="diskNote" class="disk-note" role="status" hidden></div>
+<div id="liveNote" class="live-note" role="status" aria-live="polite" hidden></div>
 <dialog id="dlg"><button class="dlg-x" id="dlgX" type="button" aria-label="Close" title="Close">×</button><h3 id="dlgTitle"></h3><div id="dlgBody"></div><div class="acts" id="dlgActs"></div></dialog>
 
 <script>
@@ -4732,6 +4749,7 @@ function livePanelHtml(corvs) {
   const on = LIVE.on && target;
   return `<div class="live${on ? ' on' : ''}" id="swLive"><h3>LiveLink ${hint('Save your build in Blender (Ctrl+S) and it lands on this corvette in your save, backed up first every time. Needs the Harmonious LiveLink add-on in Blender, with Charon Forge or the NMS Base Builder add-on.')}</h3>
     ${on ? `<p class="live-state"><span class="live-dot"></span>Receiving into <b>${esc(str(g(target.s, 'Name')) || 'Corvette')}</b>, slot ${target.i + 1}</p><p class="live-blender${LIVE.blender ? ' ok' : ''}" id="liveBlender">${liveBlenderText()}</p>` : '<p class="dim small-print">Off. Turn it on for the corvette you have open.</p>'}
+    ${on && LIVE.last ? `<div class="live-last${LIVE.last.ok ? '' : ' bad'}${Date.now() - LIVE.last.at < 8000 ? ' fresh' : ''}"><span class="k">Last build</span><b>${LIVE.last.ok ? `✓ ${LIVE.last.parts.toLocaleString()} parts ${LIVE.last.written ? 'written to the game' : 'put on the corvette'}` : "✗ Didn't go in"}</b><span class="dim small-print">${esc(LIVE.last.time)}${LIVE.last.file ? ' · ' + esc(blendName(LIVE.last.file)) : ''}</span></div>` : on ? '<div class="live-last waiting"><span class="k">Last build</span><span class="dim small-print">Nothing received yet. Save in Blender (Ctrl+S) or press Send now.</span></div>' : ''}
     ${on ? (() => { const f = liveFileOf(target.i); return `<div class="live-file"><span class="k">Blender file</span>${f ? `<b title="${esc(f.file)}">${esc(blendName(f.file))}</b>` : '<span class="dim small-print">None linked yet</span>'}<span class="live-file-acts">${f ? '<button class="link" type="button" id="liveOpen">Open in Blender</button>' : ''}<button class="link" type="button" id="livePick">${f ? 'Change' : 'Choose the .blend…'}</button></span></div>`; })() : ''}
     <label class="check"><input type="checkbox" id="liveWrite"${LIVE.write ? ' checked' : ''}> Write to the game as each build arrives</label>
     <div class="sw-side-acts"><button class="btn${on ? '' : ' primary'}" type="button" id="liveToggle">${on ? 'Turn off' : 'Turn on for this corvette'}</button><button class="btn ghost" type="button" id="liveAddon">Get the Blender add-on</button></div>
@@ -4762,12 +4780,25 @@ function liveStart(slot) {
       let id = 0, res;
       try { const msg = C.parseJSON(await r.text()); id = num(msg.get('id')); res = await liveApply(msg.get('body')); }
       catch (e) { res = { ok: false, message: e.message }; }
-      LIVE.log.unshift({ time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }), ok: res.ok, text: res.message });
-      toast(res.message, !res.ok);
+      const time = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+      LIVE.log.unshift({ time, ok: res.ok, text: res.message });
+      LIVE.last = { ...res, time, at: Date.now() };
+      liveArrival(LIVE.last);
       api('/api/live/result', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ok: res.ok, message: res.message }) }).catch(() => {});
       if (S.section === 'shipwright') render();
     }
   })();
+}
+// a build arrived: a card that can't be missed, wherever you are in the editor
+function liveArrival(r) {
+  const box = $('#liveNote'); clearTimeout(LIVE.noteT);
+  box.className = 'live-note' + (r.ok ? '' : ' bad');
+  box.innerHTML = r.ok
+    ? `<span class="ln-ic">✓</span><div><b>Build received from Blender</b><span>${r.parts.toLocaleString()} parts${r.file ? ` from <b>${esc(blendName(r.file))}</b>` : ''} → <b>${esc(r.name)}</b>, slot ${r.slot + 1}</span><span class="dim">${r.written ? `Written to the game at ${esc(r.time)}, your save backed up first.${r.running ? ' The game is running: load the save from the main menu to see it.' : ''}` : `Put on the corvette at ${esc(r.time)}. Press Save to game to keep it.`}</span></div><button class="link" type="button" data-k="close" aria-label="Close">×</button>`
+    : `<span class="ln-ic">!</span><div><b>A build from Blender didn't go in</b><span>${esc(r.message)}</span></div><button class="link" type="button" data-k="close" aria-label="Close">×</button>`;
+  box.hidden = false;
+  box.querySelector('[data-k="close"]').onclick = () => { box.hidden = true; };
+  LIVE.noteT = setTimeout(() => { box.hidden = true; }, r.ok ? 12000 : 30000);
 }
 function liveStop() { LIVE.on = false; LIVE.loop++; liveArm(); clearInterval(LIVE.watch); LIVE.blender = false; renderSide(); }
 const liveBlenderText = () => (LIVE.blender ? `Blender is linked${LIVE.file ? ` (${esc(LIVE.file)})` : ''}` : 'Waiting for Blender: open it with the Harmonious LiveLink add-on turned on');
@@ -4788,12 +4819,12 @@ async function liveApply(body) {
   const name = str(g(ship, 'Name')) || 'the corvette';
   const from = str(body.get('file') || ''), fromTxt = from ? ` from ${blendName(from)}` : '';
   if (from) await liveSetFile(LIVE.slot, from);   // this corvette's build now comes from this .blend
-  if (!LIVE.write) return { ok: true, message: `${plural(objs.length, 'part')}${fromTxt} put on ${name}. Press Save to game in the editor to keep them.` };
+  if (!LIVE.write) return { ok: true, parts: objs.length, file: from, name, slot: LIVE.slot, written: false, message: `${plural(objs.length, 'part')}${fromTxt} put on ${name}. Press Save to game in the editor to keep them.` };
   try {
     const out = encodeSave(), res = await appWriteFiles(out);
     S.dirty = false; DISK.save = null; renderSide();
     let running = false; try { running = (await (await api('/api/game-running')).json()).running; } catch (_) {}
-    return { ok: true, message: `${plural(objs.length, 'part')}${fromTxt} written to ${name} (slot ${LIVE.slot + 1}), the old save backed up first.${running ? ' The game is running: load the save from the main menu to see it.' : ''}` };
+    return { ok: true, parts: objs.length, file: from, name, slot: LIVE.slot, written: true, running, message: `${plural(objs.length, 'part')}${fromTxt} written to ${name} (slot ${LIVE.slot + 1}), the old save backed up first.${running ? ' The game is running: load the save from the main menu to see it.' : ''}` };
   } catch (e) { return { ok: false, message: `Put on ${name}, but not written: ${e.message}` }; }
 }
 addEventListener('pagehide', () => { if (LIVE.on && window.NMS_APP) navigator.sendBeacon('/api/live/arm?t=' + encodeURIComponent(window.NMS_APP.token), new Blob([JSON.stringify({ armed: false })], { type: 'application/json' })); });
@@ -4816,7 +4847,7 @@ PAGES.shipwright = (el) => {
   const side = document.createElement('aside'); side.className = 'sw-side panel';
   side.innerHTML = `<h3>Corvettes</h3><div class="sw-list">${corvs.map(({ s, i }) => {
     const h = corvetteHealth(i), worst = h.out.some((x) => x[0] === 'bad') ? 'bad' : h.out.some((x) => x[0] === 'warn') ? 'warn' : 'ok';
-    return `<button type="button" class="sw-corv${i === W.slot ? ' on' : ''}" data-i="${i}"><span class="sw-dot ${worst}"></span><span><b>${esc(str(g(s, 'Name')) || 'Corvette')}</b><span class="dim">Slot ${i + 1} · ${plural(h.objs.length, 'part')}</span>${APP && liveFileOf(i) ? `<span class="sw-blend" title="${esc(liveFileOf(i).file)}">${esc(blendName(liveFileOf(i).file))}</span>` : ''}</span></button>`;
+    return `<button type="button" class="sw-corv${i === W.slot ? ' on' : ''}${LIVE.last && LIVE.last.ok && LIVE.last.slot === i && Date.now() - LIVE.last.at < 8000 ? ' landed' : ''}" data-i="${i}"><span class="sw-dot ${worst}"></span><span><b>${esc(str(g(s, 'Name')) || 'Corvette')}</b><span class="dim">Slot ${i + 1} · ${plural(h.objs.length, 'part')}</span>${APP && liveFileOf(i) ? `<span class="sw-blend" title="${esc(liveFileOf(i).file)}">${esc(blendName(liveFileOf(i).file))}</span>` : ''}</span></button>`;
   }).join('')}</div>${probs.length ? `<div class="sw-probs">${probs.map((t) => `<p class="bad-hint">${esc(t)}</p>`).join('')}<button class="btn small" type="button" id="swFixSlots">Fix in Ship slots</button></div>` : ''}
     <div class="sw-side-acts"><button class="btn primary" type="button" id="swAdd">Add corvette</button><button class="btn danger" type="button" id="swDel">Delete corvette</button></div>
     ${APP ? livePanelHtml(corvs) : ''}

@@ -61,6 +61,9 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.waitForTimeout(500);
   await p.waitForSelector('#liveBlender.ok', { timeout: 8000 }).catch(() => {});
   ok('the editor shows Blender is linked', /Blender is linked/.test(await p.textContent('#liveBlender')));
+  ok('a card says the build arrived, whatever page you are on', await p.$eval('#liveNote', (e) => !e.hidden && /Build received from Blender/.test(e.textContent) && /written to the game/i.test(e.textContent)));
+  ok('the LiveLink panel shows the last build', /written to the game/.test(await p.textContent('#swLive .live-last')));
+  await p.screenshot({ path: SP + '/shots/live-landed.png' });
   ok('the editor lists what arrived', (await p.$$('#swLive .live-log li')).length >= 2);
   await p.screenshot({ path: SP + '/shots/live-log.png' });
   // turned off: the add-on is told

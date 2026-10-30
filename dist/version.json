@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.30.1555",
+  "version": "2026.10.30.1601",
   "date": "2026-10-30",
-  "size": 9810944,
-  "sha256": "a3c5148f675dcac633947f1419d45015bbf0bfb5b104b91f260b02b5d5b18d40",
-  "notes": "LiveLink add-on: its sidebar tab is now called LiveLink, and it reads the build from any builder add-on or straight from the scene's parts.",
+  "size": 9815040,
+  "sha256": "d15f698545bda0725f919faf22caca6528c950e789a7de62b070a957493dccb0",
+  "notes": "LiveLink: when a build arrives from Blender, a card at the top of the editor says so, and the LiveLink panel shows the last build.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
