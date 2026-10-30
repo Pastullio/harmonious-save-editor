@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.30.1936",
+  "version": "2026.10.30.2005",
   "date": "2026-10-30",
   "size": 10029568,
-  "sha256": "13afcfef2d0bdf84699eec062019d29206a811044b13ac209a868de5694f1971",
-  "notes": "Fix: corvette renders now show in the Dock Yard after switching tabs, without pressing Render corvettes again.",
+  "sha256": "ff8414f28df216d02f185c131d7b84b4d17b90ba81cdb6009e6457ff9fd57ac7",
+  "notes": "Hangar grid view: the All / Corvettes / Starships / Multi-tools filters sit on one line again.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
