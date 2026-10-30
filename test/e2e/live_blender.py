@@ -15,6 +15,8 @@ sys.modules[fake.__name__] = fake
 
 h.register()
 print("PANEL", hasattr(bpy.types, "HARMONIOUS_PT_live"))
+h.check_link_now()
+print("LINK", h.LINK["state"], h.LINK["target"])
 
 def wait():
     for _ in range(600):

@@ -22,6 +22,7 @@ import os
 import sys
 import threading
 import urllib.error
+import urllib.parse
 import urllib.request
 
 import bpy
@@ -52,6 +53,41 @@ def editor_address():
         return None
 
 
+# ---------------------------------------------------------------- is the editor linked?
+# Every few seconds the add-on asks the editor whether Live link is on and for which corvette; the panel shows it,
+# and the editor sees Blender check in.
+LINK = {"state": "none", "target": ""}   # none: editor not running; off: running, Live link off; on: linked
+
+
+def check_link_now():
+    addr = editor_address()
+    if addr is None:
+        LINK.update(state="none", target="")
+        return
+    url, token = addr
+    try:
+        q = urllib.parse.urlencode({"file": os.path.basename(bpy.data.filepath) if bpy.data.filepath else ""})
+        req = urllib.request.Request(url + "?" + q, headers={"X-Live-Token": token})
+        with urllib.request.urlopen(req, timeout=3) as res:
+            info = json.loads(res.read().decode("utf-8"))
+        LINK.update(state="on" if info.get("armed") else "off", target=info.get("target") or "")
+    except (urllib.error.URLError, OSError, ValueError):
+        LINK.update(state="none", target="")
+
+
+def link_timer():
+    threading.Thread(target=check_link_now, daemon=True).start()
+    redraw()   # shows what the last check found
+    return 3.0
+
+
+def redraw():
+    for window in getattr(bpy.context.window_manager, "windows", []):
+        for area in window.screen.areas:
+            if area.type == "VIEW_3D":
+                area.tag_redraw()
+
+
 # ---------------------------------------------------------------- reading the build from the scene
 
 def build_objects(scene):
@@ -80,10 +116,7 @@ STATE = {"status": "Not sent yet", "busy": False}
 
 def set_status(text):
     STATE["status"] = text
-    for window in getattr(bpy.context.window_manager, "windows", []):
-        for area in window.screen.areas:
-            if area.type == "VIEW_3D":
-                area.tag_redraw()
+    redraw()
 
 
 def send(scene):
@@ -149,13 +182,24 @@ class HARMONIOUS_PT_live(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
+        # the link, first and clearest
+        link = layout.box()
+        if LINK["state"] == "on":
+            link.label(text="Linked to " + LINK["target"], icon="LINKED")
+            link.label(text="Each save sends the build there")
+        elif LINK["state"] == "off":
+            link.label(text="Editor open, Live link off", icon="UNLINKED")
+            link.label(text="Turn it on in Shipwright")
+        else:
+            link.label(text="Harmonious Save Editor isn't running", icon="ERROR")
         layout.prop(context.scene, "harmonious_live_on", text="Send on save (Ctrl+S)")
-        layout.operator(HARMONIOUS_OT_send.bl_idname, icon="EXPORT")
+        row = layout.row()
+        row.enabled = LINK["state"] == "on"
+        row.operator(HARMONIOUS_OT_send.bl_idname, icon="EXPORT")
         box = layout.box()
+        box.label(text="Last send", icon="INFO")
         for line in wrap(STATE["status"], 34):
             box.label(text=line)
-        if editor_address() is None:
-            layout.label(text="Start the editor first", icon="INFO")
 
 
 def wrap(text, width):
@@ -180,9 +224,13 @@ def register():
         description="Send the build to Harmonious Save Editor every time this file is saved")
     if on_save not in bpy.app.handlers.save_post:
         bpy.app.handlers.save_post.append(on_save)
+    if not bpy.app.timers.is_registered(link_timer):
+        bpy.app.timers.register(link_timer, first_interval=1.0, persistent=True)
 
 
 def unregister():
+    if bpy.app.timers.is_registered(link_timer):
+        bpy.app.timers.unregister(link_timer)
     if on_save in bpy.app.handlers.save_post:
         bpy.app.handlers.save_post.remove(on_save)
     del bpy.types.Scene.harmonious_live_on

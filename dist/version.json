@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.30.1510",
+  "version": "2026.10.30.1519",
   "date": "2026-10-30",
-  "size": 9788416,
-  "sha256": "e5b7abbfac3906d6b1a8e87cb961add39a9caf2633b8ba4b0b466d9de4fb7b05",
-  "notes": "Live link from Blender: save in Blender and the build lands on your corvette (get the add-on in Shipwright). Biome odds for every system on the Coordinates page.",
+  "size": 9793536,
+  "sha256": "48605f4f588db796a8abe9a14deb234fff2d2feefdf992097316d1da86566d2d",
+  "notes": "Live link shows when it's connected: Blender says which corvette it's linked to, the editor shows Blender is linked, and Shipwright gets a Live marker in the sidebar.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

@@ -115,6 +115,7 @@ func main() {
 	mux.HandleFunc("/api/update", handleUpdate)
 	mux.HandleFunc("/api/live/arm", handleLiveArm)
 	mux.HandleFunc("/api/live/next", handleLiveNext)
+	mux.HandleFunc("/api/live/status", handleLiveStatus)
 	mux.HandleFunc("/api/live/result", handleLiveResult)
 	mux.HandleFunc("/api/live/build", handleLiveBuild)
 	mux.HandleFunc("/api/live/addon", handleLiveAddon)

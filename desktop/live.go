@@ -31,8 +31,10 @@ var (
 		sync.Mutex
 		armed   bool
 		target  string
-		seen    time.Time        // the page's last poll; a closed page stops being "armed"
-		next    chan liveBuild   // builds waiting for the page
+		seen    time.Time      // the page's last poll; a closed page stops being "armed"
+		blender time.Time      // the add-on's last check-in
+		file    string         // the .blend it's working on
+		next    chan liveBuild // builds waiting for the page
 		waiting map[int]chan liveResult
 		id      int
 	}{next: make(chan liveBuild, 1), waiting: map[int]chan liveResult{}}
@@ -95,6 +97,13 @@ func handleLiveNext(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GET from the page: is Blender's add-on checking in?
+func handleLiveStatus(w http.ResponseWriter, r *http.Request) {
+	live.Lock()
+	defer live.Unlock()
+	writeJSON(w, map[string]any{"blender": !live.blender.IsZero() && time.Since(live.blender) < 12*time.Second, "file": live.file})
+}
+
 // POST from the page: what happened to a build
 func handleLiveResult(w http.ResponseWriter, r *http.Request) {
 	var v liveResult
@@ -116,7 +125,10 @@ func handleLiveResult(w http.ResponseWriter, r *http.Request) {
 
 // POST from Blender (X-Live-Token): {objects: [...], name, file}. Answers with the page's result.
 func handleLiveBuild(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet { // the add-on's "is the editor there?" check
+	if r.Method == http.MethodGet { // the add-on's "is the editor there?" check, every few seconds while Blender runs
+		live.Lock()
+		live.blender, live.file = time.Now(), r.URL.Query().Get("file")
+		live.Unlock()
 		armed, target := liveArmed()
 		writeJSON(w, map[string]any{"ok": true, "armed": armed, "target": target, "version": appVersion})
 		return

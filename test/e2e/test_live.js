@@ -25,6 +25,8 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.evaluate((i) => { (S.wright || (S.wright = { q: '', sel: new Set(), auto: false, json: false })).slot = i; S.wright.auto = false; go('shipwright'); }, info.to);
   await p.waitForSelector('#liveToggle'); await p.click('#liveToggle'); await p.waitForSelector('#swLive.on');
   ok('Live link turns on for the open corvette', /slot/.test(await p.textContent('#swLive .live-state')));
+  ok('the sidebar shows Live on Shipwright', !!(await p.$('nav [data-s="shipwright"] .live-pill')));
+  ok('and it waits for Blender until the add-on checks in', /Waiting for Blender/.test(await p.textContent('#liveBlender')));
   await p.screenshot({ path: SP + '/shots/live-on.png' });
   const bakDir = path.join(cfg, 'HarmoniousSaveEditor', 'backups');
   const countBackups = () => (fs.existsSync(bakDir) ? fs.readdirSync(bakDir).reduce((n, d) => n + (fs.statSync(path.join(bakDir, d)).isDirectory() ? fs.readdirSync(path.join(bakDir, d)).length : 0), 0) : 0);
@@ -33,14 +35,17 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const py = path.join(SP, 'bpyenv/bin/python');
   // (bpy as a module reports leaked memory and a non-zero status on exit; only its output matters here)
   const outp = spawnSync(py, [path.join(__dirname, 'live_blender.py'), path.join(__dirname, '../../desktop/addon'), SP + '/live_build.json', SP + '/live_test.blend'],
-    { env: { ...process.env, HSE_LIVE_FILE: liveFile }, encoding: 'utf8', timeout: 300000 }).stdout.split('\n').filter((l) => /^(PANEL|SEND|SAVE) /.test(l));
+    { env: { ...process.env, HSE_LIVE_FILE: liveFile }, encoding: 'utf8', timeout: 300000 }).stdout.split('\n').filter((l) => /^(PANEL|LINK|SEND|SAVE) /.test(l));
   console.log(outp.join('\n'));
   ok('the add-on registers its panel', outp.some((l) => l === 'PANEL True'));
+  ok('Blender sees it is linked, and to which corvette', outp.some((l) => l.startsWith('LINK on ') && l.includes(info.toName)));
   ok('Send now: the build is written to the corvette', outp.some((l) => l.startsWith('SEND') && new RegExp(`${info.n.toLocaleString()} parts written to ${info.toName}.*backed up`).test(l)));
   ok('saving the .blend sends it again', outp.some((l) => l.startsWith('SAVE') && /written to/.test(l)));
   const backupsAfter = countBackups();
   ok('each write is backed up', backupsAfter >= backupsBefore + 2);
   await p.waitForTimeout(500);
+  await p.waitForSelector('#liveBlender.ok', { timeout: 8000 }).catch(() => {});
+  ok('the editor shows Blender is linked', /Blender is linked/.test(await p.textContent('#liveBlender')));
   ok('the editor lists what arrived', (await p.$$('#swLive .live-log li')).length >= 2);
   await p.screenshot({ path: SP + '/shots/live-log.png' });
   // turned off: the add-on is told

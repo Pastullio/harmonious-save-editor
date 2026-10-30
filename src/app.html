@@ -760,6 +760,11 @@ dialog.wide { max-width: 1000px; }
 .live-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 25%, transparent); animation: livepulse 1.6s ease-in-out infinite; }
 @keyframes livepulse { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--ok) 0%, transparent); } }
 @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+.live-blender { margin: -4px 0 10px 17px; font-size: 12.5px; color: var(--dim); }
+.live-blender.ok { color: var(--ok); }
+.live-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--ok); }
+.live-pill .live-dot { width: 7px; height: 7px; }
+nav button[aria-current="page"] .live-pill { color: inherit; }
 .live-log { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 4px; font-size: 12px; color: var(--dim); }
 .live-log li.bad { color: var(--danger); }
 ol.steps { padding-left: 20px; display: grid; gap: 6px; }
@@ -1386,7 +1391,7 @@ function renderSide() {
   $('#saveMeta').textContent = bits.join(', ');
   const counts = { hangar: ships().length + tools().length, ships: ships().length, tools: tools().length, storage: storageInvs().length };
   const label = Object.fromEntries(SECTIONS);
-  const btn = (id) => `<button data-s="${id}" ${S.section === id ? 'aria-current="page"' : ''} style="--dot:${secColor(id) || 'var(--line-2)'}"><span class="dot" aria-hidden="true"></span><span class="lbl">${label[id]}</span>${NEW_SECTIONS[id] && APP && !seenSection(id) ? '<span class="new-pill">New</span>' : counts[id] != null ? `<span class="count">${counts[id]}</span>` : ''}</button>`;
+  const btn = (id) => `<button data-s="${id}" ${S.section === id ? 'aria-current="page"' : ''} style="--dot:${secColor(id) || 'var(--line-2)'}"><span class="dot" aria-hidden="true"></span><span class="lbl">${label[id]}</span>${id === 'shipwright' && LIVE.on ? '<span class="live-pill" title="Live link from Blender is on"><span class="live-dot"></span>Live</span>' : NEW_SECTIONS[id] && APP && !seenSection(id) ? '<span class="new-pill">New</span>' : counts[id] != null ? `<span class="count">${counts[id]}</span>` : ''}</button>`;
   $('#nav').innerHTML = NAV_GROUPS.map((gr) => `<div class="nav-group" style="--tint:${gr.tint}">${gr.ids.filter((id) => label[id]).map(btn).join('')}</div>`).join('');
   applySection(S.section);
   $('#nav').querySelectorAll('button').forEach((b) => b.onclick = () => go(b.dataset.s));
@@ -4683,7 +4688,7 @@ function livePanelHtml(corvs) {
   const target = corvs.find((c) => c.i === LIVE.slot);
   const on = LIVE.on && target;
   return `<div class="live${on ? ' on' : ''}" id="swLive"><h3>Live link ${hint('Save your build in Blender (Ctrl+S) and it lands on this corvette in your save, backed up first every time. Needs the Harmonious Live Link add-on in Blender, with Charon Forge or the NMS Base Builder add-on.')}</h3>
-    ${on ? `<p class="live-state"><span class="live-dot"></span>Receiving into <b>${esc(str(g(target.s, 'Name')) || 'Corvette')}</b>, slot ${target.i + 1}</p>` : '<p class="dim small-print">Off. Turn it on for the corvette you have open.</p>'}
+    ${on ? `<p class="live-state"><span class="live-dot"></span>Receiving into <b>${esc(str(g(target.s, 'Name')) || 'Corvette')}</b>, slot ${target.i + 1}</p><p class="live-blender${LIVE.blender ? ' ok' : ''}" id="liveBlender">${liveBlenderText()}</p>` : '<p class="dim small-print">Off. Turn it on for the corvette you have open.</p>'}
     <label class="check"><input type="checkbox" id="liveWrite"${LIVE.write ? ' checked' : ''}> Write to the game as each build arrives</label>
     <div class="sw-side-acts"><button class="btn${on ? '' : ' primary'}" type="button" id="liveToggle">${on ? 'Turn off' : 'Turn on for this corvette'}</button><button class="btn ghost" type="button" id="liveAddon">Get the Blender add-on</button></div>
     ${LIVE.log.length ? `<ul class="live-log">${LIVE.log.slice(0, 5).map((e) => `<li class="${e.ok ? '' : 'bad'}"><span class="mono">${esc(e.time)}</span> ${esc(e.text)}</li>`).join('')}</ul>` : ''}</div>`;
@@ -4700,7 +4705,8 @@ async function liveArm() {
   await api('/api/live/arm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ armed: !!LIVE.on, target: t ? `${str(g(t, 'Name')) || 'Corvette'}, slot ${LIVE.slot + 1}` : '' }) }).catch(() => {});
 }
 function liveStart(slot) {
-  LIVE.on = true; LIVE.slot = slot; liveArm(); toast('Live link on: save in Blender to send the build');
+  LIVE.on = true; LIVE.slot = slot; liveArm(); renderSide(); toast('Live link on: save in Blender to send the build');
+  clearInterval(LIVE.watch); LIVE.watch = setInterval(liveWatch, 3000); liveWatch();
   const run = ++LIVE.loop;
   (async () => {
     while (LIVE.on && LIVE.loop === run) {
@@ -4716,7 +4722,13 @@ function liveStart(slot) {
     }
   })();
 }
-function liveStop() { LIVE.on = false; LIVE.loop++; liveArm(); }
+function liveStop() { LIVE.on = false; LIVE.loop++; liveArm(); clearInterval(LIVE.watch); LIVE.blender = false; renderSide(); }
+const liveBlenderText = () => (LIVE.blender ? `Blender is linked${LIVE.file ? ` (${esc(LIVE.file)})` : ''}` : 'Waiting for Blender: open it with the Harmonious Live Link add-on turned on');
+// is Blender's add-on checking in? (it does every few seconds while Blender is open)
+async function liveWatch() {
+  try { const st = await (await api('/api/live/status')).json(); LIVE.blender = st.blender; LIVE.file = st.file; } catch (_) { LIVE.blender = false; }
+  const el = document.getElementById('liveBlender'); if (el) { el.innerHTML = liveBlenderText(); el.classList.toggle('ok', !!LIVE.blender); }
+}
 async function liveApply(body) {
   if (!S.save || !S.src || S.src.kind !== 'app') return { ok: false, message: 'No save is open in the editor.' };
   const list = g(ps(), 'ShipOwnership') || [], ship = list[LIVE.slot], base = shipBuild(LIVE.slot);
