@@ -24,7 +24,7 @@ import (
 	"time"
 )
 
-const itemlibVersion = 3 // 2: words, frigate traits and settlement perks; 3: expedition, Twitch and platform rewards
+const itemlibVersion = 4 // 2: words, frigate traits and settlement perks; 3: expedition, Twitch and platform rewards; 4: biome odds
 
 type libItem struct {
 	ID     string `json:"id"`
@@ -49,6 +49,7 @@ type libFile struct {
 	Traits   []libTrait        `json:"traits,omitempty"`
 	Perks    []libPerk         `json:"perks,omitempty"`
 	Ranks    []libRanks        `json:"ranks,omitempty"`
+	Biomes   *libBiomes        `json:"biomes,omitempty"`
 	Seasons  []libSeason       `json:"seasons,omitempty"`
 	Rewards  []libReward       `json:"rewards,omitempty"`
 	Twitch   []libTwitch       `json:"twitch,omitempty"`
@@ -89,6 +90,14 @@ type libPlatform struct {
 
 // a stat with named levels (standing with each race and guild, journey milestones): the level is
 // reached when the stat's value is at least Levels[i].Value
+// biome odds per star colour (GcBiomeListPerStarType): weights in GcBiomeType order, not yet normalised
+type libBiomes struct {
+	Star            [][]float64 `json:"star"`  // Yellow, Green, Blue, Red, Purple (GcGalaxyStarTypes)
+	StarPrime       [][]float64 `json:"prime"` // the same for prime planets
+	AbandonedYellow []float64   `json:"abandoned"`
+	LushYellow      []float64   `json:"lush"`
+}
+
 type libRanks struct {
 	ID     string    `json:"id"`
 	Title  string    `json:"title"`
@@ -654,6 +663,21 @@ func buildItemLibrary() (err error) {
 		}
 	}
 
+	// biome odds (metadata/simulation/solarsystem/biomes/biomelistperstartype.mbin): GcBiomeListPerStarType is
+	// StarType[5] of GcBiomeList (0x88 bytes: 17 float BiomeProbability, then 17 float PrimeBiomeProbability),
+	// then AbandonedYellow at 0x2A8 and LushYellow at 0x330. Dropped if the numbers don't look like weights.
+	var biomes *libBiomes
+	const biomeFile = "metadata/simulation/solarsystem/biomes/biomelistperstartype.mbin"
+	if p, err := b.find(biomeFile, "NMSARC.Precache.pak"); err != nil {
+		log.Printf("item library: skipping biome odds: %v", err)
+	} else if raw, err := p.Read(biomeFile); err != nil {
+		log.Printf("item library: skipping biome odds: %v", err)
+	} else if bi, err := parseBiomes(raw); err != nil {
+		log.Printf("item library: skipping biome odds: %v", err)
+	} else {
+		biomes = bi
+	}
+
 	// icons: read in order from the texture archive, decoded and shrunk on every core
 	if err := os.MkdirAll(filepath.Join(itemlibDir(), "icons"), 0o755); err != nil {
 		return err
@@ -731,7 +755,7 @@ func buildItemLibrary() (err error) {
 		stampNames = append(stampNames, n)
 	}
 	sort.Strings(stampNames)
-	lib := &libFile{Version: itemlibVersion, Built: time.Now().Format(time.RFC3339), Game: banks, Stamp: stampOf(banks, stampNames), Items: items, Missing: missing, Words: words, Traits: traits, Perks: perks, Ranks: ranks, Seasons: seasons, Rewards: rewards, Twitch: twitch, Platform: platform}
+	lib := &libFile{Version: itemlibVersion, Built: time.Now().Format(time.RFC3339), Game: banks, Stamp: stampOf(banks, stampNames), Items: items, Missing: missing, Words: words, Traits: traits, Perks: perks, Ranks: ranks, Biomes: biomes, Seasons: seasons, Rewards: rewards, Twitch: twitch, Platform: platform}
 	out, _ := json.Marshal(lib)
 	if err := atomicWrite(filepath.Join(itemlibDir(), "items.json"), out); err != nil {
 		return err
@@ -868,4 +892,43 @@ func printable(s string) bool {
 		}
 	}
 	return true
+}
+
+// parseBiomes reads GcBiomeListPerStarType: StarType[5] of GcBiomeList (0x88 bytes: 17 float BiomeProbability,
+// then 17 float PrimeBiomeProbability), then AbandonedYellow at 0x2A8 and LushYellow at 0x330.
+func parseBiomes(raw []byte) (*libBiomes, error) {
+	m, err := openMbin(raw, 0x816993EB69267DD2, "biomelistperstartype.mbin")
+	if err != nil {
+		return nil, err
+	}
+	const base = 0x20
+	if !m.ok(base, 0x3B8) {
+		return nil, errors.New("biomelistperstartype.mbin is too short")
+	}
+	list := func(at int) []float64 {
+		out := make([]float64, 17)
+		sum := 0.0
+		for k := range out {
+			f := float64(math.Float32frombits(uint32(m.i32(base + at + k*4))))
+			if math.IsNaN(f) || f < 0 || f > 1e6 {
+				return nil
+			}
+			out[k] = f
+			sum += f
+		}
+		if sum <= 0 {
+			return nil
+		}
+		return out
+	}
+	bi := &libBiomes{AbandonedYellow: list(0x2A8), LushYellow: list(0x330)}
+	for s := 0; s < 5; s++ {
+		a := list(s * 0x88)
+		if a == nil {
+			return nil, errors.New("biome odds don't look like weights")
+		}
+		bi.Star = append(bi.Star, a)
+		bi.StarPrime = append(bi.StarPrime, list(s*0x88+0x44))
+	}
+	return bi, nil
 }

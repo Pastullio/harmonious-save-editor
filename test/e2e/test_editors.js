@@ -42,7 +42,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.fill('[data-stat="TRA_STANDING"]', '250'); await p.press('[data-stat="TRA_STANDING"]', 'Tab');
   ok('standing edits', await p.evaluate(() => statValue('TRA_STANDING') === 250));
   await p.click('[data-max="BUI_STANDING"]');
-  ok('max on a stat with no value yet', await p.evaluate(() => statValue('BUI_STANDING') >= 1000 && kOf(g(statEntry('BUI_STANDING'), 'Value'), 'IntValue') != null));
+  ok('max on a stat with no value yet (the top rank from the game, or 1000 without it)', await p.evaluate(() => { const r = rankAt('BUI_STANDING', 0); return statValue('BUI_STANDING') === (r ? r.top.value : 1000) && kOf(g(statEntry('BUI_STANDING'), 'Value'), 'IntValue') != null; }));
   await p.fill('[data-stat="DIST_WALKED"]', '123456.5'); await p.press('[data-stat="DIST_WALKED"]', 'Tab');
   ok('float milestones stay floats', await p.evaluate(() => kOf(g(statEntry('DIST_WALKED'), 'Value'), 'FloatValue') != null && statValue('DIST_WALKED') === 123456.5));
   await shot('standing');

@@ -760,6 +760,16 @@ dialog.wide { max-width: 1000px; }
 .qf-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; padding-top: 14px; padding-bottom: 14px; }
 .qf-bar h3 { margin: 0; }
 .qf-bar .toolbar { margin: 0; }
+.live { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.live h3 { margin: 0 0 10px; font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+.live-state { margin: 0 0 10px; font-size: 13.5px; line-height: 1.45; }
+.live-state .live-dot { display: inline-block; margin-right: 8px; vertical-align: 1px; }
+.live-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 25%, transparent); animation: livepulse 1.6s ease-in-out infinite; }
+@keyframes livepulse { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--ok) 0%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+.live-log { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 4px; font-size: 12px; color: var(--dim); }
+.live-log li.bad { color: var(--danger); }
+ol.steps { padding-left: 20px; display: grid; gap: 6px; }
 .arch { margin-top: 18px; }
 .arch h3 { font-size: 13px; letter-spacing: .18em; text-transform: uppercase; font-weight: 500; margin: 0 0 8px; }
 .arch-list { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px; }
@@ -1734,21 +1744,24 @@ $('#closeBtn').onclick = async () => {
 window.addEventListener('beforeunload', (e) => { if (S.dirty || (S.acct && S.acct.dirty)) { e.preventDefault(); e.returnValue = ''; } });
 
 // ------------------------------------------------------------------ writing
-$('#saveBtn').onclick = async () => {
-  if (!S.save.meta) { toast('This save was opened without its meta file, so it cannot be written.', true); return; }
+// the open save as bytes, checked to decode back to the same JSON; throws with a reason (nothing is written then)
+function encodeSave() {
   const saveName = str(g(common() || ps(), 'SaveName'));
   let out;
-  const btn = $('#saveBtn'); btn.disabled = true; btn.textContent = 'Preparing files…'; await tick();
+  // the load menu shows the difficulty preset from the meta file, so a changed preset goes there too
+  try { out = C.writeSave(S.save, { saveName: S.save.meta.info.saveName != null ? saveName : undefined, difficultyPreset: S.diffPreset != null && S.save.meta.info.difficultyPreset != null ? S.diffPreset : undefined }); }
+  catch (e) { throw new Error('Could not encode the save: ' + e.message); }
   try {
-    // the load menu shows the difficulty preset from the meta file, so a changed preset goes there too
-    try { out = C.writeSave(S.save, { saveName: S.save.meta.info.saveName != null ? saveName : undefined, difficultyPreset: S.diffPreset != null && S.save.meta.info.difficultyPreset != null ? S.diffPreset : undefined }); }
-    catch (e) { toast('Could not encode the save: ' + e.message, true); return; }
-    // self-check: the bytes we are about to write must decode back to the same JSON
-    try {
-      const back = C.readSave(out.data, out.meta, S.src.dataName);
-      if (C.stringifyJSON(back.json) !== C.stringifyJSON(S.save.json)) throw new Error('round-trip mismatch');
-    } catch (e) { toast('Safety check failed, nothing was written: ' + e.message, true); return; }
-  } finally { updateStatus(); }
+    const back = C.readSave(out.data, out.meta, S.src.dataName);
+    if (C.stringifyJSON(back.json) !== C.stringifyJSON(S.save.json)) throw new Error('round-trip mismatch');
+  } catch (e) { throw new Error('Safety check failed, nothing was written: ' + e.message); }
+  return out;
+}
+$('#saveBtn').onclick = async () => {
+  if (!S.save.meta) { toast('This save was opened without its meta file, so it cannot be written.', true); return; }
+  let out;
+  const btn = $('#saveBtn'); btn.disabled = true; btn.textContent = 'Preparing files…'; await tick();
+  try { out = encodeSave(); } catch (e) { toast(e.message, true); return; } finally { updateStatus(); }
 
   if (S.src.kind === 'app') return appWrite(out);
   if (S.src.kind === 'dir') {
@@ -3925,7 +3938,7 @@ async function loadLibrary() {
   const d = await (await api('/api/itemlib/items.json')).json();
   const list = d.items.map((it) => ({ ...it, icon: it.icon || '' }));
   S.db = { list, byId: new Map(list.map((it) => [it.id, it])), icons: new Map(), src: 'lib',
-    words: d.words || null, traits: new Map((d.traits || []).map((t) => [t.id, t])), perks: new Map((d.perks || []).map((t) => [t.id, t])), ranks: d.ranks && d.ranks.length ? new Map(d.ranks.map((r) => [r.id, r])) : null,
+    words: d.words || null, traits: new Map((d.traits || []).map((t) => [t.id, t])), perks: new Map((d.perks || []).map((t) => [t.id, t])), ranks: d.ranks && d.ranks.length ? new Map(d.ranks.map((r) => [r.id, r])) : null, biomes: d.biomes || null,
     seasons: d.seasons || null, rewards: d.rewards || null, twitch: d.twitch || null, platform: d.platform || null };
   addTechPacks(S.db);
 }
@@ -5480,13 +5493,24 @@ const STAR_COLOURS = ['Yellow', 'Green', 'Blue', 'Red', 'Purple'];
 const ECONOMIES = [null, 'Trading', 'Advanced materials', 'Scientific', 'Mining', 'Manufacturing', 'Technology', 'Power generation'];
 const LEVELS = [null, 'Low', 'Medium', 'High'];
 const RACES = ['None', 'Gek', 'Korvax', "Vy'keen"];
+// Biome odds for a planet in a system of this star colour, from the game's own table (GcBiomeListPerStarType, read
+// by the item library). Odds, not a prediction: the game's draw for each planet isn't known yet. Exotic kinds are summed.
+function biomeOdds(star, abandoned) {
+  const b = S.db && S.db.biomes; if (!b || !b.star) return null;
+  const w = (abandoned && star === 0 && b.abandoned) || b.star[star]; if (!w) return null;
+  const NAME = ['Lush', 'Toxic', 'Scorched', 'Radioactive', 'Frozen', 'Barren', 'Dead', 'Exotic', 'Exotic', 'Exotic', 'Exotic', null, 'Marsh', 'Volcanic', 'Ocean', 'Gas giant', null];
+  const sums = new Map(); let total = 0;
+  w.forEach((v, k) => { const n = NAME[k]; if (!n || !(v > 0)) return; sums.set(n, (sums.get(n) || 0) + v); total += v; });
+  if (!total) return null;
+  return [...sums].map(([n, v]) => [n, v / total]).sort((x, y) => y[1] - x[1]);
+}
 async function predictSystem(p) {
   const lm = await letterMap();
   const code = BigInt('0x' + Place.portal({ ...p, planet: 0 })), gi = p.gi;
   const a = NMSGEN.systemAttributes(code, gi), seeds = NMSGEN.planetSeeds(code, gi), sb = NMSGEN.sellBuy(code, gi);
   return {
     name: NMSGEN.systemName(code, gi, lm), region: NMSGEN.regionName(code, gi, lm),
-    star: STAR_COLOURS[a.star_type] || '?', gasGiant: a.gas_giant,
+    star: STAR_COLOURS[a.star_type] || '?', starType: a.star_type, gasGiant: a.gas_giant, odds: biomeOdds(a.star_type, a.abandoned),
     race: RACES[a.dominant_race] || 'None', economy: ECONOMIES[a.economy_type] || 'None', wealth: LEVELS[a.wealth] || '', conflict: LEVELS[a.conflict_level] || '',
     pirate: a.pirate, abandoned: a.abandoned, uncharted: a.uncharted, sell: sb && sb.sell, buy: sb && sb.buy,
     planets: seeds.planet_seeds.map((s) => NMSGEN.planetName(s, null, lm)), planetCount: seeds.planet_count, moonCount: seeds.moon_count,
@@ -5501,6 +5525,7 @@ function predictionHtml(p, s) {
     ['Conflict', s.abandoned ? 'None' : s.pirate ? 'Pirate controlled' : s.conflict],
     s.sell != null && !s.abandoned && ['Station prices', `sells at ${pct(s.sell)}, buys at ${pct(s.buy)}`],
     s.uncharted && ['Uncharted', 'Yes'],
+    s.odds && ['Biome odds', s.odds.filter(([, f]) => f >= 0.01).map(([n, f]) => `${n} ${Math.round(f * 100)}%`).join(', ')],
     ['Bodies', `${plural(s.planetCount, 'planet')}${s.moonCount ? ' and ' + plural(s.moonCount, 'moon') : ''}`],
   ].filter(Boolean);
   const rest = Place.portal(p).slice(1);
@@ -5509,7 +5534,7 @@ function predictionHtml(p, s) {
     ${s.planets.length ? `<table class="pred-planets"><thead><tr><th>#</th><th>Name</th><th>Biome</th><th>Portal address</th><th></th></tr></thead><tbody>
       ${s.planets.map((n, i) => { const code = hexN(i + 1, 1) + rest, bi = (s.biomes || {})[i + 1]; return `<tr${p.planet === i + 1 ? ' class="on"' : ''}><td>${i + 1}</td><td>${esc(n)}</td><td>${bi && bi.biome ? esc(bi.biome + (bi.infested ? ', infested' : '')) : '<span class="dim">Not visited</span>'}</td><td>${glyphRow(code, 'tiny')} <span class="mono">${code}</span></td><td><button class="link" type="button" data-planet="${i + 1}">${p.planet === i + 1 ? 'Selected' : 'Use this address'}</button></td></tr>`; }).join('')}
     </tbody></table>` : '<p class="dim">No planets.</p>'}
-    <p class="pred-note dim">Predicted from the address with the game's own rules, so it works for systems nobody has visited. Checked against 1,000 systems players recorded: about 99% right. Names travellers uploaded later aren't included. Biomes come from your own discoveries; predicting them for planets you haven't visited is still being researched, and weather and resources aren't predicted yet. Generation research: nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, ported to JavaScript as nms-core by elegra1965 (both MIT).</p>`;
+    <p class="pred-note dim">Predicted from the address with the game's own rules, so it works for systems nobody has visited. Checked against 1,000 systems players recorded: about 99% right. Names travellers uploaded later aren't included. Biomes in the planet list come from your own discoveries. Biome odds are the game's own chances for a planet around this colour of star, read from your game files; which biome each unvisited planet gets is still being researched, and weather and resources aren't predicted yet. Generation research: nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, ported to JavaScript as nms-core by elegra1965 (both MIT).</p>`;
 }
 
 // a shareable card for a place: glyphs, address, the predicted system and its planets (for Discord and the like)
@@ -6371,6 +6396,68 @@ function shipSlotsPanel(el) {
   $('#slotsPack', d).onclick = () => { const idx = [...list.keys()], order = [...idx.filter((i) => slotHasShip(list[i])), ...idx.filter((i) => !slotHasShip(list[i]))]; arrangeShips(order); SL.open = true; done('Ships moved to the front, gaps closed'); };
   d.querySelectorAll('[data-fix]').forEach((b) => b.onclick = () => { const [k, f] = b.dataset.fix.split(':').map(Number); try { issues[k][1][f][1](); SL.open = true; done('Fixed'); } catch (e) { toast(e.message, true); } });
 }
+// ---------------------------------------------------------------- live link from Blender
+// With Live link on for a corvette, every build the Blender add-on sends (each Ctrl+S in Blender) replaces that
+// corvette's parts and, unless turned off, is written straight to the save (the app backs up the old pair each time).
+const LIVE = { on: false, slot: null, write: true, log: [], loop: 0 };
+function livePanelHtml(corvs) {
+  const target = corvs.find((c) => c.i === LIVE.slot);
+  const on = LIVE.on && target;
+  return `<div class="live${on ? ' on' : ''}" id="swLive"><h3>Live link ${hint('Save your build in Blender (Ctrl+S) and it lands on this corvette in your save, backed up first every time. Needs the Harmonious Live Link add-on in Blender, with Charon Forge or the NMS Base Builder add-on.')}</h3>
+    ${on ? `<p class="live-state"><span class="live-dot"></span>Receiving into <b>${esc(str(g(target.s, 'Name')) || 'Corvette')}</b>, slot ${target.i + 1}</p>` : '<p class="dim small-print">Off. Turn it on for the corvette you have open.</p>'}
+    <label class="check"><input type="checkbox" id="liveWrite"${LIVE.write ? ' checked' : ''}> Write to the game as each build arrives</label>
+    <div class="sw-side-acts"><button class="btn${on ? '' : ' primary'}" type="button" id="liveToggle">${on ? 'Turn off' : 'Turn on for this corvette'}</button><button class="btn ghost" type="button" id="liveAddon">Get the Blender add-on</button></div>
+    ${LIVE.log.length ? `<ul class="live-log">${LIVE.log.slice(0, 5).map((e) => `<li class="${e.ok ? '' : 'bad'}"><span class="mono">${esc(e.time)}</span> ${esc(e.text)}</li>`).join('')}</ul>` : ''}</div>`;
+}
+function wireLivePanel(side, corvs) {
+  const W = S.wright;
+  $('#liveWrite', side).onchange = (e) => { LIVE.write = e.target.checked; };
+  $('#liveAddon', side).onclick = () => { const a = document.createElement('a'); a.href = '/api/live/addon?t=' + encodeURIComponent(window.NMS_APP.token); a.download = 'harmonious_live_link.py'; a.click();
+    dialog('Install the Blender add-on', '<ol class="steps"><li>In Blender, open <b>Edit › Preferences › Add-ons</b>.</li><li>Choose <b>Install from Disk</b> (in the menu at the top right) and pick <span class="mono">harmonious_live_link.py</span> from your Downloads.</li><li>Tick <b>Harmonious Live Link</b>. Its panel is in the 3D view sidebar (press N), under <b>Harmonious</b>.</li><li>Here, turn Live link on for the corvette to update. Then every Ctrl+S in Blender sends the build.</li></ol>', [['Close', false]]); };
+  $('#liveToggle', side).onclick = () => { if (LIVE.on && LIVE.slot === W.slot) liveStop(); else liveStart(W.slot); render(); };
+}
+async function liveArm() {
+  const t = LIVE.on ? g(ps(), 'ShipOwnership')[LIVE.slot] : null;
+  await api('/api/live/arm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ armed: !!LIVE.on, target: t ? `${str(g(t, 'Name')) || 'Corvette'}, slot ${LIVE.slot + 1}` : '' }) }).catch(() => {});
+}
+function liveStart(slot) {
+  LIVE.on = true; LIVE.slot = slot; liveArm(); toast('Live link on: save in Blender to send the build');
+  const run = ++LIVE.loop;
+  (async () => {
+    while (LIVE.on && LIVE.loop === run) {
+      let r; try { r = await api('/api/live/next'); } catch (_) { await new Promise((ok) => setTimeout(ok, 2000)); continue; }
+      if (r.status !== 200) continue;
+      let id = 0, res;
+      try { const msg = C.parseJSON(await r.text()); id = num(msg.get('id')); res = await liveApply(msg.get('body')); }
+      catch (e) { res = { ok: false, message: e.message }; }
+      LIVE.log.unshift({ time: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }), ok: res.ok, text: res.message });
+      toast(res.message, !res.ok);
+      api('/api/live/result', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ok: res.ok, message: res.message }) }).catch(() => {});
+      if (S.section === 'shipwright') render();
+    }
+  })();
+}
+function liveStop() { LIVE.on = false; LIVE.loop++; liveArm(); }
+async function liveApply(body) {
+  if (!S.save || !S.src || S.src.kind !== 'app') return { ok: false, message: 'No save is open in the editor.' };
+  const list = g(ps(), 'ShipOwnership') || [], ship = list[LIVE.slot], base = shipBuild(LIVE.slot);
+  if (!ship || !slotIsCorvette(ship) || !base) return { ok: false, message: `Slot ${LIVE.slot + 1} isn't a corvette with a build any more. Turn Live link on again for the right one.` };
+  const objects = body instanceof Map ? body.get('objects') : null;
+  if (!Array.isArray(objects) || !objects.length || !objects.every((o) => o instanceof Map && o.get('ObjectID') != null)) return { ok: false, message: "The build from Blender has no parts the editor can read." };
+  let objs = inGameOrder(fromPlain(cloneJSON(objects)), (g(base, 'Objects') || [])[0]);
+  if (S.wright && S.wright.auto) objs = tunedOrder(objs);
+  set(base, 'Objects', objs); markDirty();
+  const name = str(g(ship, 'Name')) || 'the corvette';
+  if (!LIVE.write) return { ok: true, message: `${plural(objs.length, 'part')} put on ${name}. Press Save to game in the editor to keep them.` };
+  try {
+    const out = encodeSave(), res = await appWriteFiles(out);
+    S.dirty = false; DISK.save = null; renderSide();
+    let running = false; try { running = (await (await api('/api/game-running')).json()).running; } catch (_) {}
+    return { ok: true, message: `${plural(objs.length, 'part')} written to ${name} (slot ${LIVE.slot + 1}), the old save backed up first.${running ? ' The game is running: load the save from the main menu to see it.' : ''}` };
+  } catch (e) { return { ok: false, message: `Put on ${name}, but not written: ${e.message}` }; }
+}
+addEventListener('pagehide', () => { if (LIVE.on && window.NMS_APP) navigator.sendBeacon('/api/live/arm?t=' + encodeURIComponent(window.NMS_APP.token), new Blob([JSON.stringify({ armed: false })], { type: 'application/json' })); });
+
 PAGES.shipwright = (el) => {
   markSeen('shipwright');
   const corvs = ships().filter(({ s }) => /\/BIGGS\//i.test(str(g(s, 'Resource', 'Filename'))));
@@ -6392,11 +6479,13 @@ PAGES.shipwright = (el) => {
     return `<button type="button" class="sw-corv${i === W.slot ? ' on' : ''}" data-i="${i}"><span class="sw-dot ${worst}"></span><span><b>${esc(str(g(s, 'Name')) || 'Corvette')}</b><span class="dim">Slot ${i + 1} · ${plural(h.objs.length, 'part')}</span></span></button>`;
   }).join('')}</div>${probs.length ? `<div class="sw-probs">${probs.map((t) => `<p class="bad-hint">${esc(t)}</p>`).join('')}<button class="btn small" type="button" id="swFixSlots">Fix in Ship slots</button></div>` : ''}
     <div class="sw-side-acts"><button class="btn primary" type="button" id="swAdd">Add corvette</button><button class="btn danger" type="button" id="swDel">Delete corvette</button></div>
+    ${APP ? livePanelHtml(corvs) : ''}
 `;
   side.querySelector('h3').insertAdjacentHTML('beforeend', ' ' + hint('Add corvette puts a starter build in an empty slot for you to paste over. Finished corvettes from files go in through the Dock Yard.'));
   wrap.appendChild(side);
   side.querySelectorAll('[data-i]').forEach((b) => b.onclick = () => { W.slot = +b.dataset.i; W.sel = new Set(); render(); });
   $('#swAdd', side).onclick = doAdd;
+  if (APP) wireLivePanel(side, corvs);
   const fx = $('#swFixSlots', side); if (fx) fx.onclick = () => { (S.slots || (S.slots = {})).open = true; go('ships'); spotlight('#shipSlots'); };
   $('#swDel', side).onclick = () => deleteEntity(g(ps(), 'ShipOwnership')[W.slot], W.slot, 'ship');
   const main = document.createElement('div'); main.className = 'sw-main'; wrap.appendChild(main);
@@ -7749,6 +7838,17 @@ async function appListAccount(acct) {
   await showSlots(pool, (r) => ({ kind: 'app', dir: acct.path, dataName: r.name, metaName: r.metaName }));
 }
 
+// writes the pair through the app, which backs up the old pair first
+async function appWriteFiles(out) {
+  const fd = new FormData();
+  fd.append('dir', S.src.dir); fd.append('dataName', S.src.dataName); fd.append('metaName', S.src.metaName);
+  fd.append('data', new Blob([out.data]), S.src.dataName); fd.append('meta', new Blob([out.meta]), S.src.metaName);
+  const r = await api('/api/write', { method: 'POST', body: fd });
+  if (!r.ok) throw new Error((await r.text()).trim() || r.statusText);
+  const res = await r.json();
+  S.save.meta = C.readSave(out.data, out.meta, S.src.dataName).meta;
+  return res;
+}
 async function appWrite(out) {
   let running = false;
   try { running = (await (await api('/api/game-running')).json()).running; } catch (_) { /* unknown: treat as not running */ }
@@ -7759,11 +7859,7 @@ async function appWrite(out) {
   if (!ok) return;
   const btn = $('#saveBtn'); btn.disabled = true; btn.textContent = 'Saving…';
   try {
-    const fd = new FormData();
-    fd.append('dir', S.src.dir); fd.append('dataName', S.src.dataName); fd.append('metaName', S.src.metaName);
-    fd.append('data', new Blob([out.data]), S.src.dataName); fd.append('meta', new Blob([out.meta]), S.src.metaName);
-    const res = await (await api('/api/write', { method: 'POST', body: fd })).json();
-    S.save.meta = C.readSave(out.data, out.meta, S.src.dataName).meta;
+    const res = await appWriteFiles(out);
     S.dirty = false; renderSide(); DISK.save = null;   // our own write is not "the game saved again"
     toast('Saved. The previous files are in backups\\' + res.backupName);
   } catch (e) { toast('Save failed, your files were not changed: ' + e.message, true); }

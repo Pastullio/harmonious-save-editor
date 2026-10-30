@@ -75,6 +75,9 @@ func main() {
 		fatal("Could not start the editor: " + err.Error())
 	}
 	addr := ln.Addr().String()
+	if _, p, err := net.SplitHostPort(addr); err == nil {
+		startLive(p)
+	}
 	url := "http://" + addr + "/"
 	log.Printf("listening on %s, roots %v, backups in %s", url, roots, backups)
 
@@ -110,6 +113,11 @@ func main() {
 	mux.HandleFunc("/api/covers/custom", handleCustomCover)
 	mux.HandleFunc("/api/linkmeta", handleLinkMeta)
 	mux.HandleFunc("/api/update", handleUpdate)
+	mux.HandleFunc("/api/live/arm", handleLiveArm)
+	mux.HandleFunc("/api/live/next", handleLiveNext)
+	mux.HandleFunc("/api/live/result", handleLiveResult)
+	mux.HandleFunc("/api/live/build", handleLiveBuild)
+	mux.HandleFunc("/api/live/addon", handleLiveAddon)
 	mux.HandleFunc("/api/update/install", handleUpdateInstall)
 	mux.HandleFunc("/api/itemdb/items.xml", handleItemXML)
 	mux.HandleFunc("/api/itemdb/icon", handleItemIcon)
@@ -158,6 +166,11 @@ func guard(addr string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !okHosts[r.Host] {
 			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		// the Blender add-on has its own token (from live.json) and may only send builds
+		if r.URL.Path == "/api/live/build" && liveTokenOK(r) {
+			next.ServeHTTP(w, r)
 			return
 		}
 		if strings.HasPrefix(r.URL.Path, "/api/") {

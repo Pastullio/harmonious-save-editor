@@ -86,8 +86,8 @@ The save file holds no images, so a ship's picture has to come from one of these
 - [x] Ship slot manager (Starships page): swap slots by drag or click, close gaps; a ship's build, colours, customisation, current-ship marker and corvette-workshop link move with it. Repairs: builds pointing at empty, missing or non-corvette slots, several builds on one corvette, corvettes without a build, current ship on an empty slot (the first fix offered never deletes a build)
 - [x] BBA's `.nmsprefab` (load into Dock Yard/Shipwright, "Add a prefab" on Bases)
 - [ ] BBA's `.nmsbase` (needs a sample)
-- [ ] **Live Blender link**: Ctrl+S in Blender writes the build straight into the chosen corvette in your save. The app runs quietly in the system tray and receives the build from Blender. Drydock (or a tiny companion add-on) sends it on save, so there's no export, copy, paste or load step
-- [ ] Every live update is backed up, so any version can be rolled back
+- [x] **Live Blender link**: Ctrl+S in Blender writes the build straight into the chosen corvette in your save, through the Harmonious Live Link add-on (Charon Forge or the Base Builder add-on reads the scene). Turned on per corvette in Shipwright while the editor is open
+- [x] Every live update is backed up, so any version can be rolled back
 - [ ] To test early: whether No Man's Sky picks up the new file when you load the save from the main menu, and how Steam Cloud reacts to a file changing outside the game
 
 - [x] Supercharge slots (owner, 2026-10-29): button next to Unlock all slots on exosuit and starship technology, per-slot toggle and multi-select; exocraft technology too (owner, 2026-10-29); supercharged slots get a steady electric edge and bolt badge; the lightning crackles on hover or selection and once when a slot is charged (owner found a fully charged grid too busy)
@@ -123,7 +123,7 @@ The save file holds no images, so a ship's picture has to come from one of these
 - [x] Predicted system for any address, visited or not: system, region and planet names, star colour, planets and moons, race, economy and wealth, conflict, pirate/abandoned/uncharted, station prices (nms-core / nms_namegen, MIT; about 99% against 1,000 player-recorded systems)
 - [ ] Predicted planet details: biome, weather, resources, sentinels, flora and fauna. Our own research (owner 2026-10-30; ATLAS APF not used):
   - [x] Biome of planets you've discovered, from discovery records (`VP[1]` low 16 bits = GcBiomeType, bit 16 = infested), shown in the planet table
-  - [ ] Biome odds per star colour from the owner's own `METADATA/SIMULATION/SOLARSYSTEM/BIOMES/BIOMELISTPERSTARTYPE.MBIN` (GcBiomeListPerStarType), labelled as odds
+  - [x] Biome odds per star colour from the owner's own `METADATA/SIMULATION/SOLARSYSTEM/BIOMES/BIOMELISTPERSTARTYPE.MBIN` (GcBiomeListPerStarType), labelled as odds (layout from libMBIN; still to check against the real file)
   - [ ] Exact biome: test generation hypotheses offline against the ~1,500 discovered planets in the owner's save (nms-core's planet seeds match all 1,487 records); if none fits, port the draw order from the game's solar-system generator
   - [ ] Weather, sentinels, resources, flora and fauna need planet generation itself (much harder, no labelled data beyond what players note down)
 - [x] Arrive on foot at a base (Coordinates, "Arrive at a base"): works in any system the app has seen a save made in

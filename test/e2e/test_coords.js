@@ -7,6 +7,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
 (async () => {
   const cfg = path.join(SP, 'coordcfg'), root = path.join(SP, 'coordroot'); fs.rmSync(cfg, { recursive: true, force: true }); fs.rmSync(root, { recursive: true, force: true });
   fs.cpSync(SP + '/dbroot/NMS', root, { recursive: true });   // a copy, because this test saves
+  if (fs.existsSync(SP + '/itemlibcfg')) fs.cpSync(SP + '/itemlibcfg', cfg, { recursive: true });   // the item library from test_itemlib.js, for biome odds
   const proc = spawn(path.join(__dirname, '../../dist/hse-linux'), ['-no-window', '-root', root, '-port', '47978'], { env: { ...process.env, HOME: SP + '/modelhome', XDG_CONFIG_HOME: cfg } });
   const url = await new Promise((res) => proc.stdout.on('data', (d) => res(String(d).trim())));
   const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1440, height: 1000 } });
@@ -34,6 +35,10 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const pred = await p.evaluate(() => ({ name: $('#pred .pred-name').textContent, planets: [...document.querySelectorAll('#pred .pred-planets tbody tr td:nth-child(2)')].map((t) => t.textContent), text: $('#pred').textContent }));
   console.log(JSON.stringify(pred.planets), pred.text.replace(/\s+/g, ' ').slice(0, 260));
   ok('predicts the system name', pred.name === 'Iqueri-Rep');
+  const odds = await p.evaluate(() => { const dd = [...document.querySelectorAll('#pred .pred-grid div')].find((d) => /Biome odds/.test(d.textContent)); return dd ? dd.querySelector('dd').textContent : null; });
+  console.log('odds', odds);
+  if (await p.evaluate(() => !!(S.db && S.db.biomes))) ok('biome odds from the game table, adding up to about 100%', !!odds && Math.abs(odds.match(/\d+(?=%)/g).map(Number).reduce((a, b) => a + b, 0) - 100) <= 4);
+  else console.log('SKIP biome odds (no item library with the biome table)');
   ok('predicts the planets', JSON.stringify(pred.planets) === JSON.stringify(['Nadyak Prime', 'Tomi 47/B2', 'Beherylano Dori']));
   ok('predicts race and pirates', /Korvax/.test(pred.text) && /Pirate controlled/.test(pred.text));
   await (await p.$('#destInfo')).screenshot({ path: SP + '/shots/co4-predict.png' });
