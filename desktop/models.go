@@ -237,6 +237,8 @@ var lodRe = regexp.MustCompile(`(?i)LOD(\d)`)
 
 // optionOf splits "_B3Top_6xRARE" into group "_B3Top" and option "6"; mesh pieces named
 // "_Mag1Clip_1Shape" or "_LSA1W_Shape2" belong to option 1 and 2.
+func optionGroup(name string) string { g, _ := optionOf(name); return g }
+
 func optionOf(name string) (string, string) {
 	if lodRe.MatchString(name) { // "_NoseA_BaseLOD0": a level of detail, not a choice
 		return "", ""
@@ -328,10 +330,14 @@ func groupsUnder(n *sceneNode, depth int) []partGroup {
 
 // pickFor returns the chosen option of a group: the owner's pick, or a stable guess from the seed.
 func pickFor(group string, opts []string, picks map[string]string, seed string) string {
+	// a group name can repeat at different depths (the multi-tool's _MultiTool holds another _MultiTool), so a pick
+	// may hold one choice per depth, joined with "|": the one that's an option here applies
 	if p, ok := picks[group]; ok {
-		for _, o := range opts {
-			if o == p {
-				return p
+		for _, want := range strings.Split(p, "|") {
+			for _, o := range opts {
+				if o == want {
+					return want
+				}
 			}
 		}
 	}
@@ -384,6 +390,10 @@ func transformOf(t [9]float32) mat4 {
 type meshOut struct {
 	pos []float32
 	idx []uint32
+	// only: when set, just the geometry under the chosen option of this group (a part's thumbnail)
+	only      string
+	onlyDepth int // which of the same-named groups along the path (1 = the outermost)
+	inside    int
 }
 
 func (o *meshOut) add(s *meshStream, m mat4) {
@@ -435,7 +445,7 @@ func buildMesh(scenePath string, picks map[string]string, seed string, lod int, 
 				if s == nil {
 					s = geo.byHash[n.Attrs["HASH"]]
 				}
-				if s != nil && !skipMaterial(n.Attrs["MATERIAL"]) {
+				if s != nil && !skipMaterial(n.Attrs["MATERIAL"]) && (out.only == "" || out.inside >= out.onlyDepth) {
 					if bind != nil {
 						out.add(s, *bind)
 					} else {
@@ -493,7 +503,14 @@ func buildMesh(scenePath string, picks map[string]string, seed string, lod int, 
 					}
 				}
 			}
+			in := out.only != "" && strings.HasPrefix(k.Name, "_") && optionGroup(k.Name) == out.only
+			if in {
+				out.inside++
+			}
 			walk(k, m, bind)
+			if in {
+				out.inside--
+			}
 		}
 	}
 	walk(root, parent, nil)
@@ -544,7 +561,10 @@ func handleModelMesh(w http.ResponseWriter, r *http.Request) {
 		_ = json.Unmarshal([]byte(s), &picks)
 	}
 	lod, _ := strconv.Atoi(r.URL.Query().Get("lod"))
-	out := &meshOut{}
+	out := &meshOut{only: r.URL.Query().Get("only"), onlyDepth: 1}
+	if d, err := strconv.Atoi(r.URL.Query().Get("depth")); err == nil && d > 1 {
+		out.onlyDepth = d
+	}
 	if err := buildMesh(p, picks, r.URL.Query().Get("seed"), lod, out, identity(), 0); err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return

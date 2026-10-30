@@ -26,13 +26,27 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.click('nav button[data-s="tools"]'); await p.waitForTimeout(1500);
   await p.evaluate(() => { S.pick.tool = 5; render(); }); await p.waitForTimeout(1500);
   await p.click('[data-k="parts"]'); await p.waitForSelector('.parts-dlg', { timeout: 20000 }); await p.waitForTimeout(1500);
-  const sels = await p.$$eval('.parts-list select', (s) => s.map((x) => x.dataset.g + '=' + x.value));
-  console.log('groups', sels.length, sels.slice(0, 8));
-  ok('parts picker lists choices', sels.length > 3);
+  const groups = await p.$$eval('.parts-group', (gs) => gs.map((x) => x.querySelector('.pg-name').textContent + ' = ' + (x.querySelector('.part-tile.on') || {}).dataset?.o));
+  console.log('groups', groups.length, groups.slice(0, 12));
+  ok('parts picker lists choices', groups.length > 3);
+  ok('nested parts are named without the parent\'s code', !groups.some((g) => /^(B\d|TS\d|LS\d)/.test(g)));
+  await p.waitForFunction(() => [...document.querySelectorAll('.part-tile canvas')].slice(0, 6).every((c) => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; for (let i = 3; i < d.length; i += 4) if (d[i]) return true; return false; }), null, { timeout: 30000 }).catch(() => {});
+  ok('each choice shows a picture of its part', await p.evaluate(() => [...document.querySelectorAll('.part-tile canvas')].slice(0, 6).every((c) => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; for (let i = 3; i < d.length; i += 4) if (d[i]) return true; return false; })));
   await p.screenshot({ path: SP + '/shots/f2-parts.png' });
-  const first = await p.$('.parts-list select'); const opts = await first.$$eval('option', (o) => o.map((x) => x.value));
-  await first.selectOption(opts[opts.length - 1]); await p.waitForTimeout(1500);
+  const tile = await p.$('.parts-group .part-tile:not(.on)'); const pick = { g: await tile.getAttribute('data-g'), o: await tile.getAttribute('data-o') };
+  await tile.click(); await p.waitForTimeout(1500);
+  ok('clicking a part picks it', await p.$eval(`.part-tile.on[data-g="${pick.g}"]`, (b) => b.dataset.o) === pick.o);
   await p.screenshot({ path: SP + '/shots/f3-parts-changed.png' });
+  // the multi-tool has a _MultiTool group inside a _MultiTool group: picking inside must not undo the outer pick,
+  // and the inner parts get pictures of their own
+  const nested = await p.$$('.parts-group[data-depth="1"] .part-tile:not(.on)');
+  if (nested.length) { await nested[0].click(); await p.waitForTimeout(1500); }
+  ok('a choice inside a same-named group keeps the outer one', await p.$eval(`.parts-group[data-depth="0"] .part-tile.on`, (b) => b.dataset.o) === pick.o);
+  const filled = async () => p.evaluate(() => [...document.querySelectorAll('.parts-group[data-depth="2"] .part-tile canvas')].slice(0, 4).map((c) => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i]) n++; return n; }));
+  await p.waitForTimeout(2500);
+  const px = await filled(); console.log('nested thumb pixels', px);
+  ok('parts two levels down have pictures too', px.length > 0 && px.every((n) => n > 200));
+  await p.screenshot({ path: SP + '/shots/f4-parts-nested.png' });
   await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(1500);
   ok('parts saved', await p.evaluate(async () => Object.keys(await IDB.get('parts:' + coverItems().find((x) => x.kind === 'tool' && x.i === 5).key) || {}).length > 0));
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);

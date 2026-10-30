@@ -586,7 +586,18 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .details-acts { margin-top: 20px; } .details-acts .sep { flex: 1; }
 .parts-dlg { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 18px; align-items: start; }
 .parts-dlg canvas { width: 360px; height: 360px; border-radius: var(--r-lg); background: #06141a; }
-.parts-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 12px; max-height: 360px; overflow: auto; padding-right: 4px; }
+.parts-list { display: grid; gap: 12px; max-height: 460px; overflow: auto; padding-right: 6px; align-content: start; }
+.parts-group { display: grid; gap: 6px; }
+.parts-group[data-depth="1"] { margin-left: 14px; padding-left: 10px; border-left: 2px solid var(--line); }
+.parts-group[data-depth="2"], .parts-group[data-depth="3"], .parts-group[data-depth="4"] { margin-left: 28px; padding-left: 10px; border-left: 2px solid var(--line); }
+.parts-group .pg-name { font-size: 13px; font-weight: 600; }
+.parts-group .pg-name .dim { font-weight: 400; }
+.parts-tiles { display: flex; flex-wrap: wrap; gap: 6px; }
+.part-tile { display: grid; justify-items: center; gap: 2px; width: 74px; padding: 4px 4px 3px; border-radius: var(--r-sm); border: 1.5px solid var(--line); background: var(--well); color: inherit; font: inherit; font-size: 11.5px; cursor: pointer; }
+.part-tile:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.part-tile.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--well)); font-weight: 600; }
+.part-tile canvas { width: 64px; height: 64px; border-radius: 6px; background: #06141a; }
+.part-tile .none { width: 64px; height: 64px; display: grid; place-items: center; border-radius: 6px; background: #06141a; color: #6f8d96; font-size: 22px; }
 @media (max-width: 760px) { .parts-dlg { grid-template-columns: 1fr; } .parts-dlg canvas { width: 100%; height: auto; } }
 .prof-list { display: grid; gap: 8px; max-height: 50vh; overflow: auto; margin: 6px 0 12px; }
 .prof { display: flex; gap: 12px; align-items: center; justify-content: space-between; border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; background: var(--surface); }
@@ -2796,52 +2807,90 @@ function paintProjector(ctx, W, tint) {
   ctx.strokeStyle = `rgba(${tint},.4)`; ctx.lineWidth = W * .004; ctx.beginPath(); ctx.arc(0, 0, W * .34, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
 }
 
-// Parts picker: choose the cockpit, wings, engines... a procedural ship or multi-tool really has
+// Parts picker: choose the cockpit, wings, engines... a procedural ship or multi-tool really has. Each choice shows a
+// small picture of just that part (the mesh endpoint's `only`), and parts that only exist inside another choice sit
+// indented under it, named without the parent's code ("B5Cap" under Barrel 5 is "Cap").
+const PART_WORDS = { Acc: 'accessory', Ac: 'accessory', A: 'add-on', Ext: 'extension', Mag: 'magazine', LSide: 'left side', RSide: 'right side', LS: 'left side', RS: 'right side', TS: 'stock', MW: 'wheel', AMWheel: 'wheel', GMode: 'mode', ToP: 'top', Bars: 'bars' };
+function partLabel(name, nested) {
+  const raw = name.replace(/^_+/, '');
+  if (!nested) return raw.replace(/LSide/, 'Left side ').replace(/RSide/, 'Right side ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/Acc\b/, 'accessory').replace(/^\w/, (c) => c.toUpperCase()).replace(/ (\w)/g, (m, c) => ' ' + c.toLowerCase()).trim();
+  // nested: drop the code (letters + digits run like B5, TS3, LS6, AB5, B33) and name what's left
+  const words = raw.match(/LSide|RSide|[A-Z][a-z]+|[A-Z]+(?![a-z])|\d+/g) || [raw];
+  const out = [];
+  for (const w of words) {
+    if (/^\d+$/.test(w)) continue;
+    if (/^[A-Z]{1,3}$/.test(w) && !PART_WORDS[w]) continue;   // a code letter, like the B in B5
+    out.push(PART_WORDS[w] || w.toLowerCase());
+  }
+  const t = out.filter((w, i) => w !== out[i - 1]).join(' ').trim();
+  return t ? t[0].toUpperCase() + t.slice(1) : 'Detail';
+}
+const optLabel = (id) => (!id ? 'Default' : /^(null|empty)$/i.test(id) ? 'None' : id);
 async function partsDialog(it, onSaved) {
   let tree;
   try { tree = await (await api('/api/model/parts?scene=' + encodeURIComponent(it.scene))).json(); }
   catch (e) { toast("This model's parts couldn't be read: " + e.message, true); return; }
   const picks = { ...(await partsOf(it.key)) };
-  const nice = (g) => g.replace(/^_+/, '').replace(/_/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2');
   // the groups that apply under the current choices (one-option groups need no choice)
-  const guess = (g, opts) => { if (picks[g.group] && opts.includes(picks[g.group])) return picks[g.group]; let h = 2166136261; for (const ch of (it.seed || '') + '|' + g.group) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return opts[h % opts.length]; };
-  const visible = (groups, out = []) => {
+  // a group name can repeat at different depths, so a pick holds one choice per depth joined with '|' (pickFor in models.go)
+  const mine = (v, ids) => String(v || '').split('|').find((x) => ids.includes(x));
+  const merge = (v, ids, id) => [...String(v || '').split('|').filter((x) => x && !ids.includes(x)), id].join('|');
+  const guess = (g, opts) => { const m = mine(picks[g.group], opts); if (m != null) return m; let h = 2166136261; for (const ch of (it.seed || '') + '|' + g.group) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return opts[h % opts.length]; };
+  const visible = (groups, out = [], depth = 0, chain = {}, crumb = '', path = []) => {
     for (const g of groups) {
-      const ids = g.options.map((o) => o.id), cur = guess(g, ids);
-      if (ids.length > 1) out.push({ g, ids, cur });
-      const o = g.options.find((x) => x.id === cur); if (o && o.groups) visible(o.groups, out);
+      const ids = g.options.map((o) => o.id), cur = guess(g, ids), shown = ids.length > 1, label = path.includes(g.group) ? 'Style' : partLabel(g.group, depth > 0);
+      const same = path.filter((x) => x === g.group).length + 1;   // which same-named group this is, for the part's picture
+      if (shown) out.push({ g, ids, cur, depth, chain, crumb, label, same });
+      const o = g.options.find((x) => x.id === cur);
+      if (o && o.groups) visible(o.groups, out, shown ? depth + 1 : depth, { ...chain, [g.group]: merge(chain[g.group], ids, cur) }, shown ? `${label} ${optLabel(cur)}` : o.groups.length && g.options.length === 1 ? label : crumb, [...path, g.group]);   // a one-choice parent (the grip) still names what its parts sit on
     }
     return out;
   };
+  const thumbUrl = (row, id) => modelUrl(it.scene, it.seed, { ...row.chain, [row.g.group]: merge(row.chain[row.g.group], row.ids, id) }, 1) + '&only=' + encodeURIComponent(row.g.group) + '&depth=' + row.same;
   const W = 360;
   const body = () => {
     const rows = visible(tree.groups);
     return `<div class="parts-dlg"><canvas id="partsPrev" width="${W * 2}" height="${W * 2}"></canvas>
-      <div class="parts-list">${rows.length ? rows.map(({ g, ids, cur }) => `<label class="field"><span>${esc(nice(g.group))}</span><select class="input" data-g="${esc(g.group)}">${ids.map((id) => `<option value="${esc(id)}"${id === cur ? ' selected' : ''}>${esc(id === 'NULL' ? 'None' : nice(id) || 'Default')}</option>`).join('')}</select></label>`).join('')
+      <div class="parts-list">${rows.length ? rows.map((row) => `<div class="parts-group" data-depth="${Math.min(row.depth, 4)}"><span class="pg-name">${esc(row.label)}${row.crumb ? ` <span class="dim">on ${esc(row.crumb.toLowerCase())}</span>` : ''}</span>
+        <div class="parts-tiles">${row.ids.map((id) => `<button type="button" class="part-tile${id === row.cur ? ' on' : ''}" data-g="${esc(row.g.group)}" data-o="${esc(id)}" title="${esc(row.label + ': ' + optLabel(id))}">${/^(null|empty)$/i.test(id) ? '<span class="none">∅</span>' : `<canvas width="128" height="128" data-thumb="${esc(thumbUrl(row, id))}"></canvas>`}<span>${esc(optLabel(id))}</span></button>`).join('')}</div></div>`).join('')
         : '<p class="dim">This model has no parts to choose; it always looks the same.</p>'}</div></div>
-      <p class="dim small-print">The game picks these from the ship's seed with code that isn't in its files, so match them to your ship by eye.</p>`;
+      <p class="dim small-print" data-keep>The game picks these from the seed with code that isn't in its files, so match them to yours by eye.</p>`;
   };
   let angle = it.kind === 'tool' ? -1.25 : -.95, raf = 0, mesh = null, alive = true;
+  const tint = (CLASS_TINT[it.cls] || [79, 193, 176]).join(',');
   const draw = () => {
     const c = $('#partsPrev'); if (!c || !alive) return;
-    const ctx = c.getContext('2d'), tint = (CLASS_TINT[it.cls] || [79, 193, 176]).join(',');
+    const ctx = c.getContext('2d');
     paintNebula(ctx, c.width, it.key); if (mesh) paintModel(ctx, c.width, mesh, tint, angle);
     angle += .01; raf = requestAnimationFrame(draw);
   };
+  // each part's picture, drawn once its mesh arrives (cached by URL, so unchanged parts don't reload)
+  const thumbs = () => {
+    $('#dlgBody').querySelectorAll('canvas[data-thumb]').forEach(async (c) => {
+      const m = await fetchMesh(c.dataset.thumb); if (!alive || !c.isConnected) return;
+      const ctx = c.getContext('2d'); ctx.clearRect(0, 0, c.width, c.height);
+      if (!m) { ctx.fillStyle = '#6f8d96'; ctx.font = '600 40px Jost, sans-serif'; ctx.textAlign = 'center'; ctx.fillText('·', c.width / 2, c.height / 2 + 12); return; }
+      const img = GL3D.render(m, c.width, it.kind === 'tool' ? -1.25 : -.95, tint.split(',').map(Number)); if (img) ctx.drawImage(img, 0, 0);
+    });
+  };
   const refresh = async () => { mesh = await fetchMesh(modelUrl(it.scene, it.seed, picks, 1)); };
   const wire = () => {
-    $('#dlgBody').querySelectorAll('select[data-g]').forEach((sel) => sel.onchange = async () => {
-      picks[sel.dataset.g] = sel.value;
-      const keep = $('#partsPrev'); $('#dlgBody').innerHTML = body(); $('#partsPrev').replaceWith(keep); wire(); await refresh();
+    $('#dlgBody').querySelectorAll('.part-tile').forEach((b) => b.onclick = async () => {
+      const ids = [...b.parentNode.querySelectorAll('.part-tile')].map((x) => x.dataset.o);
+      picks[b.dataset.g] = merge(picks[b.dataset.g], ids, b.dataset.o);
+      const list = $('#dlgBody .parts-list'), top = list ? list.scrollTop : 0;
+      const keep = $('#partsPrev'); $('#dlgBody').innerHTML = body(); $('#partsPrev').replaceWith(keep);
+      const l2 = $('#dlgBody .parts-list'); if (l2) l2.scrollTop = top;
+      wire(); thumbs(); await refresh();
     });
   };
   await refresh();
   const done = dialog('Parts of ' + it.name, body(), [['Cancel', false, 'ghost'], ['Use the seed\'s guess', 'reset', 'ghost'], ['Save parts', true, 'primary']]);
-  $('#dlg').classList.add('wide'); wire(); raf = requestAnimationFrame(draw);
+  $('#dlg').classList.add('wide'); wire(); thumbs(); raf = requestAnimationFrame(draw);
   const res = await done; alive = false; cancelAnimationFrame(raf); $('#dlg').classList.remove('wide');
   if (!res) return;
   if (res === 'reset') { try { await IDB.del('parts:' + it.key); } catch (_) {} }
-  else { const all = {}; for (const { g, cur } of visible(tree.groups)) all[g.group] = cur; try { await IDB.put('parts:' + it.key, all); } catch (_) {} }
+  else { const all = {}; for (const { g, ids, cur } of visible(tree.groups)) all[g.group] = merge(all[g.group], ids, cur); try { await IDB.put('parts:' + it.key, all); } catch (_) {} }
   it.modelTried = false; it.model = null; await loadModel(it);
   toast('Parts saved for ' + it.name); onSaved && onSaved();
 }

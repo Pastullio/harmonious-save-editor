@@ -62,6 +62,8 @@ One personal library of ship files outside the game, with three views onto it.
 - [x] Default covers are turning wire-grid holograms of generic shapes of our own (fighter, hauler, explorer, shuttle, exotic, living ship, solar, interceptor, freighter, exocraft; pistol, rifle, staff), not copies of the game's models
 - [x] Real ship, multi-tool, freighter and exocraft models read from the owner's own game files (scene trees, referenced parts, geometry streams) and drawn as a shaded WebGL hologram that turns on the centre cover; the wireframes stay as the fallback
 - [x] Parts picker for procedural models (cockpit, wings, engines, barrels...), remembered per ship; the seed's default is a stable guess, since the game's selection code isn't in its files
+- [x] Parts picker shows a picture of each part, nests parts under the choice they belong to, and names them plainly (Accessory on grip, Magazine barrel…)
+- [x] Biome odds checked against the real game table; lush and empty galaxies use their own yellow-star lists
 - [ ] Name the parts better than the game's internal labels (e.g. thumbnails per option)
 - [ ] Their look is generated in-game from the seed, so it can't be rendered outside the game; artwork for fixed-look specials (Golden Vector, Atlas Sceptre, Starborn ships) could come from the web later
 - [x] Artwork from a linked Charon/NMA listing

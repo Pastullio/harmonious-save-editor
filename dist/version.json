@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.30.1638",
+  "version": "2026.10.30.1701",
   "date": "2026-10-30",
-  "size": 9822720,
-  "sha256": "7efaf42b37f7a2c3fce27126cf27d4343b4dcbca93c1375b87e61863b0d259be",
-  "notes": "LiveLink won't put a build in the wrong corvette: each .blend remembers its corvette (pick it in the Blender add-on), and the editor asks before writing anywhere else. Update the Blender add-on too.",
+  "size": 9829888,
+  "sha256": "3e77398877b4d3b5e83cb5f68870c480c60717c6a4454bbab99e1385e8dffcff",
+  "notes": "Parts picker: a picture of every part, nested under the choice it belongs to, with plain names. Biome odds now account for lush and empty galaxies. LiveLink asks before writing to the wrong corvette.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
