@@ -5,14 +5,14 @@
 # The build is read with Charon Forge when it's installed, otherwise with the NMS Base Builder add-on.
 #
 # Install: Blender > Edit > Preferences > Add-ons > Install from Disk, pick this file, tick it.
-# Then: 3D view sidebar (N) > Harmonious.
+# Then: 3D view sidebar (N) > LiveLink.
 
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
     "version": (1, 0, 0),
     "blender": (4, 2, 0),
-    "location": "3D View > Sidebar > Harmonious",
+    "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
     "category": "Import-Export",
 }
@@ -101,20 +101,49 @@ def _objects_of(data):
     return None
 
 
+def scene_parts(scene):
+    """The build read straight from the scene, the way the builders write each part: every object carrying an
+    ObjectID, in build order, with its matrix turned from Blender's Z-up into the game's Y-up."""
+    import math
+    import mathutils
+    z_up = mathutils.Matrix.Rotation(math.radians(-90.0), 4, "X")
+    parts = [o for o in scene.objects if "ObjectID" in o]
+    parts.sort(key=lambda o: int(o.get("order", 0) or 0))
+    out = []
+    for o in parts:
+        m = z_up @ o.matrix_world
+        oid = str(o.get("ObjectID", "")).lstrip("^")
+        if not oid:
+            continue
+        try:
+            stamp = int(float(o.get("Timestamp", 0) or 0))
+        except (TypeError, ValueError):
+            stamp = 0
+        try:
+            user = int(float(o.get("UserData", 0) or 0))
+        except (TypeError, ValueError):
+            user = 0
+        out.append({"ObjectID": "^" + oid, "Position": list(m.translation), "Up": list(m.col[1].to_3d()),
+                    "At": list(m.col[2].to_3d().normalized()), "Timestamp": stamp, "UserData": user})
+    return out
+
+
 def build_objects(scene):
     """The build's parts as NMS objects (a list of dicts), or raise with a reason."""
     problems = []
-    # Charon Forge: installed as an extension, so its package name has a prefix (bl_ext.user_default.charon_forge)
-    for name, mod in list(sys.modules.items()):
-        if "charon" in name.lower() and name.endswith(".builder") and hasattr(mod, "get_builder"):
-            try:
-                objects = _objects_of(mod.get_builder().serialise())
-            except Exception as error:  # noqa: BLE001 - show what the builder said
-                problems.append("Charon Forge: %s" % error)
-                continue
-            if objects:
-                return objects, "Charon Forge"
-            problems.append("Charon Forge found no parts in this scene")
+    # a builder add-on's own serialiser (Charon Forge first; its package name has an install prefix such as
+    # bl_ext.user_default., so look for any loaded module that offers get_builder)
+    mods = [(n, m) for n, m in list(sys.modules.items()) if m is not None and callable(getattr(m, "get_builder", None)) and n != __name__]
+    mods.sort(key=lambda nm: 0 if "charon" in nm[0].lower() else 1)
+    for name, mod in mods:
+        label = "Charon Forge" if "charon" in name.lower() else name.split(".")[-2] if "." in name else name
+        try:
+            objects = _objects_of(mod.get_builder().serialise())
+        except Exception as error:  # noqa: BLE001 - show what the builder said
+            problems.append("%s: %s" % (label, error))
+            continue
+        if objects:
+            return objects, label
     # the NMS Base Builder add-on (its serialise() takes no arguments in current versions)
     tool = getattr(scene, "nms_base_tool", None)
     if tool is not None:
@@ -124,15 +153,19 @@ def build_objects(scene):
             except TypeError:
                 data = tool.serialise(objects_only=True)
             objects = _objects_of(data)
+            if objects:
+                return objects, "Base Builder"
         except Exception as error:  # noqa: BLE001
             problems.append("Base Builder: %s" % error)
-            objects = None
-        if objects:
-            return objects, "Base Builder"
-        if not problems or not problems[-1].startswith("Base Builder"):
-            problems.append("the Base Builder found no parts in this scene")
-    if not problems:
-        problems.append("neither Charon Forge nor the NMS Base Builder add-on is installed")
+    # last: the parts as they sit in the scene
+    try:
+        objects = scene_parts(scene)
+    except Exception as error:  # noqa: BLE001
+        objects = None
+        problems.append("reading the scene: %s" % error)
+    if objects:
+        return objects, "the scene"
+    problems.append("there are no build parts (objects with an ObjectID) in this scene")
     raise RuntimeError("No build to send: " + "; ".join(problems) + ".")
 
 
@@ -205,7 +238,7 @@ class HARMONIOUS_PT_live(bpy.types.Panel):
     bl_idname = "HARMONIOUS_PT_live"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
-    bl_category = "Harmonious"
+    bl_category = "LiveLink"
 
     def draw(self, context):
         layout = self.layout

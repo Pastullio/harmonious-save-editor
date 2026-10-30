@@ -16,6 +16,14 @@ class OldStyleTool:
         return {"Objects": objs, "BaseVersion": 8}
 got, src = h.build_objects(types.SimpleNamespace(nms_base_tool=OldStyleTool()))
 print("BASEBUILDER", src, len(got) == len(objs))
+# no builder add-on: the parts are read straight from the scene (Blender Z-up -> game Y-up)
+ob = bpy.data.objects.new("B_COK_D", None); bpy.context.scene.collection.objects.link(ob)
+ob["ObjectID"] = "B_COK_D"; ob["order"] = 1; ob["UserData"] = "0"; ob.location = (1, 2, 3)
+bpy.context.view_layer.update()
+got, src = h.build_objects(bpy.context.scene)
+p = got[0]["Position"]
+print("SCENE", src, got[0]["ObjectID"], [round(v, 3) + 0.0 for v in p], [round(v, 3) + 0.0 for v in got[0]["Up"]])
+bpy.data.objects.remove(ob)
 try:
     h.build_objects(types.SimpleNamespace())
 except RuntimeError as error:
