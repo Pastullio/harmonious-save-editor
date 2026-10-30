@@ -127,7 +127,7 @@ The save file holds no images, so a ship's picture has to come from one of these
 - [x] Predicted system for any address, visited or not: system, region and planet names, star colour, planets and moons, race, economy and wealth, conflict, pirate/abandoned/uncharted, station prices (nms-core / nms_namegen, MIT; about 99% against 1,000 player-recorded systems)
 - [ ] Predicted planet details: biome, weather, resources, sentinels, flora and fauna. Our own research (owner 2026-10-30; ATLAS APF not used):
   - [x] Biome of planets you've discovered, from discovery records (`VP[1]` low 16 bits = GcBiomeType, bit 16 = infested), shown in the planet table
-  - [x] Biome odds per star colour from the owner's own `METADATA/SIMULATION/SOLARSYSTEM/BIOMES/BIOMELISTPERSTARTYPE.MBIN` (GcBiomeListPerStarType), labelled as odds (layout from libMBIN; still to check against the real file)
+  - [x] Biome odds per star colour from the owner's own `METADATA/SIMULATION/SOLARSYSTEM/BIOMES/BIOMELISTPERSTARTYPE.MBIN` (GcBiomeListPerStarType), labelled as odds; checked against the real file 2026-10-30, and lush and empty galaxies use their own yellow-star lists
   - [ ] Exact biome: test generation hypotheses offline against the ~1,500 discovered planets in the owner's save (nms-core's planet seeds match all 1,487 records); if none fits, port the draw order from the game's solar-system generator
   - [ ] Weather, sentinels, resources, flora and fauna need planet generation itself (much harder, no labelled data beyond what players note down)
 - [x] Arrive on foot at a base (Coordinates, "Arrive at a base"): works in any system the app has seen a save made in
