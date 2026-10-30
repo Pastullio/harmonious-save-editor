@@ -6279,7 +6279,8 @@ function libFlow(host, list, refresh) {
     const it = items[n]; if (!it || it.filled || it.x.sum.error) return; it.filled = true;
     try { const p = it.x.parsed || (it.x.parsed = await ShipLib.load(it.x.f)); if (!p.error) { const full = libCoverItem(it.x.f, p, it.x.sum); for (const k of ['base', 'holo', 'seed', 'scene']) if (full[k] != null) it[k] = full[k]; } } catch (_) { return; }
     if (flow.index === n) flow.refresh();
-    if (it.kind === 'corvette') loadHoloBoxes(it);
+    // a render made earlier (by Render corvettes, from any page) is on disk: show it, not the hologram
+    if (it.kind === 'corvette') { loadRender(it); loadHoloBoxes(it); }
   };
   const flow = CoverFlow(host, items, { size: big, index: start, label: 'Dock Yard',
     onChange: (n) => { S0.flowKey = items[n].x.id; for (let d = 0; d <= 2; d++) { fill(n + d); if (d) fill(n - d); } },
