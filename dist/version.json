@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.30.2108",
+  "version": "2026.10.30.2120",
   "date": "2026-10-30",
-  "size": 12601856,
-  "sha256": "f84fae007a3959f2795482eb644e0f77b6348d875aba66b0ddedd29c1fd8b7d5",
-  "notes": "New user guide with screenshots of every page: press Guide on the save list or User guide in the sidebar. It also comes as Harmonious Save Editor Guide.html next to the app.",
+  "size": 12641792,
+  "sha256": "4068d2e7dbd233c53616dc03b47716e4f26d3d0d7b5d4c98dcfcda8ad63011c9",
+  "notes": "The editor's window now opens in the middle of your screen. The freighter's details sit beside its picture. The tip under inventory grids is readable again.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

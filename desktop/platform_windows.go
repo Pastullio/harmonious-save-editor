@@ -93,12 +93,14 @@ func openWindow(url, profile string) error {
 			filepath.Join(base, "Microsoft", "Edge", "Application", "msedge.exe"),
 			filepath.Join(base, "Google", "Chrome", "Application", "chrome.exe"))
 	}
+	forgetWindowPlacement(profile) // open centred, not wherever the window was last left
+	place := windowPlacement()
 	for _, exe := range candidates {
 		if _, err := os.Stat(exe); err != nil {
 			continue
 		}
-		cmd := exec.Command(exe, "--app="+url, "--user-data-dir="+profile, "--window-size=1440,920",
-			"--no-first-run", "--no-default-browser-check", "--disable-features=Translate")
+		args := append([]string{"--app=" + url, "--user-data-dir=" + profile}, place...)
+		cmd := exec.Command(exe, append(args, "--no-first-run", "--no-default-browser-check", "--disable-features=Translate")...)
 		if err := cmd.Start(); err == nil {
 			go cmd.Wait()
 			return nil
