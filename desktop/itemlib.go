@@ -92,10 +92,10 @@ type libPlatform struct {
 // reached when the stat's value is at least Levels[i].Value
 // biome odds per star colour (GcBiomeListPerStarType): weights in GcBiomeType order, not yet normalised
 type libBiomes struct {
-	Star            [][]float64 `json:"star"`  // Yellow, Green, Blue, Red, Purple (GcGalaxyStarTypes)
-	StarPrime       [][]float64 `json:"prime"` // the same for prime planets
-	AbandonedYellow []float64   `json:"abandoned"`
-	LushYellow      []float64   `json:"lush"`
+	Star            [][]float64 `json:"star"`      // Yellow, Green, Blue, Red, Purple (GcGalaxyStarTypes)
+	StarPrime       [][]float64 `json:"prime"`     // the same for prime planets
+	AbandonedYellow []float64   `json:"abandoned"` // yellow stars in empty galaxies (7, 19, 27, 39…)
+	LushYellow      []float64   `json:"lush"`      // yellow stars in lush galaxies (10, 12, 30, 32…)
 }
 
 type libRanks struct {

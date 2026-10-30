@@ -39,6 +39,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   console.log('odds', odds);
   if (await p.evaluate(() => !!(S.db && S.db.biomes))) ok('biome odds from the game table, adding up to about 100%', !!odds && Math.abs(odds.match(/\d+(?=%)/g).map(Number).reduce((a, b) => a + b, 0) - 100) <= 4);
   else console.log('SKIP biome odds (no item library with the biome table)');
+  ok('galaxy kinds: Euclid normal, Calypso harsh, Budullangr empty, Eissentam lush, galaxy 255 harsh', (await p.evaluate(() => [0, 2, 6, 9, 254].map(galaxyKind).join())) === 'normal,harsh,empty,lush,harsh');
   ok('predicts the planets', JSON.stringify(pred.planets) === JSON.stringify(['Nadyak Prime', 'Tomi 47/B2', 'Beherylano Dori']));
   ok('predicts race and pirates', /Korvax/.test(pred.text) && /Pirate controlled/.test(pred.text));
   await (await p.$('#destInfo')).screenshot({ path: SP + '/shots/co4-predict.png' });
