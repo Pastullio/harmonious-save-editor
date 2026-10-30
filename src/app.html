@@ -1486,8 +1486,6 @@ function miniCover(host, it, size, onClick) {
   if (it.kind === 'corvette') {
     const on = (e) => { if (!host.isConnected) { document.removeEventListener('cover-render', on); return; } if (e.detail.key === it.key && !it.custom) { it.renderImg = e.detail.img; paintCover(cv, it); } };
     document.addEventListener('cover-render', on); loadRender(it);
-    const onM = (e) => { if (!host.isConnected) { document.removeEventListener('cover-model', onM); return; } if (e.detail.key === it.key && !it.custom && !it.renderImg) paintCover(cv, it); };
-    document.addEventListener('cover-model', onM); loadCorvetteModel(it);
   } else if (it.scene) {
     const on = (e) => { if (!host.isConnected) { document.removeEventListener('cover-model', on); return; } if (e.detail.key === it.key && !it.custom) paintCover(cv, it); };
     document.addEventListener('cover-model', on); if (it.model) paintCover(cv, it); else loadModel(it);
@@ -2460,7 +2458,7 @@ function paintCover(canvas, it, angle) {
   paintNebula(ctx, W, it.key);
   if (it.renderImg) { paintRender(ctx, W, it.renderImg); paintBadge(ctx, W, it.cls, null); return; }
   const wire = wireMesh(it);
-  if (it.holo && !(it.model && GL3D.ok())) paintHologram(ctx, W, it.holo, tint, angle != null ? angle : -.65);
+  if (it.holo) paintHologram(ctx, W, it.holo, tint, angle != null ? angle : -.65);
   else if (it.model && GL3D.ok()) paintModel(ctx, W, it.model, tint, angle != null ? angle : it.kind === 'tool' ? -1.25 : -.95);
   else if (wire) paintWire(ctx, W, wire, tint, angle != null ? angle : it.kind === 'tool' ? -1.25 : -.95);
   else if (it.kind === 'tool') { if (it.tool === 'staff') paintStaff(ctx, W, tint); else paintShape(ctx, W, TOOL_SHAPES[it.tool] || TOOL_SHAPES.pistol, tint, false, -.12); }
@@ -2710,7 +2708,7 @@ function CoverFlow(host, items, opts) {
     items.forEach((it, i) => { if (it.key !== e.detail.key) return; const cv = els[i].querySelector('canvas'); if (cv && !it.custom) paintCover(cv, it); if (i === cur) kick(); });
   };
   document.addEventListener('cover-model', onModel);
-  items.forEach((it) => { if (it.kind === 'corvette') { loadRender(it); loadCorvetteModel(it); } else if (it.scene) loadModel(it); });
+  items.forEach((it) => { if (it.kind === 'corvette') loadRender(it); else if (it.scene) loadModel(it); });
 
   els.forEach((el, i) => { el.classList.toggle('center', i === cur); el.setAttribute('aria-selected', String(i === cur)); });
   posEl.textContent = n ? `${cur + 1} of ${n}` : '';
@@ -2920,19 +2918,6 @@ async function fetchRender(hash) {
     const url = URL.createObjectURL(await r.blob());
     const img = new Image(); img.src = url; await img.decode(); return img;
   } catch (_) { return null; }
-}
-// a corvette's real 3D model, put together by the app from the game's own part models (no Blender needed); a Blender
-// render still wins when there is one, and the parts hologram stays when the game files can't be read
-const buildMeshes = new Map(); // payload key -> Promise<mesh|null>
-async function loadCorvetteModel(it) {
-  if (!APP || it.kind !== 'corvette' || it.model || it.modelTried || !S.lib || !S.lib.game || !window.crypto || !crypto.subtle) return;
-  const p = await buildPayload(it); if (!p) return;
-  it.modelTried = true;
-  if (!buildMeshes.has(p.key)) buildMeshes.set(p.key, api('/api/model/build?lod=3', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: p.text })
-    .then(async (r) => (r.ok ? { mesh: parseMesh(await r.arrayBuffer()), missing: +(r.headers.get('X-Parts-Missing') || 0) } : null)).catch(() => null));
-  const res = await buildMeshes.get(p.key); if (!res || !res.mesh) return;
-  it.model = res.mesh; it.modelMissing = res.missing;
-  document.dispatchEvent(new CustomEvent('cover-model', { detail: { key: it.key } }));
 }
 async function loadRender(it) {
   if (!APP || it.kind !== 'corvette' || !window.crypto || !crypto.subtle) return;
@@ -4325,7 +4310,6 @@ function libFlow(host, list, refresh) {
     const it = items[n]; if (!it || it.filled || it.x.sum.error) return; it.filled = true;
     try { const p = it.x.parsed || (it.x.parsed = await ShipLib.load(it.x.f)); if (!p.error) { const full = libCoverItem(it.x.f, p, it.x.sum); for (const k of ['base', 'holo', 'seed', 'scene']) if (full[k] != null) it[k] = full[k]; } } catch (_) { return; }
     if (flow.index === n) flow.refresh();
-    if (it.kind === 'corvette') loadCorvetteModel(it);
   };
   const flow = CoverFlow(host, items, { size: big, index: start, label: 'Dock Yard',
     onChange: (n) => { S0.flowKey = items[n].x.id; for (let d = 0; d <= 2; d++) { fill(n + d); if (d) fill(n - d); } },

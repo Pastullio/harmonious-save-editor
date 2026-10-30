@@ -394,7 +394,6 @@ type meshOut struct {
 	only      string
 	onlyDepth int // which of the same-named groups along the path (1 = the outermost)
 	inside    int
-	r         float64 // cached radius (corvette_model.go)
 }
 
 func (o *meshOut) add(s *meshStream, m mat4) {
@@ -574,11 +573,6 @@ func handleModelMesh(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "the model has no geometry", http.StatusNotFound)
 		return
 	}
-	writeMesh(w, out)
-}
-
-// writeMesh sends a mesh as HSEM: "HSEM", u32 vertex count, u32 index count, float32 xyz per vertex, uint32 indices.
-func writeMesh(w http.ResponseWriter, out *meshOut) {
 	buf := make([]byte, 12+4*len(out.pos)+4*len(out.idx))
 	copy(buf, "HSEM")
 	binary.LittleEndian.PutUint32(buf[4:], uint32(len(out.pos)/3))
