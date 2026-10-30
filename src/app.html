@@ -771,7 +771,8 @@ dialog.wide { max-width: 1000px; }
 @media (max-width: 960px) {
   #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; height: auto; min-height: 100%; }
   #side { border-right: 0; border-bottom: 1px solid var(--line); }
-  nav { display: flex; overflow-x: auto; padding: 8px 10px; }
+  nav { display: flex; overflow-x: auto; padding: 8px 10px; gap: 6px; }
+  .nav-group { display: flex; flex: none; margin-bottom: 0; }
   nav button { white-space: nowrap; width: auto; }
   nav .count { display: none; }
 }
@@ -800,6 +801,10 @@ body.has-sec .grid { background: color-mix(in srgb, var(--accent) 14%, var(--wel
 body.has-sec .cf { background: linear-gradient(180deg, color-mix(in oklab, var(--sec) 62%, #062b37) 0%, color-mix(in oklab, var(--sec) 26%, #04161d) 55%, #03121a 100%); }
 nav button .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); flex: none; margin-right: 10px; }
 nav button .lbl { flex: 1; }
+.nav-group { padding: 4px; border-radius: 16px; background: color-mix(in srgb, var(--tint) 9%, transparent); margin-bottom: 8px; }
+.nav-group:last-child { margin-bottom: 0; }
+.nav-group button { margin-bottom: 0; }
+:root[data-theme="dark"] .nav-group { background: color-mix(in srgb, var(--tint) 11%, transparent); }
 nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .85; }
 /* unsaved changes keep one fixed colour, whatever the section */
 .side-foot .status.dirty { color: var(--spark); }
@@ -1251,15 +1256,24 @@ function download(bytes, name) { const u = URL.createObjectURL(new Blob([bytes])
 
 // ------------------------------------------------------------------ navigation
 const SECTIONS = [
-  ['overview', 'Overview'], ['shipwright', 'Shipwright'], ['hangar', 'Hangar'], ['library', 'Dock Yard'], ['coords', 'Coordinates'], ['exosuit', 'Exosuit'], ['ships', 'Starships'], ['tools', 'Multi-tools'],
-  ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['companions', 'Companions'], ['bases', 'Bases'], ['storage', 'Storage'], ['cargo', 'Cargo'],
-  ['knowledge', 'Knowledge'], ['rewards', 'Rewards'], ['standing', 'Standing'], ['difficulty', 'Difficulty'], ['items', 'Item names'], ['raw', 'Raw data'],
+  ['overview', 'Overview'], ['shipwright', 'Shipwright'], ['coords', 'Coordinates'], ['library', 'Dock Yard'], ['hangar', 'Hangar'],
+  ['exosuit', 'Exosuit'], ['tools', 'Multi-tools'], ['ships', 'Starships'], ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['companions', 'Companions'],
+  ['bases', 'Bases'], ['storage', 'Storage'], ['cargo', 'Cargo'],
+  ['knowledge', 'Knowledge'], ['rewards', 'Rewards'], ['standing', 'Standing'], ['difficulty', 'Difficulty'],
+  ['items', 'Item names'], ['raw', 'Raw data'],
 ];
-// Spectrum: each section's colour, sweeping teal through blue, violet, magenta, rose and coral (owner's pick);
-// the pages after it are aqua (coordinates), sky, periwinkle and steel (knowledge, standing, difficulty),
-// mint (item names) and slate (raw data).
+// The sidebar in groups of related pages, each with a faint tint of its own colour behind it.
+const NAV_GROUPS = [
+  { tint: '#2fc3d6', ids: ['overview', 'shipwright', 'coords', 'library', 'hangar'] },          // getting around and your fleet
+  { tint: '#a37bff', ids: ['exosuit', 'tools', 'ships', 'freighter', 'vehicles', 'companions'] }, // what you carry and ride
+  { tint: '#ff8a70', ids: ['bases', 'storage', 'cargo'] },                                         // where things are kept
+  { tint: '#7ba2ff', ids: ['knowledge', 'rewards', 'standing', 'difficulty'] },                   // progress and settings
+  { tint: '#8fb3c4', ids: ['items', 'raw'] },                                                      // tools
+];
+// Spectrum: each section's colour sweeps down the sidebar, teal and aqua through blue, violet, magenta, rose and coral
+// (owner's pick), then sky, periwinkle and steel for progress and settings, mint (item names) and slate (raw data).
 // One bright base per section; light mode darkens it automatically.
-const SECTION_COLORS = { overview: '#2fc3d6', shipwright: '#3cb6ea', hangar: '#4ea8ff', library: '#6598ff', exosuit: '#7d8bff', ships: '#a37bff', tools: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', companions: '#ff7690', bases: '#ff8079', storage: '#ff8a70', cargo: '#ffa086', coords: '#36d6c3', knowledge: '#5ab8f0', rewards: '#7ba2ff', standing: '#9a8cff', difficulty: '#a3b3cf', items: '#3fd9a3', raw: '#8fb3c4' };
+const SECTION_COLORS = { overview: '#2fc3d6', shipwright: '#36d6c3', coords: '#3cb6ea', library: '#4ea8ff', hangar: '#6598ff', exosuit: '#7d8bff', tools: '#a37bff', ships: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', companions: '#ff7690', bases: '#ff8079', storage: '#ff8a70', cargo: '#ffa086', knowledge: '#5ab8f0', rewards: '#7ba2ff', standing: '#9a8cff', difficulty: '#a3b3cf', items: '#3fd9a3', raw: '#8fb3c4' };
 const secColor = (id) => SECTION_COLORS[id];
 function applySection(id) {
   const c = secColor(id);
@@ -1274,7 +1288,9 @@ function renderSide() {
   if (m) bits.push(fmtPlay(num(g(common() || p, 'TotalPlayTime')) || m.totalPlayTime));
   $('#saveMeta').textContent = bits.join(', ');
   const counts = { hangar: ships().length + tools().length, ships: ships().length, tools: tools().length, storage: storageInvs().length };
-  $('#nav').innerHTML = SECTIONS.map(([id, label]) => `<button data-s="${id}" ${S.section === id ? 'aria-current="page"' : ''} style="--dot:${secColor(id) || 'var(--line-2)'}"><span class="dot" aria-hidden="true"></span><span class="lbl">${label}</span>${NEW_SECTIONS[id] && APP && !seenSection(id) ? '<span class="new-pill">New</span>' : counts[id] != null ? `<span class="count">${counts[id]}</span>` : ''}</button>`).join('');
+  const label = Object.fromEntries(SECTIONS);
+  const btn = (id) => `<button data-s="${id}" ${S.section === id ? 'aria-current="page"' : ''} style="--dot:${secColor(id) || 'var(--line-2)'}"><span class="dot" aria-hidden="true"></span><span class="lbl">${label[id]}</span>${NEW_SECTIONS[id] && APP && !seenSection(id) ? '<span class="new-pill">New</span>' : counts[id] != null ? `<span class="count">${counts[id]}</span>` : ''}</button>`;
+  $('#nav').innerHTML = NAV_GROUPS.map((gr) => `<div class="nav-group" style="--tint:${gr.tint}">${gr.ids.filter((id) => label[id]).map(btn).join('')}</div>`).join('');
   applySection(S.section);
   $('#nav').querySelectorAll('button').forEach((b) => b.onclick = () => go(b.dataset.s));
   updateStatus();
