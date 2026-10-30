@@ -123,7 +123,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await target.click(); await p.waitForSelector('#dlg[open] .lib-detail'); await p.click('.lib-detail [data-ld="put"]'); await p.waitForSelector('#putSlot');
   const bopts = await p.$$eval('#putSlot option', (o) => o.map((x) => x.value + ':' + x.textContent)); console.log(bopts);
   ok('a build can only go on corvettes', bopts.length === (taz ? 6 : 5));
-  await p.selectOption('#putSlot', '4'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(300);
+  await p.selectOption('#putSlot', '4'); await p.click('#dlgActs .btn.primary'); await p.waitForFunction(() => g(shipBuild(4), 'Objects').length === 300, null, { timeout: 5000 }).catch(() => {});
   st = await p.evaluate(() => ({ max: g(shipBuild(4), 'Objects').length, name: str(g(g(ps(), 'ShipOwnership')[4], 'Name')), bname: str(g(shipBuild(4), 'Name')) }));
   ok('the build replaces Max\'s parts and keeps the ship', st.max === 300 && st.name === 'Max' && st.bname === 'Max');
   // delete a Garage copy: it moves to Deleted

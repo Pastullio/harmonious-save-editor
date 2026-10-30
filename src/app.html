@@ -845,6 +845,9 @@ ol.steps { padding-left: 20px; display: grid; gap: 6px; }
 .chip:hover { background: rgba(255, 255, 255, .14); }
 .chip[aria-pressed="true"] { background: #fff; color: #0b5368; }
 .chip .n { font-weight: 400; margin-left: 5px; opacity: .7; font-family: var(--mono); font-size: 11px; }
+.holo-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 12px 0 0; font-size: 12.5px; color: var(--dim); }
+.holo-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.holo-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
 .hangar-detail { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
 .hangar-detail .stats { display: flex; flex-wrap: wrap; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
 .hangar-detail .stats div { background: var(--surface); padding: 12px 16px; flex: 1 1 120px; }
@@ -1486,6 +1489,8 @@ function miniCover(host, it, size, onClick) {
   if (it.kind === 'corvette') {
     const on = (e) => { if (!host.isConnected) { document.removeEventListener('cover-render', on); return; } if (e.detail.key === it.key && !it.custom) { it.renderImg = e.detail.img; paintCover(cv, it); } };
     document.addEventListener('cover-render', on); loadRender(it);
+    const onM = (e) => { if (!host.isConnected) { document.removeEventListener('cover-model', onM); return; } if (e.detail.key === it.key && !it.custom && !it.renderImg) paintCover(cv, it); };
+    document.addEventListener('cover-model', onM); loadHoloBoxes(it);
   } else if (it.scene) {
     const on = (e) => { if (!host.isConnected) { document.removeEventListener('cover-model', on); return; } if (e.detail.key === it.key && !it.custom) paintCover(cv, it); };
     document.addEventListener('cover-model', on); if (it.model) paintCover(cv, it); else loadModel(it);
@@ -2042,18 +2047,20 @@ function corvetteBase(slot) {
 function corvetteParts(slot, base) {
   for (const b of [base || corvetteBase(slot)].filter(Boolean)) {
     const objs = g(b, 'Objects') || [];
-    const pts = new Float32Array(objs.length * 4), ori = new Float32Array(objs.length * 6); let n = 0;
+    const pts = new Float32Array(objs.length * 4), ori = new Float32Array(objs.length * 6), ids = []; let n = 0;
     let lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
     for (const o of objs) {
       const p = g(o, 'Position'), u = g(o, 'Up'); if (!Array.isArray(p) || p.length < 3) continue;
       const x = num(p[0]), y = num(p[1]), z = num(p[2]); if (![x, y, z].every(Number.isFinite)) continue;
       const sc = Array.isArray(u) ? Math.hypot(num(u[0]), num(u[1]), num(u[2])) : 1;
-      const at = g(o, 'At'), A = Array.isArray(at) ? [num(at[0]), num(at[1]), num(at[2])] : [0, 0, 1];
+      // At is a direction (wires also keep their length in it), so it is normalised
+      const at = g(o, 'At'), A0 = Array.isArray(at) ? [num(at[0]), num(at[1]), num(at[2])] : [0, 0, 1], al = Math.hypot(...A0) || 1, A = A0.map((v) => v / al);
       const U = Array.isArray(u) && sc > 0 ? [num(u[0]) / sc, num(u[1]) / sc, num(u[2]) / sc] : [0, 1, 0];
       pts[n * 4] = x; pts[n * 4 + 1] = y; pts[n * 4 + 2] = z; pts[n * 4 + 3] = Number.isFinite(sc) && sc > 0 ? Math.min(sc, 6) : 1;
       // panel axes: At, and Right = Up x At (a part's face lies in that plane for plating and panels)
       const R = [U[1] * A[2] - U[2] * A[1], U[2] * A[0] - U[0] * A[2], U[0] * A[1] - U[1] * A[0]];
-      ori.set([A[0], A[1], A[2], R[0], R[1], R[2]].map((v) => (Number.isFinite(v) ? v : 0)), n * 6); n++;
+      ori.set([A[0], A[1], A[2], R[0], R[1], R[2]].map((v) => (Number.isFinite(v) ? v : 0)), n * 6);
+      ids.push(str(g(o, 'ObjectID')).replace(/^\^/, '')); n++;
       lo = [Math.min(lo[0], x), Math.min(lo[1], y), Math.min(lo[2], z)]; hi = [Math.max(hi[0], x), Math.max(hi[1], y), Math.max(hi[2], z)];
     }
     if (!n) return null;
@@ -2061,11 +2068,133 @@ function corvetteParts(slot, base) {
     for (let i = 0; i < n; i++) { pts[i * 4] -= c[0]; pts[i * 4 + 1] -= c[1]; pts[i * 4 + 2] -= c[2]; }
     let R = 0; for (let i = 0; i < n; i++) R = Math.max(R, Math.hypot(pts[i * 4], pts[i * 4 + 1], pts[i * 4 + 2]));
     R = R || 1; // bounding-sphere radius, so the build fits the cover from every angle
-    return { pts: pts.subarray(0, n * 4), ori: ori.subarray(0, n * 6), n, R, objs: objs.length };
+    return { pts: pts.subarray(0, n * 4), ori: ori.subarray(0, n * 6), n, R, objs: objs.length, ids, groups: ids.map(holoGroup) };
   }
   return null;
 }
+// The corvette hologram as solid blocks: each part is drawn as a box the size the game gives it (its placement
+// scene's collision box or mesh bounds, from /api/model/boxes; a guess by family until then), coloured by what it is.
+const HOLO_COLOURS = { cockpit: [236, 248, 255], engine: [255, 138, 101], rockhopper: [255, 138, 101], weapon: [240, 98, 146], shield: [167, 139, 250],
+  reactor: [94, 234, 212], gear: [148, 163, 184], bay: [96, 165, 250], plating: null, hull: null, decor: [176, 196, 206] };
+const HOLO_LEGEND = [['cockpit', 'Cockpit'], ['engine', 'Engines and wings'], ['weapon', 'Weapons'], ['shield', 'Shields'], ['reactor', 'Reactors'], ['gear', 'Landing gear'], ['bay', 'Bays'], ['hull', 'Hull'], ['decor', 'Decor']];
+function holoGroup(id) {
+  const g0 = partGroup('^' + id);
+  if (g0 !== 'other') return g0;
+  if (/^U_.*LINE$/.test(id)) return 'wire';   // power and Bytebeat wires: thin cables, left out of the blocks
+  if (/^B_(STR|HAB|CON|MAG|LAN|DECO|COR|BIGGS)/.test(id)) return 'hull';
+  if (/WALL|ROOF|FLOOR|RAMP|ARCH|DOOR|WINDOW|PANEL|SHAPE|PLATE|CUBE|TRI/.test(id)) return 'plating';
+  return 'decor';
+}
+const HOLO_BOXES = new Map(); // part ID -> [minx, miny, minz, maxx, maxy, maxz] from the game files, or null
+let holoBoxesAsked = new Set();
+// a stand-in size until the game's own arrives (or when the game files aren't there)
+function holoGuessBox(id, group) {
+  if (/^B_/.test(id) && group !== 'plating' && group !== 'decor') return [-3, 0, -3, 3, 3, 3];   // a corvette module cell
+  if (/WALL|ARCH|DOOR|WINDOW/.test(id)) return [-2, 0, -.1, 2, 3, .1];
+  if (/FLOOR|ROOF|RAMP|PLATE|PANEL/.test(id)) return [-2, -.1, -2, 2, .1, 2];
+  return [-.5, 0, -.5, .5, 1, .5];
+}
+async function loadHoloBoxes(it) {
+  const h = it && it.holo; if (!APP || !h || !h.ids || !S.lib || !S.lib.game) return;
+  const want = [...new Set(h.ids)].filter((id) => !HOLO_BOXES.has(id) && !holoBoxesAsked.has(id)); if (!want.length) return;
+  want.forEach((id) => holoBoxesAsked.add(id));
+  try {
+    const got = await (await api('/api/model/boxes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: want }) })).json();
+    for (const id of want) HOLO_BOXES.set(id, got[id] || null);
+  } catch (_) { return; }
+  h.fit = null; document.dispatchEvent(new CustomEvent('cover-model', { detail: { key: it.key } }));
+}
+function holoBox(h, i) {
+  const id = h.ids[i], b = HOLO_BOXES.get(id) || holoGuessBox(id, h.groups[i]);
+  // exterior attachments (thrusters, guns, shields, gear, bays) share one generic 15 m collision box: draw them a module in size
+  if (b[3] - b[0] > 14 && b[5] - b[2] > 14) return [-3, 0, -3, 3, 3, 3];
+  return b;
+}
+// the blocks as one coloured triangle mesh for WebGL (12 triangles a part); rebuilt when sizes arrive (holo.fit = null)
+function holoMesh(holo, tint) {
+  if (holo.mesh && holo.mesh.tint === tint && holo.fit) return holo.mesh;
+  if (!holo.fit) holoFit(holo);
+  const { corners, R } = holo.fit, n = holo.n;
+  const tintC = tint.split(',').map(Number), plate = tintC.map((v) => Math.round(v * .7 + 255 * .12));
+  const pos = new Float32Array(n * 24), col = new Float32Array(n * 24), idx = new Uint32Array(n * 36);
+  const TRI = [0, 2, 3, 0, 3, 1, 4, 5, 7, 4, 7, 6, 0, 4, 6, 0, 6, 2, 1, 3, 7, 1, 7, 5, 0, 1, 5, 0, 5, 4, 2, 6, 7, 2, 7, 3];
+  for (let i = 0; i < n; i++) {
+    if (holo.groups[i] === 'wire') continue;   // its triangles stay degenerate (all zero) and draw nothing
+    pos.set(corners.subarray(i * 24, i * 24 + 24), i * 24);
+    const grp = holo.groups[i], c0 = HOLO_COLOURS[grp] || (grp === 'plating' ? plate : tintC);
+    for (let q = 0; q < 8; q++) col.set([c0[0] / 255, c0[1] / 255, c0[2] / 255], i * 24 + q * 3);
+    for (let t = 0; t < 36; t++) idx[i * 36 + t] = i * 8 + TRI[t];
+  }
+  if (holo.mesh && holo.mesh.vao) holo.mesh.vao = null;
+  holo.mesh = { pos, idx, col, c: [0, 0, 0], r: R, tris: n * 12, tint };
+  return holo.mesh;
+}
+function holoFit(holo) {
+  const p = holo.pts, o = holo.ori, n = holo.n, corners = new Float32Array(n * 24); let R = 0;
+  for (let i = 0; i < n; i++) {
+    const sc = p[i * 4 + 3] || 1, A = [o[i * 6], o[i * 6 + 1], o[i * 6 + 2]], Rt = [o[i * 6 + 3], o[i * 6 + 4], o[i * 6 + 5]];
+    const U = [Rt[1] * A[2] - Rt[2] * A[1], Rt[2] * A[0] - Rt[0] * A[2], Rt[0] * A[1] - Rt[1] * A[0]]; // Up = At x Right
+    const b = holoBox(holo, i);
+    for (let k = 0; k < 8; k++) {
+      const lx = (k & 1 ? b[3] : b[0]) * sc, ly = (k & 2 ? b[4] : b[1]) * sc, lz = (k & 4 ? b[5] : b[2]) * sc;
+      for (let d = 0; d < 3; d++) corners[i * 24 + k * 3 + d] = p[i * 4 + d] + Rt[d] * lx + U[d] * ly + A[d] * lz;
+      if (holo.groups[i] !== 'wire') R = Math.max(R, Math.hypot(corners[i * 24 + k * 3], corners[i * 24 + k * 3 + 1], corners[i * 24 + k * 3 + 2]));
+    }
+  }
+  holo.fit = { corners, R: R || 1 };
+}
+function paintHoloBlocks(ctx, W, holo, tint, angle) {
+  const pitch = .62, c = Math.cos(angle), s = Math.sin(angle), cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const n = holo.n;
+  if (!holo.fit) holoFit(holo);
+  const { corners, R } = holo.fit, k = (W * .42) / R, cx = W / 2, cy = W * .47;
+  const view = (x, y, z) => { const x1 = x * c - z * s, z1 = x * s + z * c; return [x1, y * cp - z1 * sp, y * sp + z1 * cp]; };
+  // projector ring under the ship
+  ctx.save(); ctx.translate(cx, W * .8); ctx.scale(1, .3);
+  const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, W * .44); gr.addColorStop(0, `rgba(${tint},.22)`); gr.addColorStop(.75, `rgba(${tint},.05)`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, W * .44, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = `rgba(${tint},.45)`; ctx.lineWidth = W * .005; ctx.beginPath(); ctx.arc(0, 0, W * .38, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  // faces: 0-1-3-2 (-Z), 4-5-7-6 (+Z), 0-2-6-4 (-X), 1-3-7-5 (+X), 0-1-5-4 (-Y), 2-3-7-6 (+Y)
+  const FACES = [[0, 2, 3, 1], [4, 5, 7, 6], [0, 4, 6, 2], [1, 3, 7, 5], [0, 1, 5, 4], [2, 6, 7, 3]];
+  const light = [-.35, .8, .5], ll = Math.hypot(...light);
+  const tintC = tint.split(',').map(Number), plate = tintC.map((v) => Math.round(v * .7 + 255 * .12));
+  const order = []; const V = new Float32Array(n * 24);
+  for (let i = 0; i < n; i++) {
+    let dz = 0;
+    for (let q = 0; q < 8; q++) { const v = view(corners[i * 24 + q * 3], corners[i * 24 + q * 3 + 1], corners[i * 24 + q * 3 + 2]); V.set(v, i * 24 + q * 3); dz += v[2]; }
+    order.push([dz, i]);
+  }
+  order.sort((a, b) => a[0] - b[0]);   // far parts first
+  ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(.5, W / 900);
+  for (const [, i] of order) {
+    if (holo.groups[i] === 'wire') continue;
+    const grp = holo.groups[i], col = HOLO_COLOURS[grp] || (grp === 'plating' ? plate : tintC);
+    const alpha = grp === 'decor' ? .55 : .9;
+    for (const f of FACES) {
+      const P = f.map((q) => [V[i * 24 + q * 3], V[i * 24 + q * 3 + 1], V[i * 24 + q * 3 + 2]]);
+      // normal from two edges; skip faces turned away from the viewer (and flat boxes' slivers)
+      const e1 = [P[1][0] - P[0][0], P[1][1] - P[0][1], P[1][2] - P[0][2]], e2 = [P[3][0] - P[0][0], P[3][1] - P[0][1], P[3][2] - P[0][2]];
+      const nx = e1[1] * e2[2] - e1[2] * e2[1], ny = e1[2] * e2[0] - e1[0] * e2[2], nz = e1[0] * e2[1] - e1[1] * e2[0], nl = Math.hypot(nx, ny, nz);
+      if (!nl || nz / nl < 0.02) continue;
+      const lit = .38 + .62 * Math.max(0, (nx * light[0] + ny * light[1] + nz * light[2]) / nl / ll);
+      ctx.fillStyle = `rgba(${Math.round(col[0] * lit)},${Math.round(col[1] * lit)},${Math.round(col[2] * lit)},${alpha})`;
+      ctx.strokeStyle = `rgba(${Math.min(255, col[0] + 40)},${Math.min(255, col[1] + 40)},${Math.min(255, col[2] + 40)},.35)`;
+      ctx.beginPath(); P.forEach((v, q) => { const X = cx + v[0] * k, Y = cy - v[1] * k; if (q) ctx.lineTo(X, Y); else ctx.moveTo(X, Y); }); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+  }
+  ctx.fillStyle = 'rgba(255,255,255,.03)'; for (let y = 0; y < W; y += Math.max(3, W / 120)) ctx.fillRect(0, y, W, 1); // scanlines
+}
+// what the hologram's colours mean, for the parts this build has
+function holoLegend(it) {
+  const tint = CLASS_TINT[it.cls] || [79, 193, 176], have = new Set(it.holo.groups.map((g0) => (g0 === 'rockhopper' ? 'engine' : g0 === 'plating' ? 'hull' : g0)));
+  const chips = HOLO_LEGEND.filter(([k]) => have.has(k)).map(([k, label]) => `<span><i style="background:rgb(${(HOLO_COLOURS[k] || tint).join(',')})"></i>${label}</span>`);
+  return chips.length ? `<div class="holo-legend" aria-label="Hologram colours">${chips.join('')}</div>` : '';
+}
 function paintHologram(ctx, W, holo, tint, angle) {
+  if (holo.ids) {
+    if (GL3D.ok()) { paintModel(ctx, W, holoMesh(holo, tint), tint, angle); return; }
+    paintHoloBlocks(ctx, W, holo, tint, angle); return;
+  }
   const pitch = .78, cx = W / 2, cy = W * .47, k = (W * .4) / holo.R;
   const cp = Math.cos(pitch), sp = Math.sin(pitch), c = Math.cos(angle), s = Math.sin(angle);
   const proj = (x, y, z) => { const x1 = x * c - z * s, z1 = x * s + z * c; return [cx + x1 * k, cy - (y * cp - z1 * sp) * k, y * sp + z1 * cp]; };
@@ -2270,21 +2399,21 @@ function paintWire(ctx, W, mesh, tint, angle) {
 const GL3D = (() => {
   let gl = null, cv = null, prog = null, failed = false;
   const VS = `#version 300 es
-    in vec3 p; uniform vec3 c; uniform float r, yaw, pitch, aspect; out vec3 vp;
+    in vec3 p; in vec3 col; uniform vec3 c; uniform float r, yaw, pitch, aspect; out vec3 vp; out vec3 vcol;
     void main() {
       vec3 q = (p - c) / r;
       float cy = cos(yaw), sy = sin(yaw), cp = cos(pitch), sp = sin(pitch);
       vec3 a = vec3(q.x * cy + q.z * sy, q.y, -q.x * sy + q.z * cy);
       vec3 b = vec3(a.x, a.y * cp - a.z * sp, a.y * sp + a.z * cp);
-      vp = b; gl_Position = vec4(b.x * .86, b.y * .86 - .02, -b.z * .5, 1.0);
+      vp = b; vcol = col; gl_Position = vec4(b.x * .86, b.y * .86 - .02, -b.z * .5, 1.0);
     }`;
   const FS = `#version 300 es
-    precision highp float; in vec3 vp; uniform vec3 tint; out vec4 o;
+    precision highp float; in vec3 vp; in vec3 vcol; out vec4 o;
     void main() {
       vec3 n = normalize(cross(dFdx(vp), dFdy(vp)));
       vec3 l = normalize(vec3(-.45, .75, -.5));
       float d = abs(dot(n, l)), rim = pow(1.0 - abs(n.z), 2.2);
-      vec3 col = tint * (.22 + .62 * d) + vec3(.55, .9, 1.0) * rim * .55;
+      vec3 col = vcol * (.22 + .62 * d) + vec3(.55, .9, 1.0) * rim * .55;
       o = vec4(col, .96);
     }`;
   function init() {
@@ -2305,6 +2434,10 @@ const GL3D = (() => {
     const vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, m.pos, gl.STATIC_DRAW);
     const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 3, gl.FLOAT, false, 0, 0);
     const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, m.idx, gl.STATIC_DRAW);
+    // per-vertex colours (the corvette hologram's part types); other models use the tint, set as a constant below
+    const cl = gl.getAttribLocation(prog, 'col');
+    if (m.col) { const cb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, cb); gl.bufferData(gl.ARRAY_BUFFER, m.col, gl.STATIC_DRAW); gl.enableVertexAttribArray(cl); gl.vertexAttribPointer(cl, 3, gl.FLOAT, false, 0, 0); }
+    else gl.disableVertexAttribArray(cl);
     gl.bindVertexArray(null);
   }
   // draws the mesh into the shared WebGL canvas and returns it, ready for drawImage
@@ -2315,7 +2448,7 @@ const GL3D = (() => {
     gl.enable(gl.DEPTH_TEST); gl.useProgram(prog); upload(m);
     gl.uniform3f(gl.getUniformLocation(prog, 'c'), m.c[0], m.c[1], m.c[2]); gl.uniform1f(gl.getUniformLocation(prog, 'r'), m.r);
     gl.uniform1f(gl.getUniformLocation(prog, 'yaw'), yaw); gl.uniform1f(gl.getUniformLocation(prog, 'pitch'), .38);
-    gl.uniform3f(gl.getUniformLocation(prog, 'tint'), tint[0] / 255, tint[1] / 255, tint[2] / 255);
+    gl.vertexAttrib3f(gl.getAttribLocation(prog, 'col'), tint[0] / 255, tint[1] / 255, tint[2] / 255);
     gl.bindVertexArray(m.vao); gl.drawElements(gl.TRIANGLES, m.idx.length, gl.UNSIGNED_INT, 0); gl.bindVertexArray(null);
     return cv;
   }
@@ -2708,7 +2841,7 @@ function CoverFlow(host, items, opts) {
     items.forEach((it, i) => { if (it.key !== e.detail.key) return; const cv = els[i].querySelector('canvas'); if (cv && !it.custom) paintCover(cv, it); if (i === cur) kick(); });
   };
   document.addEventListener('cover-model', onModel);
-  items.forEach((it) => { if (it.kind === 'corvette') loadRender(it); else if (it.scene) loadModel(it); });
+  items.forEach((it) => { if (it.kind === 'corvette') { loadRender(it); loadHoloBoxes(it); } else if (it.scene) loadModel(it); });
 
   els.forEach((el, i) => { el.classList.toggle('center', i === cur); el.setAttribute('aria-selected', String(i === cur)); });
   posEl.textContent = n ? `${cur + 1} of ${n}` : '';
@@ -2863,6 +2996,7 @@ PAGES.hangar = (el) => {
     stats.push([it.current ? 'Yes' : 'No', it.kind === 'tool' ? 'Equipped' : 'Current ship']);
     box.innerHTML = `<div class="hangar-detail"><div><h2 style="margin-bottom:10px">${esc(it.name)}</h2><div class="stats">${stats.map(([b, s]) => `<div><b>${s === 'Class' && /^[SABC]$/.test(b) ? `<span class="badge big cls-${b}">${b}</span>` : esc(b)}</b><span>${s}</span></div>`).join('')}</div></div>
       <div class="acts"><button class="btn primary" id="hOpen">Open loadout</button>${APP && it.scene && S.lib && S.lib.game ? '<button class="btn" id="hParts">Choose parts</button>' : ''}${APP && it.kind === 'corvette' ? `<button class="btn" id="hRender">${it.renderImg ? 'Render again' : 'Render with Blender'}</button>` : ''}${APP ? '<button class="btn" id="hShot">Choose a screenshot</button>' : ''}<label class="btn">Use an image file<input type="file" accept="image/*" id="hCover" hidden></label>${it.custom ? '<button class="btn ghost" id="hReset">Use generated cover</button>' : ''}</div></div>
+      ${it.holo && it.holo.ids && !it.renderImg && !it.custom ? holoLegend(it) : ''}
       <p class="dim" id="renderState" style="margin:10px 0 0;font-size:14px" aria-live="polite"></p>`;
     $('#hOpen', box).onclick = () => openLoadout(it);
     const hp = $('#hParts', box); if (hp) hp.onclick = () => partsDialog(it, () => { flow.refresh(); setTimeout(detail, 50); });
@@ -4310,6 +4444,7 @@ function libFlow(host, list, refresh) {
     const it = items[n]; if (!it || it.filled || it.x.sum.error) return; it.filled = true;
     try { const p = it.x.parsed || (it.x.parsed = await ShipLib.load(it.x.f)); if (!p.error) { const full = libCoverItem(it.x.f, p, it.x.sum); for (const k of ['base', 'holo', 'seed', 'scene']) if (full[k] != null) it[k] = full[k]; } } catch (_) { return; }
     if (flow.index === n) flow.refresh();
+    if (it.kind === 'corvette') loadHoloBoxes(it);
   };
   const flow = CoverFlow(host, items, { size: big, index: start, label: 'Dock Yard',
     onChange: (n) => { S0.flowKey = items[n].x.id; for (let d = 0; d <= 2; d++) { fill(n + d); if (d) fill(n - d); } },

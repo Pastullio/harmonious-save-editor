@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.30.1701",
+  "version": "2026.10.30.1756",
   "date": "2026-10-30",
-  "size": 9829888,
-  "sha256": "3e77398877b4d3b5e83cb5f68870c480c60717c6a4454bbab99e1385e8dffcff",
-  "notes": "Parts picker: a picture of every part, nested under the choice it belongs to, with plain names. Biome odds now account for lush and empty galaxies. LiveLink asks before writing to the wrong corvette.",
+  "size": 9854976,
+  "sha256": "42344264df36d2339cb60d456f50abab008e4b76c75c9bc6d28a356bd35df565",
+  "notes": "Corvette covers: a solid hologram with every part at its real size from your game files, coloured by part type (key in the Hangar).",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

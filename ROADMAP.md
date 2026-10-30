@@ -55,6 +55,7 @@ One personal library of ship files outside the game, with three views onto it.
 - [x] Cover Flow browser (iTunes-style: scroll, drag, arrow keys, slider) — shipped as the Hangar page and as the picker on Starships and Multi-tools
 - [x] Cover Flow in the Dock Yard (Garage, Ship storage, favourites), with a Cover Flow / Grid switch on every cover page
 - [ ] Cover Flow for the Testing Facility once it exists; profiles have no pictures yet, so they stay a list
+- [x] Corvette hologram as solid blocks at each part's real size from the game files, coloured by part type with a key in the Hangar (2026-10-30)
 - [x] Generated covers: corvettes render as a rotating hologram of their real part layout; other ships and multi-tools get a type silhouette on a nebula seeded by the item's own seed
 - [x] Drop a screenshot on any cover (or use Set cover image) to replace it; kept in the app's browser profile
 - [x] Real renders of corvettes: the desktop app runs the owner's Blender with Charon Forge's part models in the background (Render with Blender / Render all corvettes) and caches each PNG by a hash of the build, so a cover re-renders only when the build changes

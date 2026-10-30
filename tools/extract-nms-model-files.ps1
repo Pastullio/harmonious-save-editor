@@ -102,8 +102,10 @@ try {
     foreach ($set in ($Sets -split ',')) {
         $f = $folders[$set.Trim()]
         if (-not $f) { Fail "Unknown set '$set'." }
+        # base parts: only their scenes (part sizes for the corvette hologram), which keeps the zip small
+        $exts = if ($set.Trim() -eq 'baseparts') { @('*.scene.mbin') } else { @('*.scene.mbin', '*.descriptor.mbin', '*.geometry.mbin.pc', '*.geometry.data.mbin.pc') }
         foreach ($folder in ($f -split '\|')) {
-            foreach ($ext in '*.scene.mbin', '*.descriptor.mbin', '*.geometry.mbin.pc', '*.geometry.data.mbin.pc') { $args2 += @('-f', "*$folder/$ext") }
+            foreach ($ext in $exts) { $args2 += @('-f', "*$folder/$ext") }
         }
     }
     Say "Extracting models ($Sets), a few minutes..."
