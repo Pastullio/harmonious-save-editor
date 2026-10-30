@@ -6,6 +6,8 @@ A save editor for No Man's Sky on PC (Steam and GOG, Frontiers 3.60 or newer). E
 
 Nothing is uploaded anywhere. Item names and icons come from your own copy of the game.
 
+**New here? Open the [user guide](dist/Harmonious%20Save%20Editor%20Guide.html)** (download it and open it in your browser, or press **Guide** in the app): every page of the editor, with screenshots.
+
 - [Getting started](#getting-started)
 - [How saving keeps your data safe](#how-saving-keeps-your-data-safe)
 - [The sections](#the-sections)
@@ -22,7 +24,7 @@ Nothing is uploaded anywhere. Item names and icons come from your own copy of th
 
 ## Getting started
 
-1. Download **`dist/Harmonious Save Editor.exe`** from this repository. It's one small program with no installer.
+1. Download **`dist/Harmonious Save Editor.exe`** from this repository. It's one small program with no installer. `dist/Harmonious Save Editor Guide.html` next to it is the user guide; the app also opens it from **Guide** on the save list and **User guide** in the sidebar.
 2. Run it. Windows SmartScreen warns the first time because the exe isn't code-signed: choose **More info**, then **Run anyway**.
 3. The editor finds your saves in `%APPDATA%\HelloGames\NMS` and opens in its own window. Pick a save.
 4. On first start it builds an item library from your No Man's Sky install (about a minute). That's where item names, icons and descriptions come from.

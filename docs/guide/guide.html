@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Harmonious Save Editor Guide</title>
+<meta name="description" content="How to use Harmonious Save Editor, the No Man's Sky save editor: every section, with screenshots.">
+<link rel="icon" href="@@ICON@@">
+<script>try { var t = localStorage.getItem("hse-theme"); if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t); } catch (e) {}</script>
+<style>
+/*@@FONTS@@*/
+/* Glacial, the same look as the editor: icy light by default, deep teal in dark mode */
+:root {
+  --bg: #e6f0f5; --surface: #f7fbfc; --well: #d8eaf2; --hover: #edf5f8; --line: #d3e2e9; --line-2: #b8cfd9;
+  --ink: #2b2f33; --dim: #5a6168; --faint: #8b9298;
+  --accent: #0b6f84; --accent-ink: #ffffff; --accent-soft: #d6edf3;
+  --warn-soft: #fbe1ea; --warn: #b0365d;
+  --shadow: 0 1px 2px rgba(20, 60, 75, .05), 0 10px 30px rgba(20, 60, 75, .07);
+  --stage: linear-gradient(180deg, #13849f 0%, #0b5368 52%, #062b37 100%);
+  --font: "Jost", "Segoe UI", system-ui, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #08141a; --surface: #0f212a; --well: #123342; --hover: #142b36; --line: #1d3845; --line-2: #2a4f5f;
+    --ink: #ffffff; --dim: #b4c2c8; --faint: #73858d;
+    --accent: #3cc3dc; --accent-ink: #052630; --accent-soft: #11394a;
+    --warn-soft: #3b1d29; --warn: #ff9bba;
+    --shadow: none; --stage: linear-gradient(180deg, #0c4152 0%, #072630 55%, #03121a 100%);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #08141a; --surface: #0f212a; --well: #123342; --hover: #142b36; --line: #1d3845; --line-2: #2a4f5f;
+  --ink: #ffffff; --dim: #b4c2c8; --faint: #73858d;
+  --accent: #3cc3dc; --accent-ink: #052630; --accent-soft: #11394a;
+  --warn-soft: #3b1d29; --warn: #ff9bba;
+  --shadow: none; --stage: linear-gradient(180deg, #0c4152 0%, #072630 55%, #03121a 100%);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-padding-top: 20px; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.6 var(--font); -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); text-underline-offset: 3px; }
+code, .mono { font-family: var(--mono); font-size: .9em; background: var(--well); padding: 1px 6px; border-radius: 6px; overflow-wrap: anywhere; }
+.layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 100vh; }
+
+/* sidebar */
+#side { position: sticky; top: 0; height: 100vh; overflow: auto; background: var(--surface); border-right: 1px solid var(--line); padding: 20px 14px 28px; display: flex; flex-direction: column; gap: 14px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); padding: 0 6px; }
+.brand img { width: 36px; height: 36px; border-radius: 9px; }
+.brand b { display: block; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; font-size: 13px; line-height: 1.3; }
+.brand span { display: block; font-size: 12px; color: var(--dim); letter-spacing: 0; text-transform: none; }
+.search { width: 100%; font: inherit; font-size: 14px; color: var(--ink); background: var(--bg); border: 1px solid var(--line-2); border-radius: 999px; padding: 8px 14px; }
+.search:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+#nav { display: grid; gap: 8px; }
+.navgrp { background: color-mix(in srgb, var(--g) 9%, transparent); border-radius: 14px; padding: 6px; }
+.navgrp .k { display: block; font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); padding: 6px 10px 4px; }
+.navgrp a { display: flex; align-items: center; gap: 10px; padding: 5px 10px; border-radius: 10px; color: var(--ink); text-decoration: none; font-size: 15px; }
+.navgrp a i { width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--accent)); flex: none; }
+.navgrp a:hover { background: var(--hover); }
+.navgrp a[aria-current="page"] { background: var(--c, var(--accent)); color: #04232c; font-weight: 500; }
+.navgrp a[aria-current="page"] i { background: #04232c; }
+.navgrp a.hide { display: none; }
+.side-foot { margin-top: auto; display: flex; gap: 8px; flex-wrap: wrap; padding: 0 6px; }
+.btn { font: inherit; font-size: 13.5px; color: var(--ink); background: transparent; border: 1px solid var(--line-2); border-radius: 999px; padding: 6px 14px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 500; }
+#menuBtn { display: none; }
+
+/* pages */
+main { padding: 44px clamp(16px, 5vw, 64px) 80px; max-width: 1180px; }
+.page { display: none; }
+.page.on { display: block; animation: rise .25s ease-out; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .page.on { animation: none; } }
+h1 { font-weight: 400; font-size: clamp(26px, 4vw, 38px); letter-spacing: .2em; text-transform: uppercase; margin: 0 0 6px; line-height: 1.2; overflow-wrap: anywhere; }
+h1::after { content: ""; display: block; width: 46px; height: 3px; border-radius: 3px; background: var(--c, var(--accent)); margin-top: 14px; }
+.lede { font-size: 18px; color: var(--dim); max-width: 760px; margin: 16px 0 28px; }
+h2 { font-weight: 500; font-size: 13px; letter-spacing: .2em; text-transform: uppercase; margin: 40px 0 12px; color: var(--ink); }
+h3 { font-weight: 500; font-size: 18px; margin: 26px 0 8px; }
+p, li { max-width: 780px; }
+ul.feat { padding-left: 0; list-style: none; display: grid; gap: 10px; margin: 12px 0; }
+ul.feat li { position: relative; padding-left: 22px; }
+ul.feat li::before { content: ""; position: absolute; left: 4px; top: .7em; width: 7px; height: 7px; border-radius: 50%; background: var(--c, var(--accent)); }
+ol.steps { counter-reset: s; list-style: none; padding: 0; display: grid; gap: 12px; margin: 14px 0; }
+ol.steps li { counter-increment: s; position: relative; padding-left: 44px; min-height: 30px; }
+ol.steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 30px; height: 30px; border-radius: 50%; background: var(--accent-soft); color: var(--ink); display: grid; place-items: center; font-weight: 500; font-size: 14px; }
+.ui { font-weight: 500; white-space: nowrap; border: 1px solid var(--line-2); border-radius: 999px; padding: 0 9px; font-size: .92em; background: var(--surface); }
+figure { margin: 22px 0 30px; }
+figure img { display: block; width: 100%; height: auto; border-radius: 14px; border: 1px solid var(--line); box-shadow: var(--shadow); cursor: zoom-in; background: #08141a; }
+figcaption { font-size: 14px; color: var(--dim); margin-top: 10px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.pair figure { margin: 10px 0 18px; }
+.note { border-left: 3px solid var(--c, var(--accent)); background: var(--surface); padding: 12px 16px; border-radius: 0 12px 12px 0; margin: 18px 0; max-width: 780px; box-shadow: var(--shadow); }
+.note.warn { border-color: var(--warn); background: var(--warn-soft); }
+.note b:first-child { display: block; font-weight: 500; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; margin: 18px 0 28px; }
+.card { display: block; text-decoration: none; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; box-shadow: var(--shadow); border-top: 3px solid var(--c, var(--accent)); }
+.card:hover { border-color: var(--c, var(--accent)); }
+.card b { display: block; font-weight: 500; font-size: 16px; }
+.card span { display: block; font-size: 14px; color: var(--dim); margin-top: 4px; }
+.hero { background: var(--stage); border-radius: 22px; padding: clamp(24px, 5vw, 48px); color: #fff; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 28px; align-items: center; margin-bottom: 28px; }
+.hero h1 { color: #fff; }
+.hero h1::after { background: #3cc3dc; }
+.hero p { color: #d7eef4; font-size: 17px; }
+.hero img { width: 100%; border-radius: 14px; box-shadow: 0 18px 40px rgba(0,0,0,.35); cursor: zoom-in; }
+.hero .btn { color: #fff; border-color: rgba(255,255,255,.5); }
+.hero .btn.primary { background: #3cc3dc; color: #052630; border-color: #3cc3dc; }
+.pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 48px; padding-top: 22px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.pager a { text-decoration: none; color: var(--ink); border: 1px solid var(--line); border-radius: 14px; padding: 10px 16px; background: var(--surface); min-width: 0; }
+.pager a span { display: block; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+.pager a:hover { border-color: var(--accent); }
+.pager .next { margin-left: auto; text-align: right; }
+table { border-collapse: collapse; width: 100%; max-width: 780px; font-size: 15px; margin: 12px 0; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 500; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+dl.faq dt { font-weight: 500; margin-top: 20px; }
+dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
+
+/* picture viewer */
+#zoom { position: fixed; inset: 0; background: rgba(3, 14, 19, .9); display: none; place-items: center; z-index: 50; padding: 24px; cursor: zoom-out; }
+#zoom.on { display: grid; }
+#zoom img { max-width: 100%; max-height: 100%; border-radius: 12px; }
+
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  #side { position: fixed; inset: 0 auto 0 0; width: min(300px, 86vw); z-index: 40; transform: translateX(-102%); transition: transform .2s; box-shadow: 0 0 40px rgba(0,0,0,.4); }
+  body.menu #side { transform: none; }
+  #menuBtn { display: inline-flex; position: fixed; top: 12px; right: 12px; z-index: 41; background: var(--surface); }
+  main { padding-top: 64px; }
+  .hero, .pair { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside id="side" aria-label="Guide contents">
+  <a class="brand" href="#home"><img src="@@ICON@@" alt=""><span><b>Harmonious</b><span>Save Editor guide</span></span></a>
+  <input class="search" id="q" type="search" placeholder="Search the guide" aria-label="Search the guide">
+  <nav id="nav"></nav>
+  <div class="side-foot"><button class="btn" id="theme" type="button">Dark mode</button><a class="btn" href="https://github.com/Pastullio/harmonious-save-editor" target="_blank" rel="noopener">GitHub</a></div>
+</aside>
+<button class="btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="side">Contents</button>
+<main id="main">
+
+<!-- ================================================================ start -->
+<section class="page" id="home" data-group="start" data-title="Welcome" data-c="#2fc3d6">
+  <div class="hero">
+    <div>
+      <h1>Harmonious Save Editor</h1>
+      <p>A save editor for No Man's Sky on PC (Steam and GOG). Edit your traveller, ships, corvettes, bases and inventories. Keep every ship you've owned. Find places by their portal glyphs and warp there. Build in Blender and send it straight into your save.</p>
+      <p><a class="btn primary" href="#start">Get started</a> <a class="btn" href="#sections">Tour the sections</a></p>
+    </div>
+    <img src="shots/overview.webp" alt="The editor's Overview page with the traveller, current ship and multi-tool">
+  </div>
+  <h2>Where to begin</h2>
+  <div class="cards">
+    <a class="card" href="#start" style="--c:#2fc3d6"><b>Getting started</b><span>Download, open a save, make a change, save it back to the game.</span></a>
+    <a class="card" href="#safety" style="--c:#36d6c3"><b>Your saves are safe</b><span>Backups, checks before writing, and how to undo anything.</span></a>
+    <a class="card" href="#everywhere" style="--c:#3cb6ea"><b>Inventories and find</b><span>The grid tools you'll use on every page, and Ctrl+K.</span></a>
+    <a class="card" href="#blender" style="--c:#6598ff"><b>Blender</b><span>Corvette renders, loading .blend files, and LiveLink.</span></a>
+  </div>
+  <h2 id="sections">The sections</h2>
+  <p>The editor's sidebar groups the pages the way you use them. Each one has its own page here.</p>
+  <div class="cards" id="secCards"></div>
+  <div class="note"><b>Close No Man's Sky before you save.</b>The editor warns you if the game is still running. Your changes appear the next time you load the save in the game.</div>
+</section>
+
+<section class="page" id="start" data-group="start" data-title="Getting started" data-c="#2fc3d6">
+  <h1>Getting started</h1>
+  <p class="lede">The desktop app is one small program with no installer. It finds your saves on its own and writes straight back to the game's folder.</p>
+  <ol class="steps">
+    <li><b>Download</b> <code>Harmonious Save Editor.exe</code> from the <a href="https://github.com/Pastullio/harmonious-save-editor/tree/main/dist" target="_blank" rel="noopener">dist folder on GitHub</a>. Put it anywhere you like.</li>
+    <li><b>Run it.</b> Windows SmartScreen warns the first time because the program isn't code-signed. Choose <span class="ui">More info</span>, then <span class="ui">Run anyway</span>.</li>
+    <li><b>Pick a save.</b> The editor lists your save slots from <code>%APPDATA%\HelloGames\NMS</code>, newest first. Click one to open it.</li>
+    <li><b>Let the item library build.</b> The first time, the app reads item names, icons and descriptions from your No Man's Sky install. It takes about a minute and happens once (and again after game updates).</li>
+    <li><b>Make your changes</b> on any page. The sidebar shows <span class="ui">Unsaved changes</span> while you have some.</li>
+    <li><b>Close the game, then press</b> <span class="ui">Save to game</span> at the bottom of the sidebar.</li>
+  </ol>
+  <figure><img src="shots/saves.webp" alt="The save list: each slot with its name, place, date and play time" loading="lazy"><figcaption>The save list. Each slot opens its most recent save. <span class="ui">Copy to a new slot</span> makes a copy you can experiment on, and <span class="ui">Back up all saves</span> zips every slot.</figcaption></figure>
+  <h2>The window</h2>
+  <ul class="feat">
+    <li><b>Sidebar</b>: the save's name and play time at the top, then the find box, the sections in their groups, links to other tools, and the save button.</li>
+    <li><b>Buttons at the very bottom</b>: open the save folder, back up all saves, show backups, light or dark mode, and About (version, links and credits).</li>
+    <li><b>The "?" signs</b> beside headings and fields show a short explanation when you point at them.</li>
+  </ul>
+  <h2>Updates</h2>
+  <p>When a new version is out, the app offers it once. Accept and it downloads the new version, checks it, swaps itself over and restarts, showing its progress while it works. Nothing needs reinstalling.</p>
+</section>
+
+<section class="page" id="safety" data-group="start" data-title="Your saves are safe" data-c="#2fc3d6">
+  <h1>Your saves are safe</h1>
+  <p class="lede">The editor is built never to lose data. Here's everything it does to protect your saves, and how to get an old version back.</p>
+  <ul class="feat">
+    <li><b>A backup every time you save.</b> Before replacing a save, the app copies the current pair of files to <code>%LOCALAPPDATA%\HarmoniousSaveEditor\backups\&lt;account&gt;\&lt;time&gt;_saveN</code>. The clock-arrow button at the bottom of the sidebar (<span class="ui">Show backups</span>) opens that folder.</li>
+    <li><b>Back up all saves</b> zips every slot into <code>Documents\Harmonious Save Editor backups</code>.</li>
+    <li><b>Checked before writing.</b> The new save is decoded again and compared with what's in the editor. If anything differs, nothing is written.</li>
+    <li><b>Nothing changes by accident.</b> A save you open and save without edits comes out identical: key order, number spelling and special bytes are all kept.</li>
+    <li><b>New saves from the game.</b> If the game writes a newer save while the editor has one open, a card offers to open the new one. It asks first if you have unsaved edits.</li>
+    <li><b>Your ships are kept too.</b> The Dock Yard's Garage keeps a copy of every ship in every save you open, so even a deleted ship can come back.</li>
+    <li><b>Private.</b> The app only listens on your own PC (127.0.0.1) with a new random key each run, so web pages can't reach it. It closes a few seconds after its window does.</li>
+  </ul>
+  <h2>Getting an old save back</h2>
+  <ol class="steps">
+    <li>Close No Man's Sky.</li>
+    <li>Press <span class="ui">Show backups</span> and open the folder with the time you want.</li>
+    <li>Copy both files (<code>saveN.hg</code> and <code>mf_saveN.hg</code>) into your save folder (the folder button at the bottom of the sidebar opens it), replacing the current pair.</li>
+  </ol>
+  <div class="note warn"><b>Steam Cloud</b>Steam can put back an older copy of a save if it syncs before the game starts. If an edit seems to vanish, let Steam finish syncing, or choose the local copy when Steam asks.</div>
+</section>
+
+<!-- ================================================================ getting around and your fleet -->
+<section class="page" id="overview" data-group="fleet" data-title="Overview" data-c="#2fc3d6">
+  <h1>Overview</h1>
+  <p class="lede">Your traveller at a glance: who you are, what you're flying, where you are, and what you've done.</p>
+  <figure><img src="shots/overview.webp" alt="Overview page" loading="lazy"></figure>
+  <ul class="feat">
+    <li><b>Traveller cards</b>: your portrait, current ship, multi-tool and location. Give your traveller a picture with <span class="ui">Choose a screenshot</span> (from your in-game photos) or <span class="ui">Image file</span>. Click the ship or multi-tool to jump to it.</li>
+    <li><b>Location</b>: galaxy, system, portal glyphs and galactic address. <span class="ui">Coordinates and warp</span> takes you to the Coordinates page.</li>
+    <li><b>Quick fixes</b> for every inventory in the save at once: <span class="ui">Repair all technology</span>, <span class="ui">Recharge all technology</span> and <span class="ui">Fill every stack</span>.</li>
+    <li><b>Journey</b>: planets and systems discovered, creatures, words learned, warps, distance walked and flown, and more.</li>
+    <li><b>Currencies</b>: units, nanites and quicksilver. Type a number or use <span class="ui">+1M</span>, <span class="ui">+100M</span> and <span class="ui">Max</span>.</li>
+    <li><b>Save name</b>: how this save is named in the game's load menu.</li>
+  </ul>
+  <figure><img src="shots/overview-light.webp" alt="Overview in light mode" loading="lazy"><figcaption>Every page also comes in light mode (the sun button at the bottom of the sidebar).</figcaption></figure>
+</section>
+
+<section class="page" id="shipwright" data-group="fleet" data-title="Shipwright" data-c="#36d6c3">
+  <h1>Shipwright</h1>
+  <p class="lede">Corvette builds, done right: parts in the order the game reads them, checks for the mistakes that break a build, and whole builds in and out in one go.</p>
+  <figure><img src="shots/shipwright.webp" alt="Shipwright with a corvette's build check and parts list" loading="lazy"></figure>
+  <h2>Your corvettes</h2>
+  <p>The list on the left shows each corvette with its slot and part count. <span class="ui">Add corvette</span> makes a new one in an empty ship slot with a starter build; <span class="ui">Delete corvette</span> removes one.</p>
+  <h2>Build check</h2>
+  <ul class="feat">
+    <li><b>Cockpits</b>: the first two in the list are the camera cockpit and the boarding cockpit.</li>
+    <li><b>Landing bay</b>: the first one is where you beam up. If it's scaled too small, beam-up won't work, and the check says so.</li>
+    <li><b>Part order</b>: performance parts listed late can lose stats or misbehave. <span class="ui">Tune up</span> fixes the order (TAZmd's documented priority order; cockpits and the beam-up bay stay put). Tick <b>Tune up when pasting or loading</b> to do it every time.</li>
+    <li><b>Stacked parts</b>: parts sitting exactly on top of an identical one, with a one-click fix.</li>
+  </ul>
+  <h2>Builds in and out</h2>
+  <ul class="feat">
+    <li><span class="ui">Copy all</span> and <span class="ui">Paste all</span> move a whole build between corvettes, saves or other tools such as TAZ's. Pasting replaces only the parts; the corvette keeps its name, class, inventory and owner.</li>
+    <li><span class="ui">Load file</span> and <span class="ui">Save as…</span> read and write builds as files.</li>
+    <li><span class="ui">Load from a .blend…</span> reads a Charon Forge corvette file from Blender. See <a href="#blender">Blender</a>.</li>
+    <li><b>Parts list</b>: search, select (click, Ctrl+click, Shift+click), move parts <span class="ui">Up</span> and <span class="ui">Down</span>, copy or delete them.</li>
+  </ul>
+  <h2>LiveLink</h2>
+  <p>Turn LiveLink on for a corvette and each time you save in Blender, the build lands in your save. Set it up on the <a href="#blender">Blender</a> page.</p>
+</section>
+
+<section class="page" id="coordinates" data-group="fleet" data-title="Coordinates" data-c="#3cb6ea">
+  <h1>Coordinates</h1>
+  <p class="lede">Find a place by its portal glyphs or galactic address, see what your save knows about it, and warp there.</p>
+  <figure><img src="shots/coords.webp" alt="Coordinates: where you are, and a destination entered as portal glyphs" loading="lazy"></figure>
+  <h2>Choosing a destination</h2>
+  <ul class="feat">
+    <li><b>You are here</b> shows your galaxy, system, portal glyphs and galactic address. <span class="ui">Start from here</span> copies it into the destination.</li>
+    <li><b>Portal glyphs</b>: click the sixteen glyphs to type a portal code. <span class="ui">Delete last glyph</span> and <span class="ui">Clear</span> fix mistakes.</li>
+    <li><b>Portal code, galactic address and galaxy</b> fields stay in step as you type any of them. Galactic addresses are what a signal booster shows.</li>
+    <li><b>Your places</b> picks one of your bases or space stations.</li>
+    <li><span class="ui">Make a glyph banner</span> opens the Portal Glyph Banner tool with this address.</li>
+  </ul>
+  <h2>About this system</h2>
+  <figure><img src="shots/coords-system.webp" alt="System prediction with planets, biomes and what the save knows" loading="lazy"></figure>
+  <ul class="feat">
+    <li><b>Prediction</b>: the system's name, region, star colour, economy, conflict and planets, worked out from the address.</li>
+    <li><b>Planets</b>: each body with its name, portal address and biome. Biomes you've seen come from your discovery records. For the rest, the <b>biome odds</b> show the most likely biome and its chance, from the game's own tables by star colour and galaxy type. Prime bodies (the extra ones the game adds) use their own odds.</li>
+    <li><b>From your save</b>: whether you've been here, what you've discovered, and your places in the system.</li>
+    <li><b>Place card</b>: <span class="ui">Copy card</span>, <span class="ui">Save card</span> or <span class="ui">Copy as text</span> to share the destination.</li>
+  </ul>
+  <h2>Warping</h2>
+  <ul class="feat">
+    <li><span class="ui">Warp here</span> puts you in your ship at the destination.</li>
+    <li><span class="ui">Arrive here</span> next to one of your bases lands you on foot beside it, ship hovering above.</li>
+    <li><span class="ui">Arrive on your freighter</span> brings the freighter to the system and puts you aboard.</li>
+  </ul>
+  <p>Nothing changes in the game until you press <span class="ui">Save to game</span>; your old location is kept as your previous one.</p>
+</section>
+
+<section class="page" id="hangar" data-group="fleet" data-title="Hangar" data-c="#4ea8ff">
+  <h1>Hangar</h1>
+  <p class="lede">Your ships, corvettes and multi-tools as cover art, with real 3D models from your game.</p>
+  <figure><img src="shots/hangar-corvettes.webp" alt="Hangar in Cover Flow, filtered to corvettes, showing a rendered corvette" loading="lazy"></figure>
+  <ul class="feat">
+    <li><b>Cover Flow</b>: scroll, drag or use the arrow keys. Click the centre cover to open its loadout. Switch to a <b>Grid</b> in the top-right corner.</li>
+    <li><b>Filters</b>: All, Corvettes, Starships and Multi-tools.</li>
+    <li><b>Models</b>: ships and multi-tools are drawn from your game's own model files. Point at a cover and it spins; drag to turn it.</li>
+    <li><b>Pictures</b>: drop an image on a cover, or use <span class="ui">Choose a screenshot</span> or <span class="ui">Use an image file</span>. <span class="ui">Change picture</span> goes back to the model.</li>
+    <li><b>Details</b> under the covers: type, class, tech modules, items carried, build parts and whether it's your current ship. <span class="ui">Open loadout</span> jumps to its editor.</li>
+  </ul>
+  <h2>Corvettes</h2>
+  <figure><img src="shots/hangar-views.webp" alt="A corvette render with the View choices: three-quarter, front, side, back and top" loading="lazy"><figcaption>With Blender and Charon Forge installed, corvettes get real renders, from five angles.</figcaption></figure>
+  <ul class="feat">
+    <li><b>Hologram</b>: without Blender, a corvette shows each part as a block at its real size, coloured by type (cockpit, engines and wings, weapons, shields, reactors, landing gear, bays, hull and decor).</li>
+    <li><b>Renders</b>: <span class="ui">Render all corvettes</span> or <span class="ui">Render again</span>. The <b>View</b> choices switch between three-quarter, front, side, back and top. The editor remembers your choice for each build.</li>
+    <li><span class="ui">Cover settings</span> point the app at Blender and Charon Forge, and turn automatic renders on or off.</li>
+  </ul>
+  <h2>Choose parts</h2>
+  <figure><img src="shots/parts.webp" alt="Choose parts dialog for a multi-tool, each option shown as a picture" loading="lazy"><figcaption>The game picks a ship's or multi-tool's parts from its seed. Choose parts lets you match the model to what you see in the game.</figcaption></figure>
+  <h2>Grid view</h2>
+  <figure><img src="shots/hangar-grid.webp" alt="Hangar in grid view" loading="lazy"></figure>
+</section>
+
+<section class="page" id="dockyard" data-group="fleet" data-title="Dock Yard" data-c="#6598ff">
+  <h1>Dock Yard</h1>
+  <p class="lede">Every ship you own, build or download, in one place. Keep every version and move ships and corvettes into any save.</p>
+  <figure><img src="shots/dockyard-flow.webp" alt="Dock Yard with the Garage, Ship storage and Favourites tabs" loading="lazy"></figure>
+  <p>The Dock Yard lives in <code>Documents\Harmonious Save Editor\Dock Yard</code>, so it's shared by all your saves.</p>
+  <h2>The three tabs</h2>
+  <table>
+    <tr><th>Tab</th><th>What's in it</th></tr>
+    <tr><td><b>Garage</b></td><td>Fills itself. Every ship in every save you open is copied here, and a ship you replace is copied first, so nothing is lost.</td></tr>
+    <tr><td><b>Ship storage</b></td><td>Ships you keep on purpose: files you import and ships you save from your game.</td></tr>
+    <tr><td><b>Favourites</b></td><td>Ships you star, from anywhere in the Dock Yard.</td></tr>
+  </table>
+  <p>Under the tabs: <b>All ships</b>, <b>Linked folders</b> (folders where you already keep ship files; the app only reads them) and <span class="ui">Manage folders</span>.</p>
+  <h2>Garage versions</h2>
+  <figure><img src="shots/dockyard-card.webp" alt="A ship card with two versions listed, newest first" loading="lazy"><figcaption>One card per ship, its versions stacked inside.</figcaption></figure>
+  <ul class="feat">
+    <li><b>A new version</b> is kept only when the ship itself changes: its build, model, name, class, colours or installed tech. Fuel, charge, cargo and where it's parked don't count.</li>
+    <li><b>Pick a version</b> in the list to see it, put it in a save, export it or delete it.</li>
+    <li><b>Copies</b> of the same version (from older editor versions) show as "seen N times". <span class="ui">Move them to Deleted</span> clears them out.</li>
+  </ul>
+  <h2>Using a ship</h2>
+  <ul class="feat">
+    <li><span class="ui">Put in this save…</span> drops a ship into an empty slot or replaces one (the replaced ship goes to the Garage first). Corvettes bring their build.</li>
+    <li><b>A build on its own</b> (no ship) goes onto one of your corvettes, which keeps its name and class. A <code>.so</code> file does the opposite: a corvette takes its tech and class and keeps its build.</li>
+    <li><span class="ui">Copy to Ship storage</span>, <span class="ui">Render with Blender</span>, and export as <code>.nmsship</code> or <code>.so</code> for TAZ's tools.</li>
+    <li><b>Tags, notes, a link</b> and a favourite star on every card. <span class="ui">Get art from the link</span> fetches the artwork, author and description from a listing page.</li>
+    <li><span class="ui">Import files</span> reads <code>.json</code>, <code>.txt</code>, <code>.nmsship</code>, <code>.so</code> and Base Building App <code>.nmsprefab</code> files. <span class="ui">Add this save's ships</span> stores them all.</li>
+    <li><span class="ui">Delete</span> moves files to the Dock Yard's Deleted folder, so they can always come back.</li>
+  </ul>
+  <figure><img src="shots/dockyard-garage.webp" alt="The Garage in grid view" loading="lazy"></figure>
+</section>
+
+<!-- ================================================================ what you carry and ride -->
+<section class="page" id="exosuit" data-group="carry" data-title="Exosuit" data-c="#7d8bff">
+  <h1>Exosuit</h1>
+  <p class="lede">Your exosuit's technology and cargo, laid out exactly as the game shows them.</p>
+  <figure><img src="shots/exosuit-slot.webp" alt="Exosuit technology grid with a slot selected and its details open" loading="lazy"><figcaption>Click a slot to see and change it.</figcaption></figure>
+  <p>The exosuit uses all the <a href="#everywhere">inventory tools</a>: <b>Technology / Cargo / Both</b>, unlocking slots, filling stacks, repairing, resizing and supercharged slots.</p>
+</section>
+
+<section class="page" id="multitools" data-group="carry" data-title="Multi-tools" data-c="#a37bff">
+  <h1>Multi-tools</h1>
+  <p class="lede">Every multi-tool you own, its looks, stats and technology.</p>
+  <figure><img src="shots/tools.webp" alt="Multi-tools page" loading="lazy"></figure>
+  <ul class="feat">
+    <li><b>Pick a multi-tool</b> from the covers. The equipped one says so.</li>
+    <li><b>Name, type</b> (standard, royal, sentinel, atlas, staff and the rest), <b>class</b>, and <b>seed</b>, which decides its look. <span class="ui">Generate</span> rolls a new one.</li>
+    <li><b>Use old colours</b>, and <b>base stats</b>: damage, mining and scanning.</li>
+    <li><span class="ui">Save as profile</span> keeps the loadout as a file; <span class="ui">Apply a profile</span> puts one on any multi-tool. Profiles work across saves; share one by sending the file.</li>
+    <li><span class="ui">Choose parts</span> for the cover model, <span class="ui">Export…</span> a <code>.json</code> backup, <span class="ui">Import</span>, and <span class="ui">Delete multi-tool</span>.</li>
+    <li><span class="ui">Add a multi-tool</span> in the top-right corner.</li>
+  </ul>
+</section>
+
+<section class="page" id="starships" data-group="carry" data-title="Starships" data-c="#c77dff">
+  <h1>Starships</h1>
+  <p class="lede">Rename ships, change their looks and class, arrange and repair ship slots, and manage each ship's inventories.</p>
+  <figure><img src="shots/ships.webp" alt="Starships page with ship slots, the ship covers and the details" loading="lazy"></figure>
+  <h2>Ship slots</h2>
+  <ul class="feat">
+    <li><b>Arrange</b>: drag ships into a new order. Corvette builds, colours and your current ship move with them.</li>
+    <li><span class="ui">Close the gaps</span> moves ships up into empty slots.</li>
+    <li><b>Problems and fixes</b>: for example a corvette build pointing at the wrong slot. Fixes that delete something are listed last and marked.</li>
+  </ul>
+  <h2>Each ship</h2>
+  <ul class="feat">
+    <li><b>Name, type</b> (hauler, explorer, shuttle, fighter, exotic, living ship, solar, interceptor, corvette and the special ships), <b>class</b>, <b>seed</b> with <span class="ui">Generate</span>, and <b>use old colours</b>.</li>
+    <li><b>Base stats</b>: damage, shields, hyperdrive and maneuverability, plus ship health and shield (shared by all ships).</li>
+    <li><span class="ui">Save as profile</span>, <span class="ui">Apply a profile</span>, <span class="ui">Choose parts</span>, <span class="ui">Save to Dock Yard</span>.</li>
+    <li><span class="ui">Export…</span> as a <code>.json</code> backup, a <code>.nmsship</code> (whole corvette) or a <code>.so</code> (the ship entry, for TAZ's tools); <span class="ui">Import</span>; <span class="ui">Delete ship</span>.</li>
+  </ul>
+  <h2>Adding and archiving</h2>
+  <ul class="feat">
+    <li><span class="ui">Add a ship</span>: a new corvette, or a copy of one of your ships with its colours and build.</li>
+    <li><b>Archived ships</b>: the ships the game keeps in its archive. <span class="ui">Restore</span> one into a slot, or <span class="ui">Archive a ship</span>.</li>
+    <li><span class="ui">Render corvettes</span> makes Blender renders for the Hangar.</li>
+  </ul>
+</section>
+
+<section class="page" id="freighter" data-group="carry" data-title="Freighter" data-c="#f06fd0">
+  <h1>Freighter</h1>
+  <p class="lede">Your capital ship, its inventories and its fleet of frigates.</p>
+  <figure><img src="shots/freighter.webp" alt="Freighter details" loading="lazy"></figure>
+  <ul class="feat">
+    <li><b>Name, type</b> (capital, regular, small, tiny, pirate dreadnought), <b>class</b>, <b>home seed</b> and <b>model seed</b>.</li>
+    <li><b>Base stats</b>: hyperdrive, fleet coordination, and how many base parts can go aboard.</li>
+    <li><span class="ui">Save as profile</span>, <span class="ui">Apply a profile</span>, <span class="ui">Back up to a file</span> and <span class="ui">Restore from a file</span>.</li>
+    <li><b>Inventories</b>: technology and cargo, with all the <a href="#everywhere">inventory tools</a>.</li>
+  </ul>
+  <h2>Frigates</h2>
+  <figure><img src="shots/frigates.webp" alt="Frigate list with stats and traits" loading="lazy"></figure>
+  <ul class="feat">
+    <li><b>Each frigate</b>: name, type, class, expeditions and damage.</li>
+    <li><b>Stats</b>: combat, exploration, mining, trade, speed, fuel and the rest.</li>
+    <li><b>Traits</b>, named as in the game.</li>
+    <li><span class="ui">Repair every frigate</span>.</li>
+  </ul>
+</section>
+
+<section class="page" id="exocraft" data-group="carry" data-title="Exocraft" data-c="#ff6f9f">
+  <h1>Exocraft</h1>
+  <p class="lede">Cargo and technology for each exocraft you've summoned.</p>
+  <figure><img src="shots/vehicles.webp" alt="Exocraft page with a model of the Colossus" loading="lazy"></figure>
+  <ul class="feat">
+    <li><b>Each exocraft</b> (Roamer, Nomad, Colossus, Pilgrim, Nautilon, Minotaur…) with a model from your game.</li>
+    <li><b>Technology and cargo</b> with all the <a href="#everywhere">inventory tools</a>, including supercharged slots.</li>
+    <li><span class="ui">Add exocraft</span> learns the geobay blueprints for the ones you don't have yet.</li>
+  </ul>
+</section>
+
+<section class="page" id="companions" data-group="carry" data-title="Companions" data-c="#ff7690">
+  <h1>Companions</h1>
+  <p class="lede">Your creature companions: names, size, trust, temperament and mood.</p>
+  <figure><img src="shots/companions.webp" alt="Companions page with sliders" loading="lazy"></figure>
+  <ul class="feat">
+    <li><b>Name, size</b>, and whether it's a predator or has fur.</li>
+    <li><b>Trust and temperament</b>: trust, helpfulness, aggression and independence.</li>
+    <li><b>Mood</b>: hunger and loneliness.</li>
+    <li><span class="ui">Fed, happy and fully trusting</span> in one click.</li>
+    <li><span class="ui">Add a companion</span> and <span class="ui">Unlock every slot</span>.</li>
+  </ul>
+</section>
+
+<!-- ================================================================ where things are kept -->
+<section class="page" id="bases" data-group="kept" data-title="Bases" data-c="#ff8079">
+  <h1>Bases</h1>
+  <p class="lede">Your bases and the settlements you run or have visited.</p>
+  <figure><img src="shots/bases.webp" alt="Bases page with a base's details and most used parts" loading="lazy"></figure>
+  <h2>Bases</h2>
+  <ul class="feat">
+    <li><b>Each base</b>: name, type, part count, where it is (with <span class="ui">Open in Coordinates</span>) and who built it.</li>
+    <li><span class="ui">Copy parts</span> and <span class="ui">Paste parts</span> between bases, <span class="ui">Load parts from a file</span>, <span class="ui">Save to a file</span>.</li>
+    <li><span class="ui">Add a prefab</span> from the Base Building App (<code>.nmsprefab</code>).</li>
+    <li><span class="ui">Load from a .blend…</span> reads an NMS Base Builder file. LiveLink works for bases too. See <a href="#blender">Blender</a>.</li>
+    <li><b>Most used parts</b>, and <span class="ui">Delete base</span>.</li>
+  </ul>
+  <h2>Settlements</h2>
+  <figure><img src="shots/settlements.webp" alt="Settlements, Visited tab" loading="lazy"></figure>
+  <ul class="feat">
+    <li><b>Owned</b>: settlements you run. Name, stats (population, happiness, production, upkeep, sentinels, debt, alerts and bug attacks), perks with <span class="ui">Remove the negative perks</span>, and <span class="ui">Clear debt, alerts and bug attacks</span>.</li>
+    <li><b>Visited</b>: settlements you've been to. They belong to other players, so they're shown but never changed.</li>
+  </ul>
+</section>
+
+<section class="page" id="storage" data-group="kept" data-title="Storage" data-c="#ff8a70">
+  <h1>Storage</h1>
+  <p class="lede">Base storage containers and the other standalone inventories in the save.</p>
+  <figure><img src="shots/storage.webp" alt="Storage container grid" loading="lazy"></figure>
+  <ul class="feat">
+    <li><b>Storage containers</b> 0 to 9, and <b>other storage</b> (chests on bases, lockers and the rest), from the two lists at the top. <span class="ui">Show all</span> lists everything.</li>
+    <li>Every container has the full set of <a href="#everywhere">inventory tools</a>.</li>
+  </ul>
+</section>
+
+<section class="page" id="cargo" data-group="kept" data-title="Cargo" data-c="#ffa086">
+  <h1>Cargo</h1>
+  <p class="lede">Every stack in every inventory in one place: find where things are, gather them together, and tidy partial stacks.</p>
+  <figure><img src="shots/cargo.webp" alt="Where is everything: every item with its total and where it is" loading="lazy"><figcaption><b>Where is everything</b>: each item, its total, and the inventories it's in.</figcaption></figure>
+  <figure><img src="shots/cargo-tidy.webp" alt="Consolidate: a plan to move partial stacks into one inventory" loading="lazy"><figcaption><b>Consolidate</b>: choose where things should go and see the plan before anything moves.</figcaption></figure>
+  <ul class="feat">
+    <li><b>Find</b> any item across exosuit, ships, freighter, exocraft and storage.</li>
+    <li><b>Consolidate</b>: pick a destination, choose <b>Only items it already has</b> if you like, and untick anything to leave alone. Matching stacks are topped up first, then free slots are used, taking the smallest stacks first. Special lockers are left out unless you include them.</li>
+    <li><b>Drag and drop</b> stacks between any slots and inventories on any page. Technology always stays in its own inventory.</li>
+  </ul>
+</section>
+
+<!-- ================================================================ progress and settings -->
+<section class="page" id="knowledge" data-group="progress" data-title="Knowledge" data-c="#5ab8f0">
+  <h1>Knowledge</h1>
+  <p class="lede">The blueprints you can build and the alien words you know.</p>
+  <figure><img src="shots/knowledge.webp" alt="Known technology list" loading="lazy"></figure>
+  <ul class="feat">
+    <li><b>Technology</b>, <b>recipes and base parts</b>, and <b>cosmetics and specials</b>: search what you know, <span class="ui">Learn…</span> anything new, or <span class="ui">Forget</span> it.</li>
+    <li><span class="ui">Learn all technology</span> and <span class="ui">Learn all base parts</span> add everything your game lists that the save doesn't know yet.</li>
+    <li><b>Words</b>: how many you know for each race, word by word. <span class="ui">Learn every word, every race</span>, or all of one race's words.</li>
+  </ul>
+  <figure><img src="shots/knowledge-words.webp" alt="Words known per race" loading="lazy"></figure>
+</section>
+
+<section class="page" id="rewards" data-group="progress" data-title="Rewards" data-c="#7ba2ff">
+  <h1>Rewards</h1>
+  <p class="lede">Every expedition reward, past and current, plus Twitch drops and platform rewards.</p>
+  <figure><img src="shots/rewards.webp" alt="Rewards page with expeditions and their rewards" loading="lazy"></figure>
+  <ul class="feat">
+    <li><b>Expeditions</b>, newest first, with how many of each one's rewards you have. <span class="ui">Unlock this expedition's rewards</span>, or tick single rewards.</li>
+    <li><b>Twitch drops</b> and <b>platform rewards</b> in their own tabs.</li>
+    <li><span class="ui">Unlock all rewards</span> does everything at once.</li>
+  </ul>
+  <div class="note"><b>Rewards have their own save button.</b>They live in a separate account file shared by all your saves. After saving, collect them in the game from the Quicksilver Synthesis Companion on the Space Anomaly.</div>
+</section>
+
+<section class="page" id="standing" data-group="progress" data-title="Standing" data-c="#9a8cff">
+  <h1>Standing</h1>
+  <p class="lede">Your reputation with each race and guild, and the journey milestones the game counts.</p>
+  <figure><img src="shots/standing.webp" alt="Standing with each race and guild" loading="lazy"></figure>
+  <ul class="feat">
+    <li><b>Standing</b> with the Gek, Korvax and Vy'keen, the guilds, outlaws and the Space Anomaly, with the game's rank names. <span class="ui">Max</span> on each, or <span class="ui">Max every standing</span>.</li>
+    <li><b>Journey milestones</b>: warps, distance walked, aliens met, words learned and the rest.</li>
+  </ul>
+</section>
+
+<section class="page" id="difficulty" data-group="progress" data-title="Difficulty" data-c="#a3b3cf">
+  <h1>Difficulty</h1>
+  <p class="lede">The game's difficulty settings, the same ones as its options menu, including those it only lets you pick when starting a new game.</p>
+  <figure><img src="shots/difficulty.webp" alt="Difficulty settings" loading="lazy"></figure>
+  <ul class="feat">
+    <li><b>Preset</b>, and whether settings are locked in the game.</li>
+    <li><b>Survival, combat, crafting and resources, inventory and travel</b>: every setting, with the game's own choices.</li>
+    <li><span class="ui">Make everything easy</span> and <span class="ui">Back to normal</span> set them all at once.</li>
+  </ul>
+</section>
+
+<!-- ================================================================ tools -->
+<section class="page" id="itemnames" data-group="tools" data-title="Item names" data-c="#3fd9a3">
+  <h1>Item names</h1>
+  <p class="lede">Where item names, icons and descriptions come from: your own copy of the game.</p>
+  <figure><img src="shots/items.webp" alt="Item library status" loading="lazy"></figure>
+  <ul class="feat">
+    <li><b>The item library</b> is built from your No Man's Sky files the first time the app starts, kept on your PC, and rebuilt after game updates. Nothing from the game comes with the editor.</li>
+    <li>If Steam doesn't find the game, paste its folder (the one with <code>GAMEDATA</code>) and press <span class="ui">Use this folder</span>, then <span class="ui">Rebuild from the game</span>.</li>
+    <li><b>Goatfungus's item database</b> (<code>NMSSaveEditor.jar</code>) works as a stand-in until your library is built. <span class="ui">Search this PC for it</span> finds it.</li>
+  </ul>
+</section>
+
+<section class="page" id="rawdata" data-group="tools" data-title="Raw data" data-c="#8fb3c4">
+  <h1>Raw data</h1>
+  <p class="lede">Every value in the save, for when no other page has what you need.</p>
+  <figure><img src="shots/raw.webp" alt="Raw data explorer" loading="lazy"></figure>
+  <ul class="feat">
+    <li><b>Readable names</b> for the game's short keys, with the original key beside each one.</li>
+    <li><b>Search</b> keys and values, open any branch, and edit any value.</li>
+    <li><span class="ui">Export JSON</span> and <span class="ui">Import JSON</span> for the whole save.</li>
+  </ul>
+  <div class="note warn"><b>Careful here.</b>Raw data changes anything, including things the game doesn't expect. Keep a backup before big edits (one is made each time you save).</div>
+</section>
+
+<!-- ================================================================ more -->
+<section class="page" id="everywhere" data-group="more" data-title="Inventories and find" data-c="#3cb6ea">
+  <h1>Inventories and find</h1>
+  <p class="lede">Tools that work the same on every page.</p>
+  <h2>Inventory grids</h2>
+  <figure><img src="shots/exosuit-slot.webp" alt="An inventory grid with the slot inspector" loading="lazy"></figure>
+  <ul class="feat">
+    <li><b>Technology / Cargo / Both</b>: the game's own inventories in the game's order, with icons, names and amounts. The grid keeps the game's columns, since slot position matters for adjacency bonuses.</li>
+    <li><b>Click a slot</b> to change the amount, replace the item, repair or recharge it, or remove it. <span class="ui">Add to slot</span> puts any item from the library into an empty slot.</li>
+    <li><b>Drag and drop</b> stacks. Drag a box across the grid from an empty slot to select several and move them together.</li>
+    <li><span class="ui">Unlock all slots</span>, <span class="ui">Fill stacks</span>, <span class="ui">Repair</span>, and <span class="ui">Size and class</span> to resize the inventory or change its class.</li>
+    <li><span class="ui">Supercharge slots</span> on exosuit, starship and exocraft technology. Supercharged slots get a steady border; the arcs only move when you point at them.</li>
+  </ul>
+  <h2>Find anything</h2>
+  <figure><img src="shots/find.webp" alt="The find box with results for a ship name" loading="lazy"></figure>
+  <p>Press <span class="ui">Ctrl K</span>, or click the box at the top of the sidebar, and type. Results cover ships, multi-tools, bases, frigates, companions, settings, pages and every item in your inventories. Pick one to jump straight to it.</p>
+  <h2>Light and dark</h2>
+  <p>The sun or moon button at the bottom of the sidebar switches the look. By default the editor follows your Windows setting.</p>
+</section>
+
+<section class="page" id="blender" data-group="more" data-title="Blender" data-c="#6598ff">
+  <h1>Blender</h1>
+  <p class="lede">Real corvette renders, builds read straight from .blend files, and LiveLink: save in Blender, and the build is in your save.</p>
+  <h2>What you need</h2>
+  <ul class="feat">
+    <li><a href="https://www.blender.org" target="_blank" rel="noopener">Blender</a> 4.2 or newer.</li>
+    <li>For corvettes: <a href="https://github.com/xX-Charon-Xx/charon_forge" target="_blank" rel="noopener">Charon Forge</a>, installed as a Blender extension.</li>
+    <li>For bases: NMS Base Builder.</li>
+  </ul>
+  <p>The editor finds them on your PC. If it doesn't, open <span class="ui">Cover settings</span> (on the Hangar or the Dock Yard) and point it at Blender.</p>
+  <h2>Corvette renders</h2>
+  <ul class="feat">
+    <li><span class="ui">Render all corvettes</span> on the Hangar, <span class="ui">Render corvettes</span> in the Dock Yard and on Starships, or <span class="ui">Render again</span> for one.</li>
+    <li>Renders are kept on your PC by build, so a build is only rendered once.</li>
+    <li><b>Automatic renders</b> (Cover settings): a few seconds after a save opens, corvettes without a picture are rendered one at a time.</li>
+    <li><span class="ui">Render the other angles</span> adds front, side, back and top views, picked under the cover.</li>
+  </ul>
+  <h2>Load from a .blend</h2>
+  <p><span class="ui">Load from a .blend…</span> on Shipwright (corvettes) or Bases reads the build from a <code>.blend</code> file, without you opening Blender. The editor works out which corvette or base the file is for, asks before changing it, and remembers the file for LiveLink.</p>
+  <h2>LiveLink</h2>
+  <ol class="steps">
+    <li>On Shipwright (or Bases), press <span class="ui">Get the Blender add-on</span> and install it in Blender (Edit, Preferences, Add-ons, Install from disk).</li>
+    <li>Pick a corvette or base and press <span class="ui">Turn on for this corvette</span>. The editor offers to open the <code>.blend</code> it was last built from (<span class="ui">Open in Blender</span>), or <span class="ui">Choose</span> another.</li>
+    <li>In Blender, the 3D view's sidebar has a <b>Harmonious</b> tab that shows the link. Set which corvette or base the file is for.</li>
+    <li>Build. Each time you save the file (or press <b>Send now</b>), the build goes into your save. The editor backs up the save each time, and a card at the top of its window says what arrived.</li>
+  </ol>
+  <div class="note"><b>The wrong corvette guard</b>Each .blend remembers which corvette or base it's for. If a build arrives for a different one, the editor asks before writing it anywhere.</div>
+  <p>Close No Man's Sky before LiveLink writes, and reload the save in the game to see the result.</p>
+</section>
+
+<section class="page" id="browser" data-group="more" data-title="Browser version" data-c="#8fb3c4">
+  <h1>Browser version</h1>
+  <p class="lede"><code>nms-save-editor.html</code> is the same editor as a single web page for Chrome or Edge, for when you can't run the desktop app.</p>
+  <ul class="feat">
+    <li><b>Folder mode</b>: choose your <code>NMS</code> folder or the <code>st_…</code> folder inside it. Saving keeps a copy of the old pair in <code>_editor_backups</code> first. Chrome won't open AppData from a web page, so you may need to copy the folder somewhere else first.</li>
+    <li><b>File mode</b>: drop both files (<code>saveN.hg</code> and <code>mf_saveN.hg</code>). The edited pair downloads, and you copy it back.</li>
+    <li><b>Not in the browser</b>: the Dock Yard, renders, LiveLink and reading your game's files. For item names it uses Goatfungus's <code>NMSSaveEditor.jar</code>.</li>
+  </ul>
+</section>
+
+<section class="page" id="faq" data-group="more" data-title="Questions" data-c="#36d6c3">
+  <h1>Questions</h1>
+  <p class="lede">Answers to the things people ask most.</p>
+  <dl class="faq">
+    <dt>Windows says the app might be unsafe.</dt>
+    <dd>The program isn't code-signed, so SmartScreen warns once. Choose <span class="ui">More info</span>, then <span class="ui">Run anyway</span>. The source is public on GitHub.</dd>
+    <dt>My change didn't show up in the game.</dt>
+    <dd>Close the game before saving, then load the save again. If Steam Cloud put an older copy back, let it finish syncing first, or choose the local files when it asks.</dd>
+    <dt>How do I undo a save?</dt>
+    <dd>Every save makes a backup first. See <a href="#safety">Getting an old save back</a>.</dd>
+    <dt>Item names show as codes, or icons are missing.</dt>
+    <dd>The item library hasn't been built yet, or couldn't find the game. Open <a href="#itemnames">Item names</a>, check the game folder and press <span class="ui">Rebuild from the game</span>.</dd>
+    <dt>A corvette has no picture.</dt>
+    <dd>Without Blender, corvettes show a hologram of their parts. Install Blender and Charon Forge for real renders (see <a href="#blender">Blender</a>).</dd>
+    <dt>Can I move a ship from one save to another?</dt>
+    <dd>Yes. Every ship from every save you open is in the Dock Yard's Garage. Open the other save, find the ship and press <span class="ui">Put in this save…</span>.</dd>
+    <dt>Does the editor need the internet?</dt>
+    <dd>No. It only goes online to check for updates, to fetch art from a listing link when you ask, and for links you click.</dd>
+    <dt>Is it safe for my account?</dt>
+    <dd>The editor only changes your own save files on your PC. Edits that make a save impossible in normal play (such as unlocking things) are your choice; keep backups if you play online with others.</dd>
+  </dl>
+</section>
+
+<section class="page" id="links" data-group="more" data-title="Links and credits" data-c="#a37bff">
+  <h1>Links and credits</h1>
+  <h2>Pastullio the Harmonious</h2>
+  <div class="cards">
+    <a class="card" href="https://github.com/Pastullio/harmonious-save-editor" target="_blank" rel="noopener"><b>GitHub</b><span>Downloads, source and updates</span></a>
+    <a class="card" href="https://discord.gg/3PfZfPYDn" target="_blank" rel="noopener"><b>Discord</b><span>The Path of the Harmonious: help and news</span></a>
+    <a class="card" href="https://www.youtube.com/@PastullioTheHarmonious" target="_blank" rel="noopener"><b>YouTube</b><span>Videos</span></a>
+    <a class="card" href="https://www.patreon.com/pastullio" target="_blank" rel="noopener"><b>Patreon</b><span>Support the work</span></a>
+    <a class="card" href="https://buymeacoffee.com/pastullio" target="_blank" rel="noopener"><b>Buy me a coffee</b><span>Say thanks</span></a>
+  </div>
+  <h2>Other tools</h2>
+  <div class="cards">
+    <a class="card" href="https://portalglyphbanner.netlify.app/" target="_blank" rel="noopener"><b>Portal Glyph Banner</b><span>Turn a portal address into a crisp banner picture</span></a>
+    <a class="card" href="https://harmonious-credentials.netlify.app/" target="_blank" rel="noopener"><b>Traveller credentials</b><span>Make your Harmonious traveller card</span></a>
+  </div>
+  <h2>Built on the work of</h2>
+  <ul class="feat">
+    <li><a href="https://github.com/zencq" target="_blank" rel="noopener">libNOM.map and libNOM.io</a> by zencq: save keys and format</li>
+    <li><a href="https://github.com/monkeyman192/MBINCompiler" target="_blank" rel="noopener">MBINCompiler</a> by monkeyman192 and contributors: game table layouts</li>
+    <li><a href="https://github.com/monkeyman192/HGPAKtool" target="_blank" rel="noopener">HGPAKtool</a> by monkeyman192: game archive format</li>
+    <li><a href="https://github.com/xX-Charon-Xx/charon_forge" target="_blank" rel="noopener">Charon Forge</a> by xX-Charon-Xx: corvette renders and builds from Blender</li>
+    <li>TAZmd's <a href="https://tazmd.nl/corvette-optimizer" target="_blank" rel="noopener">corvette optimizer</a> notes: the part order the game reads</li>
+    <li><a href="https://github.com/hadsh/nms_namegen" target="_blank" rel="noopener">nms_namegen</a> by Stuart Coyle, hadsh and GoodGuysFree, and its port <a href="https://github.com/elegra1965-source/nms-core" target="_blank" rel="noopener">nms-core</a> by elegra1965: system and planet prediction</li>
+    <li>Pillow (texture decoding), klauspost/compress, and the Jost typeface by indestructible type*</li>
+  </ul>
+  <p>Free software under GPL-3.0. Not affiliated with Hello Games.</p>
+</section>
+
+</main>
+</div>
+<div id="zoom" role="dialog" aria-label="Picture" tabindex="-1"><img alt=""></div>
+<script>
+(() => {
+  const GROUPS = [
+    ['start', 'Start here', '#2fc3d6'], ['fleet', 'Getting around and your fleet', '#2fc3d6'], ['carry', 'What you carry and ride', '#a37bff'],
+    ['kept', 'Where things are kept', '#ff8a70'], ['progress', 'Progress and settings', '#7ba2ff'], ['tools', 'Tools', '#8fb3c4'], ['more', 'More', '#8fb3c4'],
+  ];
+  const pages = [...document.querySelectorAll('.page')];
+  const nav = document.getElementById('nav');
+  // the sidebar is built from the pages, in groups like the editor's own
+  nav.innerHTML = GROUPS.map(([g, label, tint]) => `<div class="navgrp" style="--g:${tint}"><span class="k">${label}</span>${pages.filter((p) => p.dataset.group === g).map((p) => `<a href="#${p.id}" style="--c:${p.dataset.c}"><i></i>${p.dataset.title}</a>`).join('')}</div>`).join('');
+  // cards for every editor section on the welcome page
+  const secs = pages.filter((p) => !['start', 'more'].includes(p.dataset.group));
+  document.getElementById('secCards').innerHTML = secs.map((p) => `<a class="card" href="#${p.id}" style="--c:${p.dataset.c}"><b>${p.dataset.title}</b><span>${(p.querySelector('.lede') || {}).textContent || ''}</span></a>`).join('');
+  // previous and next at the bottom of each page
+  pages.forEach((p, i) => {
+    const prev = pages[i - 1], next = pages[i + 1];
+    p.insertAdjacentHTML('beforeend', `<div class="pager">${prev ? `<a href="#${prev.id}"><span>Previous</span>${prev.dataset.title}</a>` : ''}${next ? `<a class="next" href="#${next.id}"><span>Next</span>${next.dataset.title}</a>` : ''}</div>`);
+  });
+  const show = () => {
+    const id = decodeURIComponent(location.hash.slice(1));
+    let page = document.getElementById(id), anchor = null;
+    if (page && !page.classList.contains('page')) { anchor = page; page = page.closest('.page'); }
+    if (!page) page = pages[0];
+    pages.forEach((p) => p.classList.toggle('on', p === page));
+    document.documentElement.style.setProperty('--c', page.dataset.c);
+    nav.querySelectorAll('a').forEach((a) => a.toggleAttribute('aria-current', a.getAttribute('href') === '#' + page.id) || a.removeAttribute('aria-current'));
+    nav.querySelectorAll('a').forEach((a) => { if (a.getAttribute('href') === '#' + page.id) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+    document.title = (page.id === 'home' ? '' : page.dataset.title + ' · ') + 'Harmonious Save Editor Guide';
+    document.body.classList.remove('menu'); document.getElementById('menuBtn').setAttribute('aria-expanded', 'false');
+    if (anchor) anchor.scrollIntoView(); else window.scrollTo(0, 0);
+  };
+  addEventListener('hashchange', show); show();
+  // search: hides pages whose text doesn't match
+  const text = Object.fromEntries(pages.map((p) => [p.id, p.textContent.toLowerCase()]));
+  document.getElementById('q').addEventListener('input', (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    nav.querySelectorAll('a').forEach((a) => a.classList.toggle('hide', !!q && !text[a.getAttribute('href').slice(1)].includes(q)));
+    nav.querySelectorAll('.navgrp').forEach((g) => { g.style.display = g.querySelector('a:not(.hide)') ? '' : 'none'; });
+  });
+  // pictures open full size
+  const zoom = document.getElementById('zoom');
+  document.addEventListener('click', (e) => {
+    const img = e.target.closest('figure img, .hero img');
+    if (img) { zoom.querySelector('img').src = img.src; zoom.querySelector('img').alt = img.alt; zoom.classList.add('on'); zoom.focus(); return; }
+    if (e.target.closest('#zoom')) zoom.classList.remove('on');
+  });
+  addEventListener('keydown', (e) => { if (e.key === 'Escape') { zoom.classList.remove('on'); document.body.classList.remove('menu'); } });
+  // menu on small screens
+  const mb = document.getElementById('menuBtn');
+  mb.onclick = () => { const on = document.body.classList.toggle('menu'); mb.setAttribute('aria-expanded', String(on)); };
+  // light and dark, shared with the editor's own choice
+  const tb = document.getElementById('theme');
+  const isDark = () => { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; };
+  const label = () => { tb.textContent = isDark() ? 'Light mode' : 'Dark mode'; };
+  tb.onclick = () => { const next = isDark() ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', next); try { localStorage.setItem('hse-theme', next); } catch (_) {} label(); };
+  label();
+})();
+</script>
+</body>
+</html>

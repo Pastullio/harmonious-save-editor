@@ -7,3 +7,4 @@ test/out/
 node_modules/
 __pycache__/
 desktop/harmonious-save-editor
+desktop/guide.html

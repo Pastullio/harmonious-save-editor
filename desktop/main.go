@@ -32,6 +32,9 @@ import (
 //go:embed index.html
 var indexHTML string
 
+//go:embed guide.html
+var guideHTML string
+
 var (
 	dataRe   = regexp.MustCompile(`(?i)^save\d*\.hg$`)
 	anySave  = regexp.MustCompile(`(?i)^(mf_)?save\d*\.hg$`)
@@ -83,6 +86,10 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleIndex)
+	mux.HandleFunc("/guide", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		io.WriteString(w, guideHTML)
+	})
 	mux.HandleFunc("/api/ping", func(w http.ResponseWriter, r *http.Request) { lastPing.Store(nowMs()); byeAt.Store(0) })
 	mux.HandleFunc("/api/bye", func(w http.ResponseWriter, r *http.Request) { byeAt.Store(nowMs()) })
 	mux.HandleFunc("/api/roots", handleRoots)

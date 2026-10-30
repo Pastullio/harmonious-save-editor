@@ -38,4 +38,12 @@ html = html.replace('/*@@FONTS@@*/', () => fonts).replace('@@HERO@@', () => hero
 fs.mkdirSync(path.join(__dirname, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(__dirname, 'dist/nms-save-editor.html'), html);
 fs.writeFileSync(path.join(__dirname, 'desktop/index.html'), html); // embedded into the desktop app
+// the user guide (docs/guide): one file with its screenshots inlined, next to the exe and served by the app at /guide
+let guide = fs.readFileSync(path.join(__dirname, 'docs/guide/guide.html'), 'utf8');
+const shotsUsed = new Set();
+guide = guide.replace('/*@@FONTS@@*/', () => fonts).replace(/@@ICON@@/g, () => icon)
+  .replace(/src="shots\/([\w-]+)\.webp"/g, (_, n) => { shotsUsed.add(n); return `src="data:image/webp;base64,${fs.readFileSync(path.join(__dirname, 'docs/guide/shots', n + '.webp')).toString('base64')}"`; });
+fs.writeFileSync(path.join(__dirname, 'dist/Harmonious Save Editor Guide.html'), guide);
+fs.writeFileSync(path.join(__dirname, 'desktop/guide.html'), guide);
+console.log('built the guide', (guide.length / 1024).toFixed(0) + ' KB,', shotsUsed.size, 'screenshots');
 console.log('built dist/nms-save-editor.html', (html.length / 1024).toFixed(0) + ' KB', 'mapping keys', Object.keys(save).length, 'libMBIN', mb.libMBIN_version);

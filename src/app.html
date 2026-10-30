@@ -960,7 +960,7 @@ nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .
 </head>
 <body class="on-landing">
 
-<div class="land-corner"><button class="btn small about-btn" type="button">About</button><button class="btn small theme-btn" type="button">Dark mode</button></div>
+<div class="land-corner"><a class="btn small guide-btn" href="/guide" target="_blank" rel="noopener">Guide</a><button class="btn small about-btn" type="button">About</button><button class="btn small theme-btn" type="button">Dark mode</button></div>
 <section id="landing">
   <div class="landing-inner">
     <div class="landing-copy">
@@ -1159,19 +1159,23 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncThemeB
 // the owner's other No Man's Sky tools, linked from the sidebar and the Coordinates page
 const RESOURCES = [['Portal Glyph Banner', 'https://portalglyphbanner.netlify.app/', 'Turn a portal address into a crisp banner picture'], ['Traveller credentials', 'https://harmonious-credentials.netlify.app/', 'Make your Harmonious traveller card']];
 const EXT_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6 M20 4l-9 9 M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>';
-function drawResources() { const h = $('#sideRes'); if (h) h.innerHTML = RESOURCES.map(([t, u, d]) => `<a class="res-link" href="${u}" target="_blank" rel="noopener" title="${esc(d)}"><span>${esc(t)}</span>${EXT_ICON}</a>`).join(''); }
+// the user guide: served by the desktop app; the browser version points at the copy on GitHub
+const GUIDE_URL = window.NMS_APP ? '/guide' : 'https://github.com/Pastullio/harmonious-save-editor/tree/main/dist';
+const GUIDE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5 M8 7.5h8 M8 11h6"/></svg>';
+function drawResources() { const h = $('#sideRes'); if (h) h.innerHTML = `<a class="res-link guide-link" href="${GUIDE_URL}" target="_blank" rel="noopener" title="How to use every page, with pictures"><span>User guide</span>${GUIDE_ICON}</a>` + RESOURCES.map(([t, u, d]) => `<a class="res-link" href="${u}" target="_blank" rel="noopener" title="${esc(d)}"><span>${esc(t)}</span>${EXT_ICON}</a>`).join(''); }
 drawResources();
 const LINKS = [['GitHub', 'https://github.com/Pastullio/harmonious-save-editor'], ['Discord', 'https://discord.gg/3PfZfPYDn'], ['YouTube', 'https://www.youtube.com/@PastullioTheHarmonious'], ['Patreon', 'https://www.patreon.com/pastullio'], ['Buy me a coffee', 'https://buymeacoffee.com/pastullio']];
 function aboutDialog() {
   const ver = window.NMS_APP ? 'Desktop app' + (window.NMS_APP.version && window.NMS_APP.version !== '1' ? ' · version ' + window.NMS_APP.version : '') : 'Browser version';
   dialog('About', `<div class="about-sky"><img src="@@LOGO@@" alt="Harmonious Save Editor"><div class="ver">${ver}</div></div>
     <p>A No Man's Sky save editor for Steam and GOG on PC, by Pastullio the Harmonious. It reads your own game files for item names, icons and models, and backs up every save before it changes it.</p>
-    <div class="about-links">${LINKS.map(([t, u]) => `<a class="btn small" href="${u}" target="_blank" rel="noopener">${t}</a>`).join('')}</div>
+    <div class="about-links"><a class="btn small primary" href="${GUIDE_URL}" target="_blank" rel="noopener">User guide</a>${LINKS.map(([t, u]) => `<a class="btn small" href="${u}" target="_blank" rel="noopener">${t}</a>`).join('')}</div>
     <p class="dim" style="margin:12px 0 6px">Built with thanks to</p>
     <ul class="about-credits"><li>libNOM.map and libNOM.io by zencq (save keys and format)</li><li>MBINCompiler by monkeyman192 and contributors (game table layouts)</li><li>HGPAKtool by monkeyman192 (game archive format)</li><li>Charon Forge by xX-Charon-Xx (corvette renders)</li><li>nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, and its JavaScript port nms-core by elegra1965 (system and planet prediction; MIT)</li><li>Pillow (texture decoding), klauspost/compress (zstd), Jost by indestructible type* (typeface)</li></ul>
     <p class="dim" style="font-size:13px;margin:12px 0 0">Free software under the GPL-3.0 licence. Not affiliated with Hello Games.</p>`, window.NMS_APP ? [['Close', false], ['Check for updates', 'upd', 'primary']] : [['Close', true, 'primary']]).then((v) => { if (v === 'upd') checkForUpdate(true); });
 }
 document.addEventListener('click', (e) => { if (e.target.closest('.about-btn')) aboutDialog(); });
+document.querySelectorAll('.guide-btn').forEach((a) => { a.href = GUIDE_URL; });
 syncThemeButtons();
 
 

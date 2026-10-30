@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.30.2037",
+  "version": "2026.10.30.2108",
   "date": "2026-10-30",
-  "size": 10037248,
-  "sha256": "4c2a4475e82f69b035a0841c90c26b0dbe43e532b895af90e4d1e40cc56a68e0",
-  "notes": "Garage: one card per ship with its versions stacked inside. Fuel, charge, cargo and where a ship is parked no longer count as a new version, and copies that only differ in those can be moved to Deleted in one go.",
+  "size": 12601856,
+  "sha256": "f84fae007a3959f2795482eb644e0f77b6348d875aba66b0ddedd29c1fd8b7d5",
+  "notes": "New user guide with screenshots of every page: press Guide on the save list or User guide in the sidebar. It also comes as Harmonious Save Editor Guide.html next to the app.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
