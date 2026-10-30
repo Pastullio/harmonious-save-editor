@@ -66,13 +66,13 @@ One personal library of ship files outside the game, with three views onto it.
 - [x] Parts picker for procedural models (cockpit, wings, engines, barrels...), remembered per ship; the seed's default is a stable guess, since the game's selection code isn't in its files
 - [x] Parts picker shows a picture of each part, nests parts under the choice they belong to, and names them plainly (Accessory on grip, Magazine barrel…)
 - [x] Biome odds checked against the real game table; lush and empty galaxies use their own yellow-star lists
-- [ ] Name the parts better than the game's internal labels (e.g. thumbnails per option)
+- [x] Name the parts better than the game's internal labels, with a picture per option (2026-10-30)
 - [ ] Their look is generated in-game from the seed, so it can't be rendered outside the game; artwork for fixed-look specials (Golden Vector, Atlas Sceptre, Starborn ships) could come from the web later
 - [x] Artwork from a linked Charon/NMA listing
 - [x] Turntable: cover cards (Overview, ship pages, Dock Yard details) turn while hovered and follow a drag
 - [ ] More camera angles per corvette (left for later: the Blender render takes one fixed view today)
 - [x] Custom covers live on disk in `Dock Yard\Covers` (with `covers.json`); ones the app kept in the browser profile move there by themselves
-- [ ] Stretch: render a 3D preview of a corvette from its part list using the Base Builder part models already on your PC
+- [x] Stretch: a 3D preview of a corvette from its part list. Done as the solid-block hologram at real part sizes (2026-10-30); the true hull needs the snap rules above
 - [x] Glacial look to match the Portal Glyph Banner: icy light theme, deep-teal dark theme (toggle, remembered), Jost, pill buttons, wide-tracked titles; no yellow or purple anywhere
 - [x] Cover Flow motion: spring physics, 1:1 drag with momentum, continuous trackpad/wheel glide, covers swing smoothly through the centre
 - [x] Neutral text (dark gray / white) with a Spectrum accent per section, chosen by the owner
