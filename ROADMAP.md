@@ -114,7 +114,7 @@ The save file holds no images, so a ship's picture has to come from one of these
 - [x] "Find anything" box (sidebar, Ctrl+K): ships, multi-tools, exocraft, bases, corvettes, settlements, frigates, companions, settings, standings and every item in every inventory; Enter jumps to it
 - [x] Raw data stays available as the expert fallback (the last find result searches it)
 - [ ] Companion battle stats (class overrides, treats, moves): their keys aren't in libNOM's mapping yet, so they stay in Raw data
-- [ ] Check the standing rank names against a real `leveledstatstable.mbin` (the extract tool now collects `metadata/gamestate/stats`)
+- [x] Check the standing rank names against a real `leveledstatstable.mbin` (2026-10-30: the layout matches and every rank name resolves, e.g. Gek Trade Lord, Vy'keen Templar, Korvax Traveller of the Atlas)
 
 ## Phase 7 — Coordinates and planets [8] [10]
 
