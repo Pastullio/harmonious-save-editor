@@ -6591,12 +6591,13 @@ async function libFoldersDialog() {
   const v = await dialog('Dock Yard folders', `<p>Your Dock Yard is in <span class="mono">${esc(r.root)}</span>.</p>
     <h4 class="sub-h">Linked folders</h4><p class="dim">Folders where you already keep ship files, like a folder of .json or .txt ships. Their ships show in the Dock Yard under Linked folders without being copied or moved; the app only reads them and never changes them.</p>
     <ul class="lib-folders">${(r.folders || []).map((d) => `<li><span class="mono">${esc(d)}</span> <button class="link" type="button" data-rm="${esc(d)}">Remove</button></li>`).join('') || '<li class="dim">None yet.</li>'}</ul>
-    <label class="field"><span>Add a folder by its path</span><input class="input mono" id="lfPath" placeholder="C:\\Users\\you\\Documents\\NMS ships"></label>`,
+    <label class="field"><span>Add a folder by its path</span><input class="input mono" id="lfPath" placeholder="Paste a folder path, or use Browse…"></label>`,
     [['Close', 'close', 'ghost'], ['Open Dock Yard folder', 'open'], ['Browse…', 'pick'], ['Add path', 'add', 'primary']]);
   try {
     if (v === 'open') await api('/api/ships/folders?reveal=1');
-    if (v === 'pick') { const res = await (await api('/api/ships/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pick: true }) })).json(); if (!res.cancelled) { toast('Folder added'); render(); } }
-    if (v === 'add') { const pth = $('#lfPath').value.trim().replace(/^"|"$/g, ''); if (pth) { await api('/api/ships/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ add: pth }) }); toast('Folder added'); render(); } }
+    // an empty box means they haven't got a path to paste: browse for the folder instead of doing nothing
+    if (v === 'pick' || (v === 'add' && !$('#lfPath').value.trim())) { const res = await (await api('/api/ships/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pick: true }) })).json(); if (!res.cancelled) { toast('Folder added'); render(); } }
+    else if (v === 'add') { const pth = $('#lfPath').value.trim().replace(/^"|"$/g, ''); if (pth) { await api('/api/ships/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ add: pth }) }); toast('Folder added'); render(); } }
   } catch (e) { toast(e.message, true); }
 }
 document.addEventListener('click', async (e) => {

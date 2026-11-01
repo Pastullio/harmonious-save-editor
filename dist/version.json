@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.01.1536",
+  "version": "2026.11.01.1540",
   "date": "2026-11-01",
-  "size": 12662272,
-  "sha256": "8004641534a2ee0f452a1e51be85522444ef625ab7df42525cf36f68b2b228a2",
-  "notes": "Companions can have a picture (a screenshot or any image) on their page and beside their name in the list.",
+  "size": 12662784,
+  "sha256": "f1012a45d11c4a85719ef3612ae073c5f36a5cf8662f5511f32b76a4e87ae471",
+  "notes": "Dock Yard folders: the path box no longer shows an example that looks like a real folder, and Add path with an empty box opens Browse.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
