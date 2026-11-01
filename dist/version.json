@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.01.1540",
+  "version": "2026.11.01.1552",
   "date": "2026-11-01",
-  "size": 12662784,
-  "sha256": "f1012a45d11c4a85719ef3612ae073c5f36a5cf8662f5511f32b76a4e87ae471",
-  "notes": "Dock Yard folders: the path box no longer shows an example that looks like a real folder, and Add path with an empty box opens Browse.",
+  "size": 12682752,
+  "sha256": "0f4223c43eac7a4f6ff8890dd670bbad9fa6f8faaa55efd8b6b2e55d836f981f",
+  "notes": "Companions are drawn from your game's own creature models, with the parts each one was born with (new: tell me if one looks wrong). Dock Yard folder box is clearer.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

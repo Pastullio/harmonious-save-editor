@@ -494,6 +494,7 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .pet-top .pet-pic .pic-card { margin: 0; }
 .pet-top > .panel { margin: 0; }
 @media (max-width: 980px) { .pet-top { grid-template-columns: 1fr; } .pet-top .pet-pic { max-width: 240px; } }
+.pet-thumb.model { background: radial-gradient(circle at 50% 60%, rgba(79,193,176,.25), #062a33 70%); }
 .pet-thumb { flex: none; width: 38px; height: 38px; border-radius: 9px; object-fit: cover; }
 .rw-how { margin-top: 14px; font-size: 13.5px; color: var(--dim); max-width: 760px; }
 .rw-how b:first-child { color: var(--ink); font-weight: 500; }
@@ -2011,7 +2012,7 @@ function miniCover(host, it, size, onClick) {
     document.addEventListener('cover-render', on); loadRender(it);
     const onM = (e) => { if (!host.isConnected) { document.removeEventListener('cover-model', onM); return; } if (e.detail.key === it.key && !it.custom && !it.renderImg) paintCover(cv, it); };
     document.addEventListener('cover-model', onM); loadHoloBoxes(it);
-  } else if (it.scene) {
+  } else if (it.scene || it.creature) {
     const on = (e) => { if (!host.isConnected) { document.removeEventListener('cover-model', on); return; } if (e.detail.key === it.key && !it.custom) paintCover(cv, it); };
     document.addEventListener('cover-model', on); if (it.model) paintCover(cv, it); else loadModel(it);
   }
@@ -3043,11 +3044,16 @@ async function saveStill(sk, m, it) {
   } catch (_) { /* a picture we couldn't keep is drawn from the model next time anyway */ }
 }
 // fetch the item's real model and tell every view showing it to repaint
+const CREATURE_SCENES = new Map();   // creature ID -> Promise<scene path | null>
 async function loadModel(it) {
+  if (APP && it.kind === 'pet' && !it.scene && it.creature && S.lib && S.lib.game) {
+    if (!CREATURE_SCENES.has(it.creature)) CREATURE_SCENES.set(it.creature, api('/api/model/creature?id=' + encodeURIComponent(it.creature)).then((r) => r.json()).then((j) => j.scene || null).catch(() => null));
+    it.scene = await CREATURE_SCENES.get(it.creature);
+  }
   if (!APP || !it.scene || it.holo || it.kind === 'corvette' || it.modelTried) return;
   if (!S.lib || !S.lib.game) return; // the game wasn't found
   it.modelTried = true;
-  const picks = await partsOf(it.key), url = modelUrl(it.scene, it.seed, picks, 1), sk = 'still:' + url.replace(/&t=[^&]*/, '');
+  const picks = { ...(it.picks || {}), ...(await partsOf(it.key)) }, url = modelUrl(it.scene, it.seed, picks, 1), sk = 'still:' + url.replace(/&t=[^&]*/, '');
   if (!it.model && !it.still) {
     let st = null; try { const b = await IDB.get(sk); if (b instanceof Blob) st = await createImageBitmap(b); } catch (_) {}
     if (st && !it.model) { it.still = st; COVER_MEM.still.set(it.key, st); coverPing(it.key); }
@@ -3186,7 +3192,7 @@ function paintCover(canvas, it, angle) {
   coverFromMemory(it);
   if (it.renderImg) { paintRender(ctx, W, it.renderImg); paintBadge(ctx, W, it.cls, null); return; }
   if (!it.model && it.still && it.still !== true && !it.holo) { paintStill(ctx, W, it.still, tint); paintBadge(ctx, W, it.cls, null); return; }
-  if (it.kind === 'pet') { paintEgg(ctx, W, tint, angle != null ? angle : 0); return; }
+  if (it.kind === 'pet' && !it.model) { paintEgg(ctx, W, tint, angle != null ? angle : 0); return; }
   const wire = wireMesh(it);
   if (it.holo) paintHologram(ctx, W, it.holo, tint, angle != null ? angle : -.65);
   else if (it.model && GL3D.ok()) paintModel(ctx, W, it.model, tint, angle != null ? angle : it.kind === 'tool' ? -1.25 : -.95);
@@ -7798,7 +7804,11 @@ async function addPetDialog(pets, slots) {
 // a companion as a cover item: the picture is the owner's own (a screenshot from photo mode, say), kept by this key
 function petItem(p, i) {
   const id = str(g(p, 'CreatureID')).replace(/^\^/, ''), seed = str((g(p, 'CreatureSeed') || [])[1]);
-  return { kind: 'pet', i, name: petName(p, i), type: humanize(id.toLowerCase().replace(/_/g, ' ')), cls: '', seed, key: `pet|${i}|${id}|${seed}` };
+  // its Descriptors are the options of the creature's scene it was born with (_HEAD_4: group _HEAD, option 4), the same
+  // _Group_Option naming as ship parts, so they go to the model as picks (optionOf in models.go)
+  const picks = {};
+  for (const d of g(p, 'Descriptors') || []) { const n = str(d).replace(/^\^/, ''), k = n.lastIndexOf('_'); if (k > 0) picks[n.slice(0, k)] = n.slice(k + 1); }
+  return { kind: 'pet', i, name: petName(p, i), type: humanize(id.toLowerCase().replace(/_/g, ' ')), cls: '', seed, creature: id, picks, key: `pet|${i}|${id}|${seed}` };
 }
 PAGES.companions = (el) => {
   const pets = g(ps(), 'Pets') || [], list = pets.map((p, i) => ({ p, i })).filter(({ p }) => isPet(p)), eggs = (g(ps(), 'Eggs') || []).filter(isPet).length;
@@ -7809,16 +7819,27 @@ PAGES.companions = (el) => {
   const locked = Array.isArray(slots) ? slots.filter((x) => x === false).length : 0;
   const { side, main } = listDetail(el, { title: 'Companions', pick: String(P.pick), onPick: (k) => { P.pick = +k; render(); }, empty: 'No companions yet.',
     items: list.map(({ p, i }) => ({ key: String(i), name: petName(p, i), sub: humanize(str(g(p, 'CreatureID')).replace(/^\^/, '').toLowerCase().replace(/_/g, ' ')) + ' · ' + Math.round(num(g(p, 'Trust')) * 100) + '% trust' })),
-    extra: `<p class="dim sw-tip">${plural(list.length, 'companion')}${eggs ? ', ' + plural(eggs, 'egg') : ''}${Array.isArray(slots) ? `, ${slots.length - locked} of ${slots.length} slots unlocked` : ''}.</p>${locked ? '<div class="sw-side-acts"><button class="btn" type="button" id="pSlots">Unlock every slot</button></div>' : ''}` });
+    extra: `<p class="dim sw-tip">${plural(list.length, 'companion')}${eggs ? ', ' + plural(eggs, 'egg') : ''}${Array.isArray(slots) ? `, ${slots.length - locked} of ${slots.length} slots unlocked` : ''}.</p>${APP && S.lib && S.lib.game && list.length ? '<p class="dim sw-tip" data-keep>Companion models are new. If one looks wrong, <button class="link" type="button" id="pSample">save creature files for the developer</button>.</p>' : ''}${locked ? '<div class="sw-side-acts"><button class="btn" type="button" id="pSlots">Unlock every slot</button></div>' : ''}` });
   el.querySelector('.page-head').insertAdjacentHTML('beforeend', '<div class="toolbar"><button class="btn primary" type="button" id="addPet">Add a companion</button></div>');
   $('#addPet', el).onclick = () => addPetDialog(pets, slots);
   const us = $('#pSlots', side); if (us) us.onclick = () => { for (let k = 0; k < slots.length; k++) slots[k] = true; markDirty(); toast('Every companion slot unlocked'); render(); };
   if (P.pick == null) return;
   // small pictures in the list, for the companions that have one, so they're easy to tell apart
-  list.forEach(({ p: q, i }) => customCover(petItem(q, i).key).then((url) => {
-    const b = side.querySelector(`[data-k="${i}"]`); if (!url || !b || b.querySelector('.pet-thumb')) return;
-    b.insertAdjacentHTML('afterbegin', `<img class="pet-thumb" src="${url}" alt="">`); b.classList.add('has-thumb');
-  }));
+  // (their own picture, else their model from the game)
+  list.forEach(({ p: q, i }) => { const it = petItem(q, i); customCover(it.key).then(async (url) => {
+    const b = side.querySelector(`[data-k="${i}"]`); if (!b || b.querySelector('.pet-thumb')) return;
+    if (url) { b.insertAdjacentHTML('afterbegin', `<img class="pet-thumb" src="${url}" alt="">`); b.classList.add('has-thumb'); return; }
+    await loadModel(it); const m = it.model || COVER_MEM.model.get(it.key); if (!m || b.querySelector('.pet-thumb')) return;
+    const img = GL3D.render(m, 96, STILL_ANGLE(it), [79, 193, 176]); if (!img) return;
+    const c = document.createElement('canvas'); c.width = c.height = 96; c.className = 'pet-thumb model'; c.getContext('2d').drawImage(img, 0, 0, 96, 96);
+    b.prepend(c); b.classList.add('has-thumb');
+  }); });
+  const smp = $('#pSample', side); if (smp) smp.onclick = async () => {
+    const ids = [...new Set(list.map(({ p: q }) => str(g(q, 'CreatureID')).replace(/^\^/, '')))].join(',');
+    toast('Collecting creature files…');
+    try { const r = await (await api('/api/model/creature/sample?ids=' + encodeURIComponent(ids), { method: 'POST' })).json(); toast('Saved ' + r.path.split(/[\\/]/).pop() + ' in your Exports folder. Send that zip to the developer.'); }
+    catch (e) { toast("Couldn't collect the files: " + e.message, true); }
+  };
   const p = pets[P.pick], traits = g(p, 'Traits') || [], moods = g(p, 'Moods') || [];
   const slider = (attr, k, v, min, max, label, lo, hi) => `<label class="field pet-slide"><span>${label}<b class="mono">${fmtNum(Math.round(v * 100) / 100)}</b></span><input type="range" min="${min}" max="${max}" step="0.01" ${attr}="${k}" value="${v}"><span class="ends dim"><i>${lo}</i><i>${hi}</i></span></label>`;
   main.innerHTML = `<div class="pet-top"><div class="pet-pic"></div><div class="panel sw-bar"><div class="sw-title"><b>${esc(petName(p, P.pick))}</b><span class="dim">${esc(humanize(str(g(p, 'CreatureType', 'CreatureType'))))}${str(g(p, 'Biome', 'Biome')) && str(g(p, 'Biome', 'Biome')) !== 'All' ? ' · ' + esc(humanize(str(g(p, 'Biome', 'Biome')))) + ' world' : ''}${dateOf(g(p, 'BirthTime')) ? ' · adopted ' + dateOf(g(p, 'BirthTime')) : ''}</span></div>
