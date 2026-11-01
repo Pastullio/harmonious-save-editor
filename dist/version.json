@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.01.1552",
+  "version": "2026.11.01.1602",
   "date": "2026-11-01",
-  "size": 12682752,
-  "sha256": "0f4223c43eac7a4f6ff8890dd670bbad9fa6f8faaa55efd8b6b2e55d836f981f",
-  "notes": "Companions are drawn from your game's own creature models, with the parts each one was born with (new: tell me if one looks wrong). Dock Yard folder box is clearer.",
+  "size": 12684288,
+  "sha256": "1a1a26f80e7a2b336d3f52549a4f759398157c1740f75773948157aee11976c5",
+  "notes": "Companions: every companion's model is found now (Metal Orb, robot pets and the rest), and each is drawn with exactly the head, wings and tail pieces it has.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

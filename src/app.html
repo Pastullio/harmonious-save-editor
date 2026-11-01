@@ -6083,10 +6083,9 @@ async function addPetDialog(pets, slots) {
 // a companion as a cover item: the picture is the owner's own (a screenshot from photo mode, say), kept by this key
 function petItem(p, i) {
   const id = str(g(p, 'CreatureID')).replace(/^\^/, ''), seed = str((g(p, 'CreatureSeed') || [])[1]);
-  // its Descriptors are the options of the creature's scene it was born with (_HEAD_4: group _HEAD, option 4), the same
-  // _Group_Option naming as ship parts, so they go to the model as picks (optionOf in models.go)
-  const picks = {};
-  for (const d of g(p, 'Descriptors') || []) { const n = str(d).replace(/^\^/, ''), k = n.lastIndexOf('_'); if (k > 0) picks[n.slice(0, k)] = n.slice(k + 1); }
+  // its Descriptors name the option nodes of the creature's scene it was born with (_HEAD_4, _TAIL_1 and _TAIL_2 at two
+  // depths…), the same _Group_Option naming as ship parts; the model keeps exactly those (picks._names, buildMesh)
+  const names = (g(p, 'Descriptors') || []).map((d) => str(d).replace(/^\^/, '')).filter((n) => n.startsWith('_')), picks = names.length ? { _names: names.join('|') } : {};
   return { kind: 'pet', i, name: petName(p, i), type: humanize(id.toLowerCase().replace(/_/g, ' ')), cls: '', seed, creature: id, picks, key: `pet|${i}|${id}|${seed}` };
 }
 PAGES.companions = (el) => {

@@ -79,6 +79,25 @@ func sceneInTable(raw []byte, id string) string {
 	}
 }
 
+// creaturefilenametable.mbin (checked 2026-11-01 on the owner's game: 89 entries, every companion found): a list at
+// 0x20 of 0x30-byte entries, {ExtraFilename (variable string), Filename (variable string), ID (fixed 0x10)}
+const creatureFilenamesGUID = 0x797D2513BE1226DC
+
+func sceneInFilenameTable(raw []byte, id string) string {
+	if len(raw) < 0x30 || binary.LittleEndian.Uint64(raw[0x10:]) != creatureFilenamesGUID {
+		return ""
+	}
+	m := &mbin{raw}
+	a, n := m.list(0x20)
+	for i := 0; i < n; i++ {
+		e := a + i*0x30
+		if strings.EqualFold(m.fstr(e+0x20, 0x10), id) {
+			return normGamePath(m.vstr(e + 0x10))
+		}
+	}
+	return ""
+}
+
 var nonAlnum = regexp.MustCompile(`[^a-z0-9]`)
 
 func creatureScene(id string) (string, string, error) {
@@ -96,7 +115,14 @@ func creatureScene(id string) (string, string, error) {
 		return "", "", err
 	}
 	scene, how := "", ""
-	if t := findGameFile("/creaturedatatable.mbin"); t != "" {
+	if raw, err := gameFile("metadata/simulation/ecosystem/creaturefilenametable.mbin"); err == nil {
+		if s := sceneInFilenameTable(raw, id); s != "" {
+			if _, err := gameFile(s); err == nil {
+				scene, how = s, "filenames"
+			}
+		}
+	}
+	if t := findGameFile("/creaturedatatable.mbin"); t != "" && scene == "" {
 		if raw, err := gameFile(t); err == nil {
 			if s := sceneInTable(raw, id); s != "" {
 				if _, err := gameFile(s); err == nil {

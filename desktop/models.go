@@ -423,6 +423,12 @@ func buildMesh(scenePath string, picks map[string]string, seed string, lod int, 
 		return err
 	}
 	var geo *geomStreams
+	names := map[string]bool{} // picks["_names"]: option node names joined with "|" (a companion's Descriptors)
+	for _, x := range strings.Split(picks["_names"], "|") {
+		if x != "" {
+			names[strings.ToUpper(x)] = true
+		}
+	}
 	// Meshes under a JOINT are skinned: their vertices are already in the model's space (their
 	// AABB attributes say so), so they take the transform from above the skeleton, not the joints'.
 	var walk func(n *sceneNode, m mat4, bind *mat4)
@@ -476,6 +482,14 @@ func buildMesh(scenePath string, picks map[string]string, seed string, lod int, 
 		for g, o := range opts {
 			sort.Strings(o)
 			chosen[g] = pickFor(g, o, picks, seed)
+		}
+		// a creature's Descriptors name the exact option nodes it has (_TAIL_1, _TAIL_2… at each depth), in capitals
+		if len(names) > 0 {
+			for _, k := range n.Kids {
+				if g, o := optionOf(k.Name); strings.HasPrefix(k.Name, "_") && g != "" && names[strings.ToUpper(k.Name)] {
+					chosen[g] = o
+				}
+			}
 		}
 		maxLod := map[string]int{}
 		for _, k := range n.Kids {

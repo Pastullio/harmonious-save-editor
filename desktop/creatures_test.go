@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/binary"
+	"os"
 	"testing"
 )
 
@@ -23,5 +24,25 @@ func TestSceneInTable(t *testing.T) {
 	}
 	if got := sceneInTable(raw, "FLYINGSNAKE"); got != "" {
 		t.Fatalf("unknown ID found %q", got)
+	}
+}
+
+// HSE_TEST_CREATURES=<creaturefilenametable.mbin> reads a real one
+func TestCreatureFilenames(t *testing.T) {
+	p := os.Getenv("HSE_TEST_CREATURES")
+	if p == "" {
+		t.Skip("HSE_TEST_CREATURES not set")
+	}
+	raw, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for id, want := range map[string]string{
+		"PROTOFLYER": "models/planets/creatures/weird/floatercreature.scene.mbin", "QUAD_PET": "models/common/robots/quadrupedpet.scene.mbin",
+		"FISHBOWL_PET3": "models/common/robots/walking_building_oceanus.scene.mbin", "DIPLO_PET": "models/planets/creatures/diplorig/diplo.scene.mbin",
+	} {
+		if got := sceneInFilenameTable(raw, id); got != want {
+			t.Errorf("%s: got %q, want %q", id, got, want)
+		}
 	}
 }
