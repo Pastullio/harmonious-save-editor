@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.01.1436",
+  "version": "2026.11.01.1459",
   "date": "2026-11-01",
-  "size": 12647424,
-  "sha256": "be1cd3295f2b0cf4ec5a5e493bb085b68ba880a6f24fcffc31a24b1ba9aa8aa1",
-  "notes": "You can now delete a multi-tool (or ship) when every slot is in use, for example to make room to claim a reward.",
+  "size": 12653056,
+  "sha256": "b3073a46aa124ca6866d6b11827be0f19ecbcbaa85e789a48ba7b6d66d5bb961",
+  "notes": "Exports now save to Documents\\Harmonious Save Editor\\Exports and open that folder (they used to vanish into Downloads). A ship's Dock Yard button can now move it out of your save into Ship storage, freeing the slot.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

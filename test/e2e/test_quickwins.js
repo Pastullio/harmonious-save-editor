@@ -60,8 +60,9 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   // ship exports in one menu
   await p.evaluate(() => go('ships')); await p.waitForSelector('[data-k="exportMenu"]');
   await p.click('[data-k="exportMenu"] summary');
-  const [so] = await Promise.all([p.waitForEvent('download'), p.click('[data-k="so"]')]);
-  ok('export menu gives a .so', /\.so$/.test(so.suggestedFilename()) && !(await p.$('[data-k="exportMenu"][open]')));
+  await p.click('[data-k="so"]'); await p.waitForTimeout(1200);
+  const exp = path.join(home, 'Documents', 'Harmonious Save Editor', 'Exports');
+  ok('export menu gives a .so (in the Exports folder)', fs.existsSync(exp) && fs.readdirSync(exp).some((f) => /\.so$/.test(f)) && !(await p.$('[data-k="exportMenu"][open]')));
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
   await b.close(); proc.kill();
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS'); process.exit(fails.length ? 1 : 0);

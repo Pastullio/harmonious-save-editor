@@ -1802,7 +1802,7 @@ function entityDetails(ed, o, i, kind) {
       <button class="btn primary" data-k="saveprof">Save as profile</button><button class="btn" data-k="applyprof">Apply a profile</button>
       ${APP && S.lib && S.lib.game ? '<button class="btn" data-k="parts">Choose parts</button>' : ''}
       <span class="sep"></span>
-      ${isShip && APP ? '<button class="btn" data-k="tolib">Save to Dock Yard</button>' : ''}<details class="menu" data-k="exportMenu"><summary class="btn">Export…</summary><div class="menu-pop">
+      ${isShip && APP ? '<button class="btn" data-k="tolib">To the Dock Yard…</button>' : ''}<details class="menu" data-k="exportMenu"><summary class="btn">Export…</summary><div class="menu-pop">
         <button class="menu-item" data-k="export"><b>.json backup</b><span>This ${isShip ? 'ship' : 'multi-tool'} as a file you can import again</span></button>
         ${isShip && shipBuild(i) ? '<button class="menu-item" data-k="nmsship"><b>.nmsship</b><span>The whole corvette, for TAZ\'s tools or the Dock Yard</span></button>' : ''}
         ${isShip ? '<button class="menu-item" data-k="so"><b>.so</b><span>The ship entry alone, as TAZ\'s tools write it</span></button>' : ''}</div></details><label class="btn">Import<input type="file" accept=".json,application/json" data-k="import" hidden></label>
@@ -1836,7 +1836,16 @@ function entityDetails(ed, o, i, kind) {
   $k('export').onclick = () => exportEntity(o, i, kind);
   if ($k('nmsship')) $k('nmsship').onclick = async () => downloadBlob(safeFile(entityName(o, i, kind)) + '.nmsship', await shipNmsship(i));
   if ($k('so')) $k('so').onclick = () => downloadBlob(safeFile(entityName(o, i, kind)) + '.so', new Blob([soJSON(toPlain(cloneJSON(o)))]));
-  if ($k('tolib')) $k('tolib').onclick = () => saveShipToLibrary(i).catch((e) => toast(e.message, true));
+  // Ship storage keeps the ship for later; moving it also frees the slot in this save (it can go back into any save)
+  if ($k('tolib')) $k('tolib').onclick = async () => {
+    const nm = entityName(o, i, kind), current = num(g(ps(), 'PrimaryShip')) === i;
+    const v = await dialog('Put ' + nm + ' in the Dock Yard', `<p>Ship storage in the Dock Yard keeps ${esc(nm)}${shipBuild(i) ? ' and its corvette build' : ''} as a file, ready to put back into this save or any other.</p>
+      <p><b>Keep a copy</b> leaves it in this save too. <b>Move it</b> also takes it out of this save, freeing the slot.${current ? ' It can\'t be moved while it\'s your current ship: switch ships in the game first.' : ''}</p>`,
+      [['Cancel', false, 'ghost'], ...(current ? [] : [['Move it', 'move']]), ['Keep a copy', 'copy', 'primary']]);
+    if (!v) return;
+    try { await saveShipToLibrary(i, v === 'move'); } catch (e) { toast(e.message, true); return; }
+    if (v === 'move' && (await deleteEntity(o, i, kind, false))) toast(`${nm} moved to Ship storage in the Dock Yard. Press Save to game to free the slot.`);
+  };
   $k('import').onchange = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importEntity(o, i, kind, await f.text()); };
   $k('delete').onclick = () => deleteEntity(o, i, kind);
 }
@@ -1845,7 +1854,7 @@ function entityDetails(ed, o, i, kind) {
 function toPlain(v) { if (v instanceof Map) { const m = new Map(); for (const [k, x] of v) m.set(nameOf(k), toPlain(x)); return m; } if (Array.isArray(v)) return v.map(toPlain); return v; }
 function fromPlain(v) { if (v instanceof Map) { const m = new Map(); for (const [k, x] of v) m.set(keyFor(k), fromPlain(x)); return m; } if (Array.isArray(v)) return v.map(fromPlain); return v; }
 const mapOf = (obj) => new Map(Object.entries(obj));
-function downloadText(name, text) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
+function downloadText(name, text) { downloadBlob(name, new Blob([text], { type: 'application/json' })); }
 const safeFile = (s) => (str(s).replace(/[^\w\- ().,'&+]/g, '').trim() || 'untitled').slice(0, 60);
 const entityName = (o, i, kind) => (kind === 'freighter' ? str(g(o, 'PlayerFreighterName')) || 'Freighter' : str(g(o, 'Name')) || (kind === 'ship' ? 'Ship ' : 'Multi-tool ') + (i + 1));
 const kindWord = (kind) => ({ ship: 'ship', tool: 'multi-tool', freighter: 'freighter' }[kind]);
@@ -1860,7 +1869,7 @@ function exportEntity(o, i, kind) {
     const b = shipBuild(i); if (b) doc.set('CorvetteBase', toPlain(b));
   }
   downloadText(safeFile(entityName(o, i, kind)) + (kind === 'ship' ? '.ship.json' : '.multitool.json'), C.stringifyJSON(doc));
-  toast('Exported ' + entityName(o, i, kind));
+  if (!APP) toast('Exported ' + entityName(o, i, kind));
 }
 async function importEntity(o, i, kind, text) {
   let doc; try { doc = C.parseJSON(text); } catch (e) { toast('That file is not valid JSON: ' + e.message, true); return; }
@@ -1896,7 +1905,7 @@ function blankEntity(o) {
   setIf(e, 'IsLarge', false); setIf(e, 'UseLegacyColours', false);
   return e;
 }
-async function deleteEntity(o, i, kind) {
+async function deleteEntity(o, i, kind, ask = true) {
   const p = ps(), isShip = kind === 'ship', list = g(p, isShip ? 'ShipOwnership' : 'Multitools');
   if (num(g(p, isShip ? 'PrimaryShip' : 'ActiveMultioolIndex')) === i) { toast(`This is your current ${isShip ? 'ship' : 'multi-tool'}. Switch to another one in the game first.`, true); return; }
   // the game keeps a fixed number of slots, so an empty slot is copied in rather than the list shrinking
@@ -1904,10 +1913,11 @@ async function deleteEntity(o, i, kind) {
   // marks its own empty ship slots: no model, an unset seed, inventories with nothing in them
   const empty = list.find((x, j) => j !== i && (isShip ? !str(g(x, 'Resource', 'Filename')) : !(seedOf(x) || [])[0] && !slotsOf(g(x, 'Store')).length)) || blankEntity(o);
   const base = isShip ? shipBuild(i) : null;
-  if (!(await dialog('Delete ' + entityName(o, i, kind) + '?', `<p>The ${isShip ? 'ship' : 'multi-tool'} and everything in its inventories are removed${base ? ', along with its corvette build' : ''}. Export it first if you might want it back. Nothing is written to your game until you save.</p>`, [['Cancel', false, 'ghost'], ['Delete', true, 'danger']]))) return;
+  if (ask && !(await dialog('Delete ' + entityName(o, i, kind) + '?', `<p>The ${isShip ? 'ship' : 'multi-tool'} and everything in its inventories are removed${base ? ', along with its corvette build' : ''}. Export it first if you might want it back. Nothing is written to your game until you save.</p>`, [['Cancel', false, 'ghost'], ['Delete', true, 'danger']]))) return;
   list[i] = cloneJSON(empty);
   if (isShip) { const arr = g(p, 'ShipUsesLegacyColours'); if (Array.isArray(arr)) arr[i] = false; if (base) { const bs = g(p, 'PersistentPlayerBases'); bs.splice(bs.indexOf(base), 1); } }
-  S.pick[isShip ? 'ship' : 'tool'] = null; markDirty(); toast('Deleted'); render();
+  S.pick[isShip ? 'ship' : 'tool'] = null; markDirty(); if (ask) toast('Deleted'); render();
+  return true;
 }
 
 // ------------------------------------------------------------------ loadout profiles
@@ -3295,7 +3305,7 @@ function freighterDetails(el, p) {
     const doc = mapOf({ Harmonious: mapOf({ kind: 'freighter', version: N(1), exported: new Date().toISOString() }) });
     for (const k of ['PlayerFreighterName', 'CurrentFreighter', 'CurrentFreighterHomeSystemSeed', 'FreighterLayout', 'FreighterCargoLayout', 'FreighterInventory', 'FreighterInventory_TechOnly', 'FreighterInventory_Cargo', 'FreighterEngineEffect', 'CurrentFreighterNPC']) { const v = g(p, k); if (v !== undefined) doc.set(k, toPlain(cloneJSON(v))); }
     const b = freighterBase(); if (b) doc.set('FreighterBase', toPlain(cloneJSON(g(b, 'Objects') || [])));
-    downloadText(safeFile(entityName(p, 0, 'freighter')) + '.freighter.json', C.stringifyJSON(doc)); toast('Freighter backed up to a file');
+    downloadText(safeFile(entityName(p, 0, 'freighter')) + '.freighter.json', C.stringifyJSON(doc)); if (!APP) toast('Freighter backed up to a file');
   };
   $k('import').onchange = async (e) => {
     const f = e.target.files[0]; e.target.value = ''; if (!f) return;
@@ -4442,7 +4452,17 @@ async function libNmsship(p) {
   return zip([{ name: 'objects.json', data: tazJSON(p.objects || []) }, { name: 'so.json', data: tazJSON(p.ship) },
     { name: 'ccd.json', data: tazJSON(p.ccd || mapOf({ SelectedPreset: '^', CustomData: mapOf({ DescriptorGroups: [], PaletteID: '^', Colours: [], TextureOptions: [], BoneScales: [], Scale: N('1.0') }) })) }]);
 }
-function downloadBlob(name, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
+// Files the editor hands you. In the desktop app they go to Documents\Harmonious Save Editor\Exports and Explorer opens on
+// them: a browser download from the app window lands in Downloads with nothing on screen, so it looked like nothing happened.
+function downloadBlob(name, blob) {
+  if (APP) {
+    api('/api/export?reveal=1&name=' + encodeURIComponent(name), { method: 'POST', body: blob })
+      .then((r) => r.json()).then((r) => toast('Saved ' + r.name + ' in Documents\\Harmonious Save Editor\\Exports'))
+      .catch((e) => toast("Couldn't save " + name + ': ' + e.message, true));
+    return;
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
 // parts from other tools may list their fields in another order; the save keeps the game's order
 function inGameOrder(objs, sample) {
   if (!(sample instanceof Map)) return objs;

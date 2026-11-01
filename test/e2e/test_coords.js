@@ -64,9 +64,9 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   ok('predicts race and pirates', /Korvax/.test(pred.text) && /Pirate controlled/.test(pred.text));
   await (await p.$('#destInfo')).screenshot({ path: SP + '/shots/co4-predict.png' });
   // the shareable card: text and a PNG
-  const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#pred [data-card="save"]')]);
-  const card = await dl.path(); fs.copyFileSync(card, SP + '/shots/co5-card.png');
-  const png = fs.readFileSync(card); ok('the place card is a PNG', png.slice(1, 4).toString() === 'PNG' && png.length > 20000);
+  const [dl] = await Promise.all([p.waitForResponse((r) => r.url().includes('/api/export')), p.click('#pred [data-card="save"]')]);
+  fs.writeFileSync(SP + '/shots/co5-card.png', fs.readFileSync((await dl.json()).path));
+  const png = fs.readFileSync((await dl.json()).path); ok('the place card is a PNG', png.slice(1, 4).toString() === 'PNG' && png.length > 20000);
   ok('and as text', await p.evaluate(async () => placeText(Place.fromPortal('115A30E59ECB', 9), await predictSystem(Place.fromPortal('115A30E59ECB', 9))).includes('Iqueri-Rep')));
   await p.click('#pred [data-planet="2"]');
   ok('picking a planet sets the portal address', (await p.inputValue('#fPortal')) === '215A30E59ECB');

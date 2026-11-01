@@ -54,9 +54,9 @@ for (const f of ['save.hg', 'mf_save.hg']) fs.copyFileSync(SP + '/real/' + f, AC
   await p.click('[data-k="gen"]');
   // export
   await p.click('[data-k="exportMenu"] summary');   // the ship's exports sit in one menu
-  const [dl] = await Promise.all([p.waitForEvent('download'), p.click('[data-k="export"]')]);
+  const [dl] = await Promise.all([p.waitForResponse((r) => r.url().includes('/api/export')), p.click('[data-k="export"]')]);
   ok('the export menu closes after picking', !(await p.$('[data-k="exportMenu"][open]')));
-  const expPath = SP + '/yautja.ship.json'; await dl.saveAs(expPath);
+  const expPath = SP + '/yautja.ship.json'; fs.writeFileSync(expPath, fs.readFileSync((await dl.json()).path));
   ok('export is valid JSON with the ship', JSON.parse(fs.readFileSync(expPath, 'utf8')).Ship.Name === 'Yautja Claw');
   // save to game, then read back
   await p.click('#saveBtn'); await p.click('#dlg .btn.primary'); await p.waitForFunction(() => !S.dirty, null, { timeout: 20000 });
@@ -84,8 +84,8 @@ for (const f of ['save.hg', 'mf_save.hg']) fs.copyFileSync(SP + '/real/' + f, AC
   await p.fill('[data-stat="^FREI_FLEET"]', '777'); await p.dispatchEvent('[data-stat="^FREI_FLEET"]', 'change');
   await p.selectOption('[data-k="class"]', 'A'); await p.waitForTimeout(300);
   ok('freighter class and stat set on all its inventories', await p.evaluate(() => entityInvs(ps(), 'freighter').every((inv) => invClass(inv) === 'A') && statOf(ps(), 'freighter', '^FREI_FLEET') === 777));
-  const [fdl] = await Promise.all([p.waitForEvent('download'), p.click('[data-k="export"]')]);
-  const fpath = SP + '/freighter.json'; await fdl.saveAs(fpath);
+  const [fdl] = await Promise.all([p.waitForResponse((r) => r.url().includes('/api/export')), p.click('[data-k="export"]')]);
+  const fpath = SP + '/freighter.json'; fs.writeFileSync(fpath, fs.readFileSync((await fdl.json()).path));
   const fj = JSON.parse(fs.readFileSync(fpath, 'utf8')); ok('freighter backup has inventories and base parts', !!fj.FreighterInventory && Array.isArray(fj.FreighterBase));
   await p.fill('[data-k="name"]', 'Changed'); await p.dispatchEvent('[data-k="name"]', 'change');
   const [ffc] = await Promise.all([p.waitForEvent('filechooser'), p.click('label:has([data-k="import"])')]);
