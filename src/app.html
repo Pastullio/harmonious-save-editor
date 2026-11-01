@@ -374,6 +374,10 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .sw-main { display: grid; gap: 14px; min-width: 0; }
 .sw-main .panel { margin: 0; }
 .sw-bar { display: grid; gap: 12px; }
+.sw-top { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 14px; align-items: start; }
+.sw-topr { display: grid; gap: 14px; min-width: 0; }
+.sw-pic .pic-card { margin: 0; }
+@media (max-width: 1100px) { .sw-top { grid-template-columns: 1fr; } .sw-pic { max-width: 280px; } }
 .sw-title { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
 .sw-title b { font-family: var(--display); font-weight: 300; font-size: 24px; letter-spacing: .06em; }
 .sw-acts { display: flex; gap: 8px 10px; flex-wrap: wrap; align-items: center; }
@@ -3033,7 +3037,7 @@ function CoverFlow(host, items, opts) {
   caption(); place(); kick();
   const api = {
     get index() { return cur; }, go, focus: () => stage.focus({ preventScroll: true }),
-    refresh() { const it = items[cur], el = els[cur]; it.custom = false; const cv = document.createElement('canvas'); cv.width = cv.height = px; el.replaceChildren(cv); paintCover(cv, it); customCover(it.key).then((url) => { if (url) { const im = new Image(); im.src = url; im.alt = ''; cv.replaceWith(im); it.custom = true; } kick(); }); caption(); },
+    refresh() { const it = items[cur], el = els[cur]; it.custom = false; const cv = document.createElement('canvas'); cv.width = cv.height = px; el.replaceChildren(cv); if (it.tag) el.insertAdjacentHTML('beforeend', `<span class="cf-tag">${esc(it.tag)}</span>`); paintCover(cv, it); customCover(it.key).then((url) => { if (url) { const im = new Image(); im.src = url; im.alt = ''; cv.replaceWith(im); it.custom = true; } kick(); }); caption(); },
   };
   return api;
 }
@@ -4664,16 +4668,26 @@ async function putShipInSave(p, sum) {
 // The Dock Yard and the open save, linked both ways (owner, 2026-11-01: the Dock Yard looked like a gallery with nothing to
 // do). A Dock Yard ship is "in this save" when a ship in the save has the same identity (model and seed, plus the build's
 // owner time stamp for corvettes), or when it was just put in from here.
+// A corvette's owner stamp can change in the game (owner, 2026-11-01: Max in slot 5 wasn't matched), so model, seed and
+// name together also count, checked against every version of a Hangar ship.
+const looseId = (ident, name) => ident ? ident.split('|').slice(0, 2).join('|') + '|' + String(name || '').trim().toLowerCase() : '';
 function saveShipSlots() {
   const out = new Map(); if (!S.save) return out;
-  for (const { s, i } of ships()) { const id = shipIdentity({ ship: s, base: shipBuild(i) }); if (id && !out.has(id)) out.set(id, i); }
+  for (const { s, i } of ships()) {
+    const id = shipIdentity({ ship: s, base: shipBuild(i) });
+    if (id && !out.has(id)) out.set(id, i);
+    const file = str(g(s, 'Resource', 'Filename')), seed = str((seedOf(s) || [])[1]);
+    const lo = file && seed && 'loose|' + looseId(file.toLowerCase() + '|' + seed.toLowerCase(), str(g(s, 'Name'))); if (lo && !out.has(lo)) out.set(lo, i);
+  }
   return out;
 }
 function dockSlotOf(x, slots) {
-  if (!S.save) return null;
+  if (!S.save || !slots) return null;
   const placed = S.dyPlaced && S.dyPlaced.save === S.save && S.dyPlaced.map.get(x.id);
   if (placed != null && ships().some((y) => y.i === placed)) return placed;
-  const id = x.sum && x.sum.ident; return id && slots.has(id) ? slots.get(id) : null;
+  const id = x.sum && x.sum.ident; if (id && slots.has(id)) return slots.get(id);
+  for (const v of x.all || [x]) { const lo = v.sum && 'loose|' + looseId(v.sum.ident, v.sum.name); if (lo && slots.has(lo)) return slots.get(lo); }
+  return null;
 }
 const isCorvetteSum = (sum) => sum && sum.type === 'Corvette';
 function editShipAt(slot, build) {
@@ -4789,7 +4803,13 @@ PAGES.library = (el) => {
         if (L.type !== 'all' && x.sum.type !== L.type) return false;
         if (L.tag && !(m.tags || []).includes(L.tag)) return false;
         return !q || [x.sum.name, x.f.path, (m.tags || []).join(' '), m.notes || ''].join(' ').toLowerCase().includes(q);
-      }).sort((a, b) => !!(I.meta[b.id] || {}).fav - !!(I.meta[a.id] || {}).fav || a.sum.name.localeCompare(b.sum.name) || b.f.mtime - a.f.mtime);
+      }).sort((a, b) => {
+        // ships loaded in the open save come first, in slot order (owner, 2026-11-01), then favourites, then by name
+        const sa = dockSlotOf(a, slots), sb = dockSlotOf(b, slots);
+        if ((sa != null) !== (sb != null)) return sa != null ? -1 : 1;
+        if (sa != null && sa !== sb) return sa - sb;
+        return !!(I.meta[b.id] || {}).fav - !!(I.meta[a.id] || {}).fav || a.sum.name.localeCompare(b.sum.name) || b.f.mtime - a.f.mtime;
+      });
       current = list;
       const where = L.fav ? 'Favourites' : L.src === 'all' ? 'the Dock Yard' : L.src === 'linked' ? 'linked folders' : LIB_SRC[L.src];
       status.textContent = list.length ? `${plural(list.length, 'ship')} in ${where}${q || L.type !== 'all' || L.tag ? ' matching your search' : ''}` : q || L.type !== 'all' || L.tag ? 'No ships match your search here.' : empty[L.fav ? 'fav' : L.src];
@@ -5591,7 +5611,7 @@ PAGES.shipwright = (el) => {
   $('#swDel', side).onclick = () => deleteEntity(g(ps(), 'ShipOwnership')[W.slot], W.slot, 'ship');
   const main = document.createElement('div'); main.className = 'sw-main'; wrap.appendChild(main);
   const i = W.slot, ship = g(ps(), 'ShipOwnership')[i], H = corvetteHealth(i), base = H.base;
-  main.innerHTML = `<div class="panel sw-bar">
+  main.innerHTML = `<div class="sw-top"><div class="sw-pic"></div><div class="sw-topr"><div class="panel sw-bar">
       <div class="sw-title"><b>${esc(str(g(ship, 'Name')) || 'Corvette')}</b><span class="dim">Slot ${i + 1}${base ? ' · ' + plural(H.objs.length, 'part') : ''}</span></div>
       <div class="sw-acts">
         <button class="btn primary sw-tune" type="button" data-a="tune"${base ? '' : ' disabled'}>Tune up</button>
@@ -5603,12 +5623,14 @@ PAGES.shipwright = (el) => {
         ${APP ? '<button class="btn" type="button" data-a="blend" title="Reads a Blender file through your Blender (with Charon Forge when it is installed) and puts its build on a corvette">Load from a .blend…</button>' : ''}
         <button class="btn" type="button" data-a="saveas"${base ? '' : ' disabled'}>Save as…</button>
       </div></div>
-    <div class="panel sw-health"><h3>Build check</h3><ul>${H.out.map(([k, t, fix]) => `<li class="${k}"><span class="sw-ic"></span><span>${esc(t)}</span>${fix ? `<button class="btn small" type="button" data-a="${fix}">${fix === 'tune' ? 'Tune up' : 'Remove them'}</button>` : ''}</li>`).join('')}</ul></div>
+    <div class="panel sw-health"><h3>Build check</h3><ul>${H.out.map(([k, t, fix]) => `<li class="${k}"><span class="sw-ic"></span><span>${esc(t)}</span>${fix ? `<button class="btn small" type="button" data-a="${fix}">${fix === 'tune' ? 'Tune up' : 'Remove them'}</button>` : ''}</li>`).join('')}</ul></div></div></div>
     ${base ? `<div class="panel sw-parts"><div class="sw-parts-head"><h3>Parts</h3><input class="input" id="swQ" type="search" placeholder="Search parts" value="${esc(W.q)}">
       <span class="sw-move"><button class="btn small" type="button" data-m="top" title="Move to the top">Top</button><button class="btn small" type="button" data-m="up" title="Move up">Up</button><button class="btn small" type="button" data-m="down" title="Move down">Down</button><button class="btn small" type="button" data-m="bottom" title="Move to the bottom">Bottom</button><button class="btn small" type="button" data-m="copy1" title="Copy the selected parts">Copy</button><button class="btn small danger" type="button" data-m="del">Delete</button></span></div>
       <p class="dim sw-hint">Click a part to select it; Ctrl-click and Shift-click select several. The game reads parts from the top down: the first cockpit is the camera, the second the boarding cockpit, and the first landing bay is where you beam up.</p>
       <div class="sw-rows" id="swRows"></div></div>
     <details class="panel sw-json"${W.json ? ' open' : ''}><summary>Build JSON</summary><p class="dim">The whole build as text, for Blender, the Base Building App or any JSON tool. Edit it here and press Apply; the build's link to this slot is kept.</p><textarea class="input mono" id="swJson" spellcheck="false" rows="18"></textarea><div class="toolbar"><button class="btn" type="button" data-a="apply">Apply</button></div></details>` : ''}`;
+  // the corvette's picture, as on the Garage page: its render, its parts as a hologram, or a picture of the owner's
+  { const it = coverItems().find((x) => x.kind === 'corvette' && x.i === i); if (it) pictureCard($('.sw-pic', main), it, 'Corvette'); }
   const $m = (q) => main.querySelector(q);
   const commit = (objs, msg) => { set(base, 'Objects', objs); markDirty(); if (msg) toast(msg); W.sel = new Set(); render(); };
   // replace the build with new parts, keeping the slot's own base (UserData, BaseType, name, owner)

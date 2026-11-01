@@ -91,7 +91,12 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   }
   // put the library copy of The Cutting Remark into empty slot 7 (index 6)
   await p.click('.dy-tabs [data-v="library"]'); await p.waitForSelector('.lib-card'); await p.waitForTimeout(500);
-  const firstLib = (await p.$$('.lib-card'))[1]; ok('the card is The Cutting Remark', /The Cutting Remark/.test(await firstLib.textContent()));
+  let firstLib = null; for (const c of await p.$$('.lib-card')) if (/The Cutting Remark/.test(await c.textContent())) { firstLib = c; break; }
+  ok('the card is The Cutting Remark', !!firstLib);
+  // ships loaded in the save come first, in slot order (owner, 2026-11-01)
+  const order = await p.$$eval('.lib-card', (cs) => cs.map((c) => (c.querySelector('.dy-state.in') || {}).textContent || ''));
+  const loadedSlots = order.filter(Boolean).map((t) => +t.replace(/\D+/g, ''));
+  ok('loaded ships first, by slot', order.findIndex((t) => !t) === -1 || order.slice(order.findIndex((t) => !t)).every((t) => !t) && loadedSlots.every((n, k) => !k || n >= loadedSlots[k - 1]));
   await firstLib.click(); await p.waitForSelector('#dlg[open] .lib-detail');
   ok('corvettes can be rendered from the Dock Yard', await p.$$eval('.lib-detail [data-ld]', (b) => b.some((x) => x.textContent === 'Render with Blender')));
   ok('the card\'s actions are grouped under the picture', (await p.$$eval('.ld-grp .k', (x) => x.map((e) => e.textContent))).join() === 'Use,Picture,Export,File' && (await p.$$('#dlgActs:not([hidden]) button')).length === 0);

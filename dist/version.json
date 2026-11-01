@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.01.2240",
+  "version": "2026.11.01.2258",
   "date": "2026-11-01",
-  "size": 12745216,
-  "sha256": "28804e290e52af99494fdeb640ba59d710be2e6dde360fca868958ff8a455c4f",
-  "notes": "Names: the cover page is now the Garage, and the Dock Yard's automatic copies are the Hangar. Dock Yard ships in your save say Loaded, slot N on the cover, and Load ship into game puts one in. Page buttons sit above the covers, on the left. Supercharge slots on multi-tools and the freighter.",
+  "size": 12747264,
+  "sha256": "4d1c6d6d0f4d026ac3b4f585ddb5317d59fe346b8a6feed9538ecf50839e059b",
+  "notes": "Dock Yard: every loaded ship shows Loaded, slot N (the first cover could miss it), and loaded ships come first in slot order. Shipwright shows the corvette's picture.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
