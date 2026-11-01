@@ -120,6 +120,7 @@ The save file holds no images, so a ship's picture has to come from one of these
 - [x] Plain-language editors for the sections people actually change: bases (rename, place, parts in and out, delete), frigates (on the Freighter page), settlements, companions, known technology, recipes and cosmetics, words for every race, standing and journey milestones, difficulty settings (preset also written to the meta file for the load menu), current location (Coordinates)
 - [x] "Find anything" box (sidebar, Ctrl+K): ships, multi-tools, exocraft, bases, corvettes, settlements, frigates, companions, settings, standings and every item in every inventory; Enter jumps to it
 - [x] Raw data stays available as the expert fallback (the last find result searches it)
+- [x] Companion pictures: each companion's real model from the game's creature files (its own head, wings, tail…), in the list too; or a screenshot (2026-11-01)
 - [ ] Companion battle stats (class overrides, treats, moves): their keys aren't in libNOM's mapping yet, so they stay in Raw data
 - [x] Check the standing rank names against a real `leveledstatstable.mbin` (2026-10-30: the layout matches and every rank name resolves, e.g. Gek Trade Lord, Vy'keen Templar, Korvax Traveller of the Atlas)
 

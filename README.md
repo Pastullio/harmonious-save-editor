@@ -34,6 +34,10 @@ Nothing is uploaded anywhere. Item names and icons come from your own copy of th
 
 The app updates itself. When a new version is out it offers to install it, checks the download, swaps itself over and restarts.
 
+**Pin it to the taskbar** from its own taskbar button (right-click, **Pin to taskbar**): it shows the editor's icon, not Edge's. If an older pin shows Edge's icon, unpin it and pin again. You can also right-click the exe in Explorer and choose **Pin to taskbar**.
+
+**Exported files** (ship and multi-tool backups, `.nmsship`, `.so`, place cards…) go to `Documents\Harmonious Save Editor\Exports`, and the folder opens in Explorer with the file selected. Nothing is ever overwritten: a second file with the same name gets `(2)` added.
+
 ## How saving keeps your data safe
 
 - **Backups every time.** Before replacing a save, the app copies the current pair to `%LOCALAPPDATA%\HarmoniousSaveEditor\backups\<account>\<time>_saveN`. **Show backups** in the sidebar opens that folder.
@@ -100,7 +104,7 @@ Every ship you own, build or download, in one place, kept in `Documents\Harmonio
 - **Garage**: fills itself. Every ship in every save you open is copied here, and a ship you replace is copied before it's overwritten, so nothing is lost. Each ship has one card with its versions stacked inside, newest first. A new version is kept only when the ship itself changes (its build, model, name, class, colours or installed tech), not when fuel, charge or cargo do. Copies that only differ in those can be moved to Deleted in one click.
 - **Ship storage**: ships you keep on purpose. **Import files** (`.json`, `.txt`, TAZ's `.nmsship` and `.so`, Base Building App `.nmsprefab`) or **Add this save's ships**.
 - **Favourites**: ships you star, from anywhere in the Dock Yard.
-- **Linked folders**: point the Dock Yard at folders where you already keep ship files. They show up here without being moved or changed.
+- **Linked folders**: point the Dock Yard at folders where you already keep ship files. They show up here without being moved or changed. In **Manage folders**, paste a folder's path and press **Add path**, or use **Browse…** (pressing **Add path** with an empty box opens Browse too).
 - **Ship cards** with tags, notes and a link to where you found the ship. **Get art from the link** pulls the artwork, author and description from a listing.
 - **Put in this save…** drops a ship or corvette into an empty slot or replaces one. Corvettes bring their build. A build on its own goes onto one of your corvettes, and a `.so` gives a corvette its tech and class while it keeps its build.
 - **Export** as `.nmsship` (the whole corvette) or `.so` (the ship entry, as TAZ's tools write it).
@@ -118,7 +122,7 @@ Every multi-tool you own.
 - **Name, type** (standard, royal, sentinel, atlas, staff and more), **class** and **seed** (with **Generate** for a new look).
 - **Base stats**: damage, mining and scanning.
 - **Profiles**: **Save as profile** keeps a loadout as a file; **Apply a profile** puts it on another multi-tool. Share a profile by sending the file.
-- **Export** a `.json` backup and **Import** it again; **Delete multi-tool**.
+- **Export** a `.json` backup and **Import** it again; **Delete multi-tool** (works even when all six slots are full: the slot is left empty, the way the game leaves one).
 - **Add a multi-tool** and **Choose parts** for the cover model.
 
 ### Starships
@@ -130,7 +134,8 @@ Every ship you own.
 - **Ship slots** at the top: drag ships into a new order (corvette builds, colours and your current ship move with them), **Close the gaps**, and fixes for problems such as a build that points at the wrong slot.
 - **Add a ship**: a new corvette, or a copy of a ship you own with its colours and build.
 - **Archived ships**: see the ships the game keeps in its archive, **Restore** one into a slot, or **Archive a ship**.
-- **Profiles**, **Save to Dock Yard**, **Export** (`.json`, `.nmsship`, `.so`), **Import** and **Delete ship**, as for multi-tools.
+- **To the Dock Yard…** asks whether to **Keep a copy** (the ship stays in your game) or **Move it** (it's stored in Ship storage and its slot is emptied; not for the ship you're flying).
+- **Profiles**, **Export** (`.json`, `.nmsship`, `.so`), **Import** and **Delete ship**, as for multi-tools.
 
 ### Freighter
 
@@ -148,6 +153,7 @@ Cargo and technology for each exocraft you've summoned, with a model of each. **
 
 Your creature companions.
 
+- **A picture of each one**: the desktop app draws each companion's real model from your game files, with the head, wings, tail and other parts it was born with. The model also shows beside its name in the list. **Change picture** uses a screenshot or any image instead.
 - **Name, size, trust, temperament and mood**, as sliders.
 - **Fed, happy and fully trusting** in one click.
 - **Add a companion** to an empty slot.
@@ -185,6 +191,9 @@ Every expedition reward, past and current, plus Twitch drops and platform reward
 
 - **Unlock this expedition's rewards**, single rewards, or everything at once.
 - Rewards live in a separate account file, so they have their own save button. You collect them in the game on the Space Anomaly.
+- **Quit the game before saving rewards.** The game reads them only when it starts and writes its own copy back when it saves. The editor notices if the game takes rewards back and tells you why.
+- Platform rewards (a Switch pre-order, The Game Awards) are checked against the store you play on, and the game removes them on PC, so **Unlock all rewards** leaves them alone.
+- Some unlocked rewards from older expeditions, eggs and multi-tools in particular, may not claim even with free slots. That's the game, not the save: the editor's empty slots are the same as the game's own.
 
 ### Standing
 

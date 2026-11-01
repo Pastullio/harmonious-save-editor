@@ -188,6 +188,10 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   </ul>
   <h2>Updates</h2>
   <p>When a new version is out, the app offers it once. Accept and it downloads the new version, checks it, swaps itself over and restarts, showing its progress while it works. Nothing needs reinstalling.</p>
+  <h2>Pinning it to the taskbar</h2>
+  <p>The editor opens in its own window, centred on your screen, with its own taskbar button. Right-click the button and choose <span class="ui">Pin to taskbar</span>. If an older pin shows Edge's icon, unpin it and pin again. You can also right-click <code>Harmonious Save Editor.exe</code> in File Explorer, choose <span class="ui">Show more options</span>, then <span class="ui">Pin to taskbar</span>.</p>
+  <h2>Where exported files go</h2>
+  <p>Everything you export (ship and multi-tool backups, <code>.nmsship</code> and <code>.so</code> files, place cards) is saved in <code>Documents\Harmonious Save Editor\Exports</code>, and the folder opens with the new file selected. Nothing is overwritten: a second file with the same name gets <code>(2)</code> added.</p>
 </section>
 
 <section class="page" id="safety" data-group="start" data-title="Your saves are safe" data-c="#2fc3d6">
@@ -316,7 +320,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
     <tr><td><b>Ship storage</b></td><td>Ships you keep on purpose: files you import and ships you save from your game.</td></tr>
     <tr><td><b>Favourites</b></td><td>Ships you star, from anywhere in the Dock Yard.</td></tr>
   </table>
-  <p>Under the tabs: <b>All ships</b>, <b>Linked folders</b> (folders where you already keep ship files; the app only reads them) and <span class="ui">Manage folders</span>.</p>
+  <p>Under the tabs: <b>All ships</b>, <b>Linked folders</b> (folders where you already keep ship files; the app only reads them) and <span class="ui">Manage folders</span>. To link a folder, paste its path and press <span class="ui">Add path</span>, or use <span class="ui">Browse…</span> to pick it. <span class="ui">Add path</span> with an empty box opens the picker too.</p>
   <h2>Garage versions</h2>
   <figure><img src="shots/dockyard-card.webp" alt="A ship card with two versions listed, newest first" loading="lazy"><figcaption>One card per ship, its versions stacked inside.</figcaption></figure>
   <ul class="feat">
@@ -353,7 +357,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
     <li><b>Name, type</b> (standard, royal, sentinel, atlas, staff and the rest), <b>class</b>, and <b>seed</b>, which decides its look. <span class="ui">Generate</span> rolls a new one.</li>
     <li><b>Use old colours</b>, and <b>base stats</b>: damage, mining and scanning.</li>
     <li><span class="ui">Save as profile</span> keeps the loadout as a file; <span class="ui">Apply a profile</span> puts one on any multi-tool. Profiles work across saves; share one by sending the file.</li>
-    <li><span class="ui">Choose parts</span> for the cover model, <span class="ui">Export…</span> a <code>.json</code> backup, <span class="ui">Import</span>, and <span class="ui">Delete multi-tool</span>.</li>
+    <li><span class="ui">Choose parts</span> for the cover model, <span class="ui">Export…</span> a <code>.json</code> backup, <span class="ui">Import</span>, and <span class="ui">Delete multi-tool</span>. Deleting works even when all six slots are full: the slot is left empty, the same way the game leaves one.</li>
     <li><span class="ui">Add a multi-tool</span> in the top-right corner.</li>
   </ul>
 </section>
@@ -372,7 +376,8 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   <ul class="feat">
     <li><b>Name, type</b> (hauler, explorer, shuttle, fighter, exotic, living ship, solar, interceptor, corvette and the special ships), <b>class</b>, <b>seed</b> with <span class="ui">Generate</span>, and <b>use old colours</b>.</li>
     <li><b>Base stats</b>: damage, shields, hyperdrive and maneuverability, plus ship health and shield (shared by all ships).</li>
-    <li><span class="ui">Save as profile</span>, <span class="ui">Apply a profile</span>, <span class="ui">Choose parts</span>, <span class="ui">Save to Dock Yard</span>.</li>
+    <li><span class="ui">Save as profile</span>, <span class="ui">Apply a profile</span>, <span class="ui">Choose parts</span>.</li>
+    <li><span class="ui">To the Dock Yard…</span> asks what you want: <span class="ui">Keep a copy</span> stores the ship and leaves it in your game; <span class="ui">Move it</span> stores it in Ship storage and empties its slot (not for the ship you're flying). Put it back any time with <span class="ui">Put in this save…</span>.</li>
     <li><span class="ui">Export…</span> as a <code>.json</code> backup, a <code>.nmsship</code> (whole corvette) or a <code>.so</code> (the ship entry, for TAZ's tools); <span class="ui">Import</span>; <span class="ui">Delete ship</span>.</li>
   </ul>
   <h2>Adding and archiving</h2>
@@ -417,7 +422,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
 <section class="page" id="companions" data-group="carry" data-title="Companions" data-c="#ff7690">
   <h1>Companions</h1>
   <p class="lede">Your creature companions: names, size, trust, temperament and mood.</p>
-  <figure><img src="shots/companions.webp" alt="Companions page with sliders" loading="lazy"></figure>
+  <figure><img src="shots/companions.webp" alt="Companions page: each companion's model on its picture card and in the list, with its sliders" loading="lazy"></figure>
   <ul class="feat">
     <li><b>A picture of each companion</b>: the desktop app draws its model from your game files, with the head, wings and tail it was born with. You can also use <span class="ui">Change picture</span> to pick one of your in-game screenshots (photo mode works well) or any image. The picture shows in the companion list too, so you can tell them apart at a glance.</li>
     <li><b>Name, size</b>, and whether it's a predator or has fur.</li>
@@ -501,6 +506,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
     <li>Start the game, load any save, and claim them from the Quicksilver Synthesis Companion on the Space Anomaly.</li>
   </ol>
   <div class="note"><b>If the game changes them back</b>The editor watches the account file. If the game writes it again with fewer rewards than you saved, it tells you how many and why.</div>
+  <div class="note"><b>Rewards that won't claim</b>Some unlocked rewards from older expeditions, eggs and multi-tools in particular, may do nothing when you try to claim them, even with free slots. That comes from the game, not your save: the slots the editor empties are the same as the game's own empty slots. Ships and decorations claim normally.</div>
 </section>
 
 <section class="page" id="standing" data-group="progress" data-title="Standing" data-c="#9a8cff">
@@ -624,6 +630,12 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
     <dd>Without Blender, corvettes show a hologram of their parts. Install Blender and Charon Forge for real renders (see <a href="#blender">Blender</a>).</dd>
     <dt>Can I move a ship from one save to another?</dt>
     <dd>Yes. Every ship from every save you open is in the Dock Yard's Garage. Open the other save, find the ship and press <span class="ui">Put in this save…</span>.</dd>
+    <dt>I exported a ship. Where did it go?</dt>
+    <dd>To <code>Documents\Harmonious Save Editor\Exports</code>. The folder opens with the file selected each time you export.</dd>
+    <dt>The taskbar shows Edge's icon.</dt>
+    <dd>Unpin the old button, open the editor, then right-click its taskbar button and choose <span class="ui">Pin to taskbar</span>. See <a href="#start">Getting started</a>.</dd>
+    <dt>A companion shows an egg, or looks wrong.</dt>
+    <dd>Companions are drawn from your game's own creature models. If one can't be found it shows an egg. Use <span class="ui">Change picture</span> for a screenshot, and press <span class="ui">save creature files for the developer</span> under the list so it can be fixed.</dd>
     <dt>Does the editor need the internet?</dt>
     <dd>No. It only goes online to check for updates, to fetch art from a listing link when you ask, and for links you click.</dd>
     <dt>Is it safe for my account?</dt>

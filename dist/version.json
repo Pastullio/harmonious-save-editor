@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.01.1608",
+  "version": "2026.11.01.1613",
   "date": "2026-11-01",
-  "size": 12695040,
-  "sha256": "808a72a31bab01612a974f853ec9c1f673bfc9674b5026a9e9706ce6afa5d3aa",
-  "notes": "Taskbar: the editor keeps its own icon when pinned (Edge was putting its own back).",
+  "size": 12706816,
+  "sha256": "0b261073fb9735882b5f83b516e6efedf325f7937fb1646ecfb1a03f01246a77",
+  "notes": "User guide and README updated: companion models, where exports go, pinning to the taskbar, Dock Yard folders, moving ships to the Dock Yard, rewards that won't claim.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
