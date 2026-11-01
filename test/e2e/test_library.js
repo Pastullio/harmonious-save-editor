@@ -186,6 +186,20 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
     const pr = await p.evaluate(async (bytes) => { const r = await loadShipFile(new Uint8Array(bytes).buffer, 'x.so'); const s = shipSummary(r, 'x.so'); return s.shipOnly && s.name === 'The Cutting Remark' && s.cls === 'S'; }, [...theirs]);
     ok('a .so written by TAZ reads as a corvette loadout', pr);
   }
+  // Dock Yard <-> Starships (owner, 2026-11-01): ships in the open save can be edited from the Dock Yard, and back
+  await p.click('.dy-tabs [data-v="garage"]'); await p.waitForTimeout(2000);
+  const inSave = await p.$$('.lib-card [data-da="edit"]');
+  ok('Garage ships in this save offer Edit ship', inSave.length >= 3);
+  await inSave[0].click(); await p.waitForTimeout(800);
+  const atShip = await p.evaluate(() => ({ sec: S.section, pick: S.pick.ship }));
+  ok('Edit ship opens Starships on that ship', atShip.sec === 'ships' && atShip.pick != null);
+  await p.click('[data-k="dyvers"]'); await p.waitForSelector('#dlg[open] .lib-detail', { timeout: 15000 }).catch(() => {});
+  ok('Versions in the Dock Yard opens the ship\'s card', !!(await p.$('#dlg[open] .lib-detail')) && (await p.evaluate(() => S.section)) === 'library');
+  if (await p.$('#dlg[open]')) await p.click('#dlgX');
+  await p.evaluate(() => localStorage.setItem('hse-cover-view', 'flow')); await p.click('nav button[data-s="library"]'); await p.waitForTimeout(2500);
+  const bar = await p.$eval('.dy-acts', (e) => e.innerText);
+  ok('Cover Flow has an action bar for the picked ship', /Details/.test(bar) && /(Edit ship|Put in this save|Open a save)/.test(bar));
+  await p.evaluate(() => localStorage.setItem('hse-cover-view', 'grid'));
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
   await p.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark')); await p.click('.dy-sub [data-v="all"]'); await p.waitForTimeout(2500);
   await p.screenshot({ path: SP + '/shots/lib2-dark.png' });

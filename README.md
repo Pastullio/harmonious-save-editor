@@ -101,6 +101,7 @@ Your ships, multi-tools and corvettes as cover art.
 
 Every ship you own, build or download, in one place, kept in `Documents\Harmonious Save Editor\Dock Yard`.
 
+- **Pick a ship to work on it**: the bar above the covers says whether it's in the open save. **Edit ship** opens it on Starships (and **Edit build** opens a corvette in Shipwright); a ship that isn't in the save has **Put in this save…**; **Details** opens its card. In the grid each card shows **In this save** with **Edit ship**, or **Put in this save…**.
 - **Garage**: fills itself. Every ship in every save you open is copied here, and a ship you replace is copied before it's overwritten, so nothing is lost. Each ship has one card with its versions stacked inside, newest first. A new version is kept only when the ship itself changes (its build, model, name, class, colours or installed tech), not when fuel, charge or cargo do. Copies that only differ in those can be moved to Deleted in one click.
 - **Ship storage**: ships you keep on purpose. **Import files** (`.json`, `.txt`, TAZ's `.nmsship` and `.so`, Base Building App `.nmsprefab`) or **Add this save's ships**.
 - **Favourites**: ships you star, from anywhere in the Dock Yard.
@@ -134,6 +135,7 @@ Every ship you own.
 - **Ship slots** at the top: drag ships into a new order (corvette builds, colours and your current ship move with them), **Close the gaps**, and fixes for problems such as a build that points at the wrong slot.
 - **Add a ship**: a new corvette, or a copy of a ship you own with its colours and build.
 - **Archived ships**: see the ships the game keeps in its archive, **Restore** one into a slot, or **Archive a ship**.
+- **Versions in the Dock Yard** opens the ship's card in the Garage, with every version kept.
 - **To the Dock Yard…** asks whether to **Keep a copy** (the ship stays in your game) or **Move it** (it's stored in Ship storage and its slot is emptied; not for the ship you're flying).
 - **Profiles**, **Export** (`.json`, `.nmsship`, `.so`), **Import** and **Delete ship**, as for multi-tools.
 

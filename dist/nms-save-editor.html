@@ -459,6 +459,15 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .dy-txt b { font-family: var(--display); font-size: 13px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; }
 .dy-n { font-size: 20px; font-weight: 300; font-family: var(--display); }
 .dy-d { font-size: 12.5px; color: var(--dim); line-height: 1.4; }
+.dy-acts { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 14px 0 6px; padding: 14px 18px; }
+.dy-acts[hidden] { display: none; }
+.dy-act-info { display: flex; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; min-width: 0; }
+.dy-act-info b { font-size: 17px; font-weight: 500; }
+.dy-act-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.dy-state { font-size: 12.5px; padding: 3px 10px; border-radius: 999px; background: var(--chip, rgba(127,127,127,.12)); color: var(--dim); white-space: nowrap; }
+.dy-state.in { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); font-weight: 500; }
+.dy-star.on { color: var(--accent); }
+.lib-in { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
 .dy-sub { display: flex; gap: 18px; flex-wrap: wrap; margin: 4px 0 16px; font-size: 13.5px; }
 .dy-sub .link[aria-current="true"] { font-weight: 600; text-decoration-thickness: 2px; }
 .dy-spot { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; padding: 18px 22px; margin-bottom: 18px; border-radius: var(--r-lg); color: #fff; background: radial-gradient(120% 140% at 0% 0%, #2a5bd8 0%, #1b2f7a 45%, #0b1430 100%); box-shadow: var(--shadow); position: relative; overflow: hidden; }
@@ -2249,7 +2258,7 @@ function entityDetails(ed, o, i, kind) {
       <button class="btn primary" data-k="saveprof">Save as profile</button><button class="btn" data-k="applyprof">Apply a profile</button>
       ${APP && S.lib && S.lib.game ? '<button class="btn" data-k="parts">Choose parts</button>' : ''}
       <span class="sep"></span>
-      ${isShip && APP ? '<button class="btn" data-k="tolib">To the Dock Yard…</button>' : ''}<details class="menu" data-k="exportMenu"><summary class="btn">Export…</summary><div class="menu-pop">
+      ${isShip && APP ? '<button class="btn" data-k="tolib">To the Dock Yard…</button><button class="btn ghost" data-k="dyvers">Versions in the Dock Yard</button>' : ''}<details class="menu" data-k="exportMenu"><summary class="btn">Export…</summary><div class="menu-pop">
         <button class="menu-item" data-k="export"><b>.json backup</b><span>This ${isShip ? 'ship' : 'multi-tool'} as a file you can import again</span></button>
         ${isShip && shipBuild(i) ? '<button class="menu-item" data-k="nmsship"><b>.nmsship</b><span>The whole corvette, for TAZ\'s tools or the Dock Yard</span></button>' : ''}
         ${isShip ? '<button class="menu-item" data-k="so"><b>.so</b><span>The ship entry alone, as TAZ\'s tools write it</span></button>' : ''}</div></details><label class="btn">Import<input type="file" accept=".json,application/json" data-k="import" hidden></label>
@@ -2284,6 +2293,7 @@ function entityDetails(ed, o, i, kind) {
   if ($k('nmsship')) $k('nmsship').onclick = async () => downloadBlob(safeFile(entityName(o, i, kind)) + '.nmsship', await shipNmsship(i));
   if ($k('so')) $k('so').onclick = () => downloadBlob(safeFile(entityName(o, i, kind)) + '.so', new Blob([soJSON(toPlain(cloneJSON(o)))]));
   // Ship storage keeps the ship for later; moving it also frees the slot in this save (it can go back into any save)
+  if ($k('dyvers')) $k('dyvers').onclick = () => showInDockYard(i);
   if ($k('tolib')) $k('tolib').onclick = async () => {
     const nm = entityName(o, i, kind), current = num(g(ps(), 'PrimaryShip')) === i;
     const v = await dialog('Put ' + nm + ' in the Dock Yard', `<p>Ship storage in the Dock Yard keeps ${esc(nm)}${shipBuild(i) ? ' and its corvette build' : ''} as a file, ready to put back into this save or any other.</p>
@@ -6353,6 +6363,63 @@ async function putShipInSave(p, sum) {
   const ccds = g(ps(), 'CharacterCustomisationData');
   if (p.ccd instanceof Map && !sum.buildOnly && Array.isArray(ccds) && ccds[shipCcdIndex(i)] instanceof Map) ccds[shipCcdIndex(i)] = fromPlain(cloneJSON(p.ccd));
   markDirty(); renderSide(); toast(`${sum.name} is in slot ${i + 1}. Press Save to game to keep it.`);
+  return i;
+}
+
+// The Dock Yard and the open save, linked both ways (owner, 2026-11-01: the Dock Yard looked like a gallery with nothing to
+// do). A Dock Yard ship is "in this save" when a ship in the save has the same identity (model and seed, plus the build's
+// owner time stamp for corvettes), or when it was just put in from here.
+function saveShipSlots() {
+  const out = new Map(); if (!S.save) return out;
+  for (const { s, i } of ships()) { const id = shipIdentity({ ship: s, base: shipBuild(i) }); if (id && !out.has(id)) out.set(id, i); }
+  return out;
+}
+function dockSlotOf(x, slots) {
+  if (!S.save) return null;
+  const placed = S.dyPlaced && S.dyPlaced.save === S.save && S.dyPlaced.map.get(x.id);
+  if (placed != null && ships().some((y) => y.i === placed)) return placed;
+  const id = x.sum && x.sum.ident; return id && slots.has(id) ? slots.get(id) : null;
+}
+const isCorvetteSum = (sum) => sum && sum.type === 'Corvette';
+function editShipAt(slot, build) {
+  S.pick.ship = slot;
+  if (build) { if (S.wright) { S.wright.slot = slot; S.wright.sel = new Set(); } else S.wright = { slot, q: '', sel: new Set(), auto: true, json: false }; go('shipwright'); }
+  else go('ships');
+}
+// Starships -> Dock Yard: the ship's card in the Garage, or the Garage when it has no copy yet
+function showInDockYard(i) {
+  const id = shipIdentity({ ship: (g(ps(), 'ShipOwnership') || [])[i], base: shipBuild(i) });
+  const L = S.shipLib || (S.shipLib = { q: '', src: 'garage', type: 'all', tag: '', fav: false, shown: 60 });
+  Object.assign(L, { q: '', src: 'garage', type: 'all', tag: '', fav: false, shown: 60, flowKey: id ? 'garage|ship|' + id : null, openKey: id ? 'garage|ship|' + id : null });
+  go('library');
+}
+// what can be done with the Dock Yard ship that's picked: edit it (when it's in the open save), put it in, see its card
+function dockActions(host, x, slots, refresh) {
+  if (!host) return;
+  if (!x) { host.innerHTML = ''; return; }
+  const s = x.sum || {}, slot = dockSlotOf(x, slots), corv = isCorvetteSum(s), m = ShipLib.meta(x.id);
+  const canPut = S.save && !s.error && (s.whole || s.buildOnly || s.shipOnly);
+  const state = !S.save ? 'Open a save to edit this ship or put it in your game.' : slot != null ? `In this save, slot ${slot + 1}` : s.error ? "This file couldn't be read" : 'Not in this save';
+  host.innerHTML = `<div class="dy-act-info"><b>${esc(s.name || 'Ship')}</b><span class="dim">${esc([s.type, s.cls && s.cls + ' class', s.parts && plural(s.parts, 'part')].filter(Boolean).join(', '))}</span>
+      <span class="dy-state${slot != null ? ' in' : ''}">${esc(state)}</span></div>
+    <div class="dy-act-btns">
+      ${slot != null ? `<button class="btn primary" type="button" data-da="edit">Edit ship</button>${corv ? '<button class="btn" type="button" data-da="build">Edit build</button>' : ''}` : canPut ? `<button class="btn primary" type="button" data-da="put">${s.buildOnly || s.shipOnly ? 'Put on a corvette…' : 'Put in this save…'}</button>` : ''}
+      <button class="btn${slot == null && !canPut ? ' primary' : ''}" type="button" data-da="details">Details</button>
+      <button class="btn ghost dy-star${m.fav ? ' on' : ''}" type="button" data-da="fav" aria-pressed="${!!m.fav}">${m.fav ? '★ Favourite' : '☆ Favourite'}</button>
+    </div>`;
+  host.querySelectorAll('[data-da]').forEach((b) => b.onclick = async () => {
+    const a = b.dataset.da;
+    if (a === 'edit') editShipAt(slot, false);
+    else if (a === 'build') editShipAt(slot, true);
+    else if (a === 'details') libDetail(x, refresh);
+    else if (a === 'fav') { const mm = ShipLib.meta(x.id); mm.fav = !mm.fav; ShipLib.saveIndex(); refresh(); }
+    else if (a === 'put') {
+      try {
+        const p = x.parsed || (x.parsed = await ShipLib.load(x.f)); const at = await putShipInSave(p, s);
+        if (at != null) { if (!S.dyPlaced || S.dyPlaced.save !== S.save) S.dyPlaced = { save: S.save, map: new Map() }; S.dyPlaced.map.set(x.id, at); refresh(); }
+      } catch (e) { toast(e.message, true); }
+    }
+  });
 }
 
 const LIB_SRC = { library: 'Ship storage', garage: 'Garage', linked: 'Linked folder' };
@@ -6370,7 +6437,7 @@ const DY_TABS = [
 PAGES.library = (el) => {
   markSeen('library');
   const L = S.shipLib || (S.shipLib = { q: '', src: 'library', type: 'all', tag: '', fav: false, shown: 60 });
-  el.innerHTML = `<div class="page-head"><div><h1>Dock Yard</h1><p>Every ship you own, build or download, in one place. Store them, keep every version, and move ships and corvettes into any save.</p></div>${APP ? `<input class="input dy-search" id="libQ" type="search" placeholder="Search names, tags and notes" aria-label="Search the Dock Yard" value="${esc(L.q)}">` : ''}</div>`;
+  el.innerHTML = `<div class="page-head"><div><h1>Dock Yard</h1><p>Every ship you own, build or download, in one place. Store them, keep every version, and move ships and corvettes into any save. Pick a ship to edit it, put it in this save, or open its details.</p></div>${APP ? `<input class="input dy-search" id="libQ" type="search" placeholder="Search names, tags and notes" aria-label="Search the Dock Yard" value="${esc(L.q)}">` : ''}</div>`;
   if (!APP) { el.insertAdjacentHTML('beforeend', '<p class="dim">The Dock Yard keeps ship files on your PC, so it is part of the desktop app.</p>'); return; }
   const head = el.querySelector('.page-head');
   const tabs = document.createElement('div'); tabs.className = 'dy-tabs'; tabs.setAttribute('role', 'tablist');
@@ -6386,9 +6453,12 @@ PAGES.library = (el) => {
     <span class="lib-acts"><label class="btn small">Import files<input type="file" id="libImport" multiple accept=".json,.txt,.nmsship,.so" hidden></label>${S.save ? '<button class="btn small" id="libAddSave" type="button">Add this save\'s ships</button>' : ''}<button class="btn small" id="libRender" type="button">Render corvettes</button><button class="btn small ghost" id="libRenderCfg" type="button" title="Blender and Charon Forge">Cover settings</button></span>`;
   el.appendChild(bar);
   const status = document.createElement('p'); status.className = 'dim lib-status'; status.textContent = 'Reading your ships…'; el.appendChild(status);
+  if (L.openKey) Object.assign(L, { src: 'garage', fav: false });
   status.insertAdjacentHTML('afterend', `<div class="view-row">${viewSwitch()}</div>`);
   const grid = document.createElement('div'); grid.className = 'lib-grid'; el.appendChild(grid);
   const flowHost = document.createElement('div'); el.insertBefore(flowHost, grid);
+  const acts = document.createElement('div'); acts.className = 'panel dy-acts'; el.insertBefore(acts, flowHost);
+  const slots = saveShipSlots();
   const more = document.createElement('div'); more.className = 'lib-more'; el.appendChild(more);
   const alive = () => el.isConnected && S.section === 'library';
   const pick = (v) => { if (v === 'fav') L.fav = true; else { L.fav = false; L.src = v; } L.shown = 60; render(); };
@@ -6428,9 +6498,10 @@ PAGES.library = (el) => {
       current = list;
       const where = L.fav ? 'Favourites' : L.src === 'all' ? 'the Dock Yard' : L.src === 'linked' ? 'linked folders' : LIB_SRC[L.src];
       status.textContent = list.length ? `${plural(list.length, 'ship')} in ${where}${q || L.type !== 'all' || L.tag ? ' matching your search' : ''}` : q || L.type !== 'all' || L.tag ? 'No ships match your search here.' : empty[L.fav ? 'fav' : L.src];
-      if (coverView() === 'flow' && list.length) { grid.replaceChildren(); more.innerHTML = ''; libFlow(flowHost, list, show); return; }
-      flowHost.replaceChildren();
-      grid.replaceChildren(...list.slice(0, L.shown).map((x) => libCard(x, show)));
+      if (L.openKey) { const want = list.find((x) => x.id === L.openKey); L.openKey = null; if (want) setTimeout(() => libDetail(want, show), 300); else toast('This ship has no copy in the Dock Yard yet. The Garage keeps one the next time the save is opened.'); }
+      if (coverView() === 'flow' && list.length) { grid.replaceChildren(); more.innerHTML = ''; acts.hidden = false; libFlow(flowHost, list, show, (x) => dockActions(acts, x, slots, show), slots); return; }
+      flowHost.replaceChildren(); acts.hidden = true;
+      grid.replaceChildren(...list.slice(0, L.shown).map((x) => libCard(x, show, slots)));
       more.innerHTML = list.length > L.shown ? `<button class="btn" type="button">Show ${Math.min(60, list.length - L.shown)} more</button>` : '';
       if (more.firstChild) more.firstChild.onclick = () => { L.shown += 60; show(); };
     };
@@ -6465,11 +6536,11 @@ PAGES.library = (el) => {
   };
 };
 // the Dock Yard as Cover Flow: covers start plain (name and type) and fill in from the file as they come near the centre
-function libFlow(host, list, refresh) {
+function libFlow(host, list, refresh, onPick, slots) {
   host.replaceChildren();
   const S0 = S.shipLib, key = S0.flowKey;
   const items = list.map((x) => ({ kind: x.sum.type === 'Corvette' ? 'corvette' : 'ship', i: -1, key: 'lib|' + x.id, name: x.sum.name, type: x.sum.type, cls: x.sum.cls,
-    sub: x.sum.error ? 'Not readable yet' : [x.sum.type, x.sum.cls && x.sum.cls + ' class', x.sum.parts && plural(x.sum.parts, 'part'), x.versions && x.versions.length > 1 && plural(x.versions.length, 'version')].filter(Boolean).join(', '), x }));
+    sub: x.sum.error ? 'Not readable yet' : [x.sum.type, x.sum.cls && x.sum.cls + ' class', x.sum.parts && plural(x.sum.parts, 'part'), x.versions && x.versions.length > 1 && plural(x.versions.length, 'version'), slots && dockSlotOf(x, slots) != null && 'in this save'].filter(Boolean).join(', '), x }));
   const big = Math.max(180, Math.min(320, Math.round((($('#main').clientWidth || 1000) - 80) / 3.8)));
   const start = Math.max(0, items.findIndex((it) => it.x.id === key));
   const fill = async (n) => {
@@ -6480,17 +6551,17 @@ function libFlow(host, list, refresh) {
     if (it.kind === 'corvette') { loadRender(it); loadHoloBoxes(it); } else if (it.scene) loadModel(it);
   };
   const flow = CoverFlow(host, items, { size: big, index: start, label: 'Dock Yard',
-    onChange: (n) => { S0.flowKey = items[n].x.id; for (let d = 0; d <= 2; d++) { fill(n + d); if (d) fill(n - d); } },
+    onChange: (n) => { S0.flowKey = items[n].x.id; if (onPick) onPick(items[n].x); for (let d = 0; d <= 2; d++) { fill(n + d); if (d) fill(n - d); } },
     onOpen: (n) => libDetail(items[n].x, refresh) });
-  fill(start);
+  fill(start); if (onPick) onPick(items[start].x);
   // then every other cover, a few at a time, so the whole row fills in without scrolling to each one
   (async () => {
     const order = items.map((_, i) => i).sort((a, b) => Math.abs(a - start) - Math.abs(b - start));
     for (let k = 0; k < order.length; k += 3) { if (!host.isConnected) return; await Promise.all(order.slice(k, k + 3).map(fill)); }
   })();
 }
-function libCard(x, refresh) {
-  const m = ShipLib.index.meta[x.id] || {}, s = x.sum;
+function libCard(x, refresh, slots) {
+  const m = ShipLib.index.meta[x.id] || {}, s = x.sum, slot = slots ? dockSlotOf(x, slots) : null;
   const card = document.createElement('div'); card.className = 'tc lib-card' + (s.error ? ' bad' : ''); card.tabIndex = 0;
   // linked folders show their name and the subfolder the file is in (e.g. "JSON files / My Ships")
   const sub = x.f.path.includes('/') ? ' / ' + x.f.path.split('/').slice(0, -1).join(' / ') : '';
@@ -6499,7 +6570,14 @@ function libCard(x, refresh) {
     <button class="fav${m.fav ? ' on' : ''}" type="button" title="${m.fav ? 'Remove from favourites' : 'Add to favourites'}" aria-pressed="${!!m.fav}">★</button>
     <div class="tc-cap"><b title="${esc(s.name)}">${esc(s.name)}</b><span>${esc(s.error ? 'Not readable yet' : [s.type, s.cls && s.cls + ' class', s.parts && plural(s.parts, 'part')].filter(Boolean).join(', '))}</span>
     <span class="lib-where">${esc(where)}${x.f.src === 'garage' ? ' · ' + new Date(x.f.mtime).toLocaleDateString() : ''}${x.versions && x.versions.length > 1 ? ' · ' + plural(x.versions.length, 'version') : ''}</span>
-    ${(m.tags || []).length ? `<span class="lib-tags">${m.tags.map((t) => `<i>${esc(t)}</i>`).join('')}</span>` : ''}</div>`;
+    ${(m.tags || []).length ? `<span class="lib-tags">${m.tags.map((t) => `<i>${esc(t)}</i>`).join('')}</span>` : ''}
+    ${slot != null ? `<span class="lib-in"><span class="dy-state in">In this save</span><button class="btn small primary" type="button" data-da="edit">Edit ship</button></span>` : S.save && !s.error && s.whole ? '<span class="lib-in"><span class="dy-state">Not in this save</span><button class="btn small" type="button" data-da="put">Put in this save…</button></span>' : ''}</div>`;
+  const eb = card.querySelector('[data-da="edit"]'); if (eb) eb.onclick = (e) => { e.stopPropagation(); editShipAt(slot, false); };
+  const pb = card.querySelector('[data-da="put"]'); if (pb) pb.onclick = async (e) => {
+    e.stopPropagation();
+    try { const p = x.parsed || (x.parsed = await ShipLib.load(x.f)); const at = await putShipInSave(p, s); if (at != null) { if (!S.dyPlaced || S.dyPlaced.save !== S.save) S.dyPlaced = { save: S.save, map: new Map() }; S.dyPlaced.map.set(x.id, at); refresh(); } }
+    catch (err) { toast(err.message, true); }
+  };
   card.querySelector('.fav').onclick = (e) => { e.stopPropagation(); const mm = ShipLib.meta(x.id); mm.fav = !mm.fav; ShipLib.saveIndex(); refresh(); };
   card.onclick = () => libDetail(x, refresh);
   card.onkeydown = (e) => { if (e.key === 'Enter') libDetail(x, refresh); };

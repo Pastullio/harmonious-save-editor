@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.01.1613",
+  "version": "2026.11.01.2148",
   "date": "2026-11-01",
-  "size": 12706816,
-  "sha256": "0b261073fb9735882b5f83b516e6efedf325f7937fb1646ecfb1a03f01246a77",
-  "notes": "User guide and README updated: companion models, where exports go, pinning to the taskbar, Dock Yard folders, moving ships to the Dock Yard, rewards that won't claim.",
+  "size": 12746240,
+  "sha256": "ae1b8906efb32fc4d30bf29f0da4881d76332479d245bf03cd5119bfb5f26520",
+  "notes": "Dock Yard: pick a ship to Edit it (opens Starships, or Shipwright for a corvette's build), put it in your save, or open its details. Cards show which ships are in this save. Starships has Versions in the Dock Yard.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

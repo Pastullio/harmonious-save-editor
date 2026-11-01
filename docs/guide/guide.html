@@ -321,6 +321,14 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
     <tr><td><b>Favourites</b></td><td>Ships you star, from anywhere in the Dock Yard.</td></tr>
   </table>
   <p>Under the tabs: <b>All ships</b>, <b>Linked folders</b> (folders where you already keep ship files; the app only reads them) and <span class="ui">Manage folders</span>. To link a folder, paste its path and press <span class="ui">Add path</span>, or use <span class="ui">Browse…</span> to pick it. <span class="ui">Add path</span> with an empty box opens the picker too.</p>
+  <h2>Doing things with a ship</h2>
+  <p>Pick a ship and the bar above the covers says whether it's in the save you have open, with what you can do:</p>
+  <ul class="feat">
+    <li><span class="ui">Edit ship</span> opens it on the Starships page, ready to change. Corvettes also have <span class="ui">Edit build</span>, which opens their parts in Shipwright.</li>
+    <li><span class="ui">Put in this save…</span> for a ship that isn't in the save, then <span class="ui">Edit ship</span> once it's in.</li>
+    <li><span class="ui">Details</span> opens the ship's card (versions, tags, notes, export), and <span class="ui">Favourite</span> stars it.</li>
+  </ul>
+  <p>In the grid, each card says <b>In this save</b> with an <span class="ui">Edit ship</span> button, or <b>Not in this save</b> with <span class="ui">Put in this save…</span>. From Starships, <span class="ui">Versions in the Dock Yard</span> comes back to the ship's card here.</p>
   <h2>Garage versions</h2>
   <figure><img src="shots/dockyard-card.webp" alt="A ship card with two versions listed, newest first" loading="lazy"><figcaption>One card per ship, its versions stacked inside.</figcaption></figure>
   <ul class="feat">
@@ -376,7 +384,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   <ul class="feat">
     <li><b>Name, type</b> (hauler, explorer, shuttle, fighter, exotic, living ship, solar, interceptor, corvette and the special ships), <b>class</b>, <b>seed</b> with <span class="ui">Generate</span>, and <b>use old colours</b>.</li>
     <li><b>Base stats</b>: damage, shields, hyperdrive and maneuverability, plus ship health and shield (shared by all ships).</li>
-    <li><span class="ui">Save as profile</span>, <span class="ui">Apply a profile</span>, <span class="ui">Choose parts</span>.</li>
+    <li><span class="ui">Save as profile</span>, <span class="ui">Apply a profile</span>, <span class="ui">Choose parts</span>, and <span class="ui">Versions in the Dock Yard</span> for every version of the ship the Garage has kept.</li>
     <li><span class="ui">To the Dock Yard…</span> asks what you want: <span class="ui">Keep a copy</span> stores the ship and leaves it in your game; <span class="ui">Move it</span> stores it in Ship storage and empties its slot (not for the ship you're flying). Put it back any time with <span class="ui">Put in this save…</span>.</li>
     <li><span class="ui">Export…</span> as a <code>.json</code> backup, a <code>.nmsship</code> (whole corvette) or a <code>.so</code> (the ship entry, for TAZ's tools); <span class="ui">Import</span>; <span class="ui">Delete ship</span>.</li>
   </ul>
