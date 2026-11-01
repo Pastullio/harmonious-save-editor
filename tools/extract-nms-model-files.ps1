@@ -12,7 +12,7 @@ param(
     [string]$GameDir = '',      # the "No Man's Sky" folder, if it can't be found automatically
     [string]$HgpakTool = '',    # a hgpaktool.exe you already have
     [string]$OutDir = '',       # where the zip goes (default: your Desktop)
-    [string]$Sets = 'fighters,multitools'  # which model folders: fighters, multitools, freighters, exocraft, corvettes, baseparts
+    [string]$Sets = 'fighters,multitools'  # which model folders: fighters, multitools, freighters, exocraft, corvettes, baseparts, creatures
 )
 
 $ErrorActionPreference = 'Stop'
@@ -97,13 +97,17 @@ try {
         # so each zip stays under the chat's upload limit
         corvettes  = 'models/common/spacecraft/biggs'
         baseparts  = 'models/planets/biomes/common/buildings/parts/buildableparts'
+        # companions: every creature's scene and descriptor (which parts it can have) plus the ecosystem tables that
+        # name each creature's model; geometry comes later, only for the creatures that are companions
+        creatures  = 'models/planets/creatures'
     }
     $args2 = @('-U', '-q', '-O', (Join-Path $work 'EXTRACTED'))
     foreach ($set in ($Sets -split ',')) {
         $f = $folders[$set.Trim()]
         if (-not $f) { Fail "Unknown set '$set'." }
         # base parts: only their scenes (part sizes for the corvette hologram), which keeps the zip small
-        $exts = if ($set.Trim() -eq 'baseparts') { @('*.scene.mbin') } else { @('*.scene.mbin', '*.descriptor.mbin', '*.geometry.mbin.pc', '*.geometry.data.mbin.pc') }
+        $exts = if ($set.Trim() -eq 'baseparts') { @('*.scene.mbin') } elseif ($set.Trim() -eq 'creatures') { @('*.scene.mbin', '*.descriptor.mbin') } else { @('*.scene.mbin', '*.descriptor.mbin', '*.geometry.mbin.pc', '*.geometry.data.mbin.pc') }
+        if ($set.Trim() -eq 'creatures') { $args2 += @('-f', '*metadata/simulation/ecosystem/*.mbin') }
         foreach ($folder in ($f -split '\|')) {
             foreach ($ext in $exts) { $args2 += @('-f', "*$folder/$ext") }
         }

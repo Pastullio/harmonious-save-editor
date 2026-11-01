@@ -483,6 +483,11 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .lib-card .fav { position: absolute; top: 8px; left: 8px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(4, 16, 22, .55); color: rgba(255, 255, 255, .55); font-size: 16px; cursor: pointer; line-height: 1; }
 .lib-card .fav.on { color: #fff; background: var(--accent); }
 .lib-where { font-size: 11.5px; }
+.pet-top { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; align-items: start; margin-bottom: 18px; }
+.pet-top .pet-pic .pic-card { margin: 0; }
+.pet-top > .panel { margin: 0; }
+@media (max-width: 980px) { .pet-top { grid-template-columns: 1fr; } .pet-top .pet-pic { max-width: 240px; } }
+.pet-thumb { flex: none; width: 38px; height: 38px; border-radius: 9px; object-fit: cover; }
 .rw-how { margin-top: 14px; font-size: 13.5px; color: var(--dim); max-width: 760px; }
 .rw-how b:first-child { color: var(--ink); font-weight: 500; }
 .rw-how ol { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 3px; }
@@ -2618,6 +2623,19 @@ function paintModel(ctx, W, m, tint, angle) {
   if (img) ctx.drawImage(img, 0, 0, W, W);
   ctx.fillStyle = 'rgba(255,255,255,.025)'; for (let y = 0; y < W; y += Math.max(3, W / 120)) ctx.fillRect(0, y, W, 1); // scanlines
 }
+// a companion with no picture yet: a wire egg on the projector (the game keeps no picture of a companion)
+function paintEgg(ctx, W, tint, angle) {
+  paintProjector(ctx, W, tint);
+  const cx = W / 2, cy = W * .5, rx = W * .2, ry = W * .27;
+  ctx.save(); ctx.strokeStyle = `rgba(${tint},.85)`; ctx.lineWidth = Math.max(1, W * .004); ctx.shadowColor = `rgba(${tint},.6)`; ctx.shadowBlur = W * .02;
+  for (let k = 0; k < 7; k++) {   // meridians, turning slowly
+    const a = angle + (k / 7) * Math.PI, sx = Math.cos(a);
+    ctx.beginPath(); ctx.ellipse(cx, cy, Math.abs(rx * sx) + .5, ry, 0, 0, Math.PI * 2); ctx.globalAlpha = .35 + .5 * Math.abs(Math.sin(a)); ctx.stroke();
+  }
+  ctx.globalAlpha = .6;
+  for (let k = 1; k < 6; k++) { const y = -1 + k / 3, r = Math.sqrt(Math.max(0, 1 - y * y)); ctx.beginPath(); ctx.ellipse(cx, cy + y * ry * .98, rx * r, rx * r * .22, 0, 0, Math.PI * 2); ctx.stroke(); }
+  ctx.restore();
+}
 // the kept picture of a model, drawn like the model itself (it's white, tinted here to the class colour)
 function paintStill(ctx, W, img, tint) {
   paintProjector(ctx, W, tint);
@@ -2727,6 +2745,7 @@ function paintCover(canvas, it, angle) {
   coverFromMemory(it);
   if (it.renderImg) { paintRender(ctx, W, it.renderImg); paintBadge(ctx, W, it.cls, null); return; }
   if (!it.model && it.still && it.still !== true && !it.holo) { paintStill(ctx, W, it.still, tint); paintBadge(ctx, W, it.cls, null); return; }
+  if (it.kind === 'pet') { paintEgg(ctx, W, tint, angle != null ? angle : 0); return; }
   const wire = wireMesh(it);
   if (it.holo) paintHologram(ctx, W, it.holo, tint, angle != null ? angle : -.65);
   else if (it.model && GL3D.ok()) paintModel(ctx, W, it.model, tint, angle != null ? angle : it.kind === 'tool' ? -1.25 : -.95);
@@ -6054,6 +6073,11 @@ async function addPetDialog(pets, slots) {
   if (kOf(ent, 'BirthTime') != null) set(ent, 'BirthTime', now);
   pets[slot] = ent; markDirty(); (S.pets || (S.pets = {})).pick = slot; renderSide(); render(); toast(`Added to slot ${slot + 1}. Press Save to game to keep it.`);
 }
+// a companion as a cover item: the picture is the owner's own (a screenshot from photo mode, say), kept by this key
+function petItem(p, i) {
+  const id = str(g(p, 'CreatureID')).replace(/^\^/, ''), seed = str((g(p, 'CreatureSeed') || [])[1]);
+  return { kind: 'pet', i, name: petName(p, i), type: humanize(id.toLowerCase().replace(/_/g, ' ')), cls: '', seed, key: `pet|${i}|${id}|${seed}` };
+}
 PAGES.companions = (el) => {
   const pets = g(ps(), 'Pets') || [], list = pets.map((p, i) => ({ p, i })).filter(({ p }) => isPet(p)), eggs = (g(ps(), 'Eggs') || []).filter(isPet).length;
   const slots = g(ps(), 'UnlockedPetSlots');
@@ -6068,21 +6092,27 @@ PAGES.companions = (el) => {
   $('#addPet', el).onclick = () => addPetDialog(pets, slots);
   const us = $('#pSlots', side); if (us) us.onclick = () => { for (let k = 0; k < slots.length; k++) slots[k] = true; markDirty(); toast('Every companion slot unlocked'); render(); };
   if (P.pick == null) return;
+  // small pictures in the list, for the companions that have one, so they're easy to tell apart
+  list.forEach(({ p: q, i }) => customCover(petItem(q, i).key).then((url) => {
+    const b = side.querySelector(`[data-k="${i}"]`); if (!url || !b || b.querySelector('.pet-thumb')) return;
+    b.insertAdjacentHTML('afterbegin', `<img class="pet-thumb" src="${url}" alt="">`); b.classList.add('has-thumb');
+  }));
   const p = pets[P.pick], traits = g(p, 'Traits') || [], moods = g(p, 'Moods') || [];
   const slider = (attr, k, v, min, max, label, lo, hi) => `<label class="field pet-slide"><span>${label}<b class="mono">${fmtNum(Math.round(v * 100) / 100)}</b></span><input type="range" min="${min}" max="${max}" step="0.01" ${attr}="${k}" value="${v}"><span class="ends dim"><i>${lo}</i><i>${hi}</i></span></label>`;
-  main.innerHTML = `<div class="panel sw-bar"><div class="sw-title"><b>${esc(petName(p, P.pick))}</b><span class="dim">${esc(humanize(str(g(p, 'CreatureType', 'CreatureType'))))}${str(g(p, 'Biome', 'Biome')) && str(g(p, 'Biome', 'Biome')) !== 'All' ? ' · ' + esc(humanize(str(g(p, 'Biome', 'Biome')))) + ' world' : ''}${dateOf(g(p, 'BirthTime')) ? ' · adopted ' + dateOf(g(p, 'BirthTime')) : ''}</span></div>
+  main.innerHTML = `<div class="pet-top"><div class="pet-pic"></div><div class="panel sw-bar"><div class="sw-title"><b>${esc(petName(p, P.pick))}</b><span class="dim">${esc(humanize(str(g(p, 'CreatureType', 'CreatureType'))))}${str(g(p, 'Biome', 'Biome')) && str(g(p, 'Biome', 'Biome')) !== 'All' ? ' · ' + esc(humanize(str(g(p, 'Biome', 'Biome')))) + ' world' : ''}${dateOf(g(p, 'BirthTime')) ? ' · adopted ' + dateOf(g(p, 'BirthTime')) : ''}</span></div>
       <div class="details-grid">
         <label class="field wide"><span>Name</span><input class="input" id="pName" maxlength="31" value="${esc(str(g(p, 'CustomName')))}"></label>
         <label class="field"><span>Size (1 is normal)</span><input class="input mono" id="pScale" inputmode="decimal" value="${fmtNum(Math.round(num(g(p, 'Scale')) * 1000) / 1000)}"></label>
         <label class="check"><input type="checkbox" id="pPred"${g(p, 'Predator') === true ? ' checked' : ''}> Predator</label>
         <label class="check"><input type="checkbox" id="pFur"${g(p, 'HasFur') === true ? ' checked' : ''}> Has fur</label>
-      </div></div>
+      </div></div></div>
     <div class="panel"><h3>Trust and temperament</h3><div class="pet-grid">
       ${slider('data-trust', 0, num(g(p, 'Trust')), 0, 1, 'Trust', 'Wary', 'Devoted')}
       ${PET_TRAITS.map((l, k) => k < traits.length ? slider('data-trait', k, num(traits[k]), -1, 1, l, 'Low', 'High') : '').join('')}
     </div></div>
     <div class="panel"><h3>Mood</h3><div class="pet-grid">${PET_MOODS.map((l, k) => k < moods.length ? slider('data-mood', k, num(moods[k]), 0, 1, l, 'Content', 'Needs you') : '').join('')}</div>
       <div class="toolbar"><button class="btn primary" type="button" id="pHappy">Fed, happy and fully trusting</button></div></div>`;
+  pictureCard($('.pet-pic', main), petItem(p, P.pick), 'Companion');
   $('#pName', main).onchange = (e) => { set(p, 'CustomName', e.target.value); render(); };
   $('#pScale', main).onchange = (e) => { const v = numberIn(e.target, { min: 0.05, max: 20 }); if (v == null) { e.target.value = fmtNum(num(g(p, 'Scale'))); return; } e.target.value = fmtNum(v); set(p, 'Scale', FL(v)); if (v > 5) toast('Very large companions can get stuck in bases and doorways.'); };
   $('#pPred', main).onchange = (e) => set(p, 'Predator', e.target.checked);
