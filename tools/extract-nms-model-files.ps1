@@ -12,7 +12,8 @@ param(
     [string]$GameDir = '',      # the "No Man's Sky" folder, if it can't be found automatically
     [string]$HgpakTool = '',    # a hgpaktool.exe you already have
     [string]$OutDir = '',       # where the zip goes (default: your Desktop)
-    [string]$Sets = 'fighters,multitools'  # which model folders: fighters, multitools, freighters, exocraft, corvettes, baseparts, creatures
+    [string]$Sets = 'fighters,multitools', # which model folders: fighters, multitools, freighters, exocraft, corvettes, baseparts, creatures
+    [string]$Patterns = ''      # extra file patterns, comma separated (e.g. '*creatures/flyingsnake/*'), when only a few files are needed
 )
 
 $ErrorActionPreference = 'Stop'
@@ -103,6 +104,7 @@ try {
     }
     $args2 = @('-U', '-q', '-O', (Join-Path $work 'EXTRACTED'))
     foreach ($set in ($Sets -split ',')) {
+        if (-not $set.Trim()) { continue }
         $f = $folders[$set.Trim()]
         if (-not $f) { Fail "Unknown set '$set'." }
         # base parts: only their scenes (part sizes for the corvette hologram), which keeps the zip small
@@ -112,6 +114,7 @@ try {
             foreach ($ext in $exts) { $args2 += @('-f', "*$folder/$ext") }
         }
     }
+    foreach ($pat in ($Patterns -split ',')) { if ($pat.Trim()) { $args2 += @('-f', $pat.Trim()) } }
     Say "Extracting models ($Sets), a few minutes..."
     $ext = Join-Path $work 'EXTRACTED'
     & $HgpakTool @args2 $banks
@@ -128,7 +131,7 @@ $total = [Math]::Round((($all | Measure-Object Length -Sum).Sum) / 1MB, 1)
 ) | Set-Content (Join-Path $ext 'about.txt') -Encoding UTF8
 
 if (-not $OutDir) { $OutDir = [Environment]::GetFolderPath('Desktop') }
-$zip = Join-Path $OutDir ("NMS model files for Harmonious (" + ($Sets -replace ',', ', ') + ").zip")
+$zip = Join-Path $OutDir ("NMS model files for Harmonious (" + $(if ($Sets) { $Sets -replace ',', ', ' } else { 'picked files' }) + ").zip")
 if (Test-Path $zip) { Remove-Item $zip -Force }
 Compress-Archive -Path (Join-Path $ext '*') -DestinationPath $zip
 $mb = [Math]::Round((Get-Item $zip).Length / 1MB, 1)
