@@ -103,6 +103,7 @@ func openWindow(url, profile string) error {
 		cmd := exec.Command(exe, append(args, "--no-first-run", "--no-default-browser-check", "--disable-features=Translate")...)
 		if err := cmd.Start(); err == nil {
 			go cmd.Wait()
+			tagEditorWindows()
 			return nil
 		}
 	}

@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.01.1602",
+  "version": "2026.11.01.1605",
   "date": "2026-11-01",
-  "size": 12684288,
-  "sha256": "1a1a26f80e7a2b336d3f52549a4f759398157c1740f75773948157aee11976c5",
-  "notes": "Companions: every companion's model is found now (Metal Orb, robot pets and the rest), and each is drawn with exactly the head, wings and tail pieces it has.",
+  "size": 12692480,
+  "sha256": "ac6fcdd940e545975a963b293e019a2f5208be0d50c75560dcdc03ce8d41e63b",
+  "notes": "The editor gets its own taskbar button and icon instead of Edge's.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
