@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.01.1358",
+  "version": "2026.11.01.1414",
   "date": "2026-11-01",
   "size": 12646400,
-  "sha256": "5857e236afea8a278131adc67679c7b894fc89bd6c197d983aacb4ebd554a264",
-  "notes": "Rewards: the page now explains how to get rewards into the game (quit the game first, save, then start it), Unlock all leaves out the platform rewards the game removes on PC, and the editor tells you if the game puts its own rewards back.",
+  "sha256": "145e6e59bacfff04900aa6a69ed27dab0b798c4c6f9b8caf72e5d4c4a77b1a47",
+  "notes": "Pages no longer slide sideways under the sidebar: a title glow made every page a little wider than the window.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
