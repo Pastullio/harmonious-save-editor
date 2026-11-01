@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.01.1459",
+  "version": "2026.11.01.1524",
   "date": "2026-11-01",
-  "size": 12653056,
-  "sha256": "b3073a46aa124ca6866d6b11827be0f19ecbcbaa85e789a48ba7b6d66d5bb961",
-  "notes": "Exports now save to Documents\\Harmonious Save Editor\\Exports and open that folder (they used to vanish into Downloads). A ship's Dock Yard button can now move it out of your save into Ship storage, freeing the slot.",
+  "size": 12659712,
+  "sha256": "d468ded8107bace472745ed7d47899c4af52764f262bfac4a6aac0c0beca3b9c",
+  "notes": "Ship and multi-tool covers stay drawn when you switch pages and show straight away the next time you open the editor; the Dock Yard fills in every cover by itself. The editor now remembers light or dark mode (and your other settings) every time it opens.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

@@ -2577,22 +2577,55 @@ function fetchMesh(url) {
   return meshCache.get(url);
 }
 const partsOf = async (key) => { try { return (await IDB.get('parts:' + key)) || {}; } catch (_) { return {}; } };
+// Covers are made fresh each time a page is drawn, so what they have loaded is kept here by cover key and handed back at
+// once (owner, 2026-11-01: covers went back to wireframes after visiting another page). A still picture of each model is
+// also kept in IndexedDB, so the next time the editor opens covers show it straight away while the model loads.
+const COVER_MEM = { model: new Map(), still: new Map(), render: new Map() };
+document.addEventListener('cover-render', (e) => COVER_MEM.render.set(e.detail.key, e.detail.img || null));
+const coverPing = (key) => document.dispatchEvent(new CustomEvent('cover-model', { detail: { key } }));
+function coverFromMemory(it) {
+  if (it.renderImg === undefined && COVER_MEM.render.has(it.key)) it.renderImg = COVER_MEM.render.get(it.key);
+  if (!it.model && COVER_MEM.model.has(it.key)) it.model = COVER_MEM.model.get(it.key);
+  if (!it.model && !it.still && COVER_MEM.still.has(it.key)) it.still = COVER_MEM.still.get(it.key);
+}
+const STILL_ANGLE = (it) => (it.kind === 'tool' ? -1.25 : -.95);
+async function saveStill(sk, m, it) {
+  try {
+    const img = GL3D.render(m, 384, STILL_ANGLE(it), [255, 255, 255]); if (!img) return;
+    const c = document.createElement('canvas'); c.width = c.height = 384; c.getContext('2d').drawImage(img, 0, 0);
+    const blob = await new Promise((r) => c.toBlob(r, 'image/png')); if (blob) await IDB.put(sk, blob);
+  } catch (_) { /* a picture we couldn't keep is drawn from the model next time anyway */ }
+}
 // fetch the item's real model and tell every view showing it to repaint
 async function loadModel(it) {
   if (!APP || !it.scene || it.holo || it.kind === 'corvette' || it.modelTried) return;
   if (!S.lib || !S.lib.game) return; // the game wasn't found
   it.modelTried = true;
-  const picks = await partsOf(it.key);
-  const m = await fetchMesh(modelUrl(it.scene, it.seed, picks, 1));
+  const picks = await partsOf(it.key), url = modelUrl(it.scene, it.seed, picks, 1), sk = 'still:' + url.replace(/&t=[^&]*/, '');
+  if (!it.model && !it.still) {
+    let st = null; try { const b = await IDB.get(sk); if (b instanceof Blob) st = await createImageBitmap(b); } catch (_) {}
+    if (st && !it.model) { it.still = st; COVER_MEM.still.set(it.key, st); coverPing(it.key); }
+  }
+  const m = await fetchMesh(url);
   if (!m) return;
-  it.model = m;
-  document.dispatchEvent(new CustomEvent('cover-model', { detail: { key: it.key } }));
+  it.model = m; COVER_MEM.model.set(it.key, m);
+  coverPing(it.key);
+  if (!it.still) { it.still = true; saveStill(sk, m, it); }
 }
 function paintModel(ctx, W, m, tint, angle) {
   paintProjector(ctx, W, tint);
   const t = tint.split(',').map(Number), img = GL3D.render(m, W, angle, t);
   if (img) ctx.drawImage(img, 0, 0, W, W);
   ctx.fillStyle = 'rgba(255,255,255,.025)'; for (let y = 0; y < W; y += Math.max(3, W / 120)) ctx.fillRect(0, y, W, 1); // scanlines
+}
+// the kept picture of a model, drawn like the model itself (it's white, tinted here to the class colour)
+function paintStill(ctx, W, img, tint) {
+  paintProjector(ctx, W, tint);
+  const c = document.createElement('canvas'); c.width = c.height = W; const x = c.getContext('2d');
+  x.drawImage(img, 0, 0, W, W); x.globalCompositeOperation = 'multiply'; x.fillStyle = `rgb(${tint})`; x.fillRect(0, 0, W, W);
+  x.globalCompositeOperation = 'destination-in'; x.drawImage(img, 0, 0, W, W);
+  ctx.drawImage(c, 0, 0);
+  ctx.fillStyle = 'rgba(255,255,255,.025)'; for (let y = 0; y < W; y += Math.max(3, W / 120)) ctx.fillRect(0, y, W, 1);
 }
 function paintProjector(ctx, W, tint) {
   ctx.save(); ctx.translate(W / 2, W * .8); ctx.scale(1, .3);
@@ -2685,13 +2718,15 @@ async function partsDialog(it, onSaved) {
   if (!res) return;
   if (res === 'reset') { try { await IDB.del('parts:' + it.key); } catch (_) {} }
   else { const all = {}; for (const { g, ids, cur } of visible(tree.groups)) all[g.group] = merge(all[g.group], ids, cur); try { await IDB.put('parts:' + it.key, all); } catch (_) {} }
-  it.modelTried = false; it.model = null; await loadModel(it);
+  it.modelTried = false; it.model = null; it.still = null; COVER_MEM.model.delete(it.key); COVER_MEM.still.delete(it.key); await loadModel(it);
   toast('Parts saved for ' + it.name); onSaved && onSaved();
 }
 function paintCover(canvas, it, angle) {
   const W = canvas.width, ctx = canvas.getContext('2d'), tint = (CLASS_TINT[it.cls] || [79, 193, 176]).join(',');
   paintNebula(ctx, W, it.key);
+  coverFromMemory(it);
   if (it.renderImg) { paintRender(ctx, W, it.renderImg); paintBadge(ctx, W, it.cls, null); return; }
+  if (!it.model && it.still && it.still !== true && !it.holo) { paintStill(ctx, W, it.still, tint); paintBadge(ctx, W, it.cls, null); return; }
   const wire = wireMesh(it);
   if (it.holo) paintHologram(ctx, W, it.holo, tint, angle != null ? angle : -.65);
   else if (it.model && GL3D.ok()) paintModel(ctx, W, it.model, tint, angle != null ? angle : it.kind === 'tool' ? -1.25 : -.95);
@@ -3191,7 +3226,8 @@ async function loadRender(it) {
   it.renderKey = p.key;
   const view = viewOf(p.key);
   const img = (view !== 'hero' && await renderImg(p.key, view)) || await renderImg(p.key);
-  if (img) document.dispatchEvent(new CustomEvent('cover-render', { detail: { key: it.key, img } }));
+  const had = COVER_MEM.render.get(it.key); COVER_MEM.render.set(it.key, img || null);
+  if (img || had) document.dispatchEvent(new CustomEvent('cover-render', { detail: { key: it.key, img: img || null } }));   // null: the build changed and has no render yet
 }
 async function renderCorvette(it, force, onState, views) {
   const p = await buildPayload(it); if (!p) throw new Error('No build found for ' + it.name);
@@ -4693,14 +4729,19 @@ function libFlow(host, list, refresh) {
   const fill = async (n) => {
     const it = items[n]; if (!it || it.filled || it.x.sum.error) return; it.filled = true;
     try { const p = it.x.parsed || (it.x.parsed = await ShipLib.load(it.x.f)); if (!p.error) { const full = libCoverItem(it.x.f, p, it.x.sum); for (const k of ['base', 'holo', 'seed', 'scene']) if (full[k] != null) it[k] = full[k]; } } catch (_) { return; }
-    if (flow.index === n) flow.refresh();
-    // a render made earlier (by Render corvettes, from any page) is on disk: show it, not the hologram
-    if (it.kind === 'corvette') { loadRender(it); loadHoloBoxes(it); }
+    if (flow.index === n) flow.refresh(); else coverPing(it.key);
+    // a render made earlier (by Render corvettes, from any page) is on disk: show it, not the hologram; ships get their model
+    if (it.kind === 'corvette') { loadRender(it); loadHoloBoxes(it); } else if (it.scene) loadModel(it);
   };
   const flow = CoverFlow(host, items, { size: big, index: start, label: 'Dock Yard',
     onChange: (n) => { S0.flowKey = items[n].x.id; for (let d = 0; d <= 2; d++) { fill(n + d); if (d) fill(n - d); } },
     onOpen: (n) => libDetail(items[n].x, refresh) });
   fill(start);
+  // then every other cover, a few at a time, so the whole row fills in without scrolling to each one
+  (async () => {
+    const order = items.map((_, i) => i).sort((a, b) => Math.abs(a - start) - Math.abs(b - start));
+    for (let k = 0; k < order.length; k += 3) { if (!host.isConnected) return; await Promise.all(order.slice(k, k + 3).map(fill)); }
+  })();
 }
 function libCard(x, refresh) {
   const m = ShipLib.index.meta[x.id] || {}, s = x.sum;

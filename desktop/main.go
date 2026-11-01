@@ -69,8 +69,21 @@ func main() {
 	}
 	token = randHex(24)
 
-	// A fixed port keeps the page's origin stable, so the cached item database survives restarts.
-	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", *port))
+	// A fixed port keeps the page's origin stable: the browser keeps settings (light or dark, cover view), saved part
+	// picks and cover pictures per origin, so a different port forgets them all. When the port is taken by an editor
+	// that is still running (it lingers a few seconds after its window closes), open a window on that one instead;
+	// otherwise wait a little for the port before giving up on it (owner, 2026-11-01: light and dark kept swapping).
+	pref := fmt.Sprintf("127.0.0.1:%d", *port)
+	ln, err := net.Listen("tcp", pref)
+	if err != nil && !*noWindow && *rootFlag == "" {
+		if handOver("http://" + pref + "/") {
+			return
+		}
+		for i := 0; i < 40 && err != nil; i++ {
+			time.Sleep(250 * time.Millisecond)
+			ln, err = net.Listen("tcp", pref)
+		}
+	}
 	if err != nil {
 		ln, err = net.Listen("tcp", "127.0.0.1:0")
 	}
@@ -89,6 +102,9 @@ func main() {
 	mux.HandleFunc("/guide", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		io.WriteString(w, guideHTML)
+	})
+	mux.HandleFunc("/hse-hello", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]string{"app": "harmonious-save-editor", "version": appVersion})
 	})
 	mux.HandleFunc("/api/ping", func(w http.ResponseWriter, r *http.Request) { lastPing.Store(nowMs()); byeAt.Store(0) })
 	mux.HandleFunc("/api/bye", func(w http.ResponseWriter, r *http.Request) { byeAt.Store(nowMs()) })
@@ -478,3 +494,19 @@ func randHex(n int) string {
 }
 
 func nowMs() int64 { return time.Now().UnixMilli() }
+
+// handOver opens a window on an editor of the same version that is already running at url, and reports whether it did.
+func handOver(url string) bool {
+	c := http.Client{Timeout: 2 * time.Second}
+	r, err := c.Get(url + "hse-hello")
+	if err != nil {
+		return false
+	}
+	defer r.Body.Close()
+	var hi struct{ App, Version string }
+	if json.NewDecoder(r.Body).Decode(&hi) != nil || hi.App != "harmonious-save-editor" || hi.Version != appVersion {
+		return false
+	}
+	log.Printf("an editor is already running at %s; opening a window on it", url)
+	return openWindow(url, filepath.Join(appDir, "window")) == nil
+}
