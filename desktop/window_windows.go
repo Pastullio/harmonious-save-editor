@@ -33,23 +33,23 @@ func windowPlacement() []string {
 // icon in the taskbar (owner, 2026-11-01). Giving the window its own AppUserModelID, with the editor's exe as the
 // relaunch icon, puts it in a taskbar button of its own with the editor's icon; WM_SETICON sets the title bar icon.
 // The window is found by its class and title, and checked again every few seconds in case it's opened again.
-var (
-	tagOnce   sync.Once
-	taggedWin = map[uintptr]bool{}
-)
+var tagOnce sync.Once
 
 const editorAUMID = "Pastullio.HarmoniousSaveEditor"
 
 func tagEditorWindows() {
 	tagOnce.Do(func() {
+		setProcessAUMID()
 		go func() {
 			runtime.LockOSThread()
 			ole32 := syscall.NewLazyDLL("ole32.dll")
 			ole32.NewProc("CoInitializeEx").Call(0, 2) // COINIT_APARTMENTTHREADED
 			for {
+				// Edge sets its own ID on the window again (when it updates the window's icon, for one), and pinning
+				// a window with Edge's ID pins Edge (owner, 2026-11-01), so the ID is checked and put back every time
 				for _, h := range editorWindows() {
-					if !taggedWin[h] {
-						taggedWin[h] = tagWindow(h)
+					if windowAUMID(h) != editorAUMID {
+						tagWindow(h)
 					}
 				}
 				time.Sleep(1500 * time.Millisecond)
@@ -100,6 +100,46 @@ var (
 	iidPropertyStore = guid{0x886D8EEB, 0x8CF2, 0x4446, [8]byte{0x8D, 0x02, 0xCD, 0xBA, 0x1D, 0xBD, 0xCF, 0x99}}
 	appUserModelFmt  = guid{0x9F4C2855, 0x9F79, 0x4B39, [8]byte{0xA8, 0xD0, 0xE1, 0xD4, 0x2D, 0xE1, 0xD5, 0xF3}}
 )
+
+// windowAUMID reads the window's AppUserModelID ("" when it has none or it can't be read)
+func windowAUMID(h uintptr) string {
+	var store unsafe.Pointer
+	if r, _, _ := syscall.NewLazyDLL("shell32.dll").NewProc("SHGetPropertyStoreForWindow").Call(h, uintptr(unsafe.Pointer(&iidPropertyStore)), uintptr(unsafe.Pointer(&store))); r != 0 || store == nil {
+		return ""
+	}
+	vtbl := **(**[8]uintptr)(store)
+	defer syscall.SyscallN(vtbl[2], uintptr(store))
+	k := propKey{appUserModelFmt, 5}
+	var v propVariant
+	if r, _, _ := syscall.SyscallN(vtbl[5], uintptr(store), uintptr(unsafe.Pointer(&k)), uintptr(unsafe.Pointer(&v))); r != 0 {
+		return ""
+	}
+	out := ""
+	if v.vt == 31 && v.p != 0 {
+		out = utf16At(v.p)
+	}
+	syscall.NewLazyDLL("ole32.dll").NewProc("PropVariantClear").Call(uintptr(unsafe.Pointer(&v)))
+	return out
+}
+
+func utf16At(p uintptr) string {
+	var b []uint16
+	for i := uintptr(0); i < 1024; i++ {
+		c := *(*uint16)(unsafe.Add(unsafe.Pointer(nil), p+2*i)) //nolint:govet // a string the shell allocated
+		if c == 0 {
+			break
+		}
+		b = append(b, c)
+	}
+	return syscall.UTF16ToString(b)
+}
+
+// setProcessAUMID gives the editor's own process the same ID, so a pinned exe and the window share a taskbar button
+func setProcessAUMID() {
+	if p, err := syscall.UTF16PtrFromString(editorAUMID); err == nil {
+		syscall.NewLazyDLL("shell32.dll").NewProc("SetCurrentProcessExplicitAppUserModelID").Call(uintptr(unsafe.Pointer(p)))
+	}
+}
 
 func tagWindow(h uintptr) bool {
 	exe, err := os.Executable()
