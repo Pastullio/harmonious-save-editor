@@ -47,15 +47,38 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.click('#rwAll');
   const all = await p.evaluate(() => ({ s: acctList('UnlockedSeasonRewards').length, t: acctList('UnlockedTwitchRewards').length, pl: acctList('UnlockedPlatformRewards').length }));
   console.log(JSON.stringify(all));
-  ok('unlock all rewards', all.s >= 293 && all.t >= 435 && all.pl === 3);
+  ok('unlock all rewards, leaving the platform rewards the game removes on PC alone', all.s >= 293 && all.t >= 435 && all.pl === 0);
+  ok('the page says how to get them: quit the game, save, start it', /Quit No Man's Sky/.test(await p.textContent('.rw-how')));
   await p.click('#rwSave'); await p.waitForSelector('#dlg[open]'); await p.click('#dlgActs .btn.primary');
   await p.waitForFunction(() => !S.acct.dirty, null, { timeout: 30000 });
   const back = C.readSave(new Uint8Array(fs.readFileSync(path.join(acctDir, 'accountdata.hg'))), new Uint8Array(fs.readFileSync(path.join(acctDir, 'mf_accountdata.hg'))), 'accountdata.hg');
   const u = [...back.json.values()].find((v) => v instanceof Map), M = JSON.parse(fs.readFileSync(path.join(__dirname, '../../vendor/libnom/mapping_mbincompiler.json'))).Mapping;
   const obf = (n) => (M.find((x) => x.Value === n) || {}).Key;
-  ok('saved to the account file and it reads back', u.get(obf('UnlockedSeasonRewards')).length === all.s && u.get(obf('UnlockedTwitchRewards')).length === all.t && u.get(obf('UnlockedPlatformRewards')).length === 3);
+  ok('saved to the account file and it reads back', u.get(obf('UnlockedSeasonRewards')).length === all.s && u.get(obf('UnlockedTwitchRewards')).length === all.t && u.get(obf('UnlockedPlatformRewards')).length === 0);
   ok('the file stays uncompressed with no terminator, like the game writes it', !back.compressed && back.noNull && back.meta.info.sizeDisk === fs.statSync(path.join(acctDir, 'accountdata.hg')).size + 1);
   ok('the save itself was not touched', await p.evaluate(() => !S.dirty));
+  // the platform tab explains itself and has no Unlock all
+  await p.click('.ed-tabs [data-t="platform"]'); await p.waitForSelector('.rw-plat-note');
+  ok('platform rewards explain why they usually stay locked', !(await p.$('#rwKind')) && /takes them out of the account file/.test(await p.textContent('.rw-plat-note')));
+  // the game was running and puts its own (older) account file back: the editor notices and says what to do
+  await p.waitForTimeout(2000);
+  for (const f of ['accountdata.hg', 'mf_accountdata.hg']) fs.copyFileSync(path.join(ACC, f), path.join(acctDir, f));
+  await p.waitForSelector('#dlg[open]', { timeout: 15000 }).catch(() => {});
+  const rb = await p.evaluate(() => ({ t: $('#dlgTitle').textContent, b: $('#dlgBody').textContent, stats: [...document.querySelectorAll('.rw-stats > div b')].map((n) => n.textContent) }));
+  console.log(JSON.stringify(rb).slice(0, 400));
+  ok('the game putting its copy back is noticed and explained', /changed the rewards back/.test(rb.t) && /17 fewer expedition rewards and 30 fewer Twitch drops/.test(rb.b) && /game was running/.test(rb.b));
+  await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(500);
+  ok('the page shows what the file has now', (await p.$$eval('.rw-stats > div b', (x) => x.map((n) => n.textContent))).join() === '276 of 293,405 of 435,0 of 3');
+  // only platform rewards dropped: a gentler explanation
+  await p.click('#rwRows input'); await p.click('#rwSave'); await p.waitForSelector('#dlg[open]'); await p.click('#dlgActs .btn.primary');
+  await p.waitForFunction(() => !S.acct || !S.acct.dirty, null, { timeout: 30000 });
+  await p.waitForTimeout(2000);
+  { const cur = C.readSave(new Uint8Array(fs.readFileSync(path.join(acctDir, 'accountdata.hg'))), new Uint8Array(fs.readFileSync(path.join(acctDir, 'mf_accountdata.hg'))), 'accountdata.hg');
+    const uu = [...cur.json.values()].find((v) => v instanceof Map); uu.get(obf('UnlockedPlatformRewards')).length = 0;
+    const out = C.writeSave(cur, {}); fs.writeFileSync(path.join(acctDir, 'accountdata.hg'), out.data); fs.writeFileSync(path.join(acctDir, 'mf_accountdata.hg'), out.meta); }
+  await p.waitForSelector('#dlg[open]', { timeout: 15000 }).catch(() => {});
+  ok('platform rewards taken out by the game are explained as such', /1 fewer platform reward than/.test(await p.textContent('#dlgBody')) && /Everything else you unlocked is still there/.test(await p.textContent('#dlgBody')));
+  await p.click('#dlgActs .btn.primary');
 
   // supercharged slots: steady until hovered
   await p.evaluate(() => go('exosuit')); await p.waitForTimeout(400);

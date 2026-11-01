@@ -483,6 +483,10 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .lib-card .fav { position: absolute; top: 8px; left: 8px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(4, 16, 22, .55); color: rgba(255, 255, 255, .55); font-size: 16px; cursor: pointer; line-height: 1; }
 .lib-card .fav.on { color: #fff; background: var(--accent); }
 .lib-where { font-size: 11.5px; }
+.rw-how { margin-top: 14px; font-size: 13.5px; color: var(--dim); max-width: 760px; }
+.rw-how b:first-child { color: var(--ink); font-weight: 500; }
+.rw-how ol { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 3px; }
+.rw-plat-note { margin: 0 0 12px; font-size: 13.5px; color: var(--dim); max-width: 760px; }
 .ld-vers { margin-top: 14px; }
 .ld-vlist { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow: auto; }
 .ld-ver { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
@@ -6173,6 +6177,30 @@ function lockRewards(key, ids) {
   return n;
 }
 const rewardName = (id) => { const it = dbItem(id); return it ? it.name : humanize(id.replace(/^\^/, '').replace(/_/g, ' ').toLowerCase()); };
+// how many of each kind the account file has unlocked
+function rewardCounts(save) {
+  const u = save && ag(save.json, 'UserSettingsData'), n = (k) => { const v = u && ag(u, k); return Array.isArray(v) ? v.length : 0; };
+  return { seasons: n('UnlockedSeasonRewards'), twitch: n('UnlockedTwitchRewards'), platform: n('UnlockedPlatformRewards') };
+}
+// The game writes the account file too. After we saved rewards, a newer account file with fewer unlocked means the game
+// put its own copy back (it was running) or dropped rewards it checks itself (platform rewards on PC): say which.
+async function acctCheck(files) {
+  const f = files.find((x) => x.name.toLowerCase() === ACCT.data.toLowerCase()); if (!f) return;
+  const last = DISK.acctM; DISK.acctM = f.mtime;
+  if (last == null || f.mtime === last) return;
+  if (S.acct && !S.acct.dirty) S.acct = null;   // read it again next time it's needed
+  const W = DISK.acctWrote; if (!W || f.mtime < W.at + 1500) { if (S.section === 'rewards' && !$('#dlg[open]')) render(); return; }
+  let now; try { const [d, m] = await Promise.all([acctRead(ACCT.data), acctRead(ACCT.meta)]); now = rewardCounts(C.readSave(d, m, ACCT.data)); } catch (_) { return; }
+  const WORDS = { seasons: ['expedition reward', 'expedition rewards'], twitch: ['Twitch drop', 'Twitch drops'], platform: ['platform reward', 'platform rewards'] };
+  const lost = REWARD_KINDS.map(([k]) => [k, W.counts[k] - now[k]]).filter(([, n]) => n > 0);
+  DISK.acctWrote = null;
+  if (S.section === 'rewards' && !$('#dlg[open]')) render();
+  if (!lost.length) return;
+  const onlyPlat = lost.length === 1 && lost[0][0] === 'platform';
+  dialog('The game changed the rewards back', `<p>No Man's Sky saved its own account file, and it now has ${lost.map(([k, n]) => plural(n, ...WORDS[k]).replace(/^([\d,]+) /, '$1 fewer ')).join(' and ')} than the editor saved.</p>
+    ${onlyPlat ? '<p>Platform rewards (a Switch pre-order and The Game Awards) are checked by the game against the store you play on, and on PC it removes them. Everything else you unlocked is still there.</p>'
+      : '<p>This happens when the game was running while the rewards were saved: it keeps the rewards it read when it started and writes them back. Quit No Man\'s Sky to the desktop, save the rewards again, then start the game.</p>'}`, [['OK', true, 'primary']]);
+}
 function rewardSets() {
   const db = S.db || {};
   return { seasons: db.rewards || [], twitch: (db.twitch || []).map((t) => ({ id: t.id, product: t.product, group: t.group })), platform: (db.platform || []).map((t) => ({ id: t.id, product: t.product })) };
@@ -6183,14 +6211,15 @@ async function saveAccount() {
   catch (e) { toast('Could not prepare the account file: ' + e.message, true); return; }
   if (S.src.kind === 'app') {
     let running = false; try { running = (await (await api('/api/game-running')).json()).running; } catch (_) {}
-    const ok = await dialog(running ? 'The game is still running' : 'Save the rewards?', `<p>This replaces <span class="mono">accountdata.hg</span> and <span class="mono">mf_accountdata.hg</span>, the account file every save slot shares. The current pair is copied to the backups folder first.</p>${running ? '<p class="err">No Man\'s Sky is running. Quit to the desktop first, or the game will overwrite this.</p>' : ''}`, [['Cancel', false, 'ghost'], [running ? 'Save anyway' : 'Save', true, running ? 'danger' : 'primary']]);
+    const ok = await dialog(running ? 'The game is still running' : 'Save the rewards?', `<p>This replaces <span class="mono">accountdata.hg</span> and <span class="mono">mf_accountdata.hg</span>, the account file every save slot shares. The current pair is copied to the backups folder first.</p>${running ? '<p class="err">No Man\'s Sky is running. It read the rewards when it started and puts its own copy back the next time it saves, so these would be lost and won\'t show up to claim. Quit to the desktop, then save.</p>' : '<p>Then start the game and claim them on the Space Anomaly.</p>'}`, running ? [['Cancel', false, 'primary'], ['Save anyway', true, 'danger']] : [['Cancel', false, 'ghost'], ['Save', true, 'primary']]);
     if (!ok) return;
     try {
       const fd = new FormData(); fd.append('dir', S.src.dir); fd.append('dataName', ACCT.data); fd.append('metaName', ACCT.meta);
       fd.append('data', new Blob([out.data]), ACCT.data); fd.append('meta', new Blob([out.meta]), ACCT.meta);
       const res = await (await api('/api/write', { method: 'POST', body: fd })).json();
       A.save.meta = C.readSave(out.data, out.meta, ACCT.data).meta; A.dirty = false;
-      toast('Rewards saved. The previous account file is in backups\\' + res.backupName);
+      DISK.acctWrote = { at: Date.now(), counts: rewardCounts(A.save), dir: S.src.dir };
+      toast('Rewards saved. Start the game and claim them on the Space Anomaly. The previous account file is in backups\\' + res.backupName);
     } catch (e) { toast('Save failed, nothing was changed: ' + e.message, true); return; }
   } else {
     try { await writeFile(S.src.dir, ACCT.meta, out.meta); await writeFile(S.src.dir, ACCT.data, out.data); A.save.meta = C.readSave(out.data, out.meta, ACCT.data).meta; A.dirty = false; toast('Rewards saved'); }
@@ -6211,12 +6240,14 @@ function rewardsBody(host, A) {
   const known = (key) => new Set((acctList(key) || []).map(str));
   const kSeason = known('UnlockedSeasonRewards'), kTwitch = known('UnlockedTwitchRewards'), kPlat = known('UnlockedPlatformRewards');
   const totals = [[R.seasons.length, R.seasons.filter((r) => kSeason.has(r.id)).length], [R.twitch.length, R.twitch.filter((r) => kTwitch.has(r.id)).length], [R.platform.length, R.platform.filter((r) => kPlat.has(r.id)).length]];
-  const missing = totals.reduce((s, [t, h]) => s + t - h, 0);
+  // platform rewards (a Switch pre-order, The Game Awards) are checked by the game against the store you play on: on PC it
+  // drops them from the account file again, so Unlock all leaves them alone (owner's tester, 2026-11-01)
+  const missing = totals.slice(0, 2).reduce((s, [t, h]) => s + t - h, 0);
   host.innerHTML = `<div class="panel rw-hero"><div class="rw-stats">${REWARD_KINDS.map(([, l], k) => `<div><b>${totals[k][1].toLocaleString()}<span> of ${totals[k][0].toLocaleString()}</span></b><span class="dim">${l} unlocked</span><span class="bar"><i style="width:${totals[k][0] ? Math.round(100 * totals[k][1] / totals[k][0]) : 0}%"></i></span></div>`).join('')}</div>
       <div class="rw-acts"><button class="btn primary rw-all" type="button" id="rwAll"${missing ? '' : ' disabled'}>${missing ? `Unlock all rewards (${missing.toLocaleString()})` : 'Every reward is unlocked'}</button>
       <button class="btn${A.dirty ? ' primary rw-save' : ''}" type="button" id="rwSave"${A.dirty ? '' : ' disabled'}>${A.dirty ? 'Save rewards to the game' : 'No reward changes'}</button></div>
-      <p class="dim ed-note">Rewards are saved to the account file, which every save slot shares, with their own save button. Then load any save and claim them from the Quicksilver Synthesis Companion on the Space Anomaly.</p></div>`;
-  $('#rwAll', host).onclick = () => { const n = unlockRewards('UnlockedSeasonRewards', R.seasons.map((r) => r.id)) + unlockRewards('UnlockedTwitchRewards', R.twitch.map((r) => r.id)) + unlockRewards('UnlockedPlatformRewards', R.platform.map((r) => r.id)); toast(plural(n, 'reward') + ' unlocked. Press Save rewards to the game to keep them.'); render(); };
+      <div class="rw-how" data-keep><b>How to get them in the game</b><ol><li>Quit No Man's Sky to the desktop. The game only reads rewards when it starts, and puts its own copy back whenever it saves.</li><li>Press <b>Save rewards to the game</b>.</li><li>Start the game, load any save and claim them from the Quicksilver Synthesis Companion on the Space Anomaly.</li></ol></div></div>`;
+  $('#rwAll', host).onclick = () => { const n = unlockRewards('UnlockedSeasonRewards', R.seasons.map((r) => r.id)) + unlockRewards('UnlockedTwitchRewards', R.twitch.map((r) => r.id)); toast(plural(n, 'reward') + ' unlocked. Close No Man\'s Sky, then press Save rewards to the game.'); render(); };
   $('#rwSave', host).onclick = saveAccount;
   tabs(host, REWARD_KINDS.map(([id, l], k) => [id, l, totals[k][0]]), W.tab, (t) => { W.tab = t; render(); });
   const row = (id, on, nm, sub, iconId = id) => { const it = dbItem(iconId); return `<label class="know-row rw-row"><input type="checkbox" data-id="${esc(id)}"${on ? ' checked' : ''}><span class="ic">${it && it.icon ? `<img data-icon="${esc(it.icon)}" alt="">` : ''}</span><span class="nm">${esc(nm)}</span><span class="mono dim">${esc(id.replace(/^\^/, ''))}</span><span class="dim sub">${esc(sub || '')}</span></label>`; };
@@ -6240,7 +6271,9 @@ function rewardsBody(host, A) {
   }
   const key = W.tab === 'twitch' ? 'UnlockedTwitchRewards' : 'UnlockedPlatformRewards', list = W.tab === 'twitch' ? R.twitch : R.platform, have = W.tab === 'twitch' ? kTwitch : kPlat;
   const panel = document.createElement('div'); panel.className = 'panel know'; host.appendChild(panel);
-  panel.innerHTML = `<div class="know-head"><input class="input" type="search" id="rwQ" placeholder="Search" value="${esc(W.q)}"><span class="dim" id="rwCount"></span><span class="sw-gap"></span><button class="btn primary" type="button" id="rwKind"${list.every((r) => have.has(r.id)) ? ' disabled' : ''}>Unlock all ${W.tab === 'twitch' ? 'Twitch drops' : 'platform rewards'}</button></div><div class="know-rows" id="rwRows"></div>`;
+  const plat = W.tab === 'platform';
+  if (plat) host.insertBefore(Object.assign(document.createElement('p'), { className: 'rw-plat-note', textContent: 'These come from a Nintendo Switch pre-order and The Game Awards. The game checks them against the store you play on, and on PC it takes them out of the account file again, so they usually can\'t be unlocked here.' }), panel);
+  panel.innerHTML = `<div class="know-head"><input class="input" type="search" id="rwQ" placeholder="Search" value="${esc(W.q)}"><span class="dim" id="rwCount"></span><span class="sw-gap"></span>${plat ? '' : `<button class="btn primary" type="button" id="rwKind"${list.every((r) => have.has(r.id)) ? ' disabled' : ''}>Unlock all Twitch drops</button>`}</div><div class="know-rows" id="rwRows"></div>`;
   const draw = () => {
     const q = W.q.toLowerCase(), hits = list.filter((r) => !q || (rewardName(r.product) + ' ' + r.id + ' ' + r.product).toLowerCase().includes(q));
     $('#rwRows', panel).innerHTML = hits.map((r) => { const it = dbItem(r.product); return row(r.id, have.has(r.id), rewardName(r.product), (it && (it.sub || it.cat)) || r.product.replace(/^\^/, ''), r.product); }).join('') || '<p class="dim" style="padding:10px">Nothing matches.</p>';
@@ -6249,7 +6282,7 @@ function rewardsBody(host, A) {
   };
   draw();
   $('#rwQ', panel).oninput = (e) => { W.q = e.target.value; draw(); };
-  $('#rwKind', panel).onclick = () => { toast(plural(unlockRewards(key, list.map((r) => r.id)), 'reward') + ' unlocked'); render(); };
+  if (!plat) $('#rwKind', panel).onclick = () => { toast(plural(unlockRewards(key, list.map((r) => r.id)), 'reward') + ' unlocked'); render(); };
 }
 
 // ---------------------------------------------------------------- cargo ops: where everything is, gather, consolidate, drag and drop
@@ -6898,6 +6931,7 @@ async function diskCheck() {
   DISK.busy = true;
   try {
     let files; try { files = await (await api('/api/list?dir=' + encodeURIComponent(S.appAcct.path))).json(); } catch (_) { return; }
+    await acctCheck(files).catch(() => {});
     const saves = files.filter((f) => SAVE_RE.test(f.name));
     const sig = files.map((f) => f.name + ':' + f.mtime + ':' + f.size).sort().join('|');
     if (!S.save) {   // the save list: show what's there now

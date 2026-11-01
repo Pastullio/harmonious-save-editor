@@ -497,9 +497,16 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   <ul class="feat">
     <li><b>Expeditions</b>, newest first, with how many of each one's rewards you have. <span class="ui">Unlock this expedition's rewards</span>, or tick single rewards.</li>
     <li><b>Twitch drops</b> and <b>platform rewards</b> in their own tabs.</li>
-    <li><span class="ui">Unlock all rewards</span> does everything at once.</li>
+    <li><span class="ui">Unlock all rewards</span> unlocks every expedition reward and Twitch drop at once.</li>
+    <li><b>Platform rewards</b> (a Nintendo Switch pre-order and The Game Awards) are checked by the game against the store you play on. On PC the game takes them out again, so <span class="ui">Unlock all rewards</span> leaves them alone.</li>
   </ul>
-  <div class="note"><b>Rewards have their own save button.</b>They live in a separate account file shared by all your saves. After saving, collect them in the game from the Quicksilver Synthesis Companion on the Space Anomaly.</div>
+  <h2>Getting them in the game</h2>
+  <ol class="steps">
+    <li><b>Quit No Man's Sky to the desktop.</b> The game only reads rewards when it starts, and writes its own copy back whenever it saves. Saving rewards while it runs means they're undone.</li>
+    <li>Press <span class="ui">Save rewards to the game</span>. Rewards live in an account file shared by all your saves, so they have their own save button.</li>
+    <li>Start the game, load any save, and claim them from the Quicksilver Synthesis Companion on the Space Anomaly.</li>
+  </ol>
+  <div class="note"><b>If the game changes them back</b>The editor watches the account file. If the game writes it again with fewer rewards than you saved, it tells you how many and why.</div>
 </section>
 
 <section class="page" id="standing" data-group="progress" data-title="Standing" data-c="#9a8cff">

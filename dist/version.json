@@ -1,8 +1,8 @@
 {
-  "version": "2026.10.30.2120",
-  "date": "2026-10-30",
-  "size": 12641792,
-  "sha256": "4068d2e7dbd233c53616dc03b47716e4f26d3d0d7b5d4c98dcfcda8ad63011c9",
-  "notes": "The editor's window now opens in the middle of your screen. The freighter's details sit beside its picture. The tip under inventory grids is readable again.",
+  "version": "2026.11.01.1358",
+  "date": "2026-11-01",
+  "size": 12646400,
+  "sha256": "5857e236afea8a278131adc67679c7b894fc89bd6c197d983aacb4ebd554a264",
+  "notes": "Rewards: the page now explains how to get rewards into the game (quit the game first, save, then start it), Unlock all leaves out the platform rewards the game removes on PC, and the editor tells you if the game puts its own rewards back.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

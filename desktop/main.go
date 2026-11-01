@@ -298,7 +298,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 	}
 	out := []fileInfo{}
 	for _, e := range entries {
-		if e.IsDir() || !anySave.MatchString(e.Name()) {
+		if e.IsDir() || !(anySave.MatchString(e.Name()) || acctFile.MatchString(e.Name())) {
 			continue
 		}
 		if info, err := e.Info(); err == nil {
