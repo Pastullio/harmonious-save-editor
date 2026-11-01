@@ -3,7 +3,7 @@ package main
 // Dock Yard (the ship library): one place for every ship the owner keeps.
 //
 //   Documents\Harmonious Save Editor\Dock Yard\Ship storage   ships imported or pulled out of a save
-//   Documents\Harmonious Save Editor\Dock Yard\Garage         every ship seen in any opened save, captured automatically
+//   Documents\Harmonious Save Editor\Dock Yard\Hangar         every ship seen in any opened save, captured automatically
 //   Documents\Harmonious Save Editor\Dock Yard\Deleted        where deleted files go (nothing is erased)
 //   Documents\Harmonious Save Editor\Dock Yard\library.json   tags, favourites, links and notes, plus cached summaries
 //
@@ -60,6 +60,23 @@ func migrateShips(root string, renameRoot bool) {
 			log.Printf("dock yard: couldn't rename %s: %v", old, err)
 		}
 	}
+	// the automatic copies were called the Garage until 2026-11-01 (the owner swapped the names: the Dock Yard keeps a
+	// Hangar, and the cover page in the sidebar is the Garage)
+	if old, nw := filepath.Join(root, "Garage"), filepath.Join(root, hangarDir); fileExists(old) && !fileExists(nw) {
+		if err := os.Rename(old, nw); err != nil {
+			log.Printf("dock yard: couldn't rename %s: %v", old, err)
+		}
+	}
+}
+
+const hangarDir = "Hangar"
+
+// hangarFolder is the Hangar, or the old Garage folder when it couldn't be renamed (so its ships still show)
+func hangarFolder(root string) string {
+	if nw, old := filepath.Join(root, hangarDir), filepath.Join(root, "Garage"); !fileExists(nw) && fileExists(old) {
+		return old
+	}
+	return filepath.Join(root, hangarDir)
 }
 
 func shipFolders() []string {
@@ -117,7 +134,7 @@ func shipPath(src, root, rel string, forWrite bool) (string, error) {
 	case "library":
 		base = filepath.Join(shipsRoot(), storageDir)
 	case "garage":
-		base = filepath.Join(shipsRoot(), "Garage")
+		base = hangarFolder(shipsRoot())
 	case "linked":
 		if forWrite {
 			return "", errors.New("linked folders are read only")
@@ -152,10 +169,10 @@ func shipPath(src, root, rel string, forWrite bool) (string, error) {
 func handleShips(w http.ResponseWriter, r *http.Request) {
 	root := shipsRoot()
 	_ = os.MkdirAll(filepath.Join(root, storageDir), 0o755)
-	_ = os.MkdirAll(filepath.Join(root, "Garage"), 0o755)
+	_ = os.MkdirAll(hangarFolder(root), 0o755)
 	files := []shipFile{}
 	scanShips(filepath.Join(root, storageDir), "library", "", &files)
-	scanShips(filepath.Join(root, "Garage"), "garage", "", &files)
+	scanShips(hangarFolder(root), "garage", "", &files)
 	folders := []shipFolder{}
 	for _, f := range shipFolders() {
 		folders = append(folders, shipFolder{f, fileExists(f)})

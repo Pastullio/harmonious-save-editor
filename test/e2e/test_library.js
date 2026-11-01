@@ -22,14 +22,14 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   ok('the Dock Yard is announced: New in the menu and a spotlight on the Overview', !!(await p.$('nav [data-s="library"] .new-pill')) && !!(await p.$('.dy-spot')));
   p.on('console', (m) => { if (m.type() === 'warning' || m.type() === 'error') console.log('console:', m.text()); });
   const lib = path.join(home, 'Documents', 'Harmonious Save Editor', 'Dock Yard');
-  for (let t = 0; t < 60 && !(fs.existsSync(path.join(lib, 'Garage')) && fs.readdirSync(path.join(lib, 'Garage')).length >= 6); t++) await p.waitForTimeout(500);
-  const garage = fs.readdirSync(path.join(lib, 'Garage'));
+  for (let t = 0; t < 60 && !(fs.existsSync(path.join(lib, 'Hangar')) && fs.readdirSync(path.join(lib, 'Hangar')).length >= 6); t++) await p.waitForTimeout(500);
+  const garage = fs.readdirSync(path.join(lib, 'Hangar'));
   console.log(garage);
   ok('every ship in the save went to the Garage', garage.length === 6 && garage.some((f) => /^The Cutting Remark /.test(f)));
-  const cr = JSON.parse(fs.readFileSync(path.join(lib, 'Garage', garage.find((f) => /^The Cutting Remark /.test(f)))));
+  const cr = JSON.parse(fs.readFileSync(path.join(lib, 'Hangar', garage.find((f) => /^The Cutting Remark /.test(f)))));
   ok('a Garage corvette carries its build', cr.CorvetteBase && cr.CorvetteBase.Objects.length === 2091 && cr.Ship.Name === 'The Cutting Remark');
   // opening the same save again adds nothing new
-  await p.evaluate(() => garageCapture()); ok('the Garage keeps one copy per version', fs.readdirSync(path.join(lib, 'Garage')).length === 6);
+  await p.evaluate(() => garageCapture()); ok('the Garage keeps one copy per version', fs.readdirSync(path.join(lib, 'Hangar')).length === 6);
   // playing changes charge, fuel, cargo and where things are parked: none of that is a new version
   const played = await p.evaluate(async () => {
     const s = g(ps(), 'ShipOwnership')[5], tech = g(s, 'Inventory_TechOnly', 'Slots')[0], amt = kOf(tech, 'Amount'), old = tech.get(amt);
@@ -42,13 +42,13 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   });
   ok('charge, cargo and parking spot are not a new version', played.added === 0);
   // what the Garage looked like before: copies that only differ in fuel and cargo, and a real older version (renamed)
-  const crFile = garage.find((f) => /^The Cutting Remark /.test(f)), crDoc = JSON.parse(fs.readFileSync(path.join(lib, 'Garage', crFile)));
+  const crFile = garage.find((f) => /^The Cutting Remark /.test(f)), crDoc = JSON.parse(fs.readFileSync(path.join(lib, 'Hangar', crFile)));
   const copy = JSON.parse(JSON.stringify(crDoc)); copy.Ship.Inventory_TechOnly.Slots[0].Amount += 5; copy.Ship.Position = [9, 9, 9];
-  fs.writeFileSync(path.join(lib, 'Garage', 'The Cutting Remark 0123456789.ship.json'), JSON.stringify(copy));
+  fs.writeFileSync(path.join(lib, 'Hangar', 'The Cutting Remark 0123456789.ship.json'), JSON.stringify(copy));
   const older = JSON.parse(JSON.stringify(crDoc)); older.Ship.Name = 'Cutting Remark (old name)';
-  fs.writeFileSync(path.join(lib, 'Garage', 'Cutting Remark (old name) abcdefabcd.ship.json'), JSON.stringify(older));
-  const past = new Date(Date.now() - 86400000); fs.utimesSync(path.join(lib, 'Garage', 'Cutting Remark (old name) abcdefabcd.ship.json'), past, past);
-  ok('a save that matches an older-style copy adds nothing', (await p.evaluate(() => garageCapture())) === 0 && fs.readdirSync(path.join(lib, 'Garage')).length === 8);
+  fs.writeFileSync(path.join(lib, 'Hangar', 'Cutting Remark (old name) abcdefabcd.ship.json'), JSON.stringify(older));
+  const past = new Date(Date.now() - 86400000); fs.utimesSync(path.join(lib, 'Hangar', 'Cutting Remark (old name) abcdefabcd.ship.json'), past, past);
+  ok('a save that matches an older-style copy adds nothing', (await p.evaluate(() => garageCapture())) === 0 && fs.readdirSync(path.join(lib, 'Hangar')).length === 8);
   // library + linked folder
   await p.evaluate(() => saveShipToLibrary(5));
   ok('save to the Dock Yard', fs.existsSync(path.join(lib, 'Ship storage', 'The Cutting Remark.ship.json')));
@@ -149,7 +149,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.click('.dy-tabs [data-v="garage"]'); await p.waitForTimeout(800);
   const gcaps = await p.$$eval('.lib-card .tc-cap', (c) => c.map((x) => x.textContent.replace(/\s+/g, ' ').trim())); console.log(gcaps);
   // (the copy of The Cutting Remark put in slot 7 earlier is a ship of its own; so is Yautja Claw after the .so swapped its ship entry)
-  const gFiles = fs.readdirSync(path.join(lib, 'Garage')).length; console.log('garage files', gFiles);
+  const gFiles = fs.readdirSync(path.join(lib, 'Hangar')).length; console.log('garage files', gFiles);
   ok('one Garage card per ship', gcaps.length === gFiles - 2 && gcaps.filter((c) => /^The Cutting Remark.*2 versions/.test(c)).length === 1 && !gcaps.some((c) => /old name/.test(c)));
   for (const c of await p.$$('.lib-card')) if (/Cutting Remark.*versions/s.test(await c.textContent())) { await c.click(); break; }
   await p.waitForSelector('#dlg[open] .ld-vers');
@@ -158,15 +158,15 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.screenshot({ path: SP + '/shots/lib-versions.png' });
   await p.click('.ld-ver[data-ver="1"]'); await p.waitForSelector('#dlg[open] .ld-ver.on[data-ver="1"]');
   ok('picking an older version shows it', /old name/.test(await p.textContent('#dlgTitle')) && (await p.textContent('.lib-detail [data-ld="delete"]')) === 'Delete this version');
-  const crBefore = fs.readdirSync(path.join(lib, 'Garage')).filter((f) => /^The Cutting Remark /.test(f)).length;
+  const crBefore = fs.readdirSync(path.join(lib, 'Hangar')).filter((f) => /^The Cutting Remark /.test(f)).length;
   await p.click('.lib-detail [data-ld="tidy"]'); await p.waitForTimeout(1200);
-  ok('tidying moves only the copies to Deleted', fs.readdirSync(path.join(lib, 'Garage')).filter((f) => /^The Cutting Remark /.test(f)).length === crBefore - 1 && fs.readdirSync(path.join(lib, 'Garage')).length === gFiles - 1 && fs.readdirSync(path.join(lib, 'Deleted')).flatMap((d) => fs.readdirSync(path.join(lib, 'Deleted', d))).length === 1);
+  ok('tidying moves only the copies to Deleted', fs.readdirSync(path.join(lib, 'Hangar')).filter((f) => /^The Cutting Remark /.test(f)).length === crBefore - 1 && fs.readdirSync(path.join(lib, 'Hangar')).length === gFiles - 1 && fs.readdirSync(path.join(lib, 'Deleted')).flatMap((d) => fs.readdirSync(path.join(lib, 'Deleted', d))).length === 1);
   // delete a Garage copy: it moves to Deleted
-  const garageBefore = fs.readdirSync(path.join(lib, 'Garage')).length;
+  const garageBefore = fs.readdirSync(path.join(lib, 'Hangar')).length;
   await p.waitForSelector('.lib-card');
   await p.click('.lib-card'); await p.waitForSelector('#dlg[open] .lib-detail');
   await p.click('.lib-detail [data-ld="delete"]'); await p.waitForSelector('#dlg[open]'); await p.click('#dlgActs .btn.danger'); await p.waitForTimeout(800);
-  ok('delete moves the file to Deleted', fs.readdirSync(path.join(lib, 'Garage')).length === garageBefore - 1 && fs.readdirSync(path.join(lib, 'Deleted')).flatMap((d) => fs.readdirSync(path.join(lib, 'Deleted', d))).length === 2);
+  ok('delete moves the file to Deleted', fs.readdirSync(path.join(lib, 'Hangar')).length === garageBefore - 1 && fs.readdirSync(path.join(lib, 'Deleted')).flatMap((d) => fs.readdirSync(path.join(lib, 'Deleted', d))).length === 2);
   // save, reopen, check
   await p.click('#saveBtn'); await p.waitForFunction(() => !S.dirty, null, { timeout: 30000 }).catch(() => {});
   if (await p.$('#dlg[open]')) { await p.click('#dlgActs .btn.primary'); await p.waitForFunction(() => !S.dirty, null, { timeout: 30000 }); }

@@ -203,7 +203,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
     <li><b>Checked before writing.</b> The new save is decoded again and compared with what's in the editor. If anything differs, nothing is written.</li>
     <li><b>Nothing changes by accident.</b> A save you open and save without edits comes out identical: key order, number spelling and special bytes are all kept.</li>
     <li><b>New saves from the game.</b> If the game writes a newer save while the editor has one open, a card offers to open the new one. It asks first if you have unsaved edits.</li>
-    <li><b>Your ships are kept too.</b> The Dock Yard's Garage keeps a copy of every ship in every save you open, so even a deleted ship can come back.</li>
+    <li><b>Your ships are kept too.</b> The Dock Yard's Hangar keeps a copy of every ship in every save you open, so even a deleted ship can come back.</li>
     <li><b>Private.</b> The app only listens on your own PC (127.0.0.1) with a new random key each run, so web pages can't reach it. It closes a few seconds after its window does.</li>
   </ul>
   <h2>Getting an old save back</h2>
@@ -284,12 +284,12 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   <p>Nothing changes in the game until you press <span class="ui">Save to game</span>; your old location is kept as your previous one.</p>
 </section>
 
-<section class="page" id="hangar" data-group="fleet" data-title="Hangar" data-c="#4ea8ff">
-  <h1>Hangar</h1>
+<section class="page" id="hangar" data-group="fleet" data-title="Garage" data-c="#4ea8ff">
+  <h1>Garage</h1>
   <p class="lede">Your ships, corvettes and multi-tools as cover art, with real 3D models from your game.</p>
-  <figure><img src="shots/hangar-corvettes.webp" alt="Hangar in Cover Flow, filtered to corvettes, showing a rendered corvette" loading="lazy"></figure>
+  <figure><img src="shots/hangar-corvettes.webp" alt="Garage in Cover Flow, filtered to corvettes, showing a rendered corvette" loading="lazy"></figure>
   <ul class="feat">
-    <li><b>Cover Flow</b>: scroll, drag or use the arrow keys. Click the centre cover to open its loadout. Switch to a <b>Grid</b> in the top-right corner.</li>
+    <li><b>Cover Flow</b>: scroll, drag or use the arrow keys. Click the centre cover to open its loadout. Switch to a <b>Grid</b> on the right, above the covers.</li>
     <li><b>Filters</b>: All, Corvettes, Starships and Multi-tools.</li>
     <li><b>Models</b>: ships and multi-tools are drawn from your game's own model files. Point at a cover and it spins; drag to turn it.</li>
     <li><b>Pictures</b>: drop an image on a cover, or use <span class="ui">Choose a screenshot</span> or <span class="ui">Use an image file</span>. <span class="ui">Change picture</span> goes back to the model.</li>
@@ -305,31 +305,31 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   <h2>Choose parts</h2>
   <figure><img src="shots/parts.webp" alt="Choose parts dialog for a multi-tool, each option shown as a picture" loading="lazy"><figcaption>The game picks a ship's or multi-tool's parts from its seed. Choose parts lets you match the model to what you see in the game.</figcaption></figure>
   <h2>Grid view</h2>
-  <figure><img src="shots/hangar-grid.webp" alt="Hangar in grid view" loading="lazy"></figure>
+  <figure><img src="shots/hangar-grid.webp" alt="Garage in grid view" loading="lazy"></figure>
 </section>
 
 <section class="page" id="dockyard" data-group="fleet" data-title="Dock Yard" data-c="#6598ff">
   <h1>Dock Yard</h1>
   <p class="lede">Every ship you own, build or download, in one place. Keep every version and move ships and corvettes into any save.</p>
-  <figure><img src="shots/dockyard-flow.webp" alt="Dock Yard with the Garage, Ship storage and Favourites tabs" loading="lazy"></figure>
+  <figure><img src="shots/dockyard-flow.webp" alt="Dock Yard with the Hangar, Ship storage and Favourites tabs" loading="lazy"></figure>
   <p>The Dock Yard lives in <code>Documents\Harmonious Save Editor\Dock Yard</code>, so it's shared by all your saves.</p>
   <h2>The three tabs</h2>
   <table>
     <tr><th>Tab</th><th>What's in it</th></tr>
-    <tr><td><b>Garage</b></td><td>Fills itself. Every ship in every save you open is copied here, and a ship you replace is copied first, so nothing is lost.</td></tr>
+    <tr><td><b>Hangar</b></td><td>Fills itself. Every ship in every save you open is copied here, and a ship you replace is copied first, so nothing is lost.</td></tr>
     <tr><td><b>Ship storage</b></td><td>Ships you keep on purpose: files you import and ships you save from your game.</td></tr>
     <tr><td><b>Favourites</b></td><td>Ships you star, from anywhere in the Dock Yard.</td></tr>
   </table>
   <p>Under the tabs: <b>All ships</b>, <b>Linked folders</b> (folders where you already keep ship files; the app only reads them) and <span class="ui">Manage folders</span>. To link a folder, paste its path and press <span class="ui">Add path</span>, or use <span class="ui">Browse…</span> to pick it. <span class="ui">Add path</span> with an empty box opens the picker too.</p>
   <h2>Doing things with a ship</h2>
-  <p>Pick a ship and the bar above the covers says whether it's in the save you have open, with what you can do:</p>
+  <p>A ship that's in the save you have open says <b>Loaded, slot 2</b> (or whichever slot) on its cover. Pick a ship and the bar above the covers shows what you can do:</p>
   <ul class="feat">
     <li><span class="ui">Edit ship</span> opens it on the Starships page, ready to change. Corvettes also have <span class="ui">Edit build</span>, which opens their parts in Shipwright.</li>
-    <li><span class="ui">Put in this save…</span> for a ship that isn't in the save, then <span class="ui">Edit ship</span> once it's in.</li>
+    <li><span class="ui">Load ship into game…</span> for a ship that isn't in the save, then <span class="ui">Edit ship</span> once it's in.</li>
     <li><span class="ui">Details</span> opens the ship's card (versions, tags, notes, export), and <span class="ui">Favourite</span> stars it.</li>
   </ul>
-  <p>In the grid, each card says <b>In this save</b> with an <span class="ui">Edit ship</span> button, or <b>Not in this save</b> with <span class="ui">Put in this save…</span>. From Starships, <span class="ui">Versions in the Dock Yard</span> comes back to the ship's card here.</p>
-  <h2>Garage versions</h2>
+  <p>In the grid, a loaded ship's card says <b>Loaded, slot 2</b> with an <span class="ui">Edit ship</span> button; the others have <span class="ui">Load ship into game…</span>. Loading puts the ship in the save you have open; press <span class="ui">Save to game</span> to write it to your game. From Starships, <span class="ui">Versions in the Dock Yard</span> comes back to the ship's card here.</p>
+  <h2>Hangar versions</h2>
   <figure><img src="shots/dockyard-card.webp" alt="A ship card with two versions listed, newest first" loading="lazy"><figcaption>One card per ship, its versions stacked inside.</figcaption></figure>
   <ul class="feat">
     <li><b>A new version</b> is kept only when the ship itself changes: its build, model, name, class, colours or installed tech. Fuel, charge, cargo and where it's parked don't count.</li>
@@ -338,14 +338,14 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   </ul>
   <h2>Using a ship</h2>
   <ul class="feat">
-    <li><span class="ui">Put in this save…</span> drops a ship into an empty slot or replaces one (the replaced ship goes to the Garage first). Corvettes bring their build.</li>
+    <li><span class="ui">Load ship into game…</span> drops a ship into an empty slot or replaces one (the replaced ship goes to the Hangar first). Corvettes bring their build.</li>
     <li><b>A build on its own</b> (no ship) goes onto one of your corvettes, which keeps its name and class. A <code>.so</code> file does the opposite: a corvette takes its tech and class and keeps its build.</li>
     <li><span class="ui">Copy to Ship storage</span>, <span class="ui">Render with Blender</span>, and export as <code>.nmsship</code> or <code>.so</code> for TAZ's tools.</li>
     <li><b>Tags, notes, a link</b> and a favourite star on every card. <span class="ui">Get art from the link</span> fetches the artwork, author and description from a listing page.</li>
     <li><span class="ui">Import files</span> reads <code>.json</code>, <code>.txt</code>, <code>.nmsship</code>, <code>.so</code> and Base Building App <code>.nmsprefab</code> files. <span class="ui">Add this save's ships</span> stores them all.</li>
     <li><span class="ui">Delete</span> moves files to the Dock Yard's Deleted folder, so they can always come back.</li>
   </ul>
-  <figure><img src="shots/dockyard-garage.webp" alt="The Garage in grid view" loading="lazy"></figure>
+  <figure><img src="shots/dockyard-garage.webp" alt="The Hangar in grid view" loading="lazy"></figure>
 </section>
 
 <!-- ================================================================ what you carry and ride -->
@@ -366,7 +366,8 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
     <li><b>Use old colours</b>, and <b>base stats</b>: damage, mining and scanning.</li>
     <li><span class="ui">Save as profile</span> keeps the loadout as a file; <span class="ui">Apply a profile</span> puts one on any multi-tool. Profiles work across saves; share one by sending the file.</li>
     <li><span class="ui">Choose parts</span> for the cover model, <span class="ui">Export…</span> a <code>.json</code> backup, <span class="ui">Import</span>, and <span class="ui">Delete multi-tool</span>. Deleting works even when all six slots are full: the slot is left empty, the same way the game leaves one.</li>
-    <li><span class="ui">Add a multi-tool</span> in the top-right corner.</li>
+    <li><span class="ui">Add a multi-tool</span> on the left, above the covers.</li>
+    <li><span class="ui">Supercharge slots</span> above the multi-tool's technology.</li>
   </ul>
 </section>
 
@@ -384,15 +385,15 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   <ul class="feat">
     <li><b>Name, type</b> (hauler, explorer, shuttle, fighter, exotic, living ship, solar, interceptor, corvette and the special ships), <b>class</b>, <b>seed</b> with <span class="ui">Generate</span>, and <b>use old colours</b>.</li>
     <li><b>Base stats</b>: damage, shields, hyperdrive and maneuverability, plus ship health and shield (shared by all ships).</li>
-    <li><span class="ui">Save as profile</span>, <span class="ui">Apply a profile</span>, <span class="ui">Choose parts</span>, and <span class="ui">Versions in the Dock Yard</span> for every version of the ship the Garage has kept.</li>
-    <li><span class="ui">To the Dock Yard…</span> asks what you want: <span class="ui">Keep a copy</span> stores the ship and leaves it in your game; <span class="ui">Move it</span> stores it in Ship storage and empties its slot (not for the ship you're flying). Put it back any time with <span class="ui">Put in this save…</span>.</li>
+    <li><span class="ui">Save as profile</span>, <span class="ui">Apply a profile</span>, <span class="ui">Choose parts</span>, and <span class="ui">Versions in the Dock Yard</span> for every version of the ship the Hangar has kept.</li>
+    <li><span class="ui">To the Dock Yard…</span> asks what you want: <span class="ui">Keep a copy</span> stores the ship and leaves it in your game; <span class="ui">Move it</span> stores it in Ship storage and empties its slot (not for the ship you're flying). Put it back any time with <span class="ui">Load ship into game…</span>.</li>
     <li><span class="ui">Export…</span> as a <code>.json</code> backup, a <code>.nmsship</code> (whole corvette) or a <code>.so</code> (the ship entry, for TAZ's tools); <span class="ui">Import</span>; <span class="ui">Delete ship</span>.</li>
   </ul>
   <h2>Adding and archiving</h2>
   <ul class="feat">
     <li><span class="ui">Add a ship</span>: a new corvette, or a copy of one of your ships with its colours and build.</li>
     <li><b>Archived ships</b>: the ships the game keeps in its archive. <span class="ui">Restore</span> one into a slot, or <span class="ui">Archive a ship</span>.</li>
-    <li><span class="ui">Render corvettes</span> makes Blender renders for the Hangar.</li>
+    <li><span class="ui">Render corvettes</span> makes Blender renders for the Garage.</li>
   </ul>
 </section>
 
@@ -422,7 +423,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   <figure><img src="shots/vehicles.webp" alt="Exocraft page with a model of the Colossus" loading="lazy"></figure>
   <ul class="feat">
     <li><b>Each exocraft</b> (Roamer, Nomad, Colossus, Pilgrim, Nautilon, Minotaur…) with a model from your game.</li>
-    <li><b>Technology and cargo</b> with all the <a href="#everywhere">inventory tools</a>, including supercharged slots.</li>
+    <li><b>Technology and cargo</b> with all the <a href="#everywhere">inventory tools</a>, including <span class="ui">Supercharge slots</span> on the freighter's technology.</li>
     <li><span class="ui">Add exocraft</span> learns the geobay blueprints for the ones you don't have yet.</li>
   </ul>
 </section>
@@ -573,7 +574,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
     <li><b>Click a slot</b> to change the amount, replace the item, repair or recharge it, or remove it. <span class="ui">Add to slot</span> puts any item from the library into an empty slot.</li>
     <li><b>Drag and drop</b> stacks. Drag a box across the grid from an empty slot to select several and move them together.</li>
     <li><span class="ui">Unlock all slots</span>, <span class="ui">Fill stacks</span>, <span class="ui">Repair</span>, and <span class="ui">Size and class</span> to resize the inventory or change its class.</li>
-    <li><span class="ui">Supercharge slots</span> on exosuit, starship and exocraft technology. Supercharged slots get a steady border; the arcs only move when you point at them.</li>
+    <li><span class="ui">Supercharge slots</span> on exosuit, starship, multi-tool, freighter and exocraft technology. Supercharged slots get a steady border; the arcs only move when you point at them.</li>
   </ul>
   <h2>Find anything</h2>
   <figure><img src="shots/find.webp" alt="The find box with results for a ship name" loading="lazy"></figure>
@@ -591,10 +592,10 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
     <li>For corvettes: <a href="https://github.com/xX-Charon-Xx/charon_forge" target="_blank" rel="noopener">Charon Forge</a>, installed as a Blender extension.</li>
     <li>For bases: NMS Base Builder.</li>
   </ul>
-  <p>The editor finds them on your PC. If it doesn't, open <span class="ui">Cover settings</span> (on the Hangar or the Dock Yard) and point it at Blender.</p>
+  <p>The editor finds them on your PC. If it doesn't, open <span class="ui">Cover settings</span> (on the Garage or the Dock Yard) and point it at Blender.</p>
   <h2>Corvette renders</h2>
   <ul class="feat">
-    <li><span class="ui">Render all corvettes</span> on the Hangar, <span class="ui">Render corvettes</span> in the Dock Yard and on Starships, or <span class="ui">Render again</span> for one.</li>
+    <li><span class="ui">Render all corvettes</span> on the Garage, <span class="ui">Render corvettes</span> in the Dock Yard and on Starships, or <span class="ui">Render again</span> for one.</li>
     <li>Renders are kept on your PC by build, so a build is only rendered once.</li>
     <li><b>Automatic renders</b> (Cover settings): a few seconds after a save opens, corvettes without a picture are rendered one at a time.</li>
     <li><span class="ui">Render the other angles</span> adds front, side, back and top views, picked under the cover.</li>
@@ -637,7 +638,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
     <dt>A corvette has no picture.</dt>
     <dd>Without Blender, corvettes show a hologram of their parts. Install Blender and Charon Forge for real renders (see <a href="#blender">Blender</a>).</dd>
     <dt>Can I move a ship from one save to another?</dt>
-    <dd>Yes. Every ship from every save you open is in the Dock Yard's Garage. Open the other save, find the ship and press <span class="ui">Put in this save…</span>.</dd>
+    <dd>Yes. Every ship from every save you open is in the Dock Yard's Hangar. Open the other save, find the ship and press <span class="ui">Load ship into game…</span>.</dd>
     <dt>I exported a ship. Where did it go?</dt>
     <dd>To <code>Documents\Harmonious Save Editor\Exports</code>. The folder opens with the file selected each time you export.</dd>
     <dt>The taskbar shows Edge's icon.</dt>

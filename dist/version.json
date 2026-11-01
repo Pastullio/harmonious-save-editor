@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.01.2148",
+  "version": "2026.11.01.2240",
   "date": "2026-11-01",
-  "size": 12746240,
-  "sha256": "ae1b8906efb32fc4d30bf29f0da4881d76332479d245bf03cd5119bfb5f26520",
-  "notes": "Dock Yard: pick a ship to Edit it (opens Starships, or Shipwright for a corvette's build), put it in your save, or open its details. Cards show which ships are in this save. Starships has Versions in the Dock Yard.",
+  "size": 12745216,
+  "sha256": "28804e290e52af99494fdeb640ba59d710be2e6dde360fca868958ff8a455c4f",
+  "notes": "Names: the cover page is now the Garage, and the Dock Yard's automatic copies are the Hangar. Dock Yard ships in your save say Loaded, slot N on the cover, and Load ship into game puts one in. Page buttons sit above the covers, on the left. Supercharge slots on multi-tools and the freighter.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

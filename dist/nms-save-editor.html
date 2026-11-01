@@ -461,6 +461,9 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .dy-d { font-size: 12.5px; color: var(--dim); line-height: 1.4; }
 .dy-acts { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 14px 0 6px; padding: 14px 18px; }
 .dy-acts[hidden] { display: none; }
+.page-acts { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin: 0 0 14px; }
+.page-acts-l { display: flex; gap: 8px; flex-wrap: wrap; }
+.page-acts .view-switch { margin-left: auto; }
 .dy-act-info { display: flex; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; min-width: 0; }
 .dy-act-info b { font-size: 17px; font-weight: 500; }
 .dy-act-btns { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -868,6 +871,7 @@ ol.steps { padding-left: 20px; display: grid; gap: 6px; }
 .cf-item canvas, .cf-item img { width: 100%; height: 100%; display: block; border-radius: 6px; object-fit: cover; box-shadow: 0 0 0 1px rgba(255, 255, 255, .14); }
 .cf-item.center canvas, .cf-item.center img { box-shadow: 0 0 0 1px rgba(200, 245, 255, .55), 0 18px 50px rgba(0, 0, 0, .45), 0 0 50px rgba(120, 220, 240, .18); }
 .cf-item:focus-visible { outline: none; } .cf-item:focus-visible canvas { box-shadow: 0 0 0 3px #fff; }
+.cf-tag { position: absolute; top: 9%; left: 7%; z-index: 2; padding: 4px 11px; border-radius: 999px; background: rgba(4, 22, 30, .78); color: #fff; font-size: calc(var(--cs) * .045); font-weight: 500; letter-spacing: .02em; box-shadow: 0 0 0 1px rgba(120, 220, 240, .45); pointer-events: none; white-space: nowrap; }
 .cf-caption { position: absolute; left: 0; right: 0; bottom: calc(var(--cs) * .07); text-align: center; pointer-events: none; z-index: 1900; transition: opacity .22s, transform .22s; }
 .cf-caption.swap { opacity: 0; transform: translateY(6px); }
 .cf-caption .t { font-family: var(--display); font-weight: 400; font-size: calc(var(--cs) * .085); line-height: 1.15; letter-spacing: .03em; text-shadow: 0 2px 10px rgba(0, 0, 0, .6); }
@@ -1924,7 +1928,7 @@ function download(bytes, name) { const u = URL.createObjectURL(new Blob([bytes])
 
 // ------------------------------------------------------------------ navigation
 const SECTIONS = [
-  ['overview', 'Overview'], ['shipwright', 'Shipwright'], ['coords', 'Coordinates'], ['hangar', 'Hangar'], ['library', 'Dock Yard'],
+  ['overview', 'Overview'], ['shipwright', 'Shipwright'], ['coords', 'Coordinates'], ['hangar', 'Garage'], ['library', 'Dock Yard'],
   ['exosuit', 'Exosuit'], ['tools', 'Multi-tools'], ['ships', 'Starships'], ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['companions', 'Companions'],
   ['bases', 'Bases'], ['storage', 'Storage'], ['cargo', 'Cargo'],
   ['knowledge', 'Knowledge'], ['rewards', 'Rewards'], ['standing', 'Standing'], ['difficulty', 'Difficulty'],
@@ -2044,7 +2048,7 @@ function dockyardSpot(el) {
   if (!APP || dockyardSeen()) return;
   try { if (localStorage.getItem('hse-dockyard-spot') === 'hidden') return; } catch (_) {}
   const d = document.createElement('div'); d.className = 'dy-spot';
-  d.innerHTML = `<span class="dy-ico">${DY_ICONS.library}</span><div class="dy-spot-txt"><span class="k">New</span><b>Dock Yard</b><span>Every ship you own, build or download, in one place. The Garage keeps a copy of every ship from every save automatically, and any ship or corvette can go into any save.</span></div>
+  d.innerHTML = `<span class="dy-ico">${DY_ICONS.library}</span><div class="dy-spot-txt"><span class="k">New</span><b>Dock Yard</b><span>Every ship you own, build or download, in one place. The Hangar keeps a copy of every ship from every save automatically, and any ship or corvette can go into any save.</span></div>
     <button class="btn primary" type="button" data-go>Open the Dock Yard</button><button class="btn ghost small" type="button" data-hide>Not now</button>`;
   d.querySelector('[data-go]').onclick = () => go('library');
   d.querySelector('[data-hide]').onclick = () => { try { localStorage.setItem('hse-dockyard-spot', 'hidden'); } catch (_) {} d.remove(); };
@@ -2137,11 +2141,19 @@ PAGES.exosuit = (el) => {
   invGroup(el, standardInvs(p, ''));
 };
 
+// A page's own buttons (Add a ship, Render corvettes…) sit in one row just above what they act on, on the left; on pages
+// with covers the Cover Flow / Grid switch shares the row on the right (owner, 2026-11-01). Same place on every page.
+function pageActs(actions, withSwitch) {
+  const row = document.createElement('div'); row.className = 'page-acts';
+  row.innerHTML = `<div class="page-acts-l">${actions.map(([l, id, , cls], k) => `<button class="btn${cls ? ' ' + cls : k ? '' : ' primary'}" type="button" id="${id}">${l}</button>`).join('')}</div>${withSwitch ? viewSwitch() : ''}`;
+  for (const [, id, fn] of actions) row.querySelector('#' + id).onclick = (e) => fn(e.currentTarget);
+  return row;
+}
 function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, nameKey, flow, picture, details, top, actions = [] }) {
   actions = actions.filter(Boolean);
-  el.innerHTML = `<div class="page-head"><div><h1>${title}</h1><p>${intro}</p></div>${actions.length ? `<div class="toolbar">${actions.map(([l, id], k) => `<button class="btn${k ? '' : ' primary'}" type="button" id="${id}">${l}</button>`).join('')}</div>` : ''}</div>`;
-  for (const [, id, fn] of actions) $('#' + id, el).onclick = (e) => fn(e.currentTarget);
+  el.innerHTML = `<div class="page-head"><div><h1>${title}</h1><p>${intro}</p></div></div>`;
   if (top) top(el);
+  if (actions.length || (flow && list.length)) el.appendChild(pageActs(actions, !!(flow && list.length)));
   if (!list.length) { el.insertAdjacentHTML('beforeend', '<p class="dim">Nothing owned here yet.</p>'); return; }
   const primary = primaryKey ? num(g(ps(), primaryKey)) : -1;
   if (S.pick[key] == null || !list.some((x) => x.i === S.pick[key])) S.pick[key] = (list.find((x) => x.i === primary) || list[0]).i;
@@ -2149,7 +2161,7 @@ function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, 
   if (flow) {
     const items = coverItems().filter((x) => (flow === 'tool' ? x.kind === 'tool' : x.kind !== 'tool'));
     const host = document.createElement('div'); el.appendChild(host);
-    Covers(host, items, { size: 170, gridSize: 180, index: Math.max(0, items.findIndex((x) => x.i === S.pick[key])), label: title,
+    Covers(host, items, { size: 170, gridSize: 180, index: Math.max(0, items.findIndex((x) => x.i === S.pick[key])), label: title, noSwitch: true,
       onChange: (n) => { S.pick[key] = items[n].i; S.sel = null; editor(); }, onOpen: () => ed.scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth' }) });
   } else {
     const pick = document.createElement('div'); pick.className = 'picker';
@@ -3279,7 +3291,7 @@ document.addEventListener('click', (e) => {
 });
 // Cover Flow or the grid, with the same interface (index, go, focus, refresh)
 function Covers(host, items, opts) {
-  host.insertAdjacentHTML('beforeend', `<div class="view-row">${viewSwitch()}</div>`);
+  if (!opts.noSwitch) host.insertAdjacentHTML('beforeend', `<div class="view-row">${viewSwitch()}</div>`);
   return coverView() === 'grid' ? CoverGrid(host, items, opts) : CoverFlow(host, items, opts);
 }
 function CoverGrid(host, items, opts) {
@@ -3323,6 +3335,7 @@ function CoverFlow(host, items, opts) {
     const b = document.createElement('button'); b.className = 'cf-item'; b.setAttribute('role', 'option'); b.tabIndex = -1;
     b.setAttribute('aria-label', it.name + ', ' + it.sub);
     const cv = document.createElement('canvas'); cv.width = cv.height = px; b.appendChild(cv); paintCover(cv, it);
+    if (it.tag) b.insertAdjacentHTML('beforeend', `<span class="cf-tag">${esc(it.tag)}</span>`);
     customCover(it.key).then((url) => { if (url) { const im = new Image(); im.src = url; im.alt = ''; cv.replaceWith(im); it.custom = true; } });
     b.onclick = () => { if (moved) return; if (i === cur && Math.abs(pos - cur) < .05) { opts.onOpen && opts.onOpen(cur); } else go(i); };
     stage.appendChild(b); return b;
@@ -3591,12 +3604,12 @@ PAGES.hangar = (el) => {
   const groups = [['all', 'All', all], ['corvette', 'Corvettes', all.filter((x) => x.kind === 'corvette')], ['ship', 'Starships', all.filter((x) => x.kind === 'ship')], ['tool', 'Multi-tools', all.filter((x) => x.kind === 'tool')]];
   S.hangar = S.hangar || { filter: 'all', key: null };
   let list = (groups.find((gr) => gr[0] === S.hangar.filter) || groups[0])[2];
-  el.innerHTML = `<div class="page-head"><div><h1>Hangar</h1><p>Scroll, drag or use the arrow keys. Click the centre cover to open its loadout. To change a cover, drop a picture on it or choose one of your screenshots below.</p></div>
-    ${APP ? '<div class="toolbar"><button class="btn" id="renderAll">Render all corvettes</button><button class="btn ghost" id="renderCfg">Cover settings</button></div>' : ''}</div><div id="cfHost"></div><div class="panel" id="hangarDetail"></div>`;
+  el.innerHTML = `<div class="page-head"><div><h1>Garage</h1><p>Scroll, drag or use the arrow keys. Click the centre cover to open its loadout. To change a cover, drop a picture on it or choose one of your screenshots below.</p></div></div><div id="cfHost"></div><div class="panel" id="hangarDetail"></div>`;
+  $('#cfHost', el).before(pageActs(APP ? [['Render all corvettes', 'renderAll', () => {}, ' '], ['Cover settings', 'renderCfg', () => {}, 'ghost']] : [], true));
   const chips = `<div class="cf-chips">${groups.map(([id, label, l]) => `<button class="chip" data-f="${id}" aria-pressed="${S.hangar.filter === id}">${label}<span class="n">${l.length}</span></button>`).join('')}</div>`;
   const start = Math.max(0, list.findIndex((x) => x.key === S.hangar.key));
   const big = Math.max(180, Math.min(340, Math.round((($('#main').clientWidth || 1000) - 80) / 3.6)));
-  const flow = Covers($('#cfHost', el), list, { size: big, index: start, label: 'Hangar', chips, onChange: (i) => { S.hangar.key = list[i].key; detail(); }, onOpen: (i) => openLoadout(list[i]) });
+  const flow = Covers($('#cfHost', el), list, { size: big, index: start, label: 'Garage', chips, noSwitch: true, onChange: (i) => { S.hangar.key = list[i].key; detail(); }, onOpen: (i) => openLoadout(list[i]) });
   el.querySelectorAll('.chip').forEach((c) => c.onclick = () => { S.hangar.filter = c.dataset.f; render(); });
   function detail() {
     const it = list[flow.index], box = $('#hangarDetail', el);
@@ -3666,7 +3679,7 @@ async function renderAllCorvettes(btn) {
     try { await renderCorvette(it, false); done++; } catch (e) { failed++; console.warn(e); }
   }
   if (btn.isConnected) { btn.disabled = false; btn.textContent = label; }
-  toast(failed ? `${done} rendered, ${failed} failed. Open a corvette in the Hangar and choose Render with Blender to see why.` : `${done} corvettes rendered`, !!failed);
+  toast(failed ? `${done} rendered, ${failed} failed. Open a corvette in the Garage and choose Render with Blender to see why.` : `${done} corvettes rendered`, !!failed);
   if (S.section === 'ships' || S.section === 'hangar') render();
 }
 // ------------------------------------------------------------------ corvette renders (desktop app + Blender + Charon Forge)
@@ -3931,7 +3944,10 @@ function invGroup(el, list) {
   show(pick);
 }
 // ---- supercharged slots: SpecialSlots entries of type TechBonus in a technology inventory
-const canCharge = (inv) => isInv(inv) && kOf(inv, 'SpecialSlots') != null && (inv === g(ps(), 'Inventory_TechOnly') || [...ships(), ...vehicles()].some(({ s }) => g(s, 'Inventory_TechOnly') === inv));
+// technology that can have supercharged slots: the exosuit's, every ship's and exocraft's, every multi-tool's (its one
+// store) and the freighter's (owner, 2026-11-01: multi-tools and the freighter have them in the game too)
+const canCharge = (inv) => isInv(inv) && kOf(inv, 'SpecialSlots') != null && (inv === g(ps(), 'Inventory_TechOnly') || inv === g(ps(), 'FreighterInventory_TechOnly')
+  || [...ships(), ...vehicles()].some(({ s }) => g(s, 'Inventory_TechOnly') === inv) || tools().some(({ s }) => g(s, 'Store') === inv));
 const chargeKey = (e) => num(g(e, 'Index', 'X')) + ',' + num(g(e, 'Index', 'Y'));
 const isBonus = (e) => str(g(e, 'Type', 'InventorySpecialSlotType')) === 'TechBonus';
 function chargedSet(inv) { const out = new Set(); for (const e of (isInv(inv) && g(inv, 'SpecialSlots')) || []) if (isBonus(e)) out.add(chargeKey(e)); return out; }
@@ -6310,7 +6326,7 @@ async function garageCapture() {
     try { await api(`/api/ships/file?src=garage&path=${encodeURIComponent(path)}&new=1`, { method: 'POST', body: text }); added++; if (have) have.add(fp); }
     catch (e) { if (!/already exists/.test(e.message)) console.warn('garage', e); }
   }
-  if (added) toast(`${plural(added, 'new ship version')} kept in the Garage`);
+  if (added) toast(`${plural(added, 'new ship version')} kept in the Hangar`);
   return added;
 }
 async function saveShipToLibrary(i, quiet) {
@@ -6334,9 +6350,9 @@ async function putShipInSave(p, sum) {
   }).join('');
   if (!/<option value/.test(opts)) { toast(sum.buildOnly || sum.shipOnly ? `This file is only a corvette's ${sum.buildOnly ? 'build' : 'tech, class and inventory'}. Put it onto one of your corvettes: this save has none yet.` : 'No slot available.', true); return; }
   const firstEmpty = list.findIndex((s, i) => !str(g(s, 'Resource', 'Filename')) && i !== primary);
-  const ok = await dialog(sum.buildOnly ? 'Put this build on a corvette' : sum.shipOnly ? 'Put this loadout on a corvette' : 'Put this ship in the save', `<p><b>${esc(sum.name)}</b>${sum.parts ? ` (${plural(sum.parts, 'part')})` : ''}</p>
+  const ok = await dialog(sum.buildOnly ? 'Put this build on a corvette' : sum.shipOnly ? 'Put this loadout on a corvette' : 'Load this ship into your game', `<p><b>${esc(sum.name)}</b>${sum.parts ? ` (${plural(sum.parts, 'part')})` : ''}</p>
     <label class="field"><span>Where</span><select class="input" id="putSlot">${opts}</select></label>
-    <p class="dim" style="margin-top:12px">${sum.buildOnly ? 'The corvette keeps its name, class and inventories; only its parts change.' : sum.shipOnly ? 'The corvette keeps its name and its build; its tech, class and inventories are replaced. It is copied to the Garage first.' : 'A replaced ship is copied to the Garage first, so it is never lost.'} Nothing is written to your game until you press Save to game.</p>`, [['Cancel', false, 'ghost'], ['Put it here', true, 'primary']]);
+    <p class="dim" style="margin-top:12px">${sum.buildOnly ? 'The corvette keeps its name, class and inventories; only its parts change.' : sum.shipOnly ? 'The corvette keeps its name and its build; its tech, class and inventories are replaced. It is copied to the Hangar in the Dock Yard first.' : 'A replaced ship is copied to the Hangar in the Dock Yard first, so it is never lost.'} Nothing is written to your game until you press Save to game.</p>`, [['Cancel', false, 'ghost'], [sum.buildOnly || sum.shipOnly ? 'Put it here' : 'Load it here', true, 'primary']]);
   if (!ok) return;
   const i = +$('#putSlot').value;
   if (str(g(list[i], 'Resource', 'Filename'))) await garageCapture();
@@ -6399,11 +6415,11 @@ function dockActions(host, x, slots, refresh) {
   if (!x) { host.innerHTML = ''; return; }
   const s = x.sum || {}, slot = dockSlotOf(x, slots), corv = isCorvetteSum(s), m = ShipLib.meta(x.id);
   const canPut = S.save && !s.error && (s.whole || s.buildOnly || s.shipOnly);
-  const state = !S.save ? 'Open a save to edit this ship or put it in your game.' : slot != null ? `In this save, slot ${slot + 1}` : s.error ? "This file couldn't be read" : 'Not in this save';
+  const note = !S.save ? 'Open a save to edit this ship or load it into your game.' : s.error ? "This file couldn't be read." : '';
   host.innerHTML = `<div class="dy-act-info"><b>${esc(s.name || 'Ship')}</b><span class="dim">${esc([s.type, s.cls && s.cls + ' class', s.parts && plural(s.parts, 'part')].filter(Boolean).join(', '))}</span>
-      <span class="dy-state${slot != null ? ' in' : ''}">${esc(state)}</span></div>
+      ${note ? `<span class="dim">${esc(note)}</span>` : ''}</div>
     <div class="dy-act-btns">
-      ${slot != null ? `<button class="btn primary" type="button" data-da="edit">Edit ship</button>${corv ? '<button class="btn" type="button" data-da="build">Edit build</button>' : ''}` : canPut ? `<button class="btn primary" type="button" data-da="put">${s.buildOnly || s.shipOnly ? 'Put on a corvette…' : 'Put in this save…'}</button>` : ''}
+      ${slot != null ? `<button class="btn primary" type="button" data-da="edit">Edit ship</button>${corv ? '<button class="btn" type="button" data-da="build">Edit build</button>' : ''}` : canPut ? `<button class="btn primary" type="button" data-da="put">${s.buildOnly || s.shipOnly ? 'Put on a corvette…' : 'Load ship into game…'}</button>` : ''}
       <button class="btn${slot == null && !canPut ? ' primary' : ''}" type="button" data-da="details">Details</button>
       <button class="btn ghost dy-star${m.fav ? ' on' : ''}" type="button" data-da="fav" aria-pressed="${!!m.fav}">${m.fav ? '★ Favourite' : '☆ Favourite'}</button>
     </div>`;
@@ -6422,7 +6438,7 @@ function dockActions(host, x, slots, refresh) {
   });
 }
 
-const LIB_SRC = { library: 'Ship storage', garage: 'Garage', linked: 'Linked folder' };
+const LIB_SRC = { library: 'Ship storage', garage: 'Hangar', linked: 'Linked folder' };
 // small line icons for the Dock Yard tabs (drawn in the section colour)
 const DY_ICONS = {
   library: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8.5 12 4l9 4.5v9L12 22l-9-4.5z"/><path d="M3 8.5 12 13l9-4.5M12 13v9"/></svg>',
@@ -6430,14 +6446,14 @@ const DY_ICONS = {
   fav: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z"/></svg>',
 };
 const DY_TABS = [
-  ['garage', 'Garage', 'A copy of every ship from every save you open, made automatically. Nothing is ever lost.'],
+  ['garage', 'Hangar', 'A copy of every ship from every save you open, made automatically. Nothing is ever lost.'],
   ['library', 'Ship storage', 'Ships you keep on purpose: imported files and ships you save from your game.'],
   ['fav', 'Favourites', 'The ships you star, from anywhere in the Dock Yard.'],
 ];
 PAGES.library = (el) => {
   markSeen('library');
   const L = S.shipLib || (S.shipLib = { q: '', src: 'library', type: 'all', tag: '', fav: false, shown: 60 });
-  el.innerHTML = `<div class="page-head"><div><h1>Dock Yard</h1><p>Every ship you own, build or download, in one place. Store them, keep every version, and move ships and corvettes into any save. Pick a ship to edit it, put it in this save, or open its details.</p></div>${APP ? `<input class="input dy-search" id="libQ" type="search" placeholder="Search names, tags and notes" aria-label="Search the Dock Yard" value="${esc(L.q)}">` : ''}</div>`;
+  el.innerHTML = `<div class="page-head"><div><h1>Dock Yard</h1><p>Every ship you own, build or download, in one place. Store them, keep every version, and move ships and corvettes into any save. Pick a ship to edit it, load it into your game, or open its details.</p></div>${APP ? `<input class="input dy-search" id="libQ" type="search" placeholder="Search names, tags and notes" aria-label="Search the Dock Yard" value="${esc(L.q)}">` : ''}</div>`;
   if (!APP) { el.insertAdjacentHTML('beforeend', '<p class="dim">The Dock Yard keeps ship files on your PC, so it is part of the desktop app.</p>'); return; }
   const head = el.querySelector('.page-head');
   const tabs = document.createElement('div'); tabs.className = 'dy-tabs'; tabs.setAttribute('role', 'tablist');
@@ -6481,7 +6497,7 @@ PAGES.library = (el) => {
     $('#libTag', bar).innerHTML += tags.map((t) => `<option${L.tag === t ? ' selected' : ''}>${esc(t)}</option>`).join('');
     const empty = {
       library: 'Nothing in Ship storage yet. Use Import files for .json, .txt, .nmsship or .so ships, or Add this save\'s ships.',
-      garage: 'The Garage fills itself: every ship in a save you open is copied here, once per version.',
+      garage: 'The Hangar fills itself: every ship in a save you open is copied here, once per version.',
       fav: 'No favourites yet. Star a ship anywhere in the Dock Yard to keep it here.',
       linked: 'Link a folder where you already keep ship files (Manage folders). Its ships show here without being moved or changed.',
       all: 'No ships yet.',
@@ -6498,7 +6514,7 @@ PAGES.library = (el) => {
       current = list;
       const where = L.fav ? 'Favourites' : L.src === 'all' ? 'the Dock Yard' : L.src === 'linked' ? 'linked folders' : LIB_SRC[L.src];
       status.textContent = list.length ? `${plural(list.length, 'ship')} in ${where}${q || L.type !== 'all' || L.tag ? ' matching your search' : ''}` : q || L.type !== 'all' || L.tag ? 'No ships match your search here.' : empty[L.fav ? 'fav' : L.src];
-      if (L.openKey) { const want = list.find((x) => x.id === L.openKey); L.openKey = null; if (want) setTimeout(() => libDetail(want, show), 300); else toast('This ship has no copy in the Dock Yard yet. The Garage keeps one the next time the save is opened.'); }
+      if (L.openKey) { const want = list.find((x) => x.id === L.openKey); L.openKey = null; if (want) setTimeout(() => libDetail(want, show), 300); else toast('This ship has no copy in the Dock Yard yet. The Hangar keeps one the next time the save is opened.'); }
       if (coverView() === 'flow' && list.length) { grid.replaceChildren(); more.innerHTML = ''; acts.hidden = false; libFlow(flowHost, list, show, (x) => dockActions(acts, x, slots, show), slots); return; }
       flowHost.replaceChildren(); acts.hidden = true;
       grid.replaceChildren(...list.slice(0, L.shown).map((x) => libCard(x, show, slots)));
@@ -6540,7 +6556,7 @@ function libFlow(host, list, refresh, onPick, slots) {
   host.replaceChildren();
   const S0 = S.shipLib, key = S0.flowKey;
   const items = list.map((x) => ({ kind: x.sum.type === 'Corvette' ? 'corvette' : 'ship', i: -1, key: 'lib|' + x.id, name: x.sum.name, type: x.sum.type, cls: x.sum.cls,
-    sub: x.sum.error ? 'Not readable yet' : [x.sum.type, x.sum.cls && x.sum.cls + ' class', x.sum.parts && plural(x.sum.parts, 'part'), x.versions && x.versions.length > 1 && plural(x.versions.length, 'version'), slots && dockSlotOf(x, slots) != null && 'in this save'].filter(Boolean).join(', '), x }));
+    sub: x.sum.error ? 'Not readable yet' : [x.sum.type, x.sum.cls && x.sum.cls + ' class', x.sum.parts && plural(x.sum.parts, 'part'), x.versions && x.versions.length > 1 && plural(x.versions.length, 'version')].filter(Boolean).join(', '), tag: slots && dockSlotOf(x, slots) != null ? `Loaded, slot ${dockSlotOf(x, slots) + 1}` : '', x }));
   const big = Math.max(180, Math.min(320, Math.round((($('#main').clientWidth || 1000) - 80) / 3.8)));
   const start = Math.max(0, items.findIndex((it) => it.x.id === key));
   const fill = async (n) => {
@@ -6571,7 +6587,7 @@ function libCard(x, refresh, slots) {
     <div class="tc-cap"><b title="${esc(s.name)}">${esc(s.name)}</b><span>${esc(s.error ? 'Not readable yet' : [s.type, s.cls && s.cls + ' class', s.parts && plural(s.parts, 'part')].filter(Boolean).join(', '))}</span>
     <span class="lib-where">${esc(where)}${x.f.src === 'garage' ? ' · ' + new Date(x.f.mtime).toLocaleDateString() : ''}${x.versions && x.versions.length > 1 ? ' · ' + plural(x.versions.length, 'version') : ''}</span>
     ${(m.tags || []).length ? `<span class="lib-tags">${m.tags.map((t) => `<i>${esc(t)}</i>`).join('')}</span>` : ''}
-    ${slot != null ? `<span class="lib-in"><span class="dy-state in">In this save</span><button class="btn small primary" type="button" data-da="edit">Edit ship</button></span>` : S.save && !s.error && s.whole ? '<span class="lib-in"><span class="dy-state">Not in this save</span><button class="btn small" type="button" data-da="put">Put in this save…</button></span>' : ''}</div>`;
+    ${slot != null ? `<span class="lib-in"><span class="dy-state in">Loaded, slot ${slot + 1}</span><button class="btn small primary" type="button" data-da="edit">Edit ship</button></span>` : S.save && !s.error && s.whole ? '<span class="lib-in"><span></span><button class="btn small" type="button" data-da="put">Load ship into game…</button></span>' : ''}</div>`;
   const eb = card.querySelector('[data-da="edit"]'); if (eb) eb.onclick = (e) => { e.stopPropagation(); editShipAt(slot, false); };
   const pb = card.querySelector('[data-da="put"]'); if (pb) pb.onclick = async (e) => {
     e.stopPropagation();
@@ -6605,7 +6621,7 @@ async function libDetail(x, refresh, vi = 0) {
   const canPut = !p.error && (s.whole || s.buildOnly || s.shipOnly);
   // actions sit under the picture in groups: using the ship, its picture, exporting, the file itself
   const groups = [
-    ['Use', [canPut && S.save && [s.buildOnly || s.shipOnly ? 'Put on a corvette…' : 'Put in this save…', 'put', 'primary'], f.src !== 'library' && ['Copy to Ship storage', 'copy']]],
+    ['Use', [canPut && S.save && [s.buildOnly || s.shipOnly ? 'Put on a corvette…' : 'Load ship into game…', 'put', 'primary'], f.src !== 'library' && ['Copy to Ship storage', 'copy']]],
     ['Picture', [APP && !p.error && s.type === 'Corvette' && p.objects && ['Render with Blender', 'render'], APP && m.link && ['Get art from the link', 'meta']]],
     ['Export', [!p.error && p.ship && p.objects && ['.nmsship', 'nmsship'], !p.error && p.ship && ['.so', 'so']]],
     ['File', [['Show in folder', 'reveal'], f.src !== 'linked' && [V && V.length > 1 ? 'Delete this version' : 'Delete', 'delete', 'danger-text']]],
@@ -6616,7 +6632,7 @@ async function libDetail(x, refresh, vi = 0) {
       <div class="lib-info">
         <p>${esc([s.type, s.cls && s.cls + ' class', s.parts && plural(s.parts, 'part')].filter(Boolean).join(', ') || s.error || '')}${s.format ? ` <span class="dim">· ${esc(s.format)}</span>` : ''}</p>
         <p class="dim mono lib-path">${esc(where)}</p>${m.author || m.desc ? `<p class="lib-by">${m.author ? `By <b>${esc(m.author)}</b>` : ''}${m.desc ? `<span class="dim">${esc(m.desc)}</span>` : ''}</p>` : ''}
-        ${p.error ? `<p class="bad-hint">${esc(p.error)} Send a sample to get this format added.</p>` : s.shipOnly ? '<p class="dim">A corvette loadout (tech, class and inventory) without a build: it goes onto one of your corvettes, which keeps its parts.</p>' : !S.save ? '<p class="dim">Open a save to put this ship in it.</p>' : ''}
+        ${p.error ? `<p class="bad-hint">${esc(p.error)} Send a sample to get this format added.</p>` : s.shipOnly ? '<p class="dim">A corvette loadout (tech, class and inventory) without a build: it goes onto one of your corvettes, which keeps its parts.</p>' : !S.save ? '<p class="dim">Open a save to load this ship into your game.</p>' : ''}
         <label class="check"><input type="checkbox" id="ldFav"${m.fav ? ' checked' : ''}> Favourite</label>
         <label class="field"><span>Tags (separate with commas)</span><input class="input" id="ldTags" value="${esc((m.tags || []).join(', '))}"></label>
         <label class="field"><span>Link (Charon, NMA or anywhere)</span><span class="row-in"><input class="input" id="ldLink" type="url" placeholder="https://" value="${esc(m.link || '')}">${m.link ? `<a class="btn small" href="${esc(m.link)}" target="_blank" rel="noopener">Open</a>` : ''}</span></label>
@@ -6983,7 +6999,7 @@ function wireArchived(d, done) {
   });
   d.querySelectorAll('[data-archdel]').forEach((b) => b.onclick = async () => {
     const k = +b.dataset.archdel, e = archList()[k];
-    if (!(await dialog('Delete an archived ship?', `<p><b>${esc(str(g(e, 'ArchivedName')) || 'This ship')}</b> is removed from the archive for good. The Garage in the Dock Yard keeps copies of ships from saves you've opened, not archived ones.</p>`, [['Cancel', false, 'ghost'], ['Delete', true, 'danger']]))) return;
+    if (!(await dialog('Delete an archived ship?', `<p><b>${esc(str(g(e, 'ArchivedName')) || 'This ship')}</b> is removed from the archive for good. The Hangar in the Dock Yard keeps copies of ships from saves you've opened, not archived ones.</p>`, [['Cancel', false, 'ghost'], ['Delete', true, 'danger']]))) return;
     archList()[k] = emptyArchEntry() || e; if (archList()[k] === e) { toast('No empty archive entry to copy from.', true); return; } compactArchive(); markDirty(); done('Archived ship deleted');
   });
   const ab = $('#archShip', d); if (ab) ab.onclick = async () => {
@@ -7319,7 +7335,7 @@ PAGES.shipwright = (el) => {
   // replace the build with new parts, keeping the slot's own base (UserData, BaseType, name, owner)
   const replaceBuild = async (b, how) => {
     if (b.single) { const objs = g(base, 'Objects'); const o = inGameOrder([fromPlain(cloneJSON(b.single))], objs[0])[0]; const next = [...objs, o]; commit(W.auto ? tunedOrder(next) : next, 'Part added'); return; }
-    if (!(await dialog('Replace the build?', `<p>${esc(str(g(ship, 'Name')) || 'This corvette')}'s ${plural(H.objs.length, 'part')} are replaced with ${plural(b.objects.length, 'part')} ${how}. The corvette keeps its name, class and inventories, and a copy goes to the Garage first.</p>`, [['Cancel', false, 'ghost'], ['Replace', true, 'primary']]))) return;
+    if (!(await dialog('Replace the build?', `<p>${esc(str(g(ship, 'Name')) || 'This corvette')}'s ${plural(H.objs.length, 'part')} are replaced with ${plural(b.objects.length, 'part')} ${how}. The corvette keeps its name, class and inventories, and a copy goes to the Hangar in the Dock Yard first.</p>`, [['Cancel', false, 'ghost'], ['Replace', true, 'primary']]))) return;
     await garageCapture().catch(() => {});
     let objs = inGameOrder(fromPlain(cloneJSON(b.objects)), (g(base, 'Objects') || [])[0]);
     if (W.auto) objs = tunedOrder(objs);
@@ -7897,8 +7913,7 @@ PAGES.companions = (el) => {
   const { side, main } = listDetail(el, { title: 'Companions', pick: String(P.pick), onPick: (k) => { P.pick = +k; render(); }, empty: 'No companions yet.',
     items: list.map(({ p, i }) => ({ key: String(i), name: petName(p, i), sub: humanize(str(g(p, 'CreatureID')).replace(/^\^/, '').toLowerCase().replace(/_/g, ' ')) + ' · ' + Math.round(num(g(p, 'Trust')) * 100) + '% trust' })),
     extra: `<p class="dim sw-tip">${plural(list.length, 'companion')}${eggs ? ', ' + plural(eggs, 'egg') : ''}${Array.isArray(slots) ? `, ${slots.length - locked} of ${slots.length} slots unlocked` : ''}.</p>${APP && S.lib && S.lib.game && list.length ? '<p class="dim sw-tip" data-keep>Companion models are new. If one looks wrong, <button class="link" type="button" id="pSample">save creature files for the developer</button>.</p>' : ''}${locked ? '<div class="sw-side-acts"><button class="btn" type="button" id="pSlots">Unlock every slot</button></div>' : ''}` });
-  el.querySelector('.page-head').insertAdjacentHTML('beforeend', '<div class="toolbar"><button class="btn primary" type="button" id="addPet">Add a companion</button></div>');
-  $('#addPet', el).onclick = () => addPetDialog(pets, slots);
+  el.querySelector('.page-head').after(pageActs([['Add a companion', 'addPet', () => addPetDialog(pets, slots)]], false));
   const us = $('#pSlots', side); if (us) us.onclick = () => { for (let k = 0; k < slots.length; k++) slots[k] = true; markDirty(); toast('Every companion slot unlocked'); render(); };
   if (P.pick == null) return;
   // small pictures in the list, for the companions that have one, so they're easy to tell apart

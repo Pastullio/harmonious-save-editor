@@ -11,7 +11,7 @@ Nothing is uploaded anywhere. Item names and icons come from your own copy of th
 - [Getting started](#getting-started)
 - [How saving keeps your data safe](#how-saving-keeps-your-data-safe)
 - [The sections](#the-sections)
-  - [Overview](#overview) · [Shipwright](#shipwright) · [Coordinates](#coordinates) · [Hangar](#hangar) · [Dock Yard](#dock-yard)
+  - [Overview](#overview) · [Shipwright](#shipwright) · [Coordinates](#coordinates) · [Garage](#hangar) · [Dock Yard](#dock-yard)
   - [Exosuit](#exosuit) · [Multi-tools](#multi-tools) · [Starships](#starships) · [Freighter](#freighter) · [Exocraft](#exocraft) · [Companions](#companions)
   - [Bases](#bases) · [Storage](#storage) · [Cargo](#cargo)
   - [Knowledge](#knowledge) · [Rewards](#rewards) · [Standing](#standing) · [Difficulty](#difficulty)
@@ -86,7 +86,7 @@ Find a place by its portal glyphs or galactic address, see what your save knows 
 - **Place card**: a picture of the destination's glyphs and details to share (**Save card**, **Copy card**, **Copy as text**).
 - **Warp here** puts you in your ship at the destination. **Arrive here** lands you at one of your bases there, and **Arrive on your freighter** puts you aboard with the freighter in that system.
 
-### Hangar
+### Garage
 
 Your ships, multi-tools and corvettes as cover art.
 
@@ -101,13 +101,13 @@ Your ships, multi-tools and corvettes as cover art.
 
 Every ship you own, build or download, in one place, kept in `Documents\Harmonious Save Editor\Dock Yard`.
 
-- **Pick a ship to work on it**: the bar above the covers says whether it's in the open save. **Edit ship** opens it on Starships (and **Edit build** opens a corvette in Shipwright); a ship that isn't in the save has **Put in this save…**; **Details** opens its card. In the grid each card shows **In this save** with **Edit ship**, or **Put in this save…**.
-- **Garage**: fills itself. Every ship in every save you open is copied here, and a ship you replace is copied before it's overwritten, so nothing is lost. Each ship has one card with its versions stacked inside, newest first. A new version is kept only when the ship itself changes (its build, model, name, class, colours or installed tech), not when fuel, charge or cargo do. Copies that only differ in those can be moved to Deleted in one click.
+- **Pick a ship to work on it**: a ship in the open save says **Loaded, slot N** on its cover, and the bar above the covers shows what you can do. **Edit ship** opens it on Starships (and **Edit build** opens a corvette in Shipwright); a ship that isn't in the save has **Load ship into game…**; **Details** opens its card. In the grid each card shows **Loaded, slot N** with **Edit ship**, or **Load ship into game…** (it goes into the open save; **Save to game** writes it).
+- **Hangar**: fills itself. Every ship in every save you open is copied here, and a ship you replace is copied before it's overwritten, so nothing is lost. Each ship has one card with its versions stacked inside, newest first. A new version is kept only when the ship itself changes (its build, model, name, class, colours or installed tech), not when fuel, charge or cargo do. Copies that only differ in those can be moved to Deleted in one click.
 - **Ship storage**: ships you keep on purpose. **Import files** (`.json`, `.txt`, TAZ's `.nmsship` and `.so`, Base Building App `.nmsprefab`) or **Add this save's ships**.
 - **Favourites**: ships you star, from anywhere in the Dock Yard.
 - **Linked folders**: point the Dock Yard at folders where you already keep ship files. They show up here without being moved or changed. In **Manage folders**, paste a folder's path and press **Add path**, or use **Browse…** (pressing **Add path** with an empty box opens Browse too).
 - **Ship cards** with tags, notes and a link to where you found the ship. **Get art from the link** pulls the artwork, author and description from a listing.
-- **Put in this save…** drops a ship or corvette into an empty slot or replaces one. Corvettes bring their build. A build on its own goes onto one of your corvettes, and a `.so` gives a corvette its tech and class while it keeps its build.
+- **Load ship into game…** drops a ship or corvette into an empty slot or replaces one. Corvettes bring their build. A build on its own goes onto one of your corvettes, and a `.so` gives a corvette its tech and class while it keeps its build.
 - **Export** as `.nmsship` (the whole corvette) or `.so` (the ship entry, as TAZ's tools write it).
 - **Search** names, tags and notes; filter by type and tag.
 - **Delete** moves files to a Deleted folder, so they can always be brought back.
@@ -135,7 +135,7 @@ Every ship you own.
 - **Ship slots** at the top: drag ships into a new order (corvette builds, colours and your current ship move with them), **Close the gaps**, and fixes for problems such as a build that points at the wrong slot.
 - **Add a ship**: a new corvette, or a copy of a ship you own with its colours and build.
 - **Archived ships**: see the ships the game keeps in its archive, **Restore** one into a slot, or **Archive a ship**.
-- **Versions in the Dock Yard** opens the ship's card in the Garage, with every version kept.
+- **Versions in the Dock Yard** opens the ship's card in the Hangar, with every version kept.
 - **To the Dock Yard…** asks whether to **Keep a copy** (the ship stays in your game) or **Move it** (it's stored in Ship storage and its slot is emptied; not for the ship you're flying).
 - **Profiles**, **Export** (`.json`, `.nmsship`, `.so`), **Import** and **Delete ship**, as for multi-tools.
 
@@ -226,7 +226,9 @@ Every inventory grid (exosuit, ships, multi-tools, freighter, exocraft, storage)
 - **Click a slot** to see the item, change its amount, replace it or remove it. **Add to slot** puts any item from the library into an empty slot.
 - **Drag and drop** stacks; drag a box across empty slots to select several and move them together.
 - **Unlock all slots**, **Fill stacks**, **Repair**, and **Size and class** to resize an inventory or change its class.
-- **Supercharge slots** on exosuit, starship and exocraft technology.
+- **Supercharge slots** on exosuit, starship, multi-tool, freighter and exocraft technology.
+
+Each page's own buttons (**Add a ship**, **Add a multi-tool**, **Render corvettes**, **Add a companion**…) sit in a row just above what they work on, on the left; on pages with covers the **Cover Flow / Grid** switch is on the right of the same row.
 
 ### Find
 
