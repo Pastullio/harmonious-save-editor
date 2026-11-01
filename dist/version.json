@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.01.1414",
+  "version": "2026.11.01.1436",
   "date": "2026-11-01",
-  "size": 12646400,
-  "sha256": "145e6e59bacfff04900aa6a69ed27dab0b798c4c6f9b8caf72e5d4c4a77b1a47",
-  "notes": "Pages no longer slide sideways under the sidebar: a title glow made every page a little wider than the window.",
+  "size": 12647424,
+  "sha256": "be1cd3295f2b0cf4ec5a5e493bb085b68ba880a6f24fcffc31a24b1ba9aa8aa1",
+  "notes": "You can now delete a multi-tool (or ship) when every slot is in use, for example to make room to claim a reward.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

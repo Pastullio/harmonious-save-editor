@@ -2320,12 +2320,30 @@ async function importEntity(o, i, kind, text) {
   }
   markDirty(); toast('Imported ' + name); render();
 }
+// an empty ship or multi-tool slot shaped like the one given (same keys in the same order)
+function blankEntity(o) {
+  const e = cloneJSON(o), unset = () => [false, '0x0'];
+  const setIf = (m, k, v) => { const key = kOf(m, k); if (key) m.set(key, v); };
+  setIf(e, 'Name', '');
+  if (kOf(e, 'Seed')) setIf(e, 'Seed', unset());
+  const res = g(e, 'Resource');
+  if (res instanceof Map) { setIf(res, 'Filename', ''); setIf(res, 'Seed', unset()); setIf(res, 'AltId', ''); const pt = g(res, 'ProceduralTexture'); if (pt instanceof Map) setIf(pt, 'Samplers', []); }
+  for (const [k, inv] of e) {
+    if (!isInv(inv)) continue;
+    for (const f of ['Slots', 'ValidSlotIndices', 'BaseStatValues', 'SpecialSlots']) setIf(inv, f, []);
+    setIf(inv, 'Width', N(1)); setIf(inv, 'Height', N(1)); setIf(inv, 'NumSlotsFromTech', N(0)); setIf(inv, 'IsCool', false);
+    const c = g(inv, 'Class'); if (c instanceof Map) setIf(c, 'InventoryClass', 'C');
+  }
+  setIf(e, 'IsLarge', false); setIf(e, 'UseLegacyColours', false);
+  return e;
+}
 async function deleteEntity(o, i, kind) {
   const p = ps(), isShip = kind === 'ship', list = g(p, isShip ? 'ShipOwnership' : 'Multitools');
   if (num(g(p, isShip ? 'PrimaryShip' : 'ActiveMultioolIndex')) === i) { toast(`This is your current ${isShip ? 'ship' : 'multi-tool'}. Switch to another one in the game first.`, true); return; }
   // the game keeps a fixed number of slots, so an empty slot is copied in rather than the list shrinking
-  const empty = list.find((x, j) => j !== i && (isShip ? !str(g(x, 'Resource', 'Filename')) : !(seedOf(x) || [])[0] && !slotsOf(g(x, 'Store')).length));
-  if (!empty) { toast('No empty slot to copy, so this one cannot be cleared here.', true); return; }
+  // with every slot in use (6 of 6 multi-tools is common) there's no empty one to copy, so one is made the way the game
+  // marks its own empty ship slots: no model, an unset seed, inventories with nothing in them
+  const empty = list.find((x, j) => j !== i && (isShip ? !str(g(x, 'Resource', 'Filename')) : !(seedOf(x) || [])[0] && !slotsOf(g(x, 'Store')).length)) || blankEntity(o);
   const base = isShip ? shipBuild(i) : null;
   if (!(await dialog('Delete ' + entityName(o, i, kind) + '?', `<p>The ${isShip ? 'ship' : 'multi-tool'} and everything in its inventories are removed${base ? ', along with its corvette build' : ''}. Export it first if you might want it back. Nothing is written to your game until you save.</p>`, [['Cancel', false, 'ghost'], ['Delete', true, 'danger']]))) return;
   list[i] = cloneJSON(empty);

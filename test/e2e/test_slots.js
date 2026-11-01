@@ -72,6 +72,21 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.evaluate(() => { const b = shipBuilds()[0]; set(b, 'UserData', N(40)); go('shipwright'); });
   await p.waitForSelector('#swFixSlots'); await p.click('#swFixSlots'); await p.waitForSelector('#shipSlots[open] .slot-issues');
   ok('Shipwright sends you to the fix', true);
+  // all 6 multi-tool slots in use: deleting one still works (an empty slot is made), and it survives saving
+  await open(); await p.evaluate(() => go('tools')); await p.waitForTimeout(800);
+  const t0 = await p.evaluate(() => ({ n: tools().length, len: g(ps(), 'Multitools').length, active: num(g(ps(), 'ActiveMultioolIndex')) }));
+  ok('this save has every multi-tool slot in use', t0.n === t0.len && t0.len === 6);
+  const victim = t0.active === 1 ? 2 : 1;
+  await p.evaluate((i) => { S.pick.tool = i; render(); }, victim); await p.waitForTimeout(500);
+  await p.click('[data-k="delete"]'); await p.waitForSelector('#dlg[open]'); await p.click('#dlgActs .btn.danger');
+  await p.waitForTimeout(400);
+  const t1 = await p.evaluate((i) => { const e = g(ps(), 'Multitools')[i]; return { n: tools().length, len: g(ps(), 'Multitools').length, seed: g(e, 'Seed'), file: str(g(e, 'Resource', 'Filename')), slots: g(e, 'Store', 'Slots').length, keys: [...e.keys()].join(), ref: [...g(ps(), 'Multitools')[0].keys()].join() }; }, victim);
+  console.log(JSON.stringify(t1));
+  ok('a multi-tool can be deleted with all 6 slots full', t1.n === 5 && t1.len === 6 && t1.seed[0] === false && !t1.file && !t1.slots && t1.keys === t1.ref);
+  await p.click('#saveBtn'); await p.waitForFunction(() => !S.dirty, null, { timeout: 60000 }).catch(() => {});
+  if (await p.$('#dlg[open]')) { await p.click('#dlgActs .btn.primary'); await p.waitForFunction(() => !S.dirty, null, { timeout: 60000 }); }
+  await open();
+  ok('and it stays deleted after saving', await p.evaluate(() => tools().length === 5 && g(ps(), 'Multitools').length === 6));
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
   await b.close(); proc.kill();
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS'); process.exit(fails.length ? 1 : 0);
