@@ -3847,11 +3847,12 @@ function ctxMenu(px, py, items) {
   m.style.left = Math.max(6, Math.min(px, innerWidth - r.width - 6)) + 'px'; m.style.top = Math.max(6, Math.min(py, innerHeight - r.height - 6)) + 'px';
   m.querySelectorAll('[data-i]').forEach((b) => b.onclick = () => { const fn = items[+b.dataset.i][1]; closeCtxMenu(); fn(); });
   const first = m.querySelector('button:not([disabled])'); if (first) first.focus();
+  addEventListener('keydown', ctxEsc, true);
   m.onkeydown = (e) => {
     const bs = [...m.querySelectorAll('button:not([disabled])')], at = bs.indexOf(document.activeElement);
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); const n = bs[(at + (e.key === 'ArrowDown' ? 1 : -1) + bs.length) % bs.length]; if (n) n.focus(); }
   };
-  setTimeout(() => { addEventListener('pointerdown', ctxOutside, true); addEventListener('keydown', ctxEsc, true); addEventListener('scroll', closeCtxMenu, true); addEventListener('resize', closeCtxMenu); }, 0);
+  setTimeout(() => { addEventListener('pointerdown', ctxOutside, true); addEventListener('scroll', closeCtxMenu, true); addEventListener('resize', closeCtxMenu); }, 0);
 }
 function ctxOutside(e) { if (!e.target.closest('#ctxMenu')) closeCtxMenu(); }
 function ctxEsc(e) { if (e.key === 'Escape') { e.stopPropagation(); closeCtxMenu(); } }

@@ -2,7 +2,7 @@
   "version": "2026.11.03.2142",
   "date": "2026-11-03",
   "size": 12779520,
-  "sha256": "62b3c7d7c76f2aed8a89f60b7747327760df2edd11fc6fda435fc6d7cae3a8f7",
+  "sha256": "b6fc91c1cc6b1d0bc6d40c73efef3252ca6cdf9c0e56c8309ced01ac81dde350",
   "notes": "Right-click any inventory slot for a menu: fill, repair, copy, paste, duplicate, supercharge, move to another inventory, remove. Works on selections too.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
