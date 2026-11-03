@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.03.2142",
+  "version": "2026.11.03.2150",
   "date": "2026-11-03",
-  "size": 12779520,
-  "sha256": "b6fc91c1cc6b1d0bc6d40c73efef3252ca6cdf9c0e56c8309ced01ac81dde350",
-  "notes": "Right-click any inventory slot for a menu: fill, repair, copy, paste, duplicate, supercharge, move to another inventory, remove. Works on selections too.",
+  "size": 12782592,
+  "sha256": "d16043ccbd922c54a9ef9390063aa5f2f15ed9d6ef009c6fe6cfa774859663fc",
+  "notes": "Save & exit: the new Exit button, and Cancel on the 'Leave app?' box, offer Save & exit, Exit without saving or Keep editing.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

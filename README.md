@@ -30,6 +30,8 @@ Nothing is uploaded anywhere. Item names and icons come from your own copy of th
 4. On first start it builds an item library from your No Man's Sky install (about a minute). That's where item names, icons and descriptions come from.
 5. Make your changes, then press **Save to game** at the bottom of the sidebar.
 
+**Leaving with unsaved changes:** the **Exit** button at the bottom of the sidebar offers **Save & exit**. Closing the window shows the browser's own "Leave app?" box instead; press **Cancel** there and the editor offers **Save & exit**.
+
 **Close No Man's Sky before saving.** The editor warns you if the game is still running. Steam Cloud can also restore an older copy if it syncs before the game starts.
 
 The app updates itself. When a new version is out it offers to install it, checks the download, swaps itself over and restarts.
