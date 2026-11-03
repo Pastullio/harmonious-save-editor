@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.01.2258",
-  "date": "2026-11-01",
-  "size": 12747264,
-  "sha256": "4d1c6d6d0f4d026ac3b4f585ddb5317d59fe346b8a6feed9538ecf50839e059b",
-  "notes": "Dock Yard: every loaded ship shows Loaded, slot N (the first cover could miss it), and loaded ships come first in slot order. Shipwright shows the corvette's picture.",
+  "version": "2026.11.03.1425",
+  "date": "2026-11-03",
+  "size": 12757504,
+  "sha256": "cd95e72229a929630fdcc322594d5362a564f9c6a0fa5058dcf24045736a6634",
+  "notes": "Customise the sidebar: drag pages up, down or into another group, move groups, and hide pages you don't use (button at the bottom of the sidebar).",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

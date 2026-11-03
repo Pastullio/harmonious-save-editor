@@ -230,6 +230,10 @@ Every inventory grid (exosuit, ships, multi-tools, freighter, exocraft, storage)
 
 Each page's own buttons (**Add a ship**, **Add a multi-tool**, **Render corvettes**, **Add a companion**…) sit in a row just above what they work on, on the left; on pages with covers the **Cover Flow / Grid** switch is on the right of the same row.
 
+### Your own sidebar
+
+The customise button at the bottom of the sidebar (lines with a pencil) lets you drag pages up and down or into another group, move groups with their arrows, and hide pages you never use with the eye. Hidden pages still turn up in **Find anything**. **Reset to default** puts it back. The layout is kept between sessions, and pages added in later updates show up in their usual group.
+
 ### Find
 
 Press **Ctrl+K** (or use the box at the top of the sidebar) to jump to any ship, base, frigate, companion, setting or item in your inventories.

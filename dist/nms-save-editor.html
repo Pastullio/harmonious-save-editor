@@ -987,6 +987,27 @@ nav button .dot { width: 8px; height: 8px; border-radius: 50%; background: var(-
 nav button .lbl { flex: 1; }
 .nav-group { padding: 4px; border-radius: 16px; background: color-mix(in srgb, var(--tint) 9%, transparent); margin-bottom: 8px; }
 .nav-group:last-child { margin-bottom: 0; }
+.ne-head { display: grid; gap: 6px; padding: 10px 12px 12px; margin-bottom: 8px; border-radius: 14px; background: var(--surface); box-shadow: 0 0 0 1px var(--line); font-size: 12.5px; line-height: 1.4; }
+.ne-head b { font-size: 13.5px; }
+.ne-acts { display: flex; gap: 6px; justify-content: space-between; margin-top: 4px; }
+.ne-gbar { display: flex; align-items: center; gap: 2px; padding: 2px 6px 4px 10px; font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; }
+.ne-gbar .dim { flex: 1; }
+.ne-item { display: flex; align-items: center; gap: 2px; padding: 3px 4px 3px 6px; border-radius: 999px; color: var(--ink); font-size: 13.5px; cursor: grab; background: color-mix(in srgb, var(--surface) 70%, transparent); margin-bottom: 2px; }
+.ne-item .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); flex: none; margin: 0 8px 0 2px; }
+.ne-item .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ne-item.off .lbl, .ne-item.off .dot { opacity: .4; }
+.ne-item.off .lbl { text-decoration: line-through; }
+.ne-item.dragging { opacity: .4; }
+.ne-item.drop-before { box-shadow: inset 0 3px 0 var(--accent); }
+.ne-group.drop-before { box-shadow: inset 0 0 0 2px var(--accent); }
+.ne-grip { color: var(--dim); font-size: 11px; letter-spacing: -2px; padding-right: 4px; }
+.ne-btn { width: 26px; height: 26px; border: 0; border-radius: 50%; background: none; color: var(--dim); cursor: pointer; display: grid; place-items: center; font-size: 14px; flex: none; }
+.ne-btn:hover:not(:disabled) { background: var(--hover); color: var(--ink); }
+.ne-btn:disabled { opacity: .25; cursor: default; }
+.ne-btn svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.ne-eye[aria-pressed="false"] { color: var(--accent); }
+.ne-empty { margin: 4px 10px 8px; font-size: 12px; }
+@media (max-width: 960px) { nav.nav-editing { display: block; overflow: visible; } nav.nav-editing .nav-group { display: block; margin-bottom: 8px; } }
 .nav-group button { margin-bottom: 0; }
 :root[data-theme="dark"] .nav-group { background: color-mix(in srgb, var(--tint) 11%, transparent); }
 nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .85; }
@@ -1048,6 +1069,7 @@ nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .
         <button class="icon-btn" id="closeBtn" type="button" title="Open a different save" aria-label="Open a different save"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.2h7.5A2.5 2.5 0 0 1 21 9.7v7.8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg></button>
         <button class="icon-btn hidden" id="backupAllBtn" type="button" title="Back up all saves (zips every slot into Documents\Harmonious Save Editor backups)" aria-label="Back up all saves"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 4h17v4h-17z M5 8v11h14V8 M12 11v5 M9.5 13.5 12 16l2.5-2.5"/></svg></button>
         <button class="icon-btn hidden" id="backupsBtn" type="button" title="Show backups" aria-label="Show backups"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1 M3.5 4.5v4.5H8 M12 7.5V12l3 2"/></svg></button>
+        <button class="icon-btn" id="navEditBtn" type="button" title="Customise the sidebar" aria-label="Customise the sidebar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9 M4 12h6 M4 18h9 M15.5 18.5l1-3.5 4.5-4.5 2.5 2.5-4.5 4.5z"/></svg></button>
         <button class="icon-btn theme-btn" type="button" title="Dark mode" aria-label="Dark mode"></button>
         <button class="icon-btn about-btn" type="button" title="About" aria-label="About"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M12 11v5.5 M12 7.6v.1"/></svg></button>
       </div>
@@ -1957,6 +1979,37 @@ function applySection(id) {
   if (c) document.body.style.setProperty('--sec', c); else document.body.style.removeProperty('--sec');
 }
 
+// The owner's own sidebar (owner, 2026-11-03): pages moved within or between groups, groups reordered, pages hidden.
+// Kept in localStorage 'hse-nav' as { groups: [{ k: 'g0', ids: [...] }], hidden: [...] }. Pages a later version adds
+// show up in their usual group; hidden pages are still found with Find anything.
+const NAV_KEY = 'hse-nav';
+function navSaved() { try { return JSON.parse(localStorage.getItem(NAV_KEY) || 'null'); } catch (_) { return null; } }
+function navStore(v) { try { if (v) localStorage.setItem(NAV_KEY, JSON.stringify(v)); else localStorage.removeItem(NAV_KEY); } catch (_) {} }
+function navLayout() {
+  const known = new Set(SECTIONS.map(([id]) => id)), saved = navSaved(), placed = new Set();
+  const byKey = Object.fromEntries(NAV_GROUPS.map((gr, i) => ['g' + i, gr]));
+  const out = [];
+  for (const sg of (saved && Array.isArray(saved.groups) ? saved.groups : [])) {
+    const def = sg && byKey[sg.k]; if (!def || out.some((x) => x.k === sg.k)) continue;
+    const ids = (Array.isArray(sg.ids) ? sg.ids : []).filter((id) => known.has(id) && !placed.has(id)); ids.forEach((id) => placed.add(id));
+    out.push({ k: sg.k, tint: def.tint, ids });
+  }
+  NAV_GROUPS.forEach((gr, i) => { if (!out.some((x) => x.k === 'g' + i)) out.push({ k: 'g' + i, tint: gr.tint, ids: [] }); });
+  // anything not placed yet (new in this version, or no saved layout) goes to its usual group, after the page it follows
+  NAV_GROUPS.forEach((gr, gi) => gr.ids.forEach((id, k) => {
+    if (placed.has(id) || !known.has(id)) return; placed.add(id);
+    const grp = out.find((x) => x.k === 'g' + gi), prev = gr.ids.slice(0, k).reverse().find((x) => grp.ids.includes(x));
+    grp.ids.splice(prev ? grp.ids.indexOf(prev) + 1 : 0, 0, id);
+  }));
+  const hidden = new Set((saved && Array.isArray(saved.hidden) ? saved.hidden : []).filter((id) => known.has(id)));
+  return { groups: out, hidden };
+}
+function navSave(L) { navStore({ groups: L.groups.map(({ k, ids }) => ({ k, ids })), hidden: [...L.hidden] }); }
+function navMove(L, id, toGroup, before) {   // put a page into a group, before another page (or at the end)
+  for (const gr of L.groups) { const k = gr.ids.indexOf(id); if (k >= 0) gr.ids.splice(k, 1); }
+  const gr = L.groups.find((x) => x.k === toGroup), at = before ? gr.ids.indexOf(before) : -1;
+  gr.ids.splice(at >= 0 ? at : gr.ids.length, 0, id);
+}
 function renderSide() {
   const p = ps(), m = S.save.meta && S.save.meta.info;
   $('#saveName').textContent = str(g(common() || p, 'SaveName')) || (m && m.saveName) || S.src.dataName;
@@ -1966,11 +2019,60 @@ function renderSide() {
   const counts = { hangar: ships().length + tools().length, ships: ships().length, tools: tools().length, storage: storageInvs().length };
   const label = Object.fromEntries(SECTIONS);
   const btn = (id) => `<button data-s="${id}" ${S.section === id ? 'aria-current="page"' : ''} style="--dot:${secColor(id) || 'var(--line-2)'}"><span class="dot" aria-hidden="true"></span><span class="lbl">${label[id]}</span>${LIVE.on && id === (LIVE.kind === 'base' ? 'bases' : 'shipwright') ? '<span class="live-pill" title="LiveLink from Blender is on"><span class="live-dot"></span>Live</span>' : NEW_SECTIONS[id] && APP && !seenSection(id) ? '<span class="new-pill">New</span>' : counts[id] != null ? `<span class="count">${counts[id]}</span>` : ''}</button>`;
-  $('#nav').innerHTML = NAV_GROUPS.map((gr) => `<div class="nav-group" style="--tint:${gr.tint}">${gr.ids.filter((id) => label[id]).map(btn).join('')}</div>`).join('');
+  const L = navLayout();
+  if (S.navEdit) { renderNavEdit(L, label); updateStatus(); return; }
+  $('#nav').classList.remove('nav-editing');
+  $('#nav').innerHTML = L.groups.map((gr) => { const ids = gr.ids.filter((id) => label[id] && !L.hidden.has(id)); return ids.length ? `<div class="nav-group" style="--tint:${gr.tint}">${ids.map(btn).join('')}</div>` : ''; }).join('');
   applySection(S.section);
   $('#nav').querySelectorAll('button').forEach((b) => b.onclick = () => go(b.dataset.s));
   updateStatus();
 }
+// editing the sidebar: drag a page (or use its arrows) to move it, the eye hides it; groups move with their own arrows
+function renderNavEdit(L, label) {
+  const nav = $('#nav'); nav.classList.add('nav-editing');
+  const arrow = (d, attr, dis, what) => `<button type="button" class="ne-btn" ${attr} data-d="${d}"${dis ? ' disabled' : ''} aria-label="Move ${what} ${d < 0 ? 'up' : 'down'}">${d < 0 ? '↑' : '↓'}</button>`;
+  const eye = (on) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/>${on ? '<circle cx="12" cy="12" r="2.8"/>' : '<path d="M4 20 20 4"/>'}</svg>`;
+  nav.innerHTML = `<div class="ne-head"><b>Customise the sidebar</b><span class="dim">Drag pages to move them, between groups too. The eye hides a page; Find anything still reaches it.</span>
+      <div class="ne-acts"><button class="btn small ghost" type="button" id="neReset">Reset to default</button><button class="btn small primary" type="button" id="neDone">Done</button></div></div>`
+    + L.groups.map((gr, gi) => `<div class="nav-group ne-group" data-g="${gr.k}" style="--tint:${gr.tint}">
+      <div class="ne-gbar"><span class="dim">Group ${gi + 1}</span>${arrow(-1, `data-gm="${gr.k}"`, gi === 0, 'group')}${arrow(1, `data-gm="${gr.k}"`, gi === L.groups.length - 1, 'group')}</div>
+      ${gr.ids.filter((id) => label[id]).map((id, k, arr) => `<div class="ne-item${L.hidden.has(id) ? ' off' : ''}" draggable="true" data-id="${id}" style="--dot:${secColor(id) || 'var(--line-2)'}">
+        <span class="ne-grip" aria-hidden="true">⋮⋮</span><span class="dot" aria-hidden="true"></span><span class="lbl">${label[id]}</span>
+        ${arrow(-1, `data-im="${id}"`, gi === 0 && k === 0, label[id])}${arrow(1, `data-im="${id}"`, gi === L.groups.length - 1 && k === arr.length - 1, label[id])}
+        <button type="button" class="ne-btn ne-eye" data-eye="${id}" aria-pressed="${!L.hidden.has(id)}" aria-label="${L.hidden.has(id) ? 'Show' : 'Hide'} ${label[id]}" title="${L.hidden.has(id) ? 'Hidden: click to show' : 'Click to hide'}">${eye(!L.hidden.has(id))}</button></div>`).join('')}
+      ${gr.ids.length ? '' : '<p class="dim ne-empty">Drop a page here</p>'}</div>`).join('');
+  const save = () => { navSave(L); renderSide(); };
+  $('#neDone', nav).onclick = () => { S.navEdit = false; renderSide(); };
+  $('#neReset', nav).onclick = () => { navStore(null); toast('Sidebar back to its usual layout'); renderSide(); };
+  nav.querySelectorAll('[data-eye]').forEach((b) => b.onclick = () => { const id = b.dataset.eye; if (L.hidden.has(id)) L.hidden.delete(id); else L.hidden.add(id); save(); });
+  nav.querySelectorAll('[data-gm]').forEach((b) => b.onclick = () => { const k = L.groups.findIndex((x) => x.k === b.dataset.gm), j = k + +b.dataset.d; [L.groups[k], L.groups[j]] = [L.groups[j], L.groups[k]]; save(); });
+  // a page's arrows move it one place, and across into the next group at either end
+  nav.querySelectorAll('[data-im]').forEach((b) => b.onclick = () => {
+    const id = b.dataset.im, d = +b.dataset.d, gi = L.groups.findIndex((x) => x.ids.includes(id)), gr = L.groups[gi], k = gr.ids.indexOf(id);
+    if (k + d >= 0 && k + d < gr.ids.length) { gr.ids.splice(k, 1); gr.ids.splice(k + d, 0, id); }
+    else { const to = L.groups[gi + d]; if (!to) return; gr.ids.splice(k, 1); if (d < 0) to.ids.push(id); else to.ids.unshift(id); }
+    save(); const again = $(`#nav [data-im="${id}"][data-d="${d}"]`); if (again && !again.disabled) again.focus();
+  });
+  let dragId = null;
+  nav.querySelectorAll('.ne-item').forEach((it) => {
+    it.ondragstart = (e) => { dragId = it.dataset.id; it.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', dragId); } catch (_) {} };
+    it.ondragend = () => { dragId = null; nav.querySelectorAll('.drop-before').forEach((x) => x.classList.remove('drop-before')); it.classList.remove('dragging'); };
+  });
+  nav.querySelectorAll('.ne-group').forEach((grp) => {
+    grp.ondragover = (e) => {
+      if (!dragId) return; e.preventDefault();
+      nav.querySelectorAll('.drop-before').forEach((x) => x.classList.remove('drop-before'));
+      const t = e.target.closest('.ne-item'); if (t && t.dataset.id !== dragId) t.classList.add('drop-before'); else if (!t) grp.classList.add('drop-before');
+    };
+    grp.ondragleave = (e) => { if (!grp.contains(e.relatedTarget)) grp.classList.remove('drop-before'); };
+    grp.ondrop = (e) => {
+      if (!dragId) return; e.preventDefault();
+      const t = e.target.closest('.ne-item'), before = t && t.dataset.id !== dragId ? t.dataset.id : null;
+      navMove(L, dragId, grp.dataset.g, before); dragId = null; save();
+    };
+  });
+}
+$('#navEditBtn').onclick = () => { S.navEdit = !S.navEdit; renderSide(); if (S.navEdit) $('#nav').scrollIntoView({ block: 'nearest' }); };
 function go(section) {
   S.section = section; S.sel = null; applySection(section);
   $('#nav').querySelectorAll('button').forEach((b) => { if (b.dataset.s === section) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
