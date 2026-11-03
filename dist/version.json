@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.03.1425",
+  "version": "2026.11.03.1520",
   "date": "2026-11-03",
-  "size": 12757504,
-  "sha256": "cd95e72229a929630fdcc322594d5362a564f9c6a0fa5058dcf24045736a6634",
-  "notes": "Customise the sidebar: drag pages up, down or into another group, move groups, and hide pages you don't use (button at the bottom of the sidebar).",
+  "size": 12759040,
+  "sha256": "154a2fc0a44ba3fe046f1903946aa20aa2b5b820f7375b08a52ad09277b2a2a5",
+  "notes": "Dock Yard: ships added since the save was opened (like a new corvette) now show up, and everything you save to the game is kept in the Hangar.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

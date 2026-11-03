@@ -205,6 +205,13 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const bar = await p.$eval('.dy-acts', (e) => e.innerText);
   ok('Cover Flow has an action bar for the picked ship', /Details/.test(bar) && /(Edit ship|Put in this save|Open a save)/.test(bar));
   await p.evaluate(() => localStorage.setItem('hse-cover-view', 'grid'));
+  // a corvette added after the save was opened shows up in the Dock Yard (owner, 2026-11-03)
+  const added = await p.evaluate(() => { const used = new Set(ships().map((x) => x.i)), slot = (g(ps(), 'ShipOwnership') || []).findIndex((_, i) => !used.has(i)); if (slot < 0) return -1; addCorvette(slot); set(g(ps(), 'ShipOwnership')[slot], 'Name', 'Brand New Corvette'); renderSide(); return slot; });
+  if (added >= 0) {
+    await p.click('nav button[data-s="library"]'); await p.click('.dy-tabs [data-v="garage"]'); await p.waitForTimeout(2500);
+    const capsNew = await p.$$eval('.lib-card .tc-cap', (c) => c.map((x) => x.textContent));
+    ok('a corvette added since opening is in the Hangar, loaded', capsNew.some((c) => /Brand New Corvette/.test(c) && new RegExp('Loaded, slot ' + 0).test(c) === false && /Loaded, slot/.test(c)));
+  }
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
   await p.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark')); await p.click('.dy-sub [data-v="all"]'); await p.waitForTimeout(2500);
   await p.screenshot({ path: SP + '/shots/lib2-dark.png' });

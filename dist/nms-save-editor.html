@@ -1890,6 +1890,9 @@ function openSave(data, meta, name, src) {
   $('#landing').classList.add('hidden'); $('#app').classList.remove('hidden'); document.body.classList.remove('on-landing');
   renderSide(); go('overview');
   setTimeout(() => rememberPlanets(), 300);
+  // the ships the save had when opened: only ships added after that are copied when the Dock Yard opens (a Hangar copy the
+  // owner deleted mustn't come straight back)
+  S.openIdents = new Set(ships().map(({ s, i }) => shipIdentity({ ship: s, base: shipBuild(i) })).filter(Boolean));
   if (APP) setTimeout(() => garageCapture().catch((e) => console.warn('garage', e)), 800);
   if (APP) setTimeout(() => autoRenderCorvettes().catch((e) => console.warn('auto render', e)), 6000);
   toast('Loaded ' + name + ' in ' + Math.round(performance.now() - t0) + ' ms' + (meta ? '' : ' (read-only: no meta file)'));
@@ -6220,7 +6223,9 @@ const ShipLib = {
   },
   async garagePrints() {
     const items = await this.summarize((await this.files()).filter((f) => f.src === 'garage'));
-    return new Set(items.map((x) => x.sum && x.sum.fp).filter(Boolean));
+    const out = new Set(items.map((x) => x.sum && x.sum.fp).filter(Boolean));
+    out.idents = new Set(items.map((x) => x.sum && x.sum.ident).filter(Boolean));
+    return out;
   },
 };
 // The Garage shows one card per ship. Its versions stack inside, newest first; copies of a version (the same ship
@@ -6421,13 +6426,19 @@ function shipIdentity(p) {
   return file.toLowerCase() + '|' + seed.toLowerCase() + (corv ? '|' + ts : '');
 }
 // Garage: a copy of every ship in the open save, once per version
-async function garageCapture() {
+// onlyNew: just ships the Hangar has never seen (a corvette added since the save was opened), not new versions of known
+// ones, which are kept when the save is opened or saved (unsaved edits shouldn't fill the Hangar with versions)
+async function garageCapture({ onlyNew = false } = {}) {
   if (!APP || !S.save || !window.crypto || !crypto.subtle) return 0;
   const have = await ShipLib.garagePrints().catch(() => null);
+  if (onlyNew && !have) return 0;
   let added = 0;
   for (const { s, i } of ships()) {
-    const text = C.stringifyJSON(shipDoc(i)), fp = await shipFingerprint(parseShipFile(text));
+    // one ship that can't be read mustn't stop the ships after it from being kept
+    let text, doc, fp;
+    try { text = C.stringifyJSON(shipDoc(i)); doc = parseShipFile(text); fp = await shipFingerprint(doc); } catch (e) { console.warn('garage: slot', i + 1, e); continue; }
     if (have && have.has(fp)) continue;
+    if (onlyNew) { const id = shipIdentity(doc); if (!id || have.idents.has(id) || (S.openIdents && S.openIdents.has(id))) continue; have.idents.add(id); }
     const nm = str(g(s, 'Name')), path = `${safeFile(/[\p{L}\p{N}]/u.test(nm) ? nm : shipType(g(s, 'Resource', 'Filename')))} ${fp}.ship.json`;
     try { await api(`/api/ships/file?src=garage&path=${encodeURIComponent(path)}&new=1`, { method: 'POST', body: text }); added++; if (have) have.add(fp); }
     catch (e) { if (!/already exists/.test(e.message)) console.warn('garage', e); }
@@ -6598,6 +6609,9 @@ PAGES.library = (el) => {
   sub.onclick = (e) => { const b = e.target.closest('[data-v]'); if (b) pick(b.dataset.v); };
   let current = [];
   (async () => {
+    // ships added since the save was opened (Add corvette, Add a ship…) aren't in the Hangar yet
+    // (owner, 2026-11-03: a new corvette in slot 7 was missing), so the open save is copied in first
+    if (S.save) await garageCapture({ onlyNew: true }).catch(() => {});
     const files = await ShipLib.files();
     if (!alive()) return;
     const I = ShipLib.index || (await ShipLib.loadIndex());
@@ -7344,7 +7358,7 @@ async function liveWrite(body, objects) {
   if (!LIVE.write) return { ok: true, parts: objs.length, file: from, name, slot: LIVE.slot, written: false, message: `${plural(objs.length, 'part')}${fromTxt} put on ${name}. Press Save to game in the editor to keep them.` };
   try {
     const out = encodeSave(), res = await appWriteFiles(out);
-    S.dirty = false; DISK.save = null; renderSide();
+    S.dirty = false; DISK.save = null; renderSide(); setTimeout(() => garageCapture().catch(() => {}), 1500);
     let running = false; try { running = (await (await api('/api/game-running')).json()).running; } catch (_) {}
     return { ok: true, parts: objs.length, file: from, name, slot: LIVE.slot, written: true, running, message: `${plural(objs.length, 'part')}${fromTxt} written to ${name} (slot ${LIVE.slot + 1}), the old save backed up first.${running ? ' The game is running: load the save from the main menu to see it.' : ''}` };
   } catch (e) { return { ok: false, message: `Put on ${name}, but not written: ${e.message}` }; }
@@ -8931,6 +8945,7 @@ async function appWrite(out) {
     const res = await appWriteFiles(out);
     S.dirty = false; renderSide(); DISK.save = null;   // our own write is not "the game saved again"
     toast('Saved. The previous files are in backups\\' + res.backupName);
+    setTimeout(() => garageCapture().catch(() => {}), 1500);   // what was just saved goes to the Hangar too
   } catch (e) { toast('Save failed, your files were not changed: ' + e.message, true); }
   finally { updateStatus(); }
 }
