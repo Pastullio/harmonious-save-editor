@@ -23,6 +23,15 @@ func windowPlacement() []string {
 	if ok, _, _ := spi.Call(0x0030 /* SPI_GETWORKAREA */, 0, uintptr(unsafe.Pointer(&r)), 0); ok == 0 || r.Right-r.Left < 400 || r.Bottom-r.Top < 300 {
 		return []string{"--window-size=1440,920"}
 	}
+	// once the process is DPI aware (the editor's own window was tried first) the work area is in real pixels,
+	// while Edge takes 100 % pixels: scale back
+	dpi := callIf(syscall.NewLazyDLL("user32.dll").NewProc("GetDpiForSystem"))
+	if dpi == 0 {
+		dpi = 96
+	}
+	for _, v := range []*int32{&r.Left, &r.Top, &r.Right, &r.Bottom} {
+		*v = *v * 96 / int32(dpi)
+	}
 	aw, ah := int(r.Right-r.Left), int(r.Bottom-r.Top)
 	w, h := min(w0, aw-32), min(h0, ah-32)
 	x, y := int(r.Left)+(aw-w)/2, int(r.Top)+(ah-h)/2

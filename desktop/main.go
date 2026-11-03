@@ -106,6 +106,12 @@ func main() {
 	mux.HandleFunc("/hse-hello", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]string{"app": "harmonious-save-editor", "version": appVersion})
 	})
+	// a second start of the app asks this one to bring its window to the front
+	mux.HandleFunc("/hse-focus", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || !focusNativeWindow() {
+			http.NotFound(w, r)
+		}
+	})
 	mux.HandleFunc("/api/ping", func(w http.ResponseWriter, r *http.Request) { lastPing.Store(nowMs()); byeAt.Store(0) })
 	mux.HandleFunc("/api/bye", func(w http.ResponseWriter, r *http.Request) { byeAt.Store(nowMs()) })
 	mux.HandleFunc("/api/roots", handleRoots)
@@ -165,6 +171,10 @@ func main() {
 
 	if *noWindow {
 		fmt.Println(url)
+	} else if nativeWindow(url) { // the editor's own window, until it's closed
+		log.Print("window closed, exiting")
+		liveShutdown()
+		os.Exit(0)
 	} else if err := openWindow(url, filepath.Join(appDir, "window")); err != nil {
 		fatal("Could not open a window: " + err.Error() + "\n\nOpen this address in your browser instead:\n" + url)
 	}
@@ -509,6 +519,13 @@ func handOver(url string) bool {
 	if json.NewDecoder(r.Body).Decode(&hi) != nil || hi.App != "harmonious-save-editor" || hi.Version != appVersion {
 		return false
 	}
-	log.Printf("an editor is already running at %s; opening a window on it", url)
+	log.Printf("an editor is already running at %s; bringing its window up", url)
+	allowFocusSteal()
+	if r, err := c.Post(url+"hse-focus", "text/plain", nil); err == nil {
+		r.Body.Close()
+		if r.StatusCode == http.StatusOK {
+			return true
+		}
+	}
 	return openWindow(url, filepath.Join(appDir, "window")) == nil
 }

@@ -116,7 +116,7 @@ func newerVersion(a, b string) bool {
 
 func handleUpdate(w http.ResponseWriter, r *http.Request) {
 	out := map[string]any{"current": appVersion}
-	if appVersion == "dev" && os.Getenv("HSE_UPDATE_URL") == "" {
+	if strings.HasPrefix(appVersion, "dev") && os.Getenv("HSE_UPDATE_URL") == "" { // dev and test builds (dev-webview-1…) never update themselves
 		out["dev"] = true
 		writeJSON(w, out)
 		return

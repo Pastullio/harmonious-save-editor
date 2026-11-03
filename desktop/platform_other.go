@@ -100,3 +100,8 @@ func pickFile(title, filter, startDir string) (string, error) {
 func pickFolder(title string) (string, error) {
 	return "", fmt.Errorf("choosing a folder needs the Windows app; type the folder's path instead")
 }
+
+// the editor's own window is Windows only for now; elsewhere the browser window is used
+func nativeWindow(url string) bool { return false }
+func focusNativeWindow() bool      { return false }
+func allowFocusSteal()             {}
