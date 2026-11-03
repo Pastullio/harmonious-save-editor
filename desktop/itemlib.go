@@ -24,7 +24,7 @@ import (
 	"time"
 )
 
-const itemlibVersion = 5 // 2: words, frigate traits and settlement perks; 3: expedition, Twitch and platform rewards; 4: biome odds; 5: Dead-to-Exotic share
+const itemlibVersion = 6 // 2: words, frigate traits and settlement perks; 3: expedition, Twitch and platform rewards; 4: biome odds; 5: Dead-to-Exotic share; 6: technology categories
 
 type libItem struct {
 	ID     string `json:"id"`
@@ -36,6 +36,10 @@ type libItem struct {
 	Stack  int    `json:"stack,omitempty"`  // stack multiplier (products, substances)
 	Charge int    `json:"charge,omitempty"` // charge amount (technology)
 	Proc   bool   `json:"proc,omitempty"`   // procedural upgrade; saves add #seed to the id
+	// technology: GcTechnologyCategory + 1 (0 unknown): 1 ship, 2 weapons (multi-tool), 3 suit, 7 freighter,
+	// 8 maintenance, 9 exocraft, 10 Colossus, 11 Nautilon, 12 Minotaur, 13 all vehicles, 14 living ship,
+	// 15 all ships, 16 sentinel ship, 17 all ships but living ones, 18 corvette crew (checked 2026-11-03)
+	TCat int `json:"tcat,omitempty"`
 }
 
 type libFile struct {
@@ -441,7 +445,7 @@ func buildItemLibrary() (err error) {
 	if err != nil {
 		return err
 	}
-	techIcon, techName, techSub := map[string]string{}, map[string]string{}, map[string]string{}
+	techIcon, techName, techSub, techCat := map[string]string{}, map[string]string{}, map[string]string{}, map[string]int{}
 	a, n = m.list(0x20)
 	for i := 0; i < n; i++ {
 		e := a + i*0x2E0
@@ -451,7 +455,10 @@ func buildItemLibrary() (err error) {
 		}
 		it := libItem{ID: "^" + id, Type: "Technology", Name: b.name(m.fstr(e+0x244, 0x80), m.fstr(e+0x1C4, 0x80), id),
 			Icon: icon(m.vstr(e + 0xB0)), Sub: b.text(m.vstr(e + 0x168)), Charge: int(m.i32(e + 0x198))}
-		techIcon[id], techName[id], techSub[id] = it.Icon, it.Name, it.Sub
+		if c := m.i32(e + 0x194); c >= 0 && c < 64 { // Category (GcTechnologyCategory)
+			it.TCat = int(c) + 1
+		}
+		techIcon[id], techName[id], techSub[id], techCat[id] = it.Icon, it.Name, it.Sub, it.TCat
 		items = append(items, it)
 	}
 
@@ -482,7 +489,7 @@ func buildItemLibrary() (err error) {
 		if name == "" {
 			name = id
 		}
-		items = append(items, libItem{ID: "^" + id, Type: "Technology", Name: name, Icon: techIcon[tpl], Sub: sub, Proc: true})
+		items = append(items, libItem{ID: "^" + id, Type: "Technology", Name: name, Icon: techIcon[tpl], Sub: sub, Proc: true, TCat: techCat[tpl]})
 	}
 
 	// words, frigate traits and settlement perks: nice to have, so a layout change only skips them

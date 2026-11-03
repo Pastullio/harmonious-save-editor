@@ -28,7 +28,10 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.keyboard.type('carbon'); await p.waitForTimeout(300);
   const names = await p.$$eval('.add-res [data-k]', (bs) => bs.map((x) => x.textContent));
   console.log(names.slice(0, 4));
-  ok('cargo search finds items by name, best match first, no technology', /^Carbon/.test(names[0] || '') && !names.some((n) => /Technology,/.test(n)));
+  ok('cargo search finds items by name, best match first', /^Carbon/.test(names[0] || ''));
+  await p.fill('#aQ', 'hazard'); await p.waitForTimeout(300);
+  ok('cargo can take anything, technology too', (await p.$$eval('.add-res [data-k] .add-meta', (bs) => bs.map((x) => x.textContent))).some((n) => /^Technology/.test(n)));
+  await p.fill('#aQ', 'carbon'); await p.waitForTimeout(300);
   await p.keyboard.press('Enter'); await p.waitForTimeout(400);
   const added = await p.evaluate(([x, y]) => { const s = slotAt(g(ps(), 'Inventory'), x, y); return s && { id: idOf(s), t: typeOf(s), a: num(g(s, 'Amount')), m: num(g(s, 'MaxAmount')) }; }, [fx, fy]);
   console.log(added);
@@ -42,8 +45,34 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
     await tfree.click(); await p.waitForSelector('#aQ'); await p.waitForTimeout(200); await p.fill('#aQ', 'pro'); await p.waitForTimeout(300);
     const tn = await p.$$eval('.add-res [data-k] .add-meta', (bs) => bs.map((x) => x.textContent)); console.log(tn.slice(0, 5), await p.textContent('.inspector .sub'));
     ok('technology slots offer only technology', tn.length > 0 && tn.every((n) => /^Technology/.test(n)));
+    // only the exosuit's kind of technology (suit categories), with a way to see everything
+    const cats = await p.evaluate(() => [...document.querySelectorAll('.add-res [data-k]')].map((b) => S.db.byId.get(b.dataset.id)).filter(Boolean).map((it) => it.tcat));
+    console.log('exosuit tech categories', [...new Set(cats)]);
+    ok('the exosuit only offers suit technology', cats.length > 0 && cats.every((c) => !c || c === 3 || c === 4));
+    await p.click('#aAll'); await p.waitForTimeout(300);
+    const cats2 = await p.evaluate(() => [...document.querySelectorAll('.add-res [data-k]')].map((b) => S.db.byId.get(b.dataset.id)).filter(Boolean).map((it) => it.tcat));
+    ok('Show all technology shows other kinds too', cats2.some((c) => c && c !== 3 && c !== 4));
+    await p.click('#aAll'); await p.waitForTimeout(200);
     await p.click('.add-res [data-k="0"]'); await p.waitForTimeout(300);
     ok('clicking a result adds it too', await p.evaluate(() => !!document.querySelector('#sFill')));
+  }
+  // a multi-tool's store offers weapons technology only
+  await p.evaluate(() => { S.sel = null; go('tools'); }); await p.waitForTimeout(800);
+  const mfree = await p.evaluateHandle(() => { const c = document.querySelector('.inv .cell:not(.has):not(.locked)'); if (c) c.scrollIntoView({ block: 'center' }); return c; });
+  if (await mfree.evaluate((c) => !!c)) {
+    await mfree.click(); await p.waitForSelector('#aQ'); await p.waitForTimeout(200); await p.fill('#aQ', 'a'); await p.fill('#aQ', 'la'); await p.waitForTimeout(300);
+    const mc = await p.evaluate(() => [...document.querySelectorAll('.add-res [data-k]')].map((b) => S.db.byId.get(b.dataset.id)).filter(Boolean).map((it) => it.tcat));
+    console.log('multi-tool categories', [...new Set(mc)]);
+    ok('a multi-tool only offers multi-tool technology', mc.length > 0 && mc.every((c) => !c || c === 2));
+  }
+  // a starship's technology: ship categories only (fighters and the like: ship, all ships, all but living ships)
+  await p.evaluate(() => { S.sel = null; const sh = ships().find(({ s }) => !/BIGGS|BIOPARTS|SENTINEL/i.test(str(g(s, 'Resource', 'Filename')))); S.pick.ship = sh.i; go('ships'); }); await p.waitForTimeout(800);
+  const sfree = await p.evaluateHandle(() => { const c = document.querySelector('.inv .cell:not(.has):not(.locked)'); if (c) c.scrollIntoView({ block: 'center' }); return c; });
+  if (await sfree.evaluate((c) => !!c)) {
+    await sfree.click(); await p.waitForSelector('#aQ'); await p.waitForTimeout(200); await p.fill('#aQ', 'drive'); await p.waitForTimeout(300);
+    const sc = await p.evaluate(() => [...document.querySelectorAll('.add-res [data-k]')].map((b) => S.db.byId.get(b.dataset.id)).filter(Boolean).map((it) => it.tcat));
+    console.log('starship categories', [...new Set(sc)]);
+    ok('a starship only offers starship technology', sc.length > 0 && sc.every((c) => !c || [1, 15, 17].includes(c)));
   }
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
   await b.close(); proc.kill();

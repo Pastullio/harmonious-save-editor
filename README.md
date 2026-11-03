@@ -223,7 +223,7 @@ Every value in the save, translated from the game's short keys (the original key
 Every inventory grid (exosuit, ships, multi-tools, freighter, exocraft, storage) has the same tools:
 
 - **Technology / Cargo / Both** switch, laid out as the game shows them, with item icons, names and amounts.
-- **Add an item**: click an empty slot, type part of its name (Carbon, Orbital Exocraft Materialiser…) and press Enter or click a result. It goes in as a full stack, sized like the game sizes that inventory; technology grids offer only technology. **Add by item ID** is there too.
+- **Add an item**: click an empty slot, type part of its name (Carbon, Orbital Exocraft Materialiser…) and press Enter or click a result. It goes in as a full stack, sized like the game sizes that inventory. Cargo takes anything; a technology grid only offers technology that fits it (exosuit, multi-tool, freighter, each kind of ship and exocraft), with **Show all technology** to lift that. **Add by item ID** is there too.
 - **Click a filled slot** to see the item, change its amount, fill the stack, replace it or remove it.
 - **Drag and drop** stacks; drag a box across empty slots to select several and move them together.
 - **Unlock all slots**, **Fill stacks**, **Repair**, and **Size and class** to resize an inventory or change its class.

@@ -3949,6 +3949,22 @@ function isTechInv(inv) {
   if ([...ships(), ...vehicles()].some(({ s }) => g(s, 'Inventory_TechOnly') === inv) || tools().some(({ s }) => g(s, 'Store') === inv)) return true;
   const slots = slotsOf(inv); return slots.length > 0 && slots.every((s) => typeOf(s) === 'Technology');
 }
+// Which technology fits a technology grid, by the game's technology categories (item library tcat = GcTechnologyCategory
+// + 1): the exosuit takes suit tech, a multi-tool weapons tech, the freighter freighter tech, a ship its own kind's
+// (living ships, Sentinel interceptors and corvettes have their own), exocraft by model. null: not a technology grid.
+const TECH_CATS = { suit: [3, 4], tool: [2], freighter: [7], ship: [1, 15, 17], living: [14, 15], sentinel: [16, 15, 17], corvette: [1, 15, 17, 18],
+  exocraft: [9, 13], colossus: [9, 10, 13], nautilon: [11, 13], minotaur: [12, 13] };
+function techFit(inv) {
+  const p = ps(), file = (o) => str(g(o, 'Resource', 'Filename')).toUpperCase();
+  if (inv === g(p, 'Inventory_TechOnly')) return { what: 'exosuit', cats: TECH_CATS.suit };
+  if (inv === g(p, 'FreighterInventory_TechOnly')) return { what: 'freighter', cats: TECH_CATS.freighter };
+  const tool = tools().find(({ s }) => g(s, 'Store') === inv); if (tool) return { what: 'multi-tool', cats: TECH_CATS.tool };
+  const ship = ships().find(({ s }) => g(s, 'Inventory_TechOnly') === inv);
+  if (ship) { const f = file(ship.s); return /\/BIGGS\//.test(f) ? { what: 'corvette', cats: TECH_CATS.corvette } : /BIOPARTS|BIOSHIP/.test(f) ? { what: 'living ship', cats: TECH_CATS.living } : /SENTINELSHIP/.test(f) ? { what: 'interceptor', cats: TECH_CATS.sentinel } : { what: 'starship', cats: TECH_CATS.ship }; }
+  const veh = vehicles().find(({ s }) => g(s, 'Inventory_TechOnly') === inv);
+  if (veh) { const f = file(veh.s); return /MECH_SUIT/.test(f) ? { what: 'Minotaur', cats: TECH_CATS.minotaur } : /SUBMARINE/.test(f) ? { what: 'Nautilon', cats: TECH_CATS.nautilon } : /ROVER\//.test(f) ? { what: 'Colossus', cats: TECH_CATS.colossus } : { what: 'exocraft', cats: TECH_CATS.exocraft }; }
+  return isTechInv(inv) ? { what: 'this', cats: null } : null;
+}
 // A sensible amount and stack size for a new item, in the game's own numbers: the same item elsewhere in this inventory
 // (or anywhere in the save), else this inventory's stack size for its kind (substances share one; products are a base
 // times the item's stack multiplier), else the usual defaults. Technology: its charge, or -1 of 100 like the game's
@@ -3970,9 +3986,13 @@ function newItemAmounts(inv, it) {
 // An empty slot: search the item library by name, click a result (or press Enter) and it goes straight into the slot,
 // as a full stack (owner, 2026-11-03: the thing people use Goatfungus's editor for most). The item ID form is still there.
 function addForm(panel, inv, x, y, rerender) {
-  const tech = isTechInv(inv);
-  panel.innerHTML = `<div class="title">Add an item</div><div class="sub">${tech ? 'Technology' : 'Substances and products'} · slot ${x + 1}, ${y + 1}</div>
-    ${S.db ? `<label class="field"><span>Search by name</span><input class="input" id="aQ" type="search" autocomplete="off" placeholder="${tech ? 'e.g. Pulse Engine, Hazard Protection' : 'e.g. Carbon, Orbital Exocraft Materialiser'}"></label><div class="results add-res" id="aRes" role="listbox"></div>`
+  const tech = isTechInv(inv), fit = tech ? techFit(inv) : null;
+  // filter by category only when the library knows them (the Goatfungus fallback doesn't)
+  const known = !!(S.db && S.db.list.some((it) => it.tcat));
+  let all = !(fit && fit.cats && known);
+  const subLine = () => tech ? (all ? 'All technology' : `Technology for ${/^[A-Z]/.test(fit.what) ? 'the ' + fit.what : fit.what === 'exosuit' ? 'your exosuit' : fit.what === 'freighter' ? 'your freighter' : 'this ' + fit.what}`) : 'Anything: substances, products and technology';
+  panel.innerHTML = `<div class="title">Add an item</div><div class="sub"><span id="aSub">${subLine()}</span> · slot ${x + 1}, ${y + 1}${tech && fit && fit.cats && known ? ' · <button type="button" class="link" id="aAll">Show all technology</button>' : ''}</div>
+    ${S.db ? `<label class="field"><span>Search by name</span><input class="input" id="aQ" type="search" autocomplete="off" placeholder="${tech ? (fit && fit.what === 'multi-tool' ? 'e.g. S-Class Scanner, Plasma Launcher' : fit && fit.what === 'exosuit' ? 'e.g. S-Class Movement, Hazard Protection' : 'e.g. S-Class Hyperdrive, Pulse Engine') : 'e.g. Carbon, Orbital Exocraft Materialiser'}"></label><div class="results add-res" id="aRes" role="listbox"></div>`
            : `<p class="dim" style="margin:0;font-size:14px">Item names aren't loaded yet, so you can only add by item ID (such as <span class="mono">FUEL1</span>). Open <b>Item names</b> to build them from your game.</p>`}
     <details class="add-by-id"${S.db ? '' : ' open'}><summary>Add by item ID</summary>
       <label class="field"><span>Item ID</span><input class="input mono" id="aId" placeholder="^FUEL1"></label>
@@ -3995,12 +4015,13 @@ function addForm(panel, inv, x, y, rerender) {
     const draw = () => {
       const t = q.value.trim().toLowerCase();
       if (t.length < 2) { res.innerHTML = `<p class="dim" style="padding:8px 10px;margin:0">Type at least two letters.</p>`; hits = []; return; }
-      const ok = (it) => !it.hashed && (tech ? it.type === 'Technology' : it.type !== 'Technology');
-      const all = S.db.list.filter((it) => ok(it) && (it.name.toLowerCase().includes(t) || it.id.toLowerCase().includes(t)));
+      // cargo can hold anything; a technology grid gets the technology that fits it (owner, 2026-11-03)
+      const ok = (it) => !it.hashed && (!tech || (it.type === 'Technology' && (all || !it.tcat || fit.cats.includes(it.tcat))));
+      const found = S.db.list.filter((it) => ok(it) && (it.name.toLowerCase().includes(t) || it.id.toLowerCase().includes(t)));
       // names that start with the words typed first, then the rest
-      all.sort((a, b) => (b.name.toLowerCase().startsWith(t) - a.name.toLowerCase().startsWith(t)) || a.name.length - b.name.length || a.name.localeCompare(b.name));
-      hits = all.slice(0, 40); cur = 0;
-      res.innerHTML = hits.map((it, k) => `<button type="button" role="option" data-k="${k}"${k === 0 ? ' aria-selected="true"' : ''}>${it.icon ? `<img data-icon="${esc(it.icon)}" alt="">` : '<span></span>'}<span>${esc(it.name)}<span class="dim add-meta">${esc([it.type, it.sub].filter(Boolean).join(', '))}</span></span></button>`).join('') || '<p class="dim" style="padding:8px 10px;margin:0">No matches</p>';
+      found.sort((a, b) => (b.name.toLowerCase().startsWith(t) - a.name.toLowerCase().startsWith(t)) || a.name.length - b.name.length || a.name.localeCompare(b.name));
+      hits = found.slice(0, 40); cur = 0;
+      res.innerHTML = hits.map((it, k) => `<button type="button" role="option" data-k="${k}" data-id="${esc(it.id)}"${k === 0 ? ' aria-selected="true"' : ''}>${it.icon ? `<img data-icon="${esc(it.icon)}" alt="">` : '<span></span>'}<span>${esc(it.name)}<span class="dim add-meta">${esc([it.type, it.sub].filter(Boolean).join(', '))}</span></span></button>`).join('') || '<p class="dim" style="padding:8px 10px;margin:0">No matches</p>';
       loadIcons(res);
       res.querySelectorAll('[data-k]').forEach((b) => b.onclick = () => place(hits[+b.dataset.k]));
     };
@@ -4012,6 +4033,7 @@ function addForm(panel, inv, x, y, rerender) {
       else if (e.key === 'ArrowUp' && hits.length) { e.preventDefault(); cur = Math.max(0, cur - 1); mark(); }
     };
     draw(); setTimeout(() => q.focus(), 30);
+    const ab = $('#aAll', panel); if (ab) ab.onclick = () => { all = !all; ab.textContent = all ? 'Only what fits' : 'Show all technology'; $('#aSub', panel).textContent = subLine(); draw(); q.focus(); };
   }
   $('#aAdd', panel).onclick = () => {
     let id = $('#aId', panel).value.trim(); if (!id) { toast('Enter an item ID first.', true); return; }

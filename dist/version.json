@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.03.2107",
+  "version": "2026.11.03.2120",
   "date": "2026-11-03",
-  "size": 12763648,
-  "sha256": "3f7110f24dc2f1736c6a823f215a4413b6aa22fc167a9907aecd8cddb8167bba",
-  "notes": "Add items by name: click an empty slot in any inventory, type (Carbon, Orbital Exocraft Materialiser…), press Enter or click, and it goes in as a full stack. Technology grids offer only technology.",
+  "size": 12768768,
+  "sha256": "8b5e106ae01569b929ecf804dfd710491224fff46fe8cfcab6e026e374e0d7e1",
+  "notes": "Adding items: cargo takes anything, and each technology grid only offers technology that fits it (exosuit, multi-tool, freighter, each kind of ship and exocraft). The item library rebuilds once to learn the categories.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
