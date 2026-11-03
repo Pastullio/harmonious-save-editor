@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.03.2120",
+  "version": "2026.11.03.2142",
   "date": "2026-11-03",
-  "size": 12768768,
-  "sha256": "8b5e106ae01569b929ecf804dfd710491224fff46fe8cfcab6e026e374e0d7e1",
-  "notes": "Adding items: cargo takes anything, and each technology grid only offers technology that fits it (exosuit, multi-tool, freighter, each kind of ship and exocraft). The item library rebuilds once to learn the categories.",
+  "size": 12779520,
+  "sha256": "62b3c7d7c76f2aed8a89f60b7747327760df2edd11fc6fda435fc6d7cae3a8f7",
+  "notes": "Right-click any inventory slot for a menu: fill, repair, copy, paste, duplicate, supercharge, move to another inventory, remove. Works on selections too.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

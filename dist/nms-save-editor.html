@@ -465,6 +465,14 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .dy-d { font-size: 12.5px; color: var(--dim); line-height: 1.4; }
 .dy-acts { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin: 14px 0 6px; padding: 14px 18px; }
 .dy-acts[hidden] { display: none; }
+.ctx-menu { position: fixed; z-index: 3000; min-width: 210px; max-width: 300px; max-height: 70vh; overflow: auto; padding: 6px; border-radius: 12px; background: var(--surface); box-shadow: 0 0 0 1px var(--line), 0 14px 34px rgba(0, 0, 0, .28); font-size: 13.5px; }
+.ctx-menu button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; text-align: left; padding: 7px 10px; border: 0; border-radius: 8px; background: none; color: var(--ink); cursor: pointer; font: inherit; }
+.ctx-menu button:hover:not(:disabled), .ctx-menu button:focus-visible { background: var(--hover); outline: none; }
+.ctx-menu button:disabled { opacity: .45; cursor: default; }
+.ctx-menu button.danger { color: var(--danger); }
+.ctx-menu .ctx-h { padding: 6px 10px 4px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctx-menu .ctx-k { color: var(--dim); font-size: 12px; }
+.ctx-menu hr { border: 0; border-top: 1px solid var(--line); margin: 5px 4px; }
 .page-acts { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin: 0 0 14px; }
 .page-acts-l { display: flex; gap: 8px; flex-wrap: wrap; }
 .page-acts .view-switch { margin-left: auto; }
@@ -4126,7 +4134,7 @@ function invBlock(el, inv, title, peers) {
         <button class="btn small ghost" data-act="settings">Size and class</button>
       </div></div>
     <div class="inv-wrap"><div><div class="grid${S.db ? ' named' : ''}" style="--w:${w}">${cells}</div>
-      <div class="legend"><span><i style="background:var(--substance)"></i>Substance</span><span><i style="background:var(--product)"></i>Product</span><span><i style="background:var(--technology)"></i>Technology</span><span><i style="background:var(--danger)"></i>Damaged</span><span><i style="background:var(--accent)"></i>Stack or charge level</span>${charged.size || chargeable ? '<span><i class="lg-charge"></i>Supercharged</span>' : ''}<span class="legend-hint">Click an empty slot to add an item. Drag across empty slots to select a block; Ctrl-click or Shift-click to pick more</span></div></div>
+      <div class="legend"><span><i style="background:var(--substance)"></i>Substance</span><span><i style="background:var(--product)"></i>Product</span><span><i style="background:var(--technology)"></i>Technology</span><span><i style="background:var(--danger)"></i>Damaged</span><span><i style="background:var(--accent)"></i>Stack or charge level</span>${charged.size || chargeable ? '<span><i class="lg-charge"></i>Supercharged</span>' : ''}<span class="legend-hint">Click an empty slot to add an item; right-click any slot for more. Drag across empty slots to select a block; Ctrl-click or Shift-click to pick more</span></div></div>
       <div class="insp-slot"></div></div>`;
   el.appendChild(block);
   loadIcons(block);
@@ -4158,6 +4166,14 @@ function invBlock(el, inv, title, peers) {
     } else S.sel = { inv, keys: new Set([k]), anchor: [x, y] };
     showSel();
   };
+  // right-click: the things you'd do to that slot (or to the selection it's part of), in a small menu (owner, 2026-11-03)
+  block.querySelector('.grid').addEventListener('contextmenu', (e) => {
+    const c = e.target.closest('.cell'); if (!c) return;
+    e.preventDefault();
+    const x = +c.dataset.x, y = +c.dataset.y, k = x + ',' + y;
+    if (!(S.sel && S.sel.inv === inv && S.sel.keys.has(k))) { S.sel = { inv, keys: new Set([k]), anchor: [x, y] }; showSel(); }
+    slotMenu(e.clientX, e.clientY, block, inv, title, peers, x, y);
+  });
   // drag a box from an empty slot (or the gaps between slots) to select every slot it touches; Ctrl adds to the selection
   const grid = block.querySelector('.grid');
   grid.addEventListener('pointerdown', (e) => {
@@ -4214,7 +4230,7 @@ function bulkInspector(box, inv, title, peers, rerender) {
   const picked = slotsOf(inv).filter((s) => keys.has(posOf(s).join(',')));
   const locked = [...keys].filter((k) => !valid.has(k));
   const isTech = title === 'Technology';
-  const targets = moveTargets(isTech).filter(([i]) => i !== inv);
+  const targets = fitTargets(inv, picked, isTech);
   const panel = document.createElement('div'); panel.className = 'inspector';
   panel.innerHTML = `<div><div class="title">${plural(keys.size, 'slot')} selected</div>
       <div class="sub">${plural(picked.length, 'item')}${locked.length ? ', ' + locked.length + ' locked' : ''}${keys.size - picked.length - locked.length > 0 ? ', ' + (keys.size - picked.length - locked.length) + ' empty' : ''}</div></div>
@@ -4260,6 +4276,101 @@ function moveTargets(tech) {
   vehicles().forEach(({ s, i }) => add(g(s, 'Inventory'), exoName(s, i) + ' cargo'));
   storageInvs().forEach(({ name, inv }) => add(inv, prettyInvName(name)));
   return out;
+}
+// A small menu at the pointer: items are [label, fn, opts] (opts: danger, disabled, hint), a string is a heading, null a line.
+function ctxMenu(px, py, items) {
+  closeCtxMenu();
+  const m = document.createElement('div'); m.className = 'ctx-menu'; m.setAttribute('role', 'menu'); m.id = 'ctxMenu';
+  m.innerHTML = items.map((it, i) => it === null ? '<hr>' : typeof it === 'string' ? `<div class="ctx-h">${esc(it)}</div>`
+    : `<button type="button" role="menuitem" data-i="${i}"${it[2] && it[2].disabled ? ' disabled' : ''} class="${it[2] && it[2].danger ? 'danger' : ''}">${esc(it[0])}${it[2] && it[2].hint ? `<span class="ctx-k">${esc(it[2].hint)}</span>` : ''}</button>`).join('');
+  document.body.appendChild(m);
+  const r = m.getBoundingClientRect();
+  m.style.left = Math.max(6, Math.min(px, innerWidth - r.width - 6)) + 'px'; m.style.top = Math.max(6, Math.min(py, innerHeight - r.height - 6)) + 'px';
+  m.querySelectorAll('[data-i]').forEach((b) => b.onclick = () => { const fn = items[+b.dataset.i][1]; closeCtxMenu(); fn(); });
+  const first = m.querySelector('button:not([disabled])'); if (first) first.focus();
+  m.onkeydown = (e) => {
+    const bs = [...m.querySelectorAll('button:not([disabled])')], at = bs.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); const n = bs[(at + (e.key === 'ArrowDown' ? 1 : -1) + bs.length) % bs.length]; if (n) n.focus(); }
+  };
+  setTimeout(() => { addEventListener('pointerdown', ctxOutside, true); addEventListener('keydown', ctxEsc, true); addEventListener('scroll', closeCtxMenu, true); addEventListener('resize', closeCtxMenu); }, 0);
+}
+function ctxOutside(e) { if (!e.target.closest('#ctxMenu')) closeCtxMenu(); }
+function ctxEsc(e) { if (e.key === 'Escape') { e.stopPropagation(); closeCtxMenu(); } }
+function closeCtxMenu() {
+  const m = document.getElementById('ctxMenu'); if (m) m.remove();
+  removeEventListener('pointerdown', ctxOutside, true); removeEventListener('keydown', ctxEsc, true); removeEventListener('scroll', closeCtxMenu, true); removeEventListener('resize', closeCtxMenu);
+}
+// what a right-click on a slot offers: for the slot, or for every selected slot when it's part of a selection
+function slotMenu(px, py, block, inv, title, peers, x, y) {
+  const again = () => rerenderBlock(block, inv, title, peers), valid = validSet(inv), keys = [...S.sel.keys];
+  const picked = keys.map((k) => { const [a, b] = k.split(',').map(Number); return slotAt(inv, a, b); }).filter(Boolean);
+  const locked = keys.filter((k) => !valid.has(k)), empties = keys.filter((k) => valid.has(k) && !picked.some((s) => posOf(s).join(',') === k));
+  const tech = isTechInv(inv), chargeable = canCharge(inv), charged = chargedSet(inv);
+  const items = [];
+  const nameOfSlot = (sl) => { const d = dbItem(idOf(sl)); return d ? d.name : idLabel(idOf(sl)); };
+  const fillable = picked.filter((sl) => num(g(sl, 'MaxAmount')) > 0 && num(g(sl, 'Amount')) !== num(g(sl, 'MaxAmount')));
+  const damaged = picked.filter((sl) => (kOf(sl, 'DamageFactor') != null && num(g(sl, 'DamageFactor')) !== 0) || (kOf(sl, 'FullyInstalled') != null && g(sl, 'FullyInstalled') !== true));
+  const remove = () => { const arr = slotsOf(inv); for (const sl of picked) arr.splice(arr.indexOf(sl), 1); markDirty(); S.sel = null; toast(picked.length === 1 ? `${nameOfSlot(picked[0])} removed` : `${plural(picked.length, 'item')} removed`); again(); };
+  const chargeKeys = keys.filter((k) => valid.has(k)), allCharged = chargeKeys.length && chargeKeys.every((k) => charged.has(k));
+  const addCharge = () => { if (!chargeable || !chargeKeys.length) return; items.push([allCharged ? 'Remove supercharge' : 'Supercharge', () => { setCharged(inv, new Set(chargeKeys), !allCharged); if (!allCharged) S.zap = { inv, keys: new Set(chargeKeys), until: Date.now() + 1600 }; again(); }]); };
+  const moveList = () => {
+    const targets = fitTargets(inv, picked, tech); if (!picked.length || !targets.length) return;
+    items.push(null, 'Move to');
+    for (const t of targets.slice(0, 8)) items.push([t[1], () => moveSlots(inv, picked, t)]);
+    if (targets.length > 8) items.push(['Somewhere else…', () => { const sel = document.querySelector('#bTo'); if (sel) { sel.focus(); sel.scrollIntoView({ block: 'center' }); } else toast('Select the slots, then pick a place under Move to.'); }]);
+  };
+  if (keys.length > 1) {
+    items.push(`${plural(keys.length, 'slot')} selected`);
+    if (fillable.length) items.push([tech ? 'Recharge all' : 'Fill stacks', () => { picked.forEach(refill); markDirty(); again(); }]);
+    if (damaged.length) items.push(['Repair all', () => { picked.forEach(repair); markDirty(); again(); }]);
+    if (locked.length) items.push([`Unlock ${plural(locked.length, 'slot')}`, () => { const arr = g(inv, 'ValidSlotIndices'); locked.forEach((k) => { const [a, b] = k.split(',').map(Number); arr.push(coord(a, b)); }); markDirty(); again(); }]);
+    addCharge();
+    if (picked.length) items.push([`Copy ${plural(picked.length, 'item')}`, () => { S.clip = picked.map((sl) => cloneJSON(sl)); toast(`${plural(picked.length, 'item')} copied. Right-click an empty slot to paste.`); }]);
+    moveList();
+    if (picked.length) items.push(null, [`Remove ${plural(picked.length, 'item')}`, remove, { danger: true }]);
+  } else if (!picked.length && !valid.has(x + ',' + y)) {
+    items.push('Locked slot', ['Unlock this slot', () => { g(inv, 'ValidSlotIndices').push(coord(x, y)); markDirty(); again(); }]);
+  } else if (!picked.length) {
+    items.push('Empty slot');
+    items.push(['Add an item…', () => { const q = document.querySelector('#aQ') || document.querySelector('#aId'); if (q) q.focus(); }, { hint: 'type a name' }]);
+    const clip = (S.clip || []).filter((sl) => !tech || typeOf(sl) === 'Technology');
+    if (clip.length) items.push([clip.length === 1 ? `Paste ${nameOfSlot(clip[0])}` : `Paste ${plural(clip.length, 'item')}`, () => {
+      // fill from this slot onwards, row by row, skipping filled and locked slots
+      const w = num(g(inv, 'Width')), h = num(g(inv, 'Height')); let at = y * w + x, n = 0;
+      for (const sl of clip) {
+        while (at < w * h && (!valid.has((at % w) + ',' + Math.floor(at / w)) || slotAt(inv, at % w, Math.floor(at / w)))) at++;
+        if (at >= w * h) break;
+        const copy = cloneJSON(sl); set(copy, 'Index', coord(at % w, Math.floor(at / w))); slotsOf(inv).push(copy); n++; at++;
+      }
+      markDirty(); toast(n < clip.length ? `${n} of ${clip.length} pasted; no more free slots` : `${plural(n, 'item')} pasted`, n < clip.length); again();
+    }]);
+    addCharge();
+  } else {
+    const sl = picked[0], t = typeOf(sl), mx = num(g(sl, 'MaxAmount'));
+    items.push(nameOfSlot(sl));
+    items.push([t === 'Technology' ? 'Recharge' : 'Fill stack', () => { refill(sl); markDirty(); again(); }, { disabled: !fillable.length, hint: mx > 0 ? `${num(g(sl, 'Amount')).toLocaleString()} / ${mx.toLocaleString()}` : '' }]);
+    if (damaged.length) items.push(['Repair', () => { repair(sl); markDirty(); again(); }]);
+    if (t !== 'Technology' && mx > 1) items.push(['Set amount…', () => { const a = document.querySelector('#sAmt'); if (a) { a.focus(); a.select(); } }]);
+    items.push(['Copy', () => { S.clip = [cloneJSON(sl)]; toast(`${nameOfSlot(sl)} copied. Right-click an empty slot to paste.`); }]);
+    items.push(['Duplicate', () => {
+      const w = num(g(inv, 'Width')), h = num(g(inv, 'Height'));
+      for (let i = y * w + x + 1, n = 0; n < w * h; i = (i + 1) % (w * h), n++) {
+        const a = i % w, b = Math.floor(i / w);
+        if (valid.has(a + ',' + b) && !slotAt(inv, a, b)) { const copy = cloneJSON(sl); set(copy, 'Index', coord(a, b)); slotsOf(inv).push(copy); markDirty(); S.sel = { inv, keys: new Set([a + ',' + b]), anchor: [a, b] }; again(); return; }
+      }
+      toast('No empty slot left in this inventory.', true);
+    }]);
+    addCharge();
+    moveList();
+    items.push(null, ['Remove', remove, { danger: true }]);
+  }
+  ctxMenu(px, py, items);
+}
+// places the picked items can move to: technology only where it fits (an exosuit module doesn't go on a ship)
+function fitTargets(inv, picked, tech) {
+  const all = moveTargets(tech).filter(([i]) => i !== inv);
+  if (!tech) return all;
+  return all.filter(([t]) => { const f = techFit(t); return !f || !f.cats || picked.every((sl) => { const d = dbItem(idOf(sl)); return !d || !d.tcat || f.cats.includes(d.tcat); }); });
 }
 function closeInspector() {
   S.sel = null;
