@@ -150,9 +150,11 @@ body:not(.on-landing) .land-corner { display: none; }
 .about-sky { margin: -4px 0 14px; padding: 18px 18px 10px; border-radius: var(--r-lg); background: radial-gradient(120% 90% at 50% 20%, #12305a 0%, #0a1630 55%, #050a18 100%); text-align: center; }
 .about-sky img { width: min(420px, 100%); height: auto; display: block; margin: 0 auto; }
 .about-sky .ver { color: #b9d6ff; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; margin-top: 6px; }
-.about-links { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.about-links { display: flex; gap: 6px; margin: 12px 0; }
+.about-links .btn { flex: 1 1 auto; justify-content: center; text-align: center; white-space: nowrap; padding-inline: 8px; }
+@media (max-width: 640px) { .about-links { flex-wrap: wrap; } }
 .about-credits { font-size: 13px; color: var(--dim); line-height: 1.55; margin: 0; padding-left: 18px; }
-#dlg:has(.about-sky) { width: min(560px, calc(100vw - 32px)); }
+#dlg:has(.about-sky) { width: min(620px, calc(100vw - 32px)); }
 
 /* ---------------- app shell */
 #app { display: grid; grid-template-columns: 248px 1fr; height: 100%; }
