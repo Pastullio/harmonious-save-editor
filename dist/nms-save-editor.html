@@ -7431,7 +7431,15 @@ function liveKey(slot) {
   if (isBaseT(slot)) return `${acct}|base|${slot.addr}|${slot.name}`;
   const sh = (g(ps(), 'ShipOwnership') || [])[slot]; return `${acct}|${slot}|${sh ? str(g(sh, 'Name')) : ''}`;
 }
-function liveFileOf(slot) { return (LIVE.files && LIVE.files[liveKey(slot)]) || null; }
+// exact key first; a corvette that moved slot keeps its file by name, and a renamed one by slot (newest wins)
+function liveFileOf(slot) {
+  const F = LIVE.files; if (!F) return null;
+  const k = liveKey(slot); if (F[k]) return F[k];
+  if (isBaseT(slot)) return null;
+  const [acct, , name] = k.split('|'), hits = [];
+  for (const [key, v] of Object.entries(F)) { const p = key.split('|'); if (p.length === 3 && p[0] === acct && ((name && p[2] === name) || p[1] === String(slot))) hits.push(v); }
+  return hits.sort((a, b) => (b.time || 0) - (a.time || 0))[0] || null;
+}
 async function liveLoadFiles(force) {
   if (LIVE.files && !force) return LIVE.files;
   try { LIVE.files = await (await api('/api/live/files')).json(); } catch (_) { LIVE.files = {}; }
