@@ -736,6 +736,12 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .results button { display: grid; grid-template-columns: 28px 1fr; gap: 8px; align-items: center; width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 6px 10px; cursor: pointer; font-size: 12.5px; }
 .results button:hover { background: var(--hover); }
 .results img { width: 28px; height: 28px; object-fit: contain; }
+.add-res { max-height: 300px; }
+.add-res button[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.add-res .add-meta { display: block; font-size: 11.5px; }
+.add-res button > span:last-child { grid-column: 2; min-width: 0; }
+.add-by-id summary { cursor: pointer; color: var(--dim); font-size: 13px; margin-top: 4px; }
+.add-by-id[open] { display: grid; gap: 10px; }
 
 /* ---------------- raw data explorer */
 .crumbs { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; margin-bottom: 12px; font-size: 13.5px; }
@@ -3679,7 +3685,7 @@ function invBlock(el, inv, title, peers) {
         <button class="btn small ghost" data-act="settings">Size and class</button>
       </div></div>
     <div class="inv-wrap"><div><div class="grid${S.db ? ' named' : ''}" style="--w:${w}">${cells}</div>
-      <div class="legend"><span><i style="background:var(--substance)"></i>Substance</span><span><i style="background:var(--product)"></i>Product</span><span><i style="background:var(--technology)"></i>Technology</span><span><i style="background:var(--danger)"></i>Damaged</span><span><i style="background:var(--accent)"></i>Stack or charge level</span>${charged.size || chargeable ? '<span><i class="lg-charge"></i>Supercharged</span>' : ''}<span class="legend-hint">Drag across empty slots to select a block; Ctrl-click or Shift-click to pick more</span></div></div>
+      <div class="legend"><span><i style="background:var(--substance)"></i>Substance</span><span><i style="background:var(--product)"></i>Product</span><span><i style="background:var(--technology)"></i>Technology</span><span><i style="background:var(--danger)"></i>Damaged</span><span><i style="background:var(--accent)"></i>Stack or charge level</span>${charged.size || chargeable ? '<span><i class="lg-charge"></i>Supercharged</span>' : ''}<span class="legend-hint">Click an empty slot to add an item. Drag across empty slots to select a block; Ctrl-click or Shift-click to pick more</span></div></div>
       <div class="insp-slot"></div></div>`;
   el.appendChild(block);
   loadIcons(block);
@@ -3937,31 +3943,75 @@ function inspectorBody(box, inv, x, y, rerender) {
 }
 
 const DEFAULTS = { Substance: [9999, 9999], Product: [10, 10], Technology: [100, 100] };
+// Is this a technology grid (exosuit/ship/exocraft/freighter technology, a multi-tool's store) or cargo?
+function isTechInv(inv) {
+  if (inv === g(ps(), 'Inventory_TechOnly') || inv === g(ps(), 'FreighterInventory_TechOnly')) return true;
+  if ([...ships(), ...vehicles()].some(({ s }) => g(s, 'Inventory_TechOnly') === inv) || tools().some(({ s }) => g(s, 'Store') === inv)) return true;
+  const slots = slotsOf(inv); return slots.length > 0 && slots.every((s) => typeOf(s) === 'Technology');
+}
+// A sensible amount and stack size for a new item, in the game's own numbers: the same item elsewhere in this inventory
+// (or anywhere in the save), else this inventory's stack size for its kind (substances share one; products are a base
+// times the item's stack multiplier), else the usual defaults. Technology: its charge, or -1 of 100 like the game's
+// non-charging tech.
+function newItemAmounts(inv, it) {
+  const base = (id) => String(id).split('#')[0];
+  const same = (list) => list.find((s) => base(idOf(s)) === base(it.id));
+  let hit = same(slotsOf(inv));
+  if (!hit) for (const pl of (typeof cargoPlaces === 'function' ? cargoPlaces() : [])) { hit = same(slotsOf(pl.inv)); if (hit) break; }
+  if (hit && num(g(hit, 'MaxAmount')) > 0) { const mx = num(g(hit, 'MaxAmount')); return [it.type === 'Technology' ? num(g(hit, 'Amount')) : mx, mx]; }
+  if (it.type === 'Technology') return it.charge > 0 ? [it.charge, it.charge] : [-1, 100];
+  const mode = (arr) => { const c = new Map(); let best = 0, bv = 0; for (const v of arr) { const n = (c.get(v) || 0) + 1; c.set(v, n); if (n > best) { best = n; bv = v; } } return bv; };
+  const kind = slotsOf(inv).filter((s) => typeOf(s) === it.type && num(g(s, 'MaxAmount')) > 0);
+  if (it.type === 'Substance') { const m = mode(kind.map((s) => num(g(s, 'MaxAmount')))) || DEFAULTS.Substance[1]; return [m, m]; }
+  const mult = it.stack > 0 ? it.stack : 1;
+  const bases = kind.map((s) => { const d = dbItem(idOf(s)); return d && d.stack > 0 ? num(g(s, 'MaxAmount')) / d.stack : 0; }).filter((v) => v > 0 && Number.isInteger(v));
+  const m = (mode(bases) || DEFAULTS.Product[1]) * mult; return [m, m];
+}
+// An empty slot: search the item library by name, click a result (or press Enter) and it goes straight into the slot,
+// as a full stack (owner, 2026-11-03: the thing people use Goatfungus's editor for most). The item ID form is still there.
 function addForm(panel, inv, x, y, rerender) {
-  const techOnly = slotsOf(inv).length > 0 && slotsOf(inv).every((s) => typeOf(s) === 'Technology');
-  panel.innerHTML = `<div class="title">Empty slot</div>
-    ${S.db ? `<label class="field"><span>Find an item by name</span><input class="input" id="aQ" placeholder="e.g. Chromatic Metal, Pulse Engine"></label><div class="results hidden" id="aRes"></div>`
-           : `<p class="dim" style="margin:0;font-size:14px">Type an item ID such as <span class="mono">FUEL1</span>. Load item names to search by name instead.</p>`}
-    <label class="field"><span>Item ID</span><input class="input mono" id="aId" placeholder="^FUEL1"></label>
-    <label class="field"><span>Type</span><select class="input" id="aType">${['Substance', 'Product', 'Technology'].map((o) => `<option ${o === (techOnly ? 'Technology' : 'Substance') ? 'selected' : ''}>${o}</option>`).join('')}</select></label>
-    <div class="two"><label class="field"><span>Amount</span><input class="input" id="aAmt" type="number"></label><label class="field"><span>Max</span><input class="input" id="aMax" type="number"></label></div>
-    <button class="btn primary" id="aAdd">Add to slot</button>`;
+  const tech = isTechInv(inv);
+  panel.innerHTML = `<div class="title">Add an item</div><div class="sub">${tech ? 'Technology' : 'Substances and products'} · slot ${x + 1}, ${y + 1}</div>
+    ${S.db ? `<label class="field"><span>Search by name</span><input class="input" id="aQ" type="search" autocomplete="off" placeholder="${tech ? 'e.g. Pulse Engine, Hazard Protection' : 'e.g. Carbon, Orbital Exocraft Materialiser'}"></label><div class="results add-res" id="aRes" role="listbox"></div>`
+           : `<p class="dim" style="margin:0;font-size:14px">Item names aren't loaded yet, so you can only add by item ID (such as <span class="mono">FUEL1</span>). Open <b>Item names</b> to build them from your game.</p>`}
+    <details class="add-by-id"${S.db ? '' : ' open'}><summary>Add by item ID</summary>
+      <label class="field"><span>Item ID</span><input class="input mono" id="aId" placeholder="^FUEL1"></label>
+      <label class="field"><span>Type</span><select class="input" id="aType">${['Substance', 'Product', 'Technology'].map((o) => `<option ${o === (tech ? 'Technology' : 'Substance') ? 'selected' : ''}>${o}</option>`).join('')}</select></label>
+      <div class="two"><label class="field"><span>Amount</span><input class="input" id="aAmt" type="number"></label><label class="field"><span>Max</span><input class="input" id="aMax" type="number"></label></div>
+      <button class="btn" id="aAdd">Add to slot</button></details>`;
   const setDefaults = () => { const d = DEFAULTS[$('#aType', panel).value]; $('#aAmt', panel).value = d[0]; $('#aMax', panel).value = d[1]; };
   setDefaults();
   $('#aType', panel).onchange = setDefaults;
+  const place = (it) => {
+    let id = it.id; if (it.proc && !id.includes('#')) id += '#' + String(Math.floor(Math.random() * 90000) + 10000);   // procedural upgrades carry a seed
+    const [amount, max] = newItemAmounts(inv, it);
+    newSlot(inv, x, y, { id, type: it.type, amount, max });
+    toast(`${it.name} added${it.type === 'Technology' ? '' : ': ' + amount.toLocaleString() + ' of ' + max.toLocaleString()}`);
+    S.sel = { inv, keys: new Set([x + ',' + y]), anchor: [x, y] }; rerender();
+  };
   if (S.db) {
     const q = $('#aQ', panel), res = $('#aRes', panel);
-    q.oninput = () => {
-      const t = q.value.trim().toLowerCase(); if (t.length < 2) { res.classList.add('hidden'); return; }
-      const hits = S.db.list.filter((it) => !it.hashed && (it.name.toLowerCase().includes(t) || it.id.toLowerCase().includes(t))).slice(0, 40);
-      res.classList.remove('hidden');
-      res.innerHTML = hits.map((it) => `<button data-id="${esc(it.id)}">${it.icon ? `<img data-icon="${esc(it.icon)}" alt="">` : '<span></span>'}<span>${esc(it.name)} <span class="dim mono">${esc(it.id)}</span></span></button>`).join('') || '<p class="dim" style="padding:8px;margin:0">No matches</p>';
+    let hits = [], cur = 0;
+    const draw = () => {
+      const t = q.value.trim().toLowerCase();
+      if (t.length < 2) { res.innerHTML = `<p class="dim" style="padding:8px 10px;margin:0">Type at least two letters.</p>`; hits = []; return; }
+      const ok = (it) => !it.hashed && (tech ? it.type === 'Technology' : it.type !== 'Technology');
+      const all = S.db.list.filter((it) => ok(it) && (it.name.toLowerCase().includes(t) || it.id.toLowerCase().includes(t)));
+      // names that start with the words typed first, then the rest
+      all.sort((a, b) => (b.name.toLowerCase().startsWith(t) - a.name.toLowerCase().startsWith(t)) || a.name.length - b.name.length || a.name.localeCompare(b.name));
+      hits = all.slice(0, 40); cur = 0;
+      res.innerHTML = hits.map((it, k) => `<button type="button" role="option" data-k="${k}"${k === 0 ? ' aria-selected="true"' : ''}>${it.icon ? `<img data-icon="${esc(it.icon)}" alt="">` : '<span></span>'}<span>${esc(it.name)}<span class="dim add-meta">${esc([it.type, it.sub].filter(Boolean).join(', '))}</span></span></button>`).join('') || '<p class="dim" style="padding:8px 10px;margin:0">No matches</p>';
       loadIcons(res);
-      res.querySelectorAll('button').forEach((b) => b.onclick = () => {
-        const it = S.db.byId.get(b.dataset.id);
-        $('#aId', panel).value = it.id; $('#aType', panel).value = it.type; setDefaults(); res.classList.add('hidden'); q.value = it.name;
-      });
+      res.querySelectorAll('[data-k]').forEach((b) => b.onclick = () => place(hits[+b.dataset.k]));
     };
+    const mark = () => res.querySelectorAll('[data-k]').forEach((b) => { const on = +b.dataset.k === cur; b.setAttribute('aria-selected', String(on)); if (on) b.scrollIntoView({ block: 'nearest' }); });
+    q.oninput = draw;
+    q.onkeydown = (e) => {
+      if (e.key === 'Enter' && hits[cur]) { e.preventDefault(); place(hits[cur]); }
+      else if (e.key === 'ArrowDown' && hits.length) { e.preventDefault(); cur = Math.min(hits.length - 1, cur + 1); mark(); }
+      else if (e.key === 'ArrowUp' && hits.length) { e.preventDefault(); cur = Math.max(0, cur - 1); mark(); }
+    };
+    draw(); setTimeout(() => q.focus(), 30);
   }
   $('#aAdd', panel).onclick = () => {
     let id = $('#aId', panel).value.trim(); if (!id) { toast('Enter an item ID first.', true); return; }

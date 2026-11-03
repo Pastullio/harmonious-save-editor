@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.03.1520",
+  "version": "2026.11.03.2107",
   "date": "2026-11-03",
-  "size": 12759040,
-  "sha256": "154a2fc0a44ba3fe046f1903946aa20aa2b5b820f7375b08a52ad09277b2a2a5",
-  "notes": "Dock Yard: ships added since the save was opened (like a new corvette) now show up, and everything you save to the game is kept in the Hangar.",
+  "size": 12763648,
+  "sha256": "3f7110f24dc2f1736c6a823f215a4413b6aa22fc167a9907aecd8cddb8167bba",
+  "notes": "Add items by name: click an empty slot in any inventory, type (Carbon, Orbital Exocraft Materialiser…), press Enter or click, and it goes in as a full stack. Technology grids offer only technology.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
