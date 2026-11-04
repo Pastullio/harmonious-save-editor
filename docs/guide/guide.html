@@ -264,7 +264,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   <figure><img src="shots/coords.webp" alt="Coordinates: where you are, and a destination entered as portal glyphs" loading="lazy"></figure>
   <h2>Choosing a destination</h2>
   <ul class="feat">
-    <li><b>You are here</b> shows your galaxy, system, portal glyphs and galactic address. <span class="ui">Start from here</span> copies it into the destination.</li>
+    <li><b>You are here</b> shows your galaxy, system, portal glyphs and galactic address, with the planet you're on as a small turning globe in its biome's colours (and its moon going round it when the save shows one), or the star when you're in space. <span class="ui">Start from here</span> copies it into the destination.</li>
     <li><b>Portal glyphs</b>: click the sixteen glyphs to type a portal code. <span class="ui">Delete last glyph</span> and <span class="ui">Clear</span> fix mistakes.</li>
     <li><b>Portal code, galactic address and galaxy</b> fields stay in step as you type any of them. Galactic addresses are what a signal booster shows.</li>
     <li><b>Your places</b> picks one of your bases or space stations.</li>
@@ -282,14 +282,16 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   <ul class="feat">
     <li><b>Prediction</b>: the system's name, region, star colour, economy, conflict and planets, worked out from the address.</li>
     <li><b>Planets</b>: each body with its name, portal address and biome. Biomes you've seen come from your discovery records. For the rest, the <b>biome odds</b> show the most likely biome and its chance, from the game's own tables by star colour and galaxy type. Prime bodies (the extra ones the game adds) use their own odds.</li>
-    <li><b>From your save</b>: whether you've been here, what you've discovered, and your places in the system.</li>
+    <li><b>From your save</b>: whether you've been here and what you've discovered.</li>
+    <li><b>Places here</b>: every base, teleporter and space station in the system, once each, with a star to keep it in your favourites and <span class="ui">Arrive here</span> on the bases you can land at.</li>
     <li><b>Place card</b>: <span class="ui">Copy card</span>, <span class="ui">Save card</span> or <span class="ui">Copy as text</span> to share the destination.</li>
   </ul>
   <h2>Warping</h2>
   <ul class="feat">
-    <li><span class="ui">Warp here</span> puts you in your ship at the destination.</li>
-    <li><span class="ui">Arrive here</span> next to one of your bases lands you on foot beside it, ship hovering above.</li>
-    <li><span class="ui">Arrive on your freighter</span> brings the freighter to the system and puts you aboard.</li>
+    <li><span class="ui">Warp here</span> asks how you want to arrive: <b>in your ship</b> in space, <b>aboard your freighter</b> (it's called to the system), or <b>at a base</b> in the system, yours or one you've visited, on foot with your ship hovering above.</li>
+    <li>A favourite base picked with <span class="ui">Go here</span> skips the question and lands you there; <span class="ui">Other ways to arrive</span> brings the choices back.</li>
+    <li><span class="ui">Arrive here</span> in Places here lands you at that base straight away.</li>
+    <li>Landing at a base needs to know where the system's planets are: the app learns that from any save made in that system.</li>
   </ul>
   <p>Nothing changes in the game until you press <span class="ui">Save to game</span>; your old location is kept as your previous one.</p>
 </section>

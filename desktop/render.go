@@ -370,3 +370,30 @@ func handleCover(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
 	http.ServeFile(w, r, p)
 }
+
+// POST /api/cover/alias?from=<old key>&to=<new key>: renders were once named after the whole build (part timestamps
+// included); they're now named after its shape. The page asks for an old render to be copied to the new name, with
+// its extra angles, so nothing has to be rendered again.
+func handleCoverAlias(w http.ResponseWriter, r *http.Request) {
+	from, to := r.URL.Query().Get("from"), r.URL.Query().Get("to")
+	if r.Method != http.MethodPost || !keyRe.MatchString(from) || !keyRe.MatchString(to) {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	n := 0
+	names, _ := filepath.Glob(filepath.Join(coversDir(), from+"*.png"))
+	for _, src := range names {
+		rest := strings.TrimPrefix(filepath.Base(src), from)
+		if rest != ".png" && !strings.HasPrefix(rest, "-") {
+			continue
+		}
+		dst := filepath.Join(coversDir(), to+rest)
+		if fileExists(dst) {
+			continue
+		}
+		if b, err := os.ReadFile(src); err == nil && atomicWrite(dst, b) == nil {
+			n++
+		}
+	}
+	writeJSON(w, map[string]int{"copied": n})
+}

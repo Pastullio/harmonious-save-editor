@@ -120,6 +120,7 @@ func main() {
 	mux.HandleFunc("/api/render", handleRender)
 	mux.HandleFunc("/api/render-status", handleRenderStatus)
 	mux.HandleFunc("/api/cover", handleCover)
+	mux.HandleFunc("/api/cover/alias", handleCoverAlias)
 	mux.HandleFunc("/api/screenshots", handleScreenshots)
 	mux.HandleFunc("/api/screenshot", handleScreenshot)
 	mux.HandleFunc("/api/itemdb", handleItemDB)
