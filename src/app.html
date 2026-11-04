@@ -554,6 +554,9 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .portal-glyphs .glyph { width: 21px; }
 .loc-go { justify-self: start; margin-top: 8px; }
 .here-row { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; }
+.here-globe { width: 84px; height: 84px; flex: none; margin: -10px -4px -10px -6px; display: grid; place-items: center; }
+.here-globe:empty::before { content: ''; width: 52px; height: 52px; border-radius: 50%; background: var(--well); }
+.here-planet { display: block; font-size: 13px; margin-top: 2px; }
 .here-row .btn { margin-left: auto; }
 .dest { display: grid; gap: 16px; }
 .dest-glyphs { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px; font-size: clamp(22px, 3.6vw, 40px); color: var(--ink); padding: 14px; border-radius: var(--r-lg); background: var(--well); min-height: 1.6em; align-items: end; justify-items: center; }
@@ -673,6 +676,14 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .fav-txt .dim { font-size: 12.5px; }
 .fav-acts { display: flex; align-items: center; gap: 12px; flex: none; }
 @media (max-width: 720px) { .fav-list .glyphs { display: none; } }
+.arr-opts { display: grid; gap: 8px; margin: 12px 0; }
+.arr-opt { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: var(--r-sm); background: var(--well); border: 1px solid transparent; cursor: pointer; }
+.arr-opt:has(input:checked) { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+.arr-opt.off { opacity: .6; cursor: default; }
+.arr-opt input { margin-top: 3px; accent-color: var(--accent); }
+.arr-opt > span { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.arr-opt .dim { font-size: 13px; }
+.arr-opt select { margin-top: 6px; }
 .arrive-list { list-style: none; padding: 0; margin: 8px 0 16px; display: grid; gap: 6px; }
 .arrive-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 10px; border-radius: var(--r-sm); background: var(--well); }
 .disk-note { position: fixed; right: 22px; bottom: 22px; z-index: 60; width: min(380px, calc(100vw - 32px)); display: grid; gap: 6px; padding: 16px 18px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--accent); box-shadow: 0 12px 34px rgba(0, 0, 0, .22); font-size: 13.5px; }
@@ -3437,10 +3448,20 @@ async function buildPayload(it) {
   const plain = (v) => { if (v instanceof Map) { const m = new Map(); for (const [k, x] of v) m.set(nameOf(k), plain(x)); return m; } if (Array.isArray(v)) return v.map(plain); return v; };
   const doc = new Map([['Objects', plain(g(base, 'Objects') || [])], ['BaseVersion', g(base, 'BaseVersion') != null ? g(base, 'BaseVersion') : N(8)]]);
   const text = C.stringifyJSON(doc);
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)));
-  const key = [...digest.subarray(0, 16)].map((x) => x.toString(16).padStart(2, '0')).join('');
-  it._payload = { key, text }; return it._payload;
+  const hash = async (t) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t))).subarray(0, 16)].map((x) => x.toString(16).padStart(2, '0')).join('');
+  // the render is named after the build's shape (parts, where they sit, their colours), not when each part was placed or
+  // which system the corvette is in, so a build sent again from Blender or saved by the game keeps its picture
+  const SKIP = new Set(['Timestamp', 'GalacticAddress', 'RegionSeed', 'LastUpdateTimestamp']);
+  const shape = (g(base, 'Objects') || []).map((o) => { const m = new Map(); if (o instanceof Map) for (const [k, x] of o) if (!SKIP.has(nameOf(k))) m.set(nameOf(k), plain(x)); return m; });
+  const key = await hash('shape2' + C.stringifyJSON(new Map([['Objects', shape], ['BaseVersion', doc.get('BaseVersion')]])));
+  it._payload = { key, legacy: await hash(text), text }; return it._payload;
 }
+// the last render each corvette had, shown while its changed build is rendered again (owner, 2026-11-04: covers kept
+// dropping back to the hologram after every change until "Render corvettes" was pressed)
+const LAST_RENDER = { get(k) { try { return JSON.parse(localStorage.getItem('hse-last-render') || '{}')[k] || null; } catch (_) { return null; } },
+  set(k, h) { try { const m = JSON.parse(localStorage.getItem('hse-last-render') || '{}'); if (m[k] === h) return; m[k] = h; localStorage.setItem('hse-last-render', JSON.stringify(m)); } catch (_) {} } };
+let autoT = 0;
+const autoRenderSoon = () => { clearTimeout(autoT); autoT = setTimeout(() => autoRenderCorvettes().catch((e) => console.warn('auto render', e)), 4000); };
 async function fetchRender(hash, view = 'hero') {
   try {
     const r = await fetch('/api/cover?key=' + hash + (view !== 'hero' ? '&view=' + view : ''), { headers: { 'X-Token': APP.token } });
@@ -3453,10 +3474,19 @@ async function loadRender(it) {
   if (!APP || it.kind !== 'corvette' || !window.crypto || !crypto.subtle) return;
   const p = await buildPayload(it); if (!p) return;
   it.renderKey = p.key;
+  // a render made before renders were named by shape: copied to the new name (with its angles) once
+  if (!(await renderImg(p.key)) && await renderImg(p.legacy)) {
+    try { const r = await (await api(`/api/cover/alias?from=${p.legacy}&to=${p.key}`, { method: 'POST' })).json(); if (r.copied) { for (const [v] of COVER_VIEWS) renderImgs.delete(p.key + '|' + v); const vp = viewPrefs(); if (vp[p.legacy] && !vp[p.key]) setViewOf(p.key, vp[p.legacy]); } } catch (_) {}
+  }
   const view = viewOf(p.key);
-  const img = (view !== 'hero' && await renderImg(p.key, view)) || await renderImg(p.key);
+  let img = (view !== 'hero' && await renderImg(p.key, view)) || await renderImg(p.key) || await renderImg(p.legacy);
+  if (img) LAST_RENDER.set(it.key, (await renderImg(p.key)) ? p.key : p.legacy);
+  else {   // the build changed: its last picture until Blender has drawn the new one in the background
+    const last = LAST_RENDER.get(it.key); if (last) img = await renderImg(last);
+    autoRenderSoon();
+  }
   const had = COVER_MEM.render.get(it.key); COVER_MEM.render.set(it.key, img || null);
-  if (img || had) document.dispatchEvent(new CustomEvent('cover-render', { detail: { key: it.key, img: img || null } }));   // null: the build changed and has no render yet
+  if (img || had) document.dispatchEvent(new CustomEvent('cover-render', { detail: { key: it.key, img: img || null } }));   // null: no render yet
 }
 async function renderCorvette(it, force, onState, views) {
   const p = await buildPayload(it); if (!p) throw new Error('No build found for ' + it.name);
@@ -3471,7 +3501,7 @@ async function renderCorvette(it, force, onState, views) {
   if (views) { for (const [w] of COVER_VIEWS.slice(1)) renderImgs.delete(p.key + '|' + w); return true; }
   renderImgs.delete(p.key + '|hero');
   const img = await renderImg(p.key);
-  if (img) document.dispatchEvent(new CustomEvent('cover-render', { detail: { key: it.key, img } }));
+  if (img) { LAST_RENDER.set(it.key, p.key); COVER_MEM.render.set(it.key, img); document.dispatchEvent(new CustomEvent('cover-render', { detail: { key: it.key, img } })); }
   return img;
 }
 async function renderSetup() { return (await api('/api/render-setup')).json(); }
@@ -3489,7 +3519,7 @@ async function autoRenderCorvettes() {
       if (S.save !== save) break;   // another save was opened
       const p = await buildPayload(it); if (!p || AUTO.tried.has(p.key)) continue;
       AUTO.tried.add(p.key);
-      if (await renderImg(p.key)) continue;   // already has a cover
+      if (await renderImg(p.key) || await renderImg(p.legacy)) continue;   // already has a cover
       try { await renderCorvette(it, false); done++; } catch (e) { console.warn('auto render', it.name, e); }
     }
   } finally { AUTO.running = false; }
@@ -4528,6 +4558,74 @@ function arrivalSpots(p) {
     add(str(g(e, 'Name')), teleKind(t), Place.fromUA(g(e, 'UniverseAddress')), g(e, 'Position'), g(e, 'Facing'));
   }
   return out.sort((a, b) => (a.kind !== b.kind ? (a.kind === 'Your base' ? -1 : 1) : a.name.localeCompare(b.name)));
+}
+// every place in a system the save (or your favourites) knows, once each: bases, teleporters, the space station.
+// A base you can land at carries its spot (its position on the planet) for Arrive here and the warp choices.
+function placesHere(p) {
+  const clean = (n) => String(n || '').replace(/<\/?[A-Z]*>/g, '').trim();
+  const rows = [], seen = new Set();
+  const add = (name, kind, favKind, at) => {
+    if (!at || !Place.sameSystem(at, p)) return;
+    name = clean(name) || (/base/i.test(kind) ? 'Unnamed base' : 'Unnamed');
+    const k = name.toLowerCase() + '|' + (at.planet || 0); if (seen.has(k)) return; seen.add(k);
+    rows.push({ name, kind, favKind, at: { ...p, planet: at.planet || 0 } });
+  };
+  for (const e of g(ps(), 'TeleportEndpoints') || []) {
+    const t = str(g(e, 'TeleporterType'));
+    add(str(g(e, 'Name')), t === 'Base' ? 'Your base' : teleKind(t), t === 'Base' ? 'Base' : teleKind(t), Place.fromUA(g(e, 'UniverseAddress')));
+  }
+  for (const b of g(ps(), 'PersistentPlayerBases') || []) {
+    const t = str(g(b, 'BaseType', 'PersistentBaseTypes'));
+    if (t === 'PlayerShipBase' || t === 'FreighterBase') continue;   // corvette builds and the freighter aren't places
+    add(str(g(b, 'Name')), t === 'HomePlanetBase' ? 'Your base' : t === 'ExternalPlanetBase' ? 'Base you visited' : BASE_KINDS[t] || 'Base', t === 'HomePlanetBase' ? 'Base' : t === 'ExternalPlanetBase' ? 'Base you visited' : BASE_KINDS[t] || 'Base', Place.fromPacked(g(b, 'GalacticAddress')));
+  }
+  // where each base sits on its planet; favourites from other saves add theirs
+  const own = arrivalSpots(p), spots = [...own, ...favSpots(p).filter((f) => !own.some((x) => x.name === f.name && x.planet === f.planet))];
+  for (const sp of spots) {
+    const row = rows.find((r) => !r.spot && r.name === sp.name && (!r.at.planet || r.at.planet === sp.planet));
+    if (row) { row.spot = sp; row.at.planet = sp.planet; }
+    else rows.push({ name: sp.name, kind: sp.fav ? 'Favourite' : sp.kind, favKind: sp.kind === 'Your base' ? 'Base' : sp.fav ? 'Base' : sp.kind, at: { ...p, planet: sp.planet }, spot: sp });
+  }
+  const rank = (r) => (r.kind === 'Your base' ? 0 : r.spot ? 1 : r.kind === 'Space station' ? 2 : 3);
+  return rows.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
+}
+// Warp here: in your ship, aboard your freighter, or on foot at a base in the system. A favourite base picked with
+// Go here goes straight there (owner, 2026-11-04).
+async function warpDialog(p, rows, isHere, fav) {
+  const centres = await planetCentres(p);
+  const usable = rows.filter((x) => x.spot && centres && centres[x.spot.planet - 1]);
+  const done = (msg) => { toast(msg + ' Press Save to game to keep it.'); render(); };
+  const atBase = (x) => { warpTo(p, { ...x.spot, centre: centres[x.spot.planet - 1] }); done(`Arrival set: ${x.name}.`); };
+  if (fav && fav.spot && fav.portal === Place.portal(p) && fav.gi === p.gi) {
+    const x = usable.find((r) => r.spot.planet === fav.spot.planet && (r.name === fav.name || r.name === fav.ref || (r.spot.fav && r.spot.name === fav.name)));
+    if (x) {
+      const v = await dialog('Arrive at ' + fav.name + '?', `<p>${glyphRow(Place.portal(p), 'small')}</p><p>Next time you load this save you'll be on foot at <b>${esc(fav.name)}</b> on planet ${x.spot.planet}, with your ship hovering above. Your current location is kept as the previous one.</p><p class="dim">Then press Save to game.</p>`,
+        [['Other ways to arrive', 'other', 'ghost'], ['Cancel', false], ['Arrive here', 'go', 'primary']]);
+      if (v === 'go') { atBase(x); return; }
+      if (v !== 'other') return;
+    }
+  }
+  const fr = hasFreighter(), frName = str(g(ps(), 'PlayerFreighterName')) || 'your freighter';
+  const opt = (v, title, sub, on, extra = '') => `<label class="arr-opt${on ? '' : ' off'}"><input type="radio" name="arr" value="${v}"${on ? '' : ' disabled'}><span><b>${title}</b><span class="dim">${sub}</span>${extra}</span></label>`;
+  const baseSub = usable.length ? 'On foot at the base, with your ship hovering above it.'
+    : rows.some((x) => x.spot) ? "The app doesn't know where this system's planets are yet: open a save made here once and it remembers."
+    : "There's no base in this system that the app knows of. Star one on the Bases page to keep it.";
+  const ask = dialog(isHere ? 'Arrive somewhere in this system' : 'Warp to this system', `<p>${glyphRow(Place.portal(p), 'small')} <span class="mono dim">${Place.portal(p)}</span> · ${esc(GALAXIES[p.gi])}</p>
+    <div class="arr-opts">
+      ${opt('ship', 'In your ship', isHere ? "In space, in this system. You're here already, so only your spot changes." : 'In space, in this system, as after a warp jump.', true)}
+      ${opt('freighter', 'Aboard your freighter', fr ? `${esc(frName)} is called to this system and you stand aboard it, with your ship in the hangar.` : "This save doesn't have a freighter.", fr)}
+      ${opt('base', 'At a base', baseSub, !!usable.length, usable.length ? `<select class="input" id="arrBase" aria-label="Which base">${usable.map((x, i) => `<option value="${i}">${esc(x.name)} (${esc(x.kind)}, planet ${x.spot.planet})</option>`).join('')}</select>` : '')}
+    </div>
+    <p class="dim small-print">Your current location is kept as the previous one. Nothing changes in the game until you press Save to game.</p>`,
+  [['Cancel', false], ['Warp here', true, 'primary']]);
+  const body = $('#dlgBody'), pick = (v) => { const r = body.querySelector(`input[name="arr"][value="${v}"]`); if (r) r.checked = true; };
+  pick('ship');
+  const sel = $('#arrBase', body); if (sel) { sel.onchange = () => pick('base'); sel.onclick = () => pick('base'); }
+  if (!(await ask)) return;
+  const how = (body.querySelector('input[name="arr"]:checked') || {}).value;
+  if (how === 'freighter') { warpTo(p, { freighter: true }); done(`Arrival set: aboard ${frName}.`); }
+  else if (how === 'base' && sel) atBase(usable[+sel.value]);
+  else { warpTo(p); done('Location set.'); }
 }
 // aboard your freighter: the freighter is called to the system and you stand inside it, with your ship on its pad.
 // Inside the freighter the spawn fields are relative to the freighter (state AboardFleet); these values come from a
@@ -7093,6 +7191,100 @@ function wireDrag(block, inv) {
 
 setupFind();
 
+// ------------------------------------------------------------------ the planet you're on, turning (You are here)
+// A small drawn globe, not the game's own textures: coloured by the planet's biome from your discoveries, patterned
+// from its seed, with a moon going round it when the save shows one beside it. Moons come from PlanetPositions (the
+// save's planet centres for the system it was made in): a body much closer to your planet than planets ever are to each
+// other is its moon. No files, no images: a 128×64 texture made once, then each frame only looks pixels up.
+const GLOBE_COLOURS = {
+  Lush: ['#1f5e8c', '#2f7fb0', '#3e8f4f', '#6aa95a', '#a6c98a'], Ocean: ['#123f78', '#1d5ea3', '#2f7fbf', '#3f8f6a', '#8fbf8a'],
+  Marsh: ['#24484a', '#2e6b6a', '#3f7a52', '#6a9a62', '#9ab88a'], Toxic: ['#2f4a26', '#4e6e2c', '#7a9a34', '#a6be4a', '#cbdc7a'],
+  Scorched: ['#4a1a12', '#7a2e1a', '#b04a26', '#d8743a', '#efa66a'], Volcanic: ['#1a1212', '#3a1a16', '#6b2418', '#c4461e', '#f0823a'],
+  Radioactive: ['#1e3a2a', '#2f5a3a', '#4f8a56', '#7fc489', '#bff0c4'], Frozen: ['#6f8fae', '#9fb8d0', '#c6d8e8', '#e4eef6', '#ffffff'],
+  Barren: ['#4e3e30', '#6f5a45', '#8f765c', '#b39674', '#d4bc9a'], Dead: ['#3a3a3e', '#55565c', '#707278', '#8e9096', '#b0b2b6'],
+  Exotic: ['#3a1f52', '#6a3d8a', '#9a5cb8', '#c98ade', '#ecc6f6'], 'Exotic (red)': ['#4a1222', '#7a1f36', '#b0344e', '#d8667a', '#f2a6b2'],
+  'Exotic (green)': ['#163a2a', '#1f6a4a', '#36a074', '#6fd0a4', '#b6f0d6'], 'Exotic (blue)': ['#14264e', '#1f3f7a', '#3462b0', '#6a96d8', '#b0ccf2'],
+  'Gas giant': ['#5a3e5e', '#8a5e74', '#b8867a', '#d8ae8e', '#efd6bc'], '': ['#33485a', '#4a6276', '#5f7f95', '#86a2b6', '#b6cad8'],
+};
+const GLOBE_STARS = { Yellow: '#ffe9c4', Green: '#9ff0b4', Blue: '#a6c8ff', Red: '#ff9a7a', Purple: '#d0a6ff' };
+function globeTexture(seedText, colours, gas) {
+  let h = 2166136261; for (const c of String(seedText || 'x')) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+  const rnd = () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 10000) / 10000; };
+  const W = 128, H = 64, grid = [...Array(9 * 5)].map(rnd), grid2 = [...Array(17 * 9)].map(rnd), grid3 = [...Array(41 * 21)].map(rnd);
+  const smooth = (t) => t * t * (3 - 2 * t);
+  const noise = (g, gw, gh, u, v) => { const x = u * (gw - 1), y = v * (gh - 1), x0 = Math.floor(x), y0 = Math.floor(y), x1 = (x0 + 1) % gw, y1 = Math.min(y0 + 1, gh - 1), fx = smooth(x - x0), fy = smooth(y - y0);
+    const a = g[y0 * gw + x0], b = g[y0 * gw + x1], c = g[y1 * gw + x0], d = g[y1 * gw + x1]; return (a + (b - a) * fx) * (1 - fy) + (c + (d - c) * fx) * fy; };
+  const rgb = colours.map((c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)));
+  const tex = new Uint8ClampedArray(W * H * 3);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const u = x / W, v = y / (H - 1);
+    let t = gas ? (Math.sin(v * 18 + noise(grid, 9, 5, u, v) * 4) * .5 + .5) * .7 + noise(grid2, 17, 9, u, v) * .3
+      : noise(grid, 9, 5, u, v) * .55 + noise(grid2, 17, 9, u, v) * .3 + noise(grid3, 41, 21, u, v) * .15;
+    const k = Math.max(0, Math.min(rgb.length - 1.001, t * (rgb.length - 1) * 1.15 - .1)), i0 = Math.floor(k), f = k - i0, c0 = rgb[i0], c1 = rgb[i0 + 1];
+    for (let j = 0; j < 3; j++) tex[(y * W + x) * 3 + j] = c0[j] + (c1[j] - c0[j]) * f;
+  }
+  return { tex, W, H };
+}
+// a canvas with the globe on it, turning while it's on screen (a still picture when motion is reduced)
+function globeCanvas(opts) {
+  const size = opts.size || 84, dpr = Math.min(2, devicePixelRatio || 1), N = Math.round(size * dpr);
+  const cv = document.createElement('canvas'); cv.width = cv.height = N; cv.className = 'globe'; cv.style.width = cv.style.height = size + 'px';
+  cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', opts.label || 'Planet');
+  const ctx = cv.getContext('2d'); if (!ctx) return cv;
+  const R = N * (opts.moons ? .3 : .4), cx = N / 2, cy = N / 2;
+  if (opts.star) {   // in space: the system's star, glowing
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, N * .48); const c = opts.star;
+    g.addColorStop(0, '#ffffff'); g.addColorStop(.28, c); g.addColorStop(.5, c + '55'); g.addColorStop(1, c + '00');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, N, N); return cv;
+  }
+  const { tex, W, H } = globeTexture(opts.seed, GLOBE_COLOURS[opts.biome] || GLOBE_COLOURS[''], opts.biome === 'Gas giant');
+  // where each pixel of the disc looks on the sphere, and how lit it is: worked out once
+  const D = Math.ceil(R * 2), img = ctx.createImageData(D, D), map = [];
+  const L = [-.55, -.45, .7], ln = Math.hypot(...L); L.forEach((v, i) => L[i] = v / ln);
+  for (let y = 0; y < D; y++) for (let x = 0; x < D; x++) {
+    const nx = (x + .5 - R) / R, ny = (y + .5 - R) / R, rr = nx * nx + ny * ny; if (rr > 1) continue;
+    const nz = Math.sqrt(1 - rr), lat = Math.asin(ny), lon = Math.atan2(nx, nz);
+    const light = Math.max(.12, nx * L[0] + ny * L[1] + nz * L[2]) * (.75 + .25 * nz);
+    map.push((y * D + x) * 4, (lon / (2 * Math.PI) + .5) * W, Math.min(H - 1, Math.round((lat / Math.PI + .5) * (H - 1))), light, rr > .94 ? (rr - .94) / .06 : 0);
+  }
+  const glow = GLOBE_COLOURS[opts.biome] ? GLOBE_COLOURS[opts.biome][3] : '#86a2b6';
+  const gl = [1, 3, 5].map((i) => parseInt(glow.slice(i, i + 2), 16));
+  const moonR = R * .26, orbit = R * 1.55;
+  const moon = (a) => { const mx = cx + Math.cos(a) * orbit, my = cy + Math.sin(a) * orbit * .32; const g = ctx.createRadialGradient(mx - moonR * .35, my - moonR * .35, moonR * .1, mx, my, moonR);
+    g.addColorStop(0, '#d6dadf'); g.addColorStop(.7, '#8a9098'); g.addColorStop(1, '#4a5058'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(mx, my, moonR, 0, 7); ctx.fill(); };
+  const draw = (t) => {
+    const shift = (t * W) % W, px = img.data;
+    for (let k = 0; k < map.length; k += 5) {
+      const o = map[k], u = Math.floor(map[k + 1] + shift) % W, ti = (map[k + 2] * W + u) * 3, li = map[k + 3], rim = map[k + 4];
+      px[o] = tex[ti] * li + gl[0] * rim * .8; px[o + 1] = tex[ti + 1] * li + gl[1] * rim * .8; px[o + 2] = tex[ti + 2] * li + gl[2] * rim * .8; px[o + 3] = 255;
+    }
+    ctx.clearRect(0, 0, N, N);
+    const angles = [...Array(opts.moons || 0)].map((_, i) => t * 2 * Math.PI * 1.6 + i * Math.PI);
+    angles.filter((a) => Math.sin(a) < 0).forEach(moon);   // behind the planet
+    ctx.putImageData(img, Math.round(cx - R), Math.round(cy - R));
+    const halo = ctx.createRadialGradient(cx, cy, R * .96, cx, cy, R * 1.12); halo.addColorStop(0, glow + '66'); halo.addColorStop(1, glow + '00');
+    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(cx, cy, R * 1.12, 0, 7); ctx.arc(cx, cy, R * .97, 0, 7, true); ctx.fill();
+    angles.filter((a) => Math.sin(a) >= 0).forEach(moon);   // in front
+  };
+  // one turn every 40 s, about 20 frames a second, only while it's on screen
+  let raf = 0, last = 0, seen = true;
+  const t0 = performance.now() - (opts.phase || 0) * 40000;
+  const loop = (now) => { raf = 0; if (!cv.isConnected) return; if (now - last > 48) { last = now; draw(((now - t0) / 40000) % 1); } if (seen) raf = requestAnimationFrame(loop); };
+  draw(opts.phase || 0);
+  if (!REDUCED && 'IntersectionObserver' in window) {
+    const io = new IntersectionObserver(([e]) => { seen = e.isIntersecting; if (!cv.isConnected) { io.disconnect(); return; } if (seen && !raf) raf = requestAnimationFrame(loop); });
+    io.observe(cv);
+  }
+  return cv;
+}
+// the save's moons of a planet: bodies close to it that come after it (a moon follows its planet in the list)
+function moonsOf(planet) {
+  const r = savedPlanetCentres(); if (!r || !planet) return null;
+  const c = r.centres, me = c[planet - 1]; if (!me) return null;
+  const near = (a, b) => a && b && Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) < 400000;
+  const isMoon = c.slice(0, planet - 1).some((o) => near(o, me));
+  return { moons: c.slice(planet).filter((o) => near(o, me)).length, isMoon };
+}
 // ------------------------------------------------------------------ favourite places
 // Places the owner stars (a base, a space station, a settlement, a whole system), kept outside any save so every save can
 // warp there (owner, 2026-11-04: the game's own portal favourites don't always keep a place). The app keeps them in
@@ -7211,7 +7403,7 @@ PAGES.coords = (el) => {
   if (!FAVS.list) favLoad().then(() => { if (S.section === 'coords') render(); });
   el.innerHTML = `<div class="page-head"><div><h1>Coordinates</h1><p>Find a place by its portal glyphs or its galactic address, see what your save knows about it, and warp there.</p></div></div>
     <div class="panel here-card"><h3>You are here</h3>
-      <div class="here-row"><div><span id="hereStar"></span><b id="hereName"></b><b>${esc(GALAXIES[here.gi] || 'Galaxy ' + (here.gi + 1))}</b><span class="dim"> · galaxy ${here.gi + 1} of 256</span></div>
+      <div class="here-row"><span class="here-globe" id="hereGlobe"></span><div><span id="hereStar"></span><b id="hereName"></b><b>${esc(GALAXIES[here.gi] || 'Galaxy ' + (here.gi + 1))}</b><span class="dim"> · galaxy ${here.gi + 1} of 256</span><span class="here-planet dim" id="herePlanet"></span></div>
       ${glyphRow(Place.portal(here), 'small')}<span class="mono">${Place.portal(here)}</span><span class="mono dim">${Place.galactic(here)}</span>
       <button class="btn small" id="hereUse">Start from here</button></div></div>
     <div class="panel fav-panel" id="favBox">${favPanelHtml(C)}</div>
@@ -7238,7 +7430,17 @@ PAGES.coords = (el) => {
     return favEntry((sysName || Place.portal(p)) + (p.planet ? ', planet ' + p.planet : ''), p.planet ? 'Planet' : 'System', p);
   };
   const hereStar = (name) => { const h = $$('#hereStar'); if (h) h.innerHTML = favStar(placeFav(here, name)); };
-  predictSystem(here).then((sys) => { const n = $$('#hereName'); if (n) n.textContent = sys.name + ', '; hereStar(sys.name); }).catch(() => hereStar(''));
+  // the planet you're on as a small turning globe (or the star, in space), with its moon when the save shows one
+  const drawHere = (sys) => {
+    const box = $$('#hereGlobe'), txt = $$('#herePlanet'); if (!box) return;
+    const pl = here.planet, bi = pl ? systemKnowledge(here).biomes[pl] : null;
+    if (!pl) { const star = sys && sys.star; box.replaceChildren(globeCanvas({ star: GLOBE_STARS[star] || GLOBE_STARS.Yellow, label: (star || 'The') + ' star' })); if (txt) txt.textContent = 'In space' + (star ? `, by a ${star.toLowerCase()} star` : ''); return; }
+    const m = moonsOf(pl), biome = (bi && bi.biome) || '', seeds = g(ps(), 'PlanetSeeds'), sv = Array.isArray(seeds) ? seeds[pl - 1] : null;
+    const name = sys && sys.planets[pl - 1], moons = m && !m.isMoon ? Math.min(2, m.moons) : 0;
+    box.replaceChildren(globeCanvas({ seed: str(Array.isArray(sv) ? sv[1] : sv) || Place.portal(here), biome, moons, label: `${name || 'Planet ' + pl}${biome ? ', ' + biome : ''}${moons ? ', with ' + plural(moons, 'moon') : ''}` }));
+    if (txt) txt.textContent = `On ${name || 'planet ' + pl}${biome ? ' · ' + biome + (bi.infested ? ', infested' : '') : ''}${m && m.isMoon ? ' · a moon' : ''}${moons ? ' · ' + plural(moons, 'moon') : ''}`;
+  };
+  predictSystem(here).then((sys) => { const n = $$('#hereName'); if (n) n.textContent = sys.name + ', '; hereStar(sys.name); drawHere(sys); }).catch(() => { hereStar(''); drawHere(null); });
   const show = (from) => {
     const full = C.digits.length === 12 && Place.fromPortal(C.digits, C.p.gi);
     if (full) C.p = full;
@@ -7261,10 +7463,9 @@ PAGES.coords = (el) => {
         ${found ? `<li>You've discovered ${bits.join(', ') || 'this system'} here.</li>` : '<li>You haven\'t discovered anything in this system yet. The game creates its planets, names and resources when someone arrives, so the save has nothing more to show until you go.</li>'}
         ${facts.map((f) => `<li>${esc(f)}</li>`).join('')}
       </ul>
-      ${k.places.length ? `<h4 class="sub-h">Places here</h4><ul class="place-facts fav-able">${k.places.map((x) => { const kp = knownPlaces().find((y) => y.name === x.name && Place.sameSystem(y.p, p)); return `<li>${kp ? favStar(favEntry(x.name, kp.kind === 'Your base' ? 'Base' : kp.kind, kp.p, arrivalSpots(p).find((a) => a.name === x.name.replace(/<\/?[A-Z]*>/g, '').trim()))) : ''}${esc(x.name)} <span class="dim">(${esc(x.kind)})</span></li>`; }).join('')}</ul>` : ''}
-      <div id="arrive"></div>
-      <div class="warp-row"><button class="btn primary" id="warpBtn"${k.isHere ? ' disabled' : ''}>Warp here</button>${hasFreighter() ? '<button class="btn" id="boardBtn">Arrive on your freighter</button>' : ''}
-        <span class="dim">You'll load in your ship, in space, in this system. Nothing changes in the game until you press Save to game, and the app backs up the save first.</span></div>`;
+      <div id="placesHere"></div>
+      <div class="warp-row"><button class="btn primary" id="warpBtn">Warp here</button>
+        <span class="dim">Choose how you arrive: in your ship, aboard your freighter or at a base. Nothing changes in the game until you press Save to game, and the app backs up the save first.</span></div>`;
     const token = (C.token = (C.token || 0) + 1);
     predictSystem(p).then((sys) => {
       if (C.token !== token) return;   // the destination changed meanwhile
@@ -7273,36 +7474,32 @@ PAGES.coords = (el) => {
       box.querySelectorAll('[data-planet]').forEach((b) => b.onclick = () => setDigits(hexN(+b.dataset.planet, 1) + C.digits.slice(1)));
       box.querySelectorAll('[data-card]').forEach((b) => b.onclick = () => shareCard(b.dataset.card, p, sys));
     }).catch((e) => { const ds = $$('#destStar'); if (ds) ds.innerHTML = favStar(placeFav(p, ''), true); const box = $$('#pred'); if (box) box.innerHTML = `<p class="dim">Couldn't predict this system (${esc(e.message)}).</p>`; });
-    const own = arrivalSpots(p), spots = [...own, ...favSpots(p).filter((f) => !own.some((x) => x.name === f.name && x.planet === f.planet))];
-    if (spots.length) planetCentres(p).then((centres) => {
-      const box = $$('#arrive'); if (!box || C.token !== token) return;
-      const ok = (x) => centres && centres[x.planet - 1];
-      box.innerHTML = `<h4 class="sub-h">Arrive at a base</h4>
-        <p class="dim small-print">${centres ? 'Load on foot at the base, with your ship hovering above it.' : "The game hasn't saved in this system yet, so the app doesn't know where its planets are. Open a save made here once (the app remembers the system), or warp and teleport to the base in the game."}</p>
-        <ul class="arrive-list">${spots.map((x, i) => `<li><span>${favStar(favEntry(x.name, x.fav ? 'Base' : x.kind === 'Your base' ? 'Base' : x.kind, { ...p, planet: x.planet }, x))}${esc(x.name)} <span class="dim">(${esc(x.kind)}, planet ${x.planet})</span></span>${ok(x) ? `<button class="btn small" type="button" data-arrive="${i}">Arrive here</button>` : ''}</li>`).join('')}</ul>`;
+    // every place in this system in one list: a star to keep it, and Arrive here where you can land on foot
+    const rows = placesHere(p);
+    const drawPlaces = (centres) => {
+      const box = $$('#placesHere'); if (!box || C.token !== token) return;
+      if (!rows.length) { box.innerHTML = ''; return; }
+      const can = (x) => x.spot && centres && centres[x.spot.planet - 1];
+      const noCentres = !centres && rows.some((x) => x.spot);
+      box.innerHTML = `<h4 class="sub-h">Places here</h4>
+        ${noCentres ? `<p class="dim small-print">The game hasn't saved in this system yet, so the app doesn't know where its planets are and can't land you at a base. Open a save made here once (the app remembers the system), or warp and teleport to the base in the game.</p>` : ''}
+        <ul class="arrive-list">${rows.map((x, i) => `<li><span>${favStar(favEntry(x.name, x.favKind, x.at, x.spot))}${esc(x.name)} <span class="dim">(${esc(x.kind)}${x.at.planet ? ', planet ' + x.at.planet : ''})</span></span>${can(x) ? `<button class="btn small" type="button" data-arrive="${i}">Arrive here</button>` : ''}</li>`).join('')}</ul>`;
       box.querySelectorAll('[data-arrive]').forEach((b) => b.onclick = async () => {
-        const x = spots[+b.dataset.arrive];
-        const go = await dialog('Arrive at ' + x.name + '?', `<p>Next time you load this save you'll be on foot at <b>${esc(x.name)}</b> on planet ${x.planet} of this system, with your ship hovering above. Your current location is kept as the previous one.</p><p class="dim">Then press Save to game.</p>`, [['Cancel', false], ['Arrive here', true, 'primary']]);
-        if (!go) return; warpTo(p, { ...x, centre: centres[x.planet - 1] }); toast('Arrival set. Press Save to game to keep it.'); render();
+        const x = rows[+b.dataset.arrive];
+        const go = await dialog('Arrive at ' + x.name + '?', `<p>Next time you load this save you'll be on foot at <b>${esc(x.name)}</b> on planet ${x.spot.planet} of this system, with your ship hovering above. Your current location is kept as the previous one.</p><p class="dim">Then press Save to game.</p>`, [['Cancel', false], ['Arrive here', true, 'primary']]);
+        if (!go) return; warpTo(p, { ...x.spot, centre: centres[x.spot.planet - 1] }); toast('Arrival set. Press Save to game to keep it.'); render();
       });
-    });
-    const bb = $$('#boardBtn');
-    if (bb) bb.onclick = async () => {
-      const name = str(g(ps(), 'PlayerFreighterName')) || 'your freighter';
-      const go = await dialog('Arrive on your freighter?', `<p>${glyphRow(Place.portal(p))}</p><p><b>${esc(name)}</b> is called to this system and next time you load this save you'll be standing aboard it, with your ship in the hangar. Your current location is kept as the previous one.</p><p class="dim">Then press Save to game.</p>`, [['Cancel', false], ['Arrive aboard', true, 'primary']]);
-      if (!go) return; warpTo(p, { freighter: true }); toast('Arrival set. Press Save to game to keep it.'); render();
     };
+    drawPlaces(null);
+    if (rows.some((x) => x.spot)) planetCentres(p).then(drawPlaces);
     const wb = $$('#warpBtn');
-    wt.disabled = k.isHere; wn.textContent = k.isHere ? 'You are in this system now' : `${GALAXIES[p.gi]} · ${Place.portal(p)}`;
-    if (wb) wt.onclick = () => wb.click();
-    if (wb) wb.onclick = async () => {
-      const ok = await dialog('Warp to this system?', `<p>${glyphRow(Place.portal(p))}</p><p>Your location becomes <span class="mono">${Place.galactic(p)}</span> in ${esc(GALAXIES[p.gi])}. Next time you load this save you'll be in your ship, in space, in that system. Your current location is kept as the previous one.</p><p class="dim">Then press Save to game.</p>`, [['Cancel', false], ['Warp here', true, 'primary']]);
-      if (!ok) return; warpTo(p); toast('Location set. Press Save to game to keep it.'); render();
-    };
+    wt.disabled = false; wn.textContent = k.isHere ? 'You are in this system now' : `${GALAXIES[p.gi]} · ${Place.portal(p)}`;
+    wt.onclick = () => wb.click();
+    wb.onclick = () => warpDialog(p, rows, k.isHere, C.fav && favOf(C.fav));
   };
-  const setDigits = (d, from) => { C.digits = d.toUpperCase().replace(/[^0-9A-F]/g, '').slice(0, 12); $$('#destErr').hidden = true; show(from); drawFavs(); };
+  const setDigits = (d, from, fav) => { C.digits = d.toUpperCase().replace(/[^0-9A-F]/g, '').slice(0, 12); C.fav = fav || null; $$('#destErr').hidden = true; show(from); drawFavs(); };
   const favBox = $$('#favBox');
-  const drawFavs = () => { favBox.innerHTML = favPanelHtml(C); wireFavPanel(favBox, C, (f) => { C.p = Place.fromPortal(f.portal, f.gi); setDigits(f.portal); $$('#destPanel').scrollIntoView({ behavior: 'smooth', block: 'start' }); }); };
+  const drawFavs = () => { favBox.innerHTML = favPanelHtml(C); wireFavPanel(favBox, C, (f) => { C.p = Place.fromPortal(f.portal, f.gi); setDigits(f.portal, null, f); $$('#destPanel').scrollIntoView({ behavior: 'smooth', block: 'start' }); }); };
   drawFavs();
   $$('#keypad').onclick = (e) => { const b = e.target.closest('button[data-d]'); if (b && C.digits.length < 12) setDigits(C.digits + b.dataset.d); };
   $$('#gBack').onclick = () => setDigits(C.digits.slice(0, -1));
