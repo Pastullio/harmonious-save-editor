@@ -30,13 +30,15 @@ Nothing is uploaded anywhere. Item names and icons come from your own copy of th
 4. On first start it builds an item library from your No Man's Sky install (about a minute). That's where item names, icons and descriptions come from.
 5. Make your changes, then press **Save to game** at the bottom of the sidebar.
 
-**Leaving with unsaved changes:** the **Exit** button at the bottom of the sidebar offers **Save & exit**. Closing the window shows the browser's own "Leave app?" box instead; press **Cancel** there and the editor offers **Save & exit**.
+**Leaving with unsaved changes:** closing the window (the X) or the **Exit** button at the bottom of the sidebar asks: **Keep editing**, **Exit without saving** or **Save & exit**. With nothing unsaved it just closes.
 
 **Close No Man's Sky before saving.** The editor warns you if the game is still running. Steam Cloud can also restore an older copy if it syncs before the game starts.
 
 The app updates itself. When a new version is out it offers to install it, checks the download, swaps itself over and restarts.
 
-**Pin it to the taskbar** from its own taskbar button (right-click, **Pin to taskbar**): it shows the editor's icon, not Edge's. If an older pin shows Edge's icon, unpin it and pin again. You can also right-click the exe in Explorer and choose **Pin to taskbar**.
+**The editor's own window.** It opens in a window of its own (Windows' built-in WebView2, the same engine as Edge, which comes with Windows 10 and 11), with the editor's icon in the taskbar. If WebView2 is missing it opens an Edge window instead.
+
+**Pin it to the taskbar** from its own taskbar button (right-click, **Pin to taskbar**). If you pinned an older version (from before the editor had its own window), unpin that and pin the new one: they show as separate buttons. You can also right-click the exe in Explorer and choose **Pin to taskbar**.
 
 **Exported files** (ship and multi-tool backups, `.nmsship`, `.so`, place cards…) go to `Documents\Harmonious Save Editor\Exports`, and the folder opens in Explorer with the file selected. Nothing is ever overwritten: a second file with the same name gets `(2)` added.
 

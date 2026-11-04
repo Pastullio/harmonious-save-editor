@@ -184,14 +184,14 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   <ul class="feat">
     <li><b>Sidebar</b>: the save's name and play time at the top, then the find box, the sections in their groups, links to other tools, and the save button.</li>
     <li><b>Buttons at the very bottom</b>: open the save folder, back up all saves, show backups, customise the sidebar, light or dark mode, Exit, and About (version, links and credits).</li>
-    <li><b>Leaving with unsaved changes</b>: <span class="ui">Exit</span> asks whether to <span class="ui">Save &amp; exit</span>, <span class="ui">Exit without saving</span> or keep editing. Closing the window shows the browser's own "Leave app?" box, which can't be changed; choose <span class="ui">Cancel</span> there and the editor offers <span class="ui">Save &amp; exit</span>.</li>
+    <li><b>Leaving with unsaved changes</b>: closing the window or pressing <span class="ui">Exit</span> asks whether to <span class="ui">Save &amp; exit</span>, <span class="ui">Exit without saving</span> or keep editing. With nothing unsaved the window just closes.</li>
     <li><b>Your own sidebar</b>: the customise button (lines with a pencil) lets you drag pages up and down or into another group, move whole groups with their arrows, and hide pages you don't use with the eye. Hidden pages are still found with <span class="ui">Find anything</span>. <span class="ui">Reset to default</span> puts it all back; <span class="ui">Done</span> finishes.</li>
     <li><b>The "?" signs</b> beside headings and fields show a short explanation when you point at them.</li>
   </ul>
   <h2>Updates</h2>
   <p>When a new version is out, the app offers it once. Accept and it downloads the new version, checks it, swaps itself over and restarts, showing its progress while it works. Nothing needs reinstalling.</p>
   <h2>Pinning it to the taskbar</h2>
-  <p>The editor opens in its own window, centred on your screen, with its own taskbar button. Right-click the button and choose <span class="ui">Pin to taskbar</span>. If an older pin shows Edge's icon, unpin it and pin again. You can also right-click <code>Harmonious Save Editor.exe</code> in File Explorer, choose <span class="ui">Show more options</span>, then <span class="ui">Pin to taskbar</span>.</p>
+  <p>The editor opens in its own window, centred on your screen, with its own taskbar button. The window uses WebView2, the Edge engine built into Windows 10 and 11; without it the editor opens an Edge window instead. Right-click the taskbar button and choose <span class="ui">Pin to taskbar</span>. A pin from an older version (before the editor had its own window) shows as a separate button: unpin it and pin the new one. You can also right-click <code>Harmonious Save Editor.exe</code> in File Explorer, choose <span class="ui">Show more options</span>, then <span class="ui">Pin to taskbar</span>.</p>
   <h2>Where exported files go</h2>
   <p>Everything you export (ship and multi-tool backups, <code>.nmsship</code> and <code>.so</code> files, place cards) is saved in <code>Documents\Harmonious Save Editor\Exports</code>, and the folder opens with the new file selected. Nothing is overwritten: a second file with the same name gets <code>(2)</code> added.</p>
 </section>
@@ -658,8 +658,8 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
     <dd>Yes. Every ship from every save you open is in the Dock Yard's Hangar. Open the other save, find the ship and press <span class="ui">Load ship into game…</span>.</dd>
     <dt>I exported a ship. Where did it go?</dt>
     <dd>To <code>Documents\Harmonious Save Editor\Exports</code>. The folder opens with the file selected each time you export.</dd>
-    <dt>The taskbar shows Edge's icon.</dt>
-    <dd>Unpin the old button, open the editor, then right-click its taskbar button and choose <span class="ui">Pin to taskbar</span>. See <a href="#start">Getting started</a>.</dd>
+    <dt>My old taskbar pin opens a second button, or shows Edge's icon.</dt>
+    <dd>It's a pin from before the editor had its own window. Unpin it, open the editor, then right-click its taskbar button and choose <span class="ui">Pin to taskbar</span>. See <a href="#start">Getting started</a>.</dd>
     <dt>A companion shows an egg, or looks wrong.</dt>
     <dd>Companions are drawn from your game's own creature models. If one can't be found it shows an egg. Use <span class="ui">Change picture</span> for a screenshot, and press <span class="ui">save creature files for the developer</span> under the list so it can be fixed.</dd>
     <dt>Does the editor need the internet?</dt>

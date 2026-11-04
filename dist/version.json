@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.04.1537",
+  "version": "2026.11.04.1553",
   "date": "2026-11-04",
-  "size": 12835328,
-  "sha256": "73708359f911099dd1b715917194d149f1e84a5b8d4305d22a863818ab1cc3e0",
-  "notes": "Nicknames: give systems and planets your own names, shown only in the editor (they don't rename anything in the game).",
+  "size": 13019648,
+  "sha256": "73383255be6d03addd16c2d3c1f920e93ee6680ec22002c4967775ef3820a386",
+  "notes": "The editor now has its own window: closing it asks to Save & exit, and the taskbar shows the editor's icon (re-pin it once if you'd pinned the old one). Also: favourite places, nicknames and a star chart on Coordinates.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
