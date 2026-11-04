@@ -229,7 +229,9 @@ func nativeWindow(url string) bool {
 
 	callIf(pSetDpiAwareness, ^uintptr(3)) // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 (-4): sharp text on scaled screens
 	pCoInitializeEx.Call(0, 2)            // COINIT_APARTMENTTHREADED
-	setProcessAUMID()
+	// no AppUserModelID of our own: Windows then treats the window as the exe's, with the exe's icon, like any program.
+	// With the ID the editor used for the Edge window, the taskbar showed a blank icon (owner, 2026-11-04, tests 11-12),
+	// most likely from what Windows remembers for that ID (each test build lives at another path).
 
 	hwnd, err := createEditorWindow()
 	if err != nil {
@@ -237,9 +239,7 @@ func nativeWindow(url string) bool {
 		return false
 	}
 	native.hwnd = hwnd
-	// Unlike the Edge window, this window belongs to the editor's own process, so the taskbar takes the exe's icon and a
-	// pin starts the exe without any relaunch properties. Setting them here left a blank icon (owner, 2026-11-04), as
-	// the shell couldn't load the icon they named; the process's AppUserModelID still groups it with earlier pins.
+	// this window belongs to the editor's own process, so a pin starts the exe; no relaunch properties are needed
 
 	data := filepath.Join(appDir, "webview")
 	migrateBrowserData(filepath.Join(appDir, "window"), data)
