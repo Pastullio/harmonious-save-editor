@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.04.1505",
+  "version": "2026.11.04.1511",
   "date": "2026-11-04",
-  "size": 12823040,
-  "sha256": "4d9c239e15c70da0e3be6af148866d47d73b32da901d7fefdc247baf20ec7532",
-  "notes": "Systems and planets show the names players gave them (from your save), with the game's own name beside them.",
+  "size": 12823552,
+  "sha256": "e2fc7d7db5b3796bf957bfb1a28d055faa285feb1069b973639aa0e7b6abf261",
+  "notes": "Star a system or any of its planets straight from the Coordinates prediction.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
