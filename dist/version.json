@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.04.1449",
+  "version": "2026.11.04.1453",
   "date": "2026-11-04",
-  "size": 12820480,
-  "sha256": "b1ee680bbd3793c9696635854c3532fa4a37f230f55ff0a1969b1b2b72c9cbd2",
-  "notes": "Warp here asks how you arrive (ship, freighter or a base); one Places here list; a turning globe of your planet; corvette covers keep their render after a change.",
+  "size": 12820992,
+  "sha256": "075544b85d2594aafdf3f4ff5ca001c3e1380ff287ea1104c73f271ee3f3c688",
+  "notes": "Your planet's moon is no longer cut off, and the globe turns even with Windows animation effects off.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

@@ -7212,13 +7212,13 @@ function globeTexture(seedText, colours, gas) {
   }
   return { tex, W, H };
 }
-// a canvas with the globe on it, turning while it's on screen (a still picture when motion is reduced)
+// a canvas with the globe on it, turning while it's on screen
 function globeCanvas(opts) {
   const size = opts.size || 84, dpr = Math.min(2, devicePixelRatio || 1), N = Math.round(size * dpr);
   const cv = document.createElement('canvas'); cv.width = cv.height = N; cv.className = 'globe'; cv.style.width = cv.style.height = size + 'px';
   cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', opts.label || 'Planet');
   const ctx = cv.getContext('2d'); if (!ctx) return cv;
-  const R = N * (opts.moons ? .3 : .4), cx = N / 2, cy = N / 2;
+  const R = N * (opts.moons ? .29 : .4), cx = N / 2, cy = N / 2;
   if (opts.star) {   // in space: the system's star, glowing
     const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, N * .48); const c = opts.star;
     g.addColorStop(0, '#ffffff'); g.addColorStop(.28, c); g.addColorStop(.5, c + '55'); g.addColorStop(1, c + '00');
@@ -7236,7 +7236,7 @@ function globeCanvas(opts) {
   }
   const glow = GLOBE_COLOURS[opts.biome] ? GLOBE_COLOURS[opts.biome][3] : '#86a2b6';
   const gl = [1, 3, 5].map((i) => parseInt(glow.slice(i, i + 2), 16));
-  const moonR = R * .26, orbit = R * 1.55;
+  const moonR = N * .065, orbit = N * .5 - moonR - N * .02;   // the moon stays inside the canvas
   const moon = (a) => { const mx = cx + Math.cos(a) * orbit, my = cy + Math.sin(a) * orbit * .32; const g = ctx.createRadialGradient(mx - moonR * .35, my - moonR * .35, moonR * .1, mx, my, moonR);
     g.addColorStop(0, '#d6dadf'); g.addColorStop(.7, '#8a9098'); g.addColorStop(1, '#4a5058'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(mx, my, moonR, 0, 7); ctx.fill(); };
   const draw = (t) => {
@@ -7258,7 +7258,9 @@ function globeCanvas(opts) {
   const t0 = performance.now() - (opts.phase || 0) * 40000;
   const loop = (now) => { raf = 0; if (!cv.isConnected) return; if (now - last > 48) { last = now; draw(((now - t0) / 40000) % 1); } if (seen) raf = requestAnimationFrame(loop); };
   draw(opts.phase || 0);
-  if (!REDUCED && 'IntersectionObserver' in window) {
+  // it turns even with Windows' animation effects off (that sets reduced motion): one slow turn every 40 s is calm, and
+  // the owner wants to see it move (2026-11-04)
+  if ('IntersectionObserver' in window) {
     const io = new IntersectionObserver(([e]) => { seen = e.isIntersecting; if (!cv.isConnected) { io.disconnect(); return; } if (seen && !raf) raf = requestAnimationFrame(loop); });
     io.observe(cv);
   }
