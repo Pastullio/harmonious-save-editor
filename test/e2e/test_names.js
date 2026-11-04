@@ -47,25 +47,24 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.waitForTimeout(1500);
   const hn = await p.textContent('#hereName');
   ok('You are here shows the given name first', /^Test Haven \(/.test(hn));
-  // renaming your own discovery in the save (experimental)
-  const tgt = await p.evaluate(() => {
-    const recs = g(S.save.json, 'DiscoveryManagerData', 'DiscoveryData-v1', 'Store', 'Record');
-    const rec = recs.find((x) => str(g(x, 'DD', 'DT')) === 'Planet' && str(g(x, 'OWS', 'UID')) === myUID() && !str(g(x, 'RID')) && !str(g(x, 'DM', 'CN')));
-    const other = recs.find((x) => str(g(x, 'DD', 'DT')) === 'Planet' && str(g(x, 'OWS', 'UID')) && str(g(x, 'OWS', 'UID')) !== myUID());
-    const at = Place.fromPacked(g(rec, 'DD', 'UA')), ot = Place.fromPacked(g(other, 'DD', 'UA'));
-    S.coords = { p: { ...at, planet: 0 }, digits: Place.portal({ ...at, planet: 0 }) }; go('coords');
-    return { planet: at.planet, otherOk: renameState(ot).ok };
-  });
-  ok("another traveller's discovery can't be renamed", tgt.otherOk === false);
-  await p.waitForSelector(`#pred [data-rename="${tgt.planet}"]`, { timeout: 8000 });
-  await p.click(`#pred [data-rename="${tgt.planet}"]`); await p.waitForSelector('#rnName');
-  ok('the dialog says it is not uploaded yet', /haven't uploaded/.test(await p.textContent('#dlgBody')));
+  // nicknames: shown only in the editor, kept outside the save (owner, 2026-11-04)
+  const tgt = await p.evaluate(() => { const here = Place.fromUA(g(ps(), 'UniverseAddress')); S.coords = { p: { ...here, planet: 0 }, digits: Place.portal({ ...here, planet: 0 }) }; S.dirty = false; go('coords'); return 1; });
+  await p.waitForSelector('#pred [data-rename="1"]', { timeout: 8000 });
+  await p.click('#pred [data-rename="1"]'); await p.waitForSelector('#rnName');
+  ok('the dialog says a nickname does not rename it in the game', /only shown in this editor/.test(await p.textContent('#dlgBody')) && /upload it/.test(await p.textContent('#dlgBody')));
   await p.fill('#rnName', 'Harmony Prime'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(1200);
-  ok('the planet takes the new name', await p.evaluate(() => S.dirty) && (await p.textContent('#pred .pred-planets')).includes('Harmony Prime'));
-  ok('and the save still encodes', await p.evaluate(() => { try { encodeSave(); return true; } catch (e) { return e.message; } }) === true);
-  await p.click(`#pred [data-rename="${tgt.planet}"]`); await p.waitForSelector('#rnName');
-  await p.click('#dlgActs .btn.ghost'); await p.waitForTimeout(1000);
-  ok("Use the game's name clears it", !(await p.textContent('#pred .pred-planets')).includes('Harmony Prime'));
+  ok('the planet shows its nickname, with the game name under it', (await p.textContent('#pred .pred-planets')).includes('Harmony Prime') && (await p.textContent('#pred .pred-planets')).includes('In the game:'));
+  ok('the save is not changed', await p.evaluate(() => !S.dirty));
+  const nickFile = path.join(home, 'Documents', 'Harmonious Save Editor', 'Nicknames.json');
+  ok('the nickname is kept in Nicknames.json', fs.existsSync(nickFile) && fs.readFileSync(nickFile, 'utf8').includes('Harmony Prime'));
+  // a name the old experiment wrote into the save is shown as a nickname and taken out when a nickname is set
+  const stray = await p.evaluate(async () => { const here = Place.fromUA(g(ps(), 'UniverseAddress')); const r = discoveryRecord({ ...here, planet: 0 }); return nicknameOf({ ...here, planet: 0 }); });
+  ok('an old in-save name counts as a nickname', stray === 'Test Haven');
+  await p.click('#pred [data-rename="0"]'); await p.waitForSelector('#rnName'); await p.fill('#rnName', 'My System'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(1200);
+  ok('setting a nickname clears the old in-save name', await p.evaluate(() => { const here = Place.fromUA(g(ps(), 'UniverseAddress')); return !str(g(discoveryRecord({ ...here, planet: 0 }), 'DM', 'CN')) && S.dirty; }));
+  ok('and the system shows the nickname', (await p.textContent('#pred .pred-name')).includes('My System'));
+  await p.click('#pred [data-rename="1"]'); await p.waitForSelector('#rnName'); await p.click('#dlgActs .btn.ghost'); await p.waitForTimeout(1000);
+  ok('Remove nickname takes it away', !(await p.textContent('#pred .pred-planets')).includes('Harmony Prime'));
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
   await b.close(); proc.kill();
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS'); process.exit(fails.length ? 1 : 0);

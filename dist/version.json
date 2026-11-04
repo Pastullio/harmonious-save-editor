@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.04.1528",
+  "version": "2026.11.04.1537",
   "date": "2026-11-04",
-  "size": 12832768,
-  "sha256": "58a94dea48261721db34736d94bbe8da4a0a40876bfeec3a00fb10e3f75bfdb7",
-  "notes": "In space, You are here shows the star with its planets and moons going round it.",
+  "size": 12835328,
+  "sha256": "73708359f911099dd1b715917194d149f1e84a5b8d4305d22a863818ab1cc3e0",
+  "notes": "Nicknames: give systems and planets your own names, shown only in the editor (they don't rename anything in the game).",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
