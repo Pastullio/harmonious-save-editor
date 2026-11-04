@@ -26,6 +26,14 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.waitForSelector('.pred-name', { timeout: 8000 });
   const head = await p.textContent('.pred-head');
   ok('with the game\'s own name and who named it', head.includes(r.gen) && head.includes(r.by));
+  // a planet and the system can be starred from the prediction
+  await p.click('#pred .pred-planets tbody tr:first-child .fav-star'); await p.waitForTimeout(600);
+  await p.click('#pred .pred-name .fav-star'); await p.waitForTimeout(600);
+  const favs = await p.evaluate(() => FAVS.list.map((f) => [f.kind, f.name, f.note]));
+  console.log('  ', favs);
+  ok('a planet from the table is kept as a planet, with its system as the note', favs.some(([k, , n]) => k === 'Planet' && /^In /.test(n)));
+  ok('the system is kept as a system', favs.some(([k, nm]) => k === 'System' && nm === r.cn));
+  ok('the stars light up', (await p.$$('#pred .fav-star[aria-pressed="true"]')).length >= 2);
   // a renamed planet
   const pl = await p.evaluate(async () => {
     const recs = g(S.save.json, 'DiscoveryManagerData', 'DiscoveryData-v1', 'Store', 'Record');
