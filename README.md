@@ -82,6 +82,7 @@ Find a place by its portal glyphs or galactic address, see what your save knows 
 
 - **You are here**: your current system, galaxy, portal glyphs and galactic address. **Start from here** copies it into the destination.
 - **Destination**: type or click portal glyphs, or enter a galactic address. Both stay in step.
+- **Nicknames**: give any system or planet a name of your own, shown only in the editor. It doesn't rename it in the game; for that, rename it in the game and upload it.
 - **Names players gave**: a system or planet renamed by you or another traveller shows that name, with the game's own name beside it.
 - **System prediction**: the system's name, region, star colour and planets, worked out from the address.
 - **What your save knows**: the system and planet names you've discovered, biomes from your discovery records, and your bases there.

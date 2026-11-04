@@ -20,9 +20,17 @@ func placesFile() string {
 	return filepath.Join(filepath.Dir(exportsDir()), "Favourite places.json")
 }
 
+// Nicknames for systems and planets (owner, 2026-11-04): names the owner gives in the editor only, until the place is
+// renamed and uploaded in the game. {"places": [{key, name}]}, key = galaxy|portal code (planet 0 for the system).
+func nicknamesFile() string {
+	return filepath.Join(filepath.Dir(exportsDir()), "Nicknames.json")
+}
+
+func handlePlaces(w http.ResponseWriter, r *http.Request)    { handlePlaceList(w, r, placesFile()) }
+func handleNicknames(w http.ResponseWriter, r *http.Request) { handlePlaceList(w, r, nicknamesFile()) }
+
 // GET: the file's contents ({"places": []} when there's none yet). PUT: replace it.
-func handlePlaces(w http.ResponseWriter, r *http.Request) {
-	p := placesFile()
+func handlePlaceList(w http.ResponseWriter, r *http.Request, p string) {
 	switch r.Method {
 	case http.MethodGet:
 		b, err := os.ReadFile(p)

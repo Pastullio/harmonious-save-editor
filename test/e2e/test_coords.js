@@ -32,7 +32,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   // the ATLAS APF screenshot's system: Eissentam (galaxy 10), 115A30E59ECB
   await p.selectOption('#fGalaxy', '9'); await p.fill('#fPortal', '115A30E59ECB');
   await p.waitForSelector('#pred .pred-name', { timeout: 20000 });
-  const pred = await p.evaluate(() => ({ name: $('#pred .pred-name').textContent, planets: [...document.querySelectorAll('#pred .pred-planets tbody tr td:nth-child(2)')].map((t) => (t.querySelector('.gen-name') || t).textContent), text: $('#pred').textContent }));
+  const pred = await p.evaluate(() => { const txt = (el) => { const c = el.cloneNode(true); c.querySelectorAll('.rn-link').forEach((x) => x.remove()); return c.textContent; }; return { name: txt($('#pred .pred-name')), planets: [...document.querySelectorAll('#pred .pred-planets tbody tr td:nth-child(2)')].map((t) => (t.querySelector('.gen-name') || t).textContent.replace(/Nickname$/, '')), text: $('#pred').textContent }; });
   console.log(JSON.stringify(pred.planets), pred.text.replace(/\s+/g, ' ').slice(0, 260));
   ok('predicts the system name', pred.name === 'Iqueri-Rep');
   const odds = await p.evaluate(() => { const dd = [...document.querySelectorAll('#pred .pred-grid div')].find((d) => /Biome odds/.test(d.textContent)); return dd ? dd.querySelector('dd').textContent : null; });

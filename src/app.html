@@ -586,7 +586,6 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .pred-head > div { display: grid; gap: 2px; }
 .pred-head .k { font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
 .rn-link { font-family: var(--body); font-size: 12px; font-weight: 400; letter-spacing: 0; margin-left: 10px; vertical-align: middle; }
-.rn-off { color: var(--dim); opacity: .7; cursor: help; text-decoration: underline dotted; text-underline-offset: 3px; }
 .gen-name { display: block; font-size: 12px; margin-left: 26px; }
 .pred-name .fav-star svg { width: 20px; height: 20px; }
 .gen-inline { font-weight: 400; }
@@ -4712,6 +4711,7 @@ function givenNames(p) {
   for (const r of g(S.save.json, 'DiscoveryManagerData', 'DiscoveryData-v1', 'Store', 'Record') || []) {
     const t = str(g(r, 'DD', 'DT')); if (t !== 'SolarSystem' && t !== 'Planet') continue;
     const cn = g(r, 'DM') instanceof Map ? untag(str(g(r, 'DM', 'CN'))) : ''; if (!cn) continue;
+    if (!(g(r, 'FL') instanceof Map) && !str(g(r, 'RID'))) continue;   // written into the save, never shown by the game
     const at = Place.fromPacked(g(r, 'DD', 'UA')); if (!Place.sameSystem(at, p)) continue;
     const who = untag(str(g(r, 'OWS', 'USN'))), mine = !!myUID() && str(g(r, 'OWS', 'UID')) === myUID();
     const n = { name: cn, by: who, mine };
@@ -4719,10 +4719,27 @@ function givenNames(p) {
   }
   return out;
 }
-// Renaming in the save (experimental, owner 2026-11-04): a system's or planet's discovery record keeps its name in
-// DM.CN. Only your own discoveries can be renamed here. Ones without a record ID (RID) haven't been through the game's
-// servers yet, so the game should keep the new name and upload it; uploaded ones may get their old name back from the
-// servers. Clearing the name removes CN, as on a record never named.
+// Nicknames (owner, 2026-11-04): names for systems and planets that only this editor shows, until the place is named in
+// the game and uploaded to its servers. The game ignores a name written into the save for a discovery that isn't
+// uploaded (checked 2026-11-04), so nothing goes into the save. Kept in Documents\Harmonious Save Editor\Nicknames.json
+// (/api/nicknames; localStorage hse-nicknames in the browser), keyed galaxy|portal code (planet 0 = the system).
+const NICKS = { map: null, loading: null };
+const nickKey = (p) => p.gi + '|' + Place.portal(p);
+function nickLoad() {
+  if (NICKS.map) return Promise.resolve(NICKS.map);
+  return NICKS.loading || (NICKS.loading = (async () => {
+    let v = null;
+    if (APP) { try { v = await (await api('/api/nicknames')).json(); } catch (_) {} }
+    else { try { v = JSON.parse(localStorage.getItem('hse-nicknames') || 'null'); } catch (_) {} }
+    NICKS.map = new Map(((v && v.places) || []).filter((x) => x && x.key && x.name).map((x) => [x.key, x.name]));
+    return NICKS.map;
+  })());
+}
+async function nickStore() {
+  const body = JSON.stringify({ places: [...NICKS.map].map(([key, name]) => ({ key, name })) }, null, 2);
+  if (APP) await api('/api/nicknames', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body });
+  else localStorage.setItem('hse-nicknames', body);
+}
 function discoveryRecord(p) {
   const want = p.planet ? 'Planet' : 'SolarSystem';
   for (const r of g(S.save.json, 'DiscoveryManagerData', 'DiscoveryData-v1', 'Store', 'Record') || []) {
@@ -4731,30 +4748,36 @@ function discoveryRecord(p) {
   }
   return null;
 }
-function renameState(p) {
-  const r = S.save && discoveryRecord(p); if (!r) return { ok: false, why: "You haven't discovered it, so there's no name in your save to change." };
-  if (!myUID() || str(g(r, 'OWS', 'UID')) !== myUID()) return { ok: false, r, why: 'Another traveller discovered it, so only they can name it.' };
-  return { ok: true, r, uploaded: !!str(g(r, 'RID')) };
-}
-async function renameDialog(p, genName, onDone) {
-  const st = renameState(p); if (!st.ok) { toast(st.why, true); return; }
-  const dm = g(st.r, 'DM'), cur = dm instanceof Map ? untag(str(g(dm, 'CN'))) : '', what = p.planet ? 'planet' : 'system';
-  const v = await dialog(`Rename this ${what} in your save`, `<label class="field"><span>Name</span><input class="input" id="rnName" maxlength="40" value="${esc(cur || genName || '')}"></label>
-    <p class="dim small-print" style="margin-top:10px">The game's own name is <b>${esc(genName || '')}</b>.</p>
-    <p class="${st.uploaded ? 'err' : 'dim'}" style="margin-top:8px">${st.uploaded ? `This ${what} is already uploaded, so the game's servers may put its old name back.` : `You haven't uploaded this discovery yet. The game keeps showing its own name until the discovery is uploaded (checked 2026-11-04), so upload it from the game's Discoveries menu and see which name goes up with it.`}</p>
-    <p class="dim small-print"><b>Experimental:</b> try it on one ${what} and check it in the game after you press Save to game (the app backs up your save first).</p>`,
-    [cur ? ['Use the game\'s name', 'clear', 'ghost'] : null, ['Cancel', false], ['Rename', 'save', 'primary']].filter(Boolean));
-  if (!v || !(dm instanceof Map)) return;
-  if (v === 'clear') { const k = kOf(dm, 'CN'); if (k != null) dm.delete(k); }
-  else { const n = $('#rnName').value.trim(); if (!n) return; set(dm, 'CN', n); }
-  markDirty(); toast(v === 'clear' ? 'Name cleared. Press Save to game to keep it.' : 'Renamed. Press Save to game, then check it in the game.'); onDone && onDone();
+// a name an earlier editor version wrote into a discovery that was never named in the game (no FL): the game doesn't
+// show it, so it counts as a nickname, and setting a nickname takes it out of the save
+const strayName = (r) => (r && g(r, 'DM') instanceof Map && str(g(r, 'DM', 'CN')) && !(g(r, 'FL') instanceof Map) && !str(g(r, 'RID')) ? untag(str(g(r, 'DM', 'CN'))) : '');
+function nicknameOf(p) { const n = NICKS.map && NICKS.map.get(nickKey(p)); if (n) return n; return S.save ? strayName(discoveryRecord(p)) : ''; }
+async function nicknameDialog(p, gameName, onDone) {
+  await nickLoad();
+  const cur = nicknameOf(p), what = p.planet ? 'planet' : 'system';
+  const v = await dialog(`Nickname for this ${what}`, `<label class="field"><span>Nickname</span><input class="input" id="rnName" maxlength="60" value="${esc(cur)}" placeholder="Your own name for it"></label>
+    <p class="dim" style="margin-top:10px">In the game it's <b>${esc(gameName || '')}</b>.</p>
+    <p class="err" style="margin-top:8px">A nickname is only shown in this editor. It doesn't rename the ${what} in the game: to do that, rename it in the game and upload it to the game's servers.</p>`,
+    [cur ? ['Remove nickname', 'clear', 'ghost'] : null, ['Cancel', false], ['Save', 'save', 'primary']].filter(Boolean));
+  if (!v) return;
+  const name = v === 'clear' ? '' : $('#rnName').value.trim();
+  if (name) NICKS.map.set(nickKey(p), name); else NICKS.map.delete(nickKey(p));
+  // the earlier experiment's name in the save goes, so the save holds only what the game wrote
+  const r = S.save && discoveryRecord(p);
+  if (strayName(r)) { const dm = g(r, 'DM'), k = kOf(dm, 'CN'); if (k != null) { dm.delete(k); markDirty(); } }
+  try { await nickStore(); } catch (e) { toast("The nickname couldn't be saved: " + e.message, true); return; }
+  toast(name ? `Nickname saved. It shows only in the editor.` : 'Nickname removed.'); onDone && onDone();
 }
 const namedBy = (n) => (n.mine ? 'named by you' : n.by ? 'named by ' + n.by : 'named by a traveller');
 async function predictSystem(p) {
   const s = await predictSystemRaw(p), given = givenNames(p);
-  // the game's own names stay as genName/genPlanets; name/planets are what players see in the game
-  return { ...s, genName: s.name, genPlanets: s.planets, given,
-    name: given.system ? given.system.name : s.name, planets: s.planets.map((n, i) => (given.planets[i + 1] ? given.planets[i + 1].name : n)) };
+  await nickLoad();
+  // genName/genPlanets: the game's generated names; gameName/gamePlanets: what the game shows (a given name, else the
+  // generated one); name/planets: what the editor shows (your nickname first)
+  const gameName = given.system ? given.system.name : s.name, gamePlanets = s.planets.map((n, i) => (given.planets[i + 1] ? given.planets[i + 1].name : n));
+  const sp = { ...p, planet: 0 }, nick = { system: nicknameOf(sp), planets: s.planets.map((_, i) => nicknameOf({ ...p, planet: i + 1 })) };
+  return { ...s, genName: s.name, genPlanets: s.planets, given, gameName, gamePlanets, nick,
+    name: nick.system || gameName, planets: gamePlanets.map((n, i) => nick.planets[i] || n) };
 }
 async function predictSystemRaw(p) {
   const lm = await letterMap();
@@ -4785,10 +4808,10 @@ function predictionHtml(p, s) {
     ['Bodies', `${plural(s.planetCount, 'planet')}${s.moonCount ? ' and ' + plural(s.moonCount, 'moon') : ''}`],
   ].filter(Boolean);
   const rest = Place.portal(p).slice(1);
-  return `<div class="pred-head"><div><span class="k">System</span><b class="pred-name">${favStar(sysFav({ ...p, planet: 0 }, s))}${esc(s.name)}${renameState({ ...p, planet: 0 }).ok ? '<button class="link rn-link" type="button" data-rename="0">Rename</button>' : ''}</b>${s.given && s.given.system ? `<span class="dim">Originally ${esc(s.genName)}, ${esc(namedBy(s.given.system))}</span>` : ''}<span class="dim">${esc(s.region)}, ${esc(GALAXIES[p.gi])}</span></div><span class="pred-share"><button class="btn small" type="button" data-card="image">Copy card</button><button class="btn small ghost" type="button" data-card="save">Save card</button><button class="btn small ghost" type="button" data-card="text">Copy as text</button></span><span class="pill">Predicted</span></div>
+  return `<div class="pred-head"><div><span class="k">System</span><b class="pred-name">${favStar(sysFav({ ...p, planet: 0 }, s))}${esc(s.name)}<button class="link rn-link" type="button" data-rename="0">${s.nick && s.nick.system ? 'Change nickname' : 'Nickname'}</button></b>${s.nick && s.nick.system ? `<span class="dim">Your nickname, shown only here · in the game: ${esc(s.gameName)}</span>` : s.given && s.given.system ? `<span class="dim">Originally ${esc(s.genName)}, ${esc(namedBy(s.given.system))}</span>` : ''}<span class="dim">${esc(s.region)}, ${esc(GALAXIES[p.gi])}</span></div><span class="pred-share"><button class="btn small" type="button" data-card="image">Copy card</button><button class="btn small ghost" type="button" data-card="save">Save card</button><button class="btn small ghost" type="button" data-card="text">Copy as text</button></span><span class="pill">Predicted</span></div>
     <dl class="pred-grid">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
     ${s.planets.length ? `<table class="pred-planets"><thead><tr><th>#</th><th>Name</th><th>Biome</th><th>Portal address</th><th></th></tr></thead><tbody>
-      ${s.planets.map((n, i) => { const code = hexN(i + 1, 1) + rest, bi = (s.biomes || {})[i + 1]; return `<tr${p.planet === i + 1 ? ' class="on"' : ''}><td>${i + 1}</td><td>${favStar(sysFav({ ...p, planet: i + 1 }, s))}${esc(n)}${(() => { const rs = renameState({ ...p, planet: i + 1 }); return rs.ok ? `<button class="link rn-link" type="button" data-rename="${i + 1}">Rename</button>` : !rs.r ? `<span class="rn-link rn-off" tabindex="0" title="You haven't discovered this planet yet. Land on it or scan it from orbit in the game, save, and it can be renamed here.">Rename</span>` : ''; })()}${s.given && s.given.planets[i + 1] ? `<span class="dim gen-name" title="${esc(namedBy(s.given.planets[i + 1]))}">${esc(s.genPlanets[i])}</span>` : ''}</td><td>${bi && bi.biome ? esc(bi.biome + (bi.infested ? ', infested' : '')) : (() => { const o = (s.planetOdds || [])[i]; return o ? `<span class="dim" title="${esc('Odds for this planet: ' + o.filter(([, f]) => f >= 0.01).map(([n, f]) => `${n} ${Math.round(f * 100)}%`).join(', '))}">${o[1] && Math.round(o[1][1] * 100) === Math.round(o[0][1] * 100) ? `${esc(o[0][0])} or ${esc(o[1][0])}, ${Math.round(o[0][1] * 100)}% each` : `Most likely ${esc(o[0][0])}, ${Math.round(o[0][1] * 100)}%`}</span>` : '<span class="dim">Not visited</span>'; })()}${(s.prime || [])[i] ? ' <span class="prime-tag" title="A prime body: it draws from the game\'s prime list, the only one with Marsh and Volcanic">Prime</span>' : ''}</td><td>${glyphRow(code, 'tiny')} <span class="mono">${code}</span></td><td><button class="link" type="button" data-planet="${i + 1}">${p.planet === i + 1 ? 'Selected' : 'Use this address'}</button></td></tr>`; }).join('')}
+      ${s.planets.map((n, i) => { const code = hexN(i + 1, 1) + rest, bi = (s.biomes || {})[i + 1]; return `<tr${p.planet === i + 1 ? ' class="on"' : ''}><td>${i + 1}</td><td>${favStar(sysFav({ ...p, planet: i + 1 }, s))}${esc(n)}<button class="link rn-link" type="button" data-rename="${i + 1}" title="${s.nick && s.nick.planets[i] ? 'Change the nickname' : 'Give it a nickname only this editor shows'}">${s.nick && s.nick.planets[i] ? 'Change nickname' : 'Nickname'}</button>${s.nick && s.nick.planets[i] ? `<span class="dim gen-name" title="Your nickname is shown only in this editor">In the game: ${esc(s.gamePlanets[i])}</span>` : s.given && s.given.planets[i + 1] ? `<span class="dim gen-name" title="${esc(namedBy(s.given.planets[i + 1]))}">${esc(s.genPlanets[i])}</span>` : ''}</td><td>${bi && bi.biome ? esc(bi.biome + (bi.infested ? ', infested' : '')) : (() => { const o = (s.planetOdds || [])[i]; return o ? `<span class="dim" title="${esc('Odds for this planet: ' + o.filter(([, f]) => f >= 0.01).map(([n, f]) => `${n} ${Math.round(f * 100)}%`).join(', '))}">${o[1] && Math.round(o[1][1] * 100) === Math.round(o[0][1] * 100) ? `${esc(o[0][0])} or ${esc(o[1][0])}, ${Math.round(o[0][1] * 100)}% each` : `Most likely ${esc(o[0][0])}, ${Math.round(o[0][1] * 100)}%`}</span>` : '<span class="dim">Not visited</span>'; })()}${(s.prime || [])[i] ? ' <span class="prime-tag" title="A prime body: it draws from the game\'s prime list, the only one with Marsh and Volcanic">Prime</span>' : ''}</td><td>${glyphRow(code, 'tiny')} <span class="mono">${code}</span></td><td><button class="link" type="button" data-planet="${i + 1}">${p.planet === i + 1 ? 'Selected' : 'Use this address'}</button></td></tr>`; }).join('')}
     </tbody></table>` : '<p class="dim">No planets.</p>'}
     <p class="pred-note dim">Predicted from the address with the game's own rules, so it works for systems nobody has visited. Checked against 1,000 systems players recorded: about 99% right. Names travellers uploaded later aren't included. Biomes in the planet list come from your own discoveries; for unvisited planets it shows the likeliest ones from each planet's own odds. Biome odds are the game's own chances for this colour of star in this kind of galaxy (yellow stars in lush and empty galaxies have their own lists), read from your game files. Prime planets, the bodies after a system's regular ones, use the game's prime list, the only one with Marsh and Volcanic, and some Dead planets turn Exotic; this matched every one of the 1,487 planets in the owner's save. The exact biome the game draws for each planet isn't known, and weather and resources aren't predicted yet. Generation research: nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, ported to JavaScript as nms-core by elegra1965 (both MIT).</p>`;
 }
@@ -7427,9 +7450,10 @@ function favEntry(name, kind, p, spot) {
 }
 // a system (planet 0) or one of its planets as a favourite: a planet is kept under its own name, with its system as the note
 function sysFav(p, sys) {
-  const sysName = (sys && sys.name) || Place.portal({ ...p, planet: 0 });
-  if (!p.planet) return favEntry(sysName, 'System', p);
-  const e = favEntry((sys && sys.planets[p.planet - 1]) || `${sysName}, planet ${p.planet}`, 'Planet', p); e.note = 'In ' + sysName; return e;
+  const sysName = (sys && sys.name) || Place.portal({ ...p, planet: 0 }), sysRef = (sys && (sys.gameName || sys.name)) || sysName;
+  if (!p.planet) { const e = favEntry(sysName, 'System', p); e.ref = sysRef; return e; }
+  const e = favEntry((sys && sys.planets[p.planet - 1]) || `${sysName}, planet ${p.planet}`, 'Planet', p); e.note = 'In ' + sysName;
+  e.ref = (sys && (sys.gamePlanets || sys.planets)[p.planet - 1]) || e.name; return e;
 }
 const STAR_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2l2.6 5.5 6 .8-4.4 4.1 1.1 6-5.3-2.9-5.3 2.9 1.1-6-4.4-4.1 6-.8z"/></svg>';
 function favStar(e, label) {
@@ -7565,7 +7589,7 @@ PAGES.coords = (el) => {
     box.replaceChildren(globeCanvas({ seed: str(Array.isArray(sv) ? sv[1] : sv) || Place.portal(here), biome, moons, label: `${name || 'Planet ' + pl}${biome ? ', ' + biome : ''}${moons ? ', with ' + plural(moons, 'moon') : ''}` }));
     if (txt) txt.textContent = `On ${name || 'planet ' + pl}${biome ? ' · ' + biome + (bi.infested ? ', infested' : '') : ''}${m && m.isMoon ? ' · a moon' : ''}${moons ? ' · ' + plural(moons, 'moon') : ''}`;
   };
-  predictSystem(here).then((sys) => { const n = $$('#hereName'); if (n) { n.innerHTML = esc(sys.name) + (sys.given.system ? ` <span class="dim gen-inline" title="${esc(`The game's own name, before it was ${namedBy(sys.given.system)}`)}">(${esc(sys.genName)})</span>` : '') + ', '; } hereStar(sys); drawHere(sys); }).catch(() => { hereStar(null); drawHere(null); });
+  predictSystem(here).then((sys) => { const n = $$('#hereName'); if (n) { n.innerHTML = esc(sys.name) + (sys.nick.system ? ` <span class="dim gen-inline" title="Your nickname is shown only in this editor; this is the name in the game">(${esc(sys.gameName)})</span>` : sys.given.system ? ` <span class="dim gen-inline" title="${esc(`The game's own name, before it was ${namedBy(sys.given.system)}`)}">(${esc(sys.genName)})</span>` : '') + ', '; } hereStar(sys); drawHere(sys); }).catch(() => { hereStar(null); drawHere(null); });
   const show = (from) => {
     const full = C.digits.length === 12 && Place.fromPortal(C.digits, C.p.gi);
     if (full) C.p = full;
@@ -7597,7 +7621,7 @@ PAGES.coords = (el) => {
       const ds = $$('#destStar'); if (ds) { ds.innerHTML = favStar(placeFav(p, sys), true); }
       const box = $$('#pred'); if (!box) return; box.innerHTML = predictionHtml(p, { ...sys, biomes: k.biomes });
       box.querySelectorAll('[data-planet]').forEach((b) => b.onclick = () => setDigits(hexN(+b.dataset.planet, 1) + C.digits.slice(1)));
-      box.querySelectorAll('[data-rename]').forEach((b) => b.onclick = () => { const k = +b.dataset.rename; renameDialog({ ...p, planet: k }, k ? sys.genPlanets[k - 1] : sys.genName, () => render()); });
+      box.querySelectorAll('[data-rename]').forEach((b) => b.onclick = () => { const k = +b.dataset.rename; nicknameDialog({ ...p, planet: k }, k ? sys.gamePlanets[k - 1] : sys.gameName, () => render()); });
       box.querySelectorAll('[data-card]').forEach((b) => b.onclick = () => shareCard(b.dataset.card, p, sys));
     }).catch((e) => { const ds = $$('#destStar'); if (ds) ds.innerHTML = favStar(placeFav(p, null), true); const box = $$('#pred'); if (box) box.innerHTML = `<p class="dim">Couldn't predict this system (${esc(e.message)}).</p>`; });
     // every place in this system in one list: a star to keep it, and Arrive here where you can land on foot
