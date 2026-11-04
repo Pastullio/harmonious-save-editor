@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.04.1516",
+  "version": "2026.11.04.1528",
   "date": "2026-11-04",
-  "size": 12827136,
-  "sha256": "bcba72299afa61079f02e19661b92486a5db2fc4782cda82071aa5fe43fe3a9f",
-  "notes": "Experimental: rename systems and planets you discovered, on the Coordinates page.",
+  "size": 12832768,
+  "sha256": "58a94dea48261721db34736d94bbe8da4a0a40876bfeec3a00fb10e3f75bfdb7",
+  "notes": "In space, You are here shows the star with its planets and moons going round it.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
