@@ -582,6 +582,7 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .pred-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
 .pred-head > div { display: grid; gap: 2px; }
 .pred-head .k { font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+.rn-link { font-family: var(--body); font-size: 12px; font-weight: 400; letter-spacing: 0; margin-left: 10px; vertical-align: middle; }
 .gen-name { display: block; font-size: 12px; margin-left: 26px; }
 .pred-name .fav-star svg { width: 20px; height: 20px; }
 .gen-inline { font-weight: 400; }
@@ -4711,6 +4712,36 @@ function givenNames(p) {
   }
   return out;
 }
+// Renaming in the save (experimental, owner 2026-11-04): a system's or planet's discovery record keeps its name in
+// DM.CN. Only your own discoveries can be renamed here. Ones without a record ID (RID) haven't been through the game's
+// servers yet, so the game should keep the new name and upload it; uploaded ones may get their old name back from the
+// servers. Clearing the name removes CN, as on a record never named.
+function discoveryRecord(p) {
+  const want = p.planet ? 'Planet' : 'SolarSystem';
+  for (const r of g(S.save.json, 'DiscoveryManagerData', 'DiscoveryData-v1', 'Store', 'Record') || []) {
+    if (str(g(r, 'DD', 'DT')) !== want) continue;
+    const at = Place.fromPacked(g(r, 'DD', 'UA')); if (Place.sameSystem(at, p) && (!p.planet || at.planet === p.planet)) return r;
+  }
+  return null;
+}
+function renameState(p) {
+  const r = S.save && discoveryRecord(p); if (!r) return { ok: false, why: "You haven't discovered it, so there's no name in your save to change." };
+  if (!myUID() || str(g(r, 'OWS', 'UID')) !== myUID()) return { ok: false, r, why: 'Another traveller discovered it, so only they can name it.' };
+  return { ok: true, r, uploaded: !!str(g(r, 'RID')) };
+}
+async function renameDialog(p, genName, onDone) {
+  const st = renameState(p); if (!st.ok) { toast(st.why, true); return; }
+  const dm = g(st.r, 'DM'), cur = dm instanceof Map ? untag(str(g(dm, 'CN'))) : '', what = p.planet ? 'planet' : 'system';
+  const v = await dialog(`Rename this ${what} in your save`, `<label class="field"><span>Name</span><input class="input" id="rnName" maxlength="40" value="${esc(cur || genName || '')}"></label>
+    <p class="dim small-print" style="margin-top:10px">The game's own name is <b>${esc(genName || '')}</b>.</p>
+    <p class="${st.uploaded ? 'err' : 'dim'}" style="margin-top:8px">${st.uploaded ? `This ${what} is already uploaded, so the game's servers may put its old name back.` : `You haven't uploaded this discovery yet, so the game should keep this name and upload it when you do.`}</p>
+    <p class="dim small-print"><b>Experimental:</b> try it on one ${what} and check it in the game after you press Save to game (the app backs up your save first).</p>`,
+    [cur ? ['Use the game\'s name', 'clear', 'ghost'] : null, ['Cancel', false], ['Rename', 'save', 'primary']].filter(Boolean));
+  if (!v || !(dm instanceof Map)) return;
+  if (v === 'clear') { const k = kOf(dm, 'CN'); if (k != null) dm.delete(k); }
+  else { const n = $('#rnName').value.trim(); if (!n) return; set(dm, 'CN', n); }
+  markDirty(); toast(v === 'clear' ? 'Name cleared. Press Save to game to keep it.' : 'Renamed. Press Save to game, then check it in the game.'); onDone && onDone();
+}
 const namedBy = (n) => (n.mine ? 'named by you' : n.by ? 'named by ' + n.by : 'named by a traveller');
 async function predictSystem(p) {
   const s = await predictSystemRaw(p), given = givenNames(p);
@@ -4747,10 +4778,10 @@ function predictionHtml(p, s) {
     ['Bodies', `${plural(s.planetCount, 'planet')}${s.moonCount ? ' and ' + plural(s.moonCount, 'moon') : ''}`],
   ].filter(Boolean);
   const rest = Place.portal(p).slice(1);
-  return `<div class="pred-head"><div><span class="k">System</span><b class="pred-name">${favStar(sysFav({ ...p, planet: 0 }, s))}${esc(s.name)}</b>${s.given && s.given.system ? `<span class="dim">Originally ${esc(s.genName)}, ${esc(namedBy(s.given.system))}</span>` : ''}<span class="dim">${esc(s.region)}, ${esc(GALAXIES[p.gi])}</span></div><span class="pred-share"><button class="btn small" type="button" data-card="image">Copy card</button><button class="btn small ghost" type="button" data-card="save">Save card</button><button class="btn small ghost" type="button" data-card="text">Copy as text</button></span><span class="pill">Predicted</span></div>
+  return `<div class="pred-head"><div><span class="k">System</span><b class="pred-name">${favStar(sysFav({ ...p, planet: 0 }, s))}${esc(s.name)}${renameState({ ...p, planet: 0 }).ok ? '<button class="link rn-link" type="button" data-rename="0">Rename</button>' : ''}</b>${s.given && s.given.system ? `<span class="dim">Originally ${esc(s.genName)}, ${esc(namedBy(s.given.system))}</span>` : ''}<span class="dim">${esc(s.region)}, ${esc(GALAXIES[p.gi])}</span></div><span class="pred-share"><button class="btn small" type="button" data-card="image">Copy card</button><button class="btn small ghost" type="button" data-card="save">Save card</button><button class="btn small ghost" type="button" data-card="text">Copy as text</button></span><span class="pill">Predicted</span></div>
     <dl class="pred-grid">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
     ${s.planets.length ? `<table class="pred-planets"><thead><tr><th>#</th><th>Name</th><th>Biome</th><th>Portal address</th><th></th></tr></thead><tbody>
-      ${s.planets.map((n, i) => { const code = hexN(i + 1, 1) + rest, bi = (s.biomes || {})[i + 1]; return `<tr${p.planet === i + 1 ? ' class="on"' : ''}><td>${i + 1}</td><td>${favStar(sysFav({ ...p, planet: i + 1 }, s))}${esc(n)}${s.given && s.given.planets[i + 1] ? `<span class="dim gen-name" title="${esc(namedBy(s.given.planets[i + 1]))}">${esc(s.genPlanets[i])}</span>` : ''}</td><td>${bi && bi.biome ? esc(bi.biome + (bi.infested ? ', infested' : '')) : (() => { const o = (s.planetOdds || [])[i]; return o ? `<span class="dim" title="${esc('Odds for this planet: ' + o.filter(([, f]) => f >= 0.01).map(([n, f]) => `${n} ${Math.round(f * 100)}%`).join(', '))}">${o[1] && Math.round(o[1][1] * 100) === Math.round(o[0][1] * 100) ? `${esc(o[0][0])} or ${esc(o[1][0])}, ${Math.round(o[0][1] * 100)}% each` : `Most likely ${esc(o[0][0])}, ${Math.round(o[0][1] * 100)}%`}</span>` : '<span class="dim">Not visited</span>'; })()}${(s.prime || [])[i] ? ' <span class="prime-tag" title="A prime body: it draws from the game\'s prime list, the only one with Marsh and Volcanic">Prime</span>' : ''}</td><td>${glyphRow(code, 'tiny')} <span class="mono">${code}</span></td><td><button class="link" type="button" data-planet="${i + 1}">${p.planet === i + 1 ? 'Selected' : 'Use this address'}</button></td></tr>`; }).join('')}
+      ${s.planets.map((n, i) => { const code = hexN(i + 1, 1) + rest, bi = (s.biomes || {})[i + 1]; return `<tr${p.planet === i + 1 ? ' class="on"' : ''}><td>${i + 1}</td><td>${favStar(sysFav({ ...p, planet: i + 1 }, s))}${esc(n)}${renameState({ ...p, planet: i + 1 }).ok ? `<button class="link rn-link" type="button" data-rename="${i + 1}">Rename</button>` : ''}${s.given && s.given.planets[i + 1] ? `<span class="dim gen-name" title="${esc(namedBy(s.given.planets[i + 1]))}">${esc(s.genPlanets[i])}</span>` : ''}</td><td>${bi && bi.biome ? esc(bi.biome + (bi.infested ? ', infested' : '')) : (() => { const o = (s.planetOdds || [])[i]; return o ? `<span class="dim" title="${esc('Odds for this planet: ' + o.filter(([, f]) => f >= 0.01).map(([n, f]) => `${n} ${Math.round(f * 100)}%`).join(', '))}">${o[1] && Math.round(o[1][1] * 100) === Math.round(o[0][1] * 100) ? `${esc(o[0][0])} or ${esc(o[1][0])}, ${Math.round(o[0][1] * 100)}% each` : `Most likely ${esc(o[0][0])}, ${Math.round(o[0][1] * 100)}%`}</span>` : '<span class="dim">Not visited</span>'; })()}${(s.prime || [])[i] ? ' <span class="prime-tag" title="A prime body: it draws from the game\'s prime list, the only one with Marsh and Volcanic">Prime</span>' : ''}</td><td>${glyphRow(code, 'tiny')} <span class="mono">${code}</span></td><td><button class="link" type="button" data-planet="${i + 1}">${p.planet === i + 1 ? 'Selected' : 'Use this address'}</button></td></tr>`; }).join('')}
     </tbody></table>` : '<p class="dim">No planets.</p>'}
     <p class="pred-note dim">Predicted from the address with the game's own rules, so it works for systems nobody has visited. Checked against 1,000 systems players recorded: about 99% right. Names travellers uploaded later aren't included. Biomes in the planet list come from your own discoveries; for unvisited planets it shows the likeliest ones from each planet's own odds. Biome odds are the game's own chances for this colour of star in this kind of galaxy (yellow stars in lush and empty galaxies have their own lists), read from your game files. Prime planets, the bodies after a system's regular ones, use the game's prime list, the only one with Marsh and Volcanic, and some Dead planets turn Exotic; this matched every one of the 1,487 planets in the owner's save. The exact biome the game draws for each planet isn't known, and weather and resources aren't predicted yet. Generation research: nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, ported to JavaScript as nms-core by elegra1965 (both MIT).</p>`;
 }
@@ -7493,6 +7524,7 @@ PAGES.coords = (el) => {
       const ds = $$('#destStar'); if (ds) { ds.innerHTML = favStar(placeFav(p, sys), true); }
       const box = $$('#pred'); if (!box) return; box.innerHTML = predictionHtml(p, { ...sys, biomes: k.biomes });
       box.querySelectorAll('[data-planet]').forEach((b) => b.onclick = () => setDigits(hexN(+b.dataset.planet, 1) + C.digits.slice(1)));
+      box.querySelectorAll('[data-rename]').forEach((b) => b.onclick = () => { const k = +b.dataset.rename; renameDialog({ ...p, planet: k }, k ? sys.genPlanets[k - 1] : sys.genName, () => render()); });
       box.querySelectorAll('[data-card]').forEach((b) => b.onclick = () => shareCard(b.dataset.card, p, sys));
     }).catch((e) => { const ds = $$('#destStar'); if (ds) ds.innerHTML = favStar(placeFav(p, null), true); const box = $$('#pred'); if (box) box.innerHTML = `<p class="dim">Couldn't predict this system (${esc(e.message)}).</p>`; });
     // every place in this system in one list: a star to keep it, and Arrive here where you can land on foot

@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.04.1511",
+  "version": "2026.11.04.1516",
   "date": "2026-11-04",
-  "size": 12823552,
-  "sha256": "e2fc7d7db5b3796bf957bfb1a28d055faa285feb1069b973639aa0e7b6abf261",
-  "notes": "Star a system or any of its planets straight from the Coordinates prediction.",
+  "size": 12827136,
+  "sha256": "bcba72299afa61079f02e19661b92486a5db2fc4782cda82071aa5fe43fe3a9f",
+  "notes": "Experimental: rename systems and planets you discovered, on the Coordinates page.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
