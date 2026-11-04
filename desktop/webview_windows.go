@@ -237,7 +237,9 @@ func nativeWindow(url string) bool {
 		return false
 	}
 	native.hwnd = hwnd
-	tagWindow(hwnd) // relaunch command and icon for a pinned taskbar button, and the title bar icon
+	// Unlike the Edge window, this window belongs to the editor's own process, so the taskbar takes the exe's icon and a
+	// pin starts the exe without any relaunch properties. Setting them here left a blank icon (owner, 2026-11-04), as
+	// the shell couldn't load the icon they named; the process's AppUserModelID still groups it with earlier pins.
 
 	data := filepath.Join(appDir, "webview")
 	migrateBrowserData(filepath.Join(appDir, "window"), data)
@@ -395,6 +397,13 @@ func createEditorWindow() (uintptr, error) {
 		return 0, errors.New("CreateWindowEx: " + err.Error())
 	}
 	setDarkTitleBar(hwnd, dark)
+	send := user32.NewProc("SendMessageW")
+	if big != 0 {
+		send.Call(hwnd, 0x0080, 1, big) // WM_SETICON, ICON_BIG: the taskbar and Alt+Tab
+	}
+	if small != 0 {
+		send.Call(hwnd, 0x0080, 0, small) // ICON_SMALL: the title bar
+	}
 	return hwnd, nil
 }
 
