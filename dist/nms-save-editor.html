@@ -658,6 +658,26 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .badge { display: inline-block; font-family: var(--display); font-weight: 600; font-size: 11px; line-height: 1; padding: 4px 7px; border-radius: 6px; color: var(--cls-ink); }
 .badge.big { font-size: 15px; padding: 5px 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
 .inv-head .badge { font-size: 12px; padding: 5px 8px; vertical-align: 2px; }
+.fav-star { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; background: none; border: 0; padding: 2px; margin-right: 4px; color: var(--dim); cursor: pointer; font: inherit; font-size: 13px; border-radius: var(--r-sm); }
+.fav-star svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; flex: none; }
+.fav-star:hover, .fav-star:focus-visible { color: var(--accent); }
+.fav-star[aria-pressed="true"] { color: var(--accent); }
+.fav-star[aria-pressed="true"] svg { fill: currentColor; }
+.fav-star.with-label { border: 1px solid var(--line); padding: 3px 10px 3px 7px; border-radius: 999px; margin: 0; }
+.fav-star.with-label[aria-pressed="true"] { border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
+.dest-sum .fav-star.with-label { margin-left: auto; }
+.base-where .fav-star.with-label { margin-left: 4px; }
+.fav-panel .dest-head h3 .n { margin-left: 6px; letter-spacing: 0; color: var(--ink); }
+.fav-q { width: 220px; max-width: 100%; height: 30px; }
+.fav-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; max-height: 380px; overflow-y: auto; }
+.fav-list li { display: flex; align-items: center; gap: 14px; padding: 8px 12px; border-radius: var(--r-sm); background: var(--well); border: 1px solid transparent; }
+.fav-list li.on { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+.fav-list .glyphs { font-size: 16px; flex: none; }
+.fav-txt { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.fav-txt b, .fav-txt .dim { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fav-txt .dim { font-size: 12.5px; }
+.fav-acts { display: flex; align-items: center; gap: 12px; flex: none; }
+@media (max-width: 720px) { .fav-list .glyphs { display: none; } }
 .arrive-list { list-style: none; padding: 0; margin: 8px 0 16px; display: grid; gap: 6px; }
 .arrive-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 10px; border-radius: var(--r-sm); background: var(--well); }
 .disk-note { position: fixed; right: 22px; bottom: 22px; z-index: 60; width: min(380px, calc(100vw - 32px)); display: grid; gap: 6px; padding: 16px 18px; border-radius: var(--r-lg); background: var(--surface); border: 1px solid var(--accent); box-shadow: 0 12px 34px rgba(0, 0, 0, .22); font-size: 13.5px; }
@@ -8116,6 +8136,7 @@ async function loadBaseBlend(open) {
   toast(`${plural(objects.length, 'part')} from ${blendName(file)} put on ${baseLabel(target)}. Press Save to game to keep them.`); render();
 }
 PAGES.bases = (el) => {
+  if (!FAVS.list) favLoad().then(() => favSyncStars());
   const B = S.bases || (S.bases = { tab: 'bases', pick: null, set: null });
   const sets = g(ps(), 'SettlementStatesV2') || [], me = myUID(), setList = sets.map((s, i) => ({ s, i })).filter(({ s }) => str(g(s, 'Name')) || str(g(s, 'SeedValue')) !== '0');
   el.innerHTML = `<div class="page-head"><div><h1>Bases</h1><p>Your bases and the settlements you've visited or run: names, places, parts and settlement upkeep.</p></div></div>`;
@@ -8136,7 +8157,7 @@ PAGES.bases = (el) => {
         <label class="field wide"><span>Name</span><input class="input" id="bName" maxlength="63" value="${esc(str(g(b, 'Name')))}"></label>
         <label class="field"><span>Built by</span><input class="input" disabled value="${esc(str(g(b, 'Owner', 'USN')) || 'You')}"></label>
       </div>
-      ${at && kind !== 'FreighterBase' ? `<div class="base-where"><span class="k">Where</span>${glyphRow(code, 'small')}<span class="mono">${code}</span><span class="dim">${esc(GALAXIES[at.gi] || '')}${at.planet ? ', planet ' + at.planet : ''}</span><button class="link" type="button" id="bCoords">Open in Coordinates</button></div>` : ''}
+      ${at && kind !== 'FreighterBase' ? `<div class="base-where"><span class="k">Where</span>${glyphRow(code, 'small')}<span class="mono">${code}</span><span class="dim">${esc(GALAXIES[at.gi] || '')}${at.planet ? ', planet ' + at.planet : ''}</span><button class="link" type="button" id="bCoords">Open in Coordinates</button>${favStar(favEntry(baseLabel(b), kind === 'HomePlanetBase' ? 'Base' : kind === 'ExternalPlanetBase' ? 'Base you visited' : BASE_KINDS[kind] || 'Base', at, /PlanetBase$/.test(kind) ? { planet: at.planet, local: (g(b, 'Position') || []).slice(0, 3).map(num), face: (g(b, 'Forward') || []).slice(0, 3).map(num) } : null), true)}</div>` : ''}
       <div class="sw-acts"><button class="btn" type="button" data-a="copy">Copy parts</button><button class="btn" type="button" data-a="paste">Paste parts</button><label class="btn">Load parts from a file<input type="file" id="bFile" accept=".json,.txt,.nmsbase,.nmsprefab" hidden></label>${APP ? '<button class="btn" type="button" data-a="blend" title="Reads a Blender file through your Blender (with the Base Builder add-on or not) and puts its parts on the base it names">Load from a .blend…</button>' : ''}<label class="btn" title="Adds a Base Building App prefab (or any parts file) to this base, keeping what's there">Add a prefab<input type="file" id="bPrefab" accept=".nmsprefab,.json,.txt" hidden></label><button class="btn" type="button" data-a="save">Save to a file</button><span class="sw-gap"></span><button class="btn danger" type="button" data-a="del">Delete base</button></div></div>
     ${APP ? `<div class="panel base-live">${livePanelHtml(baseRef(b))}</div>` : ''}
     <div class="panel"><h3>Most used parts</h3>${top.length ? `<div class="base-parts">${top.map(([id, n]) => { const it = dbItem(id); return `<div><span class="ic">${it && it.icon ? `<img data-icon="${esc(it.icon)}" alt="">` : ''}</span><span class="nm">${esc(it ? it.name : id.replace(/^\^/, ''))}</span><span class="mono dim">${n.toLocaleString()}</span></div>`; }).join('')}</div>` : '<p class="dim">No parts yet.</p>'}</div>`;
@@ -8204,7 +8225,7 @@ function settlementsEditor(el, B, list, me) {
   if (!mine(s)) {   // look, don't touch
     main.innerHTML = `<div class="panel sw-bar"><div class="sw-title"><b>${esc(str(g(s, 'Name')) || 'Unnamed settlement')}</b><span class="dim">${str(g(s, 'Owner', 'USN')) ? 'Run by ' + esc(str(g(s, 'Owner', 'USN'))) : 'Another player\'s settlement'} · view only</span></div>
         <dl class="ro-grid"><div><dt>Population</dt><dd>${num(g(s, 'Population'))}</dd></div><div><dt>Race</dt><dd>${esc(raceLabel(str(g(s, 'Race', 'AlienRace'))))}</dd></div></dl>
-        ${at ? `<div class="base-where"><span class="k">Where</span>${glyphRow(code, 'small')}<span class="mono">${code}</span><span class="dim">${esc(GALAXIES[at.gi] || '')}${at.planet ? ', planet ' + at.planet : ''}</span><button class="link" type="button" id="sCoords">Open in Coordinates</button></div>` : ''}</div>
+        ${at ? `<div class="base-where"><span class="k">Where</span>${glyphRow(code, 'small')}<span class="mono">${code}</span><span class="dim">${esc(GALAXIES[at.gi] || '')}${at.planet ? ', planet ' + at.planet : ''}</span><button class="link" type="button" id="sCoords">Open in Coordinates</button>${favStar(favEntry(str(g(s, 'Name')) || 'Settlement', 'Settlement', at), true)}</div>` : ''}</div>
       <div class="panel"><h3>Settlement stats</h3><dl class="ro-grid">${SETTLE_STATS.map((l, k) => k < stats.length ? `<div><dt>${l}</dt><dd>${num(stats[k])}</dd></div>` : '').join('')}</dl></div>
       <div class="panel"><h3>Perks</h3>${perks.length ? `<ul class="perks">${perks.map((id) => { const pi = perkInfo(str(id)); return `<li class="${pi && pi.negative ? 'neg' : ''}"><span><b>${esc(pi ? pi.name : str(id).replace(/^\^/, ''))}</b>${pi && pi.desc ? `<span class="dim">${esc(pi.desc)}</span>` : ''}</span></li>`; }).join('')}</ul>` : '<p class="dim">No perks.</p>'}</div>`;
     const co = $('#sCoords', main); if (co) co.onclick = () => { S.coords = { p: { ...at }, digits: code }; go('coords'); };
@@ -8216,7 +8237,7 @@ function settlementsEditor(el, B, list, me) {
         <label class="field"><span>Population</span><input class="input mono" id="sPop" inputmode="numeric" value="${num(g(s, 'Population'))}"></label>
         <label class="field"><span>Race</span><select class="input" id="sRace">${RACE_ENUM.filter((r) => !['Robots', 'Diplomats', 'Exotics'].includes(r)).map((r) => `<option value="${r}"${r === str(g(s, 'Race', 'AlienRace')) ? ' selected' : ''}>${esc(raceLabel(r))}</option>`).join('')}</select></label>
       </div>
-      ${at ? `<div class="base-where"><span class="k">Where</span>${glyphRow(code, 'small')}<span class="mono">${code}</span><span class="dim">${esc(GALAXIES[at.gi] || '')}${at.planet ? ', planet ' + at.planet : ''}</span><button class="link" type="button" id="sCoords">Open in Coordinates</button></div>` : ''}</div>
+      ${at ? `<div class="base-where"><span class="k">Where</span>${glyphRow(code, 'small')}<span class="mono">${code}</span><span class="dim">${esc(GALAXIES[at.gi] || '')}${at.planet ? ', planet ' + at.planet : ''}</span><button class="link" type="button" id="sCoords">Open in Coordinates</button>${favStar(favEntry(str(g(s, 'Name')) || 'Settlement', 'Settlement', at), true)}</div>` : ''}</div>
     <div class="panel"><h3>Settlement stats</h3><div class="details-grid">${SETTLE_STATS.map((l, k) => k < stats.length ? `<label class="field"><span>${l}</span><input class="input mono" inputmode="numeric" data-st="${k}" value="${num(stats[k])}"></label>` : '').join('')}</div>
       <div class="toolbar"><button class="btn primary" type="button" id="sFix">Clear debt, alerts and bug attacks</button></div></div>
     <div class="panel"><h3>Perks</h3>${perks.length ? `<ul class="perks">${perks.map((id, k) => { const pi = perkInfo(str(id)); return `<li class="${pi && pi.negative ? 'neg' : ''}"><span><b>${esc(pi ? pi.name : str(id).replace(/^\^/, ''))}</b>${pi && pi.desc ? `<span class="dim">${esc(pi.desc)}</span>` : ''}</span><button class="btn small ghost" type="button" data-perk="${k}">Remove</button></li>`; }).join('')}</ul>` : '<p class="dim">No perks.</p>'}
@@ -8780,16 +8801,129 @@ function wireDrag(block, inv) {
 
 setupFind();
 
+// ------------------------------------------------------------------ favourite places
+// Places the owner stars (a base, a space station, a settlement, a whole system), kept outside any save so every save can
+// warp there (owner, 2026-11-04: the game's own portal favourites don't always keep a place). The app keeps them in
+// Documents\Harmonious Save Editor\Favourite places.json (/api/places); the browser version in localStorage.
+// A place: {id, name, kind, portal (12 hex digits, planet first), gi, note, added, spot?: {planet, local, face}}; a
+// base's spot (its planet-relative position) lets Coordinates offer "Arrive here" even from a save that doesn't have it.
+const FAV_KINDS = ['Base', 'Base you visited', 'Space station', 'Settlement', 'Freighter', 'Planet', 'System', 'Other'];
+const FAVS = { list: null, loading: null, q: '' };
+const favValid = (e) => e && typeof e.name === 'string' && /^[0-9A-F]{12}$/.test(e.portal || '') && Number.isInteger(e.gi) && e.gi >= 0 && e.gi < 256;
+// matched by the name the place had when it was starred (ref), so renaming a favourite keeps its star lit
+const favKey = (e) => `${e.portal}|${e.gi}|${String(e.ref || e.name).trim().toLowerCase()}`;
+function favLoad() {
+  if (FAVS.list) return Promise.resolve(FAVS.list);
+  return FAVS.loading || (FAVS.loading = (async () => {
+    let v = null;
+    if (APP) { try { v = await (await api('/api/places')).json(); } catch (_) {} }
+    else { try { v = JSON.parse(localStorage.getItem('hse-places') || 'null'); } catch (_) {} }
+    FAVS.list = ((v && v.places) || []).filter(favValid);
+    return FAVS.list;
+  })());
+}
+async function favStore() {
+  const body = JSON.stringify({ places: FAVS.list }, null, 2);
+  if (APP) await api('/api/places', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body });
+  else localStorage.setItem('hse-places', body);
+}
+const favOf = (e) => (FAVS.list || []).find((f) => favKey(f) === favKey(e)) || null;
+// a place as a favourite: what the star buttons carry
+function favEntry(name, kind, p, spot) {
+  const n = String(name || '').replace(/<\/?[A-Z]*>/g, '').trim() || 'Unnamed place';
+  const e = { name: n, ref: n, kind, portal: Place.portal(p), gi: p.gi };
+  if (spot && spot.planet && Array.isArray(spot.local) && Math.hypot(...spot.local.map(Number)) >= 1000) e.spot = { planet: spot.planet, local: spot.local.map(Number), face: Array.isArray(spot.face) ? spot.face.map(Number) : null };
+  return e;
+}
+const STAR_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2l2.6 5.5 6 .8-4.4 4.1 1.1 6-5.3-2.9-5.3 2.9 1.1-6-4.4-4.1 6-.8z"/></svg>';
+function favStar(e, label) {
+  const on = !!favOf(e);
+  return `<button class="fav-star${label ? ' with-label' : ''}" type="button" data-fav="${esc(JSON.stringify(e))}" aria-pressed="${on}" title="${on ? 'In your favourite places (click to remove)' : 'Add to your favourite places'}">${STAR_SVG}${label ? `<span>${on ? 'Favourite' : 'Add to favourites'}</span>` : ''}</button>`;
+}
+function favSyncStars(root = document) {
+  root.querySelectorAll('.fav-star[data-fav]').forEach((b) => {
+    let e; try { e = JSON.parse(b.dataset.fav); } catch (_) { return; }
+    const on = !!favOf(e); b.setAttribute('aria-pressed', String(on));
+    b.title = on ? 'In your favourite places (click to remove)' : 'Add to your favourite places';
+    const l = b.querySelector('span'); if (l) l.textContent = on ? 'Favourite' : 'Add to favourites';
+  });
+}
+async function favToggle(e) {
+  await favLoad();
+  const have = favOf(e);
+  if (have) { FAVS.list.splice(FAVS.list.indexOf(have), 1); toast(`${have.name} removed from your favourite places`); }
+  else { FAVS.list.unshift({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ...e, note: '', added: Date.now() }); toast(`${e.name} added to your favourite places (Coordinates)`); }
+  try { await favStore(); } catch (err) { toast("Your favourite places couldn't be saved: " + err.message, true); }
+  favSyncStars(); if (S.section === 'coords') render();
+}
+document.addEventListener('click', (ev) => {
+  const b = ev.target.closest('.fav-star[data-fav]'); if (!b) return;
+  ev.preventDefault(); ev.stopPropagation();
+  let e; try { e = JSON.parse(b.dataset.fav); } catch (_) { return; }
+  favToggle(e);
+});
+async function favEdit(f) {
+  const v = await dialog('Favourite place', `<div class="details-grid">
+      <label class="field wide"><span>Name</span><input class="input" id="fvName" maxlength="80" value="${esc(f.name)}"></label>
+      <label class="field"><span>Kind</span><select class="input" id="fvKind">${[...new Set([...FAV_KINDS, f.kind])].map((k) => `<option${k === f.kind ? ' selected' : ''}>${esc(k)}</option>`).join('')}</select></label>
+      <label class="field wide"><span>Note</span><input class="input" id="fvNote" maxlength="200" placeholder="What's there, who built it…" value="${esc(f.note || '')}"></label></div>
+    <p class="dim small-print">${glyphRow(f.portal, 'small')} <span class="mono">${f.portal}</span> · ${esc(GALAXIES[f.gi] || '')}</p>`,
+  [['Remove', 'del', 'danger'], ['Cancel', false, 'ghost'], ['Save', 'save', 'primary']]);
+  if (!v) return;
+  if (v === 'del') FAVS.list.splice(FAVS.list.indexOf(f), 1);
+  else { f.name = $('#fvName').value.trim() || f.name; f.kind = $('#fvKind').value; f.note = $('#fvNote').value.trim(); }
+  try { await favStore(); } catch (err) { toast("Your favourite places couldn't be saved: " + err.message, true); }
+  render();
+}
+async function favImport(file) {
+  let v; try { v = JSON.parse((await file.text()).replace(/^﻿/, '')); } catch (e) { toast('That is not a favourite places file: ' + e.message, true); return; }
+  const got = (Array.isArray(v) ? v : (v && v.places) || []).filter(favValid);
+  if (!got.length) { toast('No places found in ' + file.name, true); return; }
+  await favLoad();
+  let n = 0;
+  for (const e of got) if (!favOf(e)) { FAVS.list.push({ id: Date.now().toString(36) + (n++).toString(36), name: e.name, ref: e.ref || e.name, kind: e.kind || 'Other', portal: e.portal, gi: e.gi, note: e.note || '', added: Date.now(), ...(e.spot ? { spot: e.spot } : {}) }); }
+  try { await favStore(); } catch (err) { toast("Your favourite places couldn't be saved: " + err.message, true); return; }
+  toast(n ? `${plural(n, 'place')} added from ${file.name}` : 'You already have every place in that file'); render();
+}
+// a favourite's base spot, for "Arrive at a base" in its system
+const favSpots = (p) => (FAVS.list || []).filter((f) => f.spot && Place.sameSystem(Place.fromPortal(f.portal, f.gi), p)).map((f) => ({ name: f.name, kind: 'Favourite', planet: f.spot.planet, local: f.spot.local, face: f.spot.face, fav: true }));
+function favPanelHtml(C) {
+  const all = FAVS.list || [], q = FAVS.q.trim().toLowerCase();
+  const list = q ? all.filter((f) => (f.name + ' ' + f.kind + ' ' + (f.note || '') + ' ' + f.portal + ' ' + (GALAXIES[f.gi] || '')).toLowerCase().includes(q)) : all;
+  const cur = C && C.digits.length === 12 ? C.digits + '|' + C.p.gi : '';
+  return `<div class="dest-head"><h3>Favourite places${all.length ? ` <span class="n">${all.length}</span>` : ''}</h3>
+      ${all.length > 5 ? `<input class="input fav-q" id="favQ" type="search" placeholder="Find a place" value="${esc(FAVS.q)}" aria-label="Find a favourite place">` : ''}
+      <label class="btn small" title="Add places from a favourite places file someone shared">Import<input type="file" id="favImp" accept=".json" hidden></label>${all.length ? '<button class="btn small" type="button" id="favExp" title="Save your favourite places to a file you can share">Export</button>' : ''}</div>
+    ${!FAVS.list ? '<p class="dim">Loading…</p>' : !all.length ? `<p class="dim" style="margin:0">Star a place to keep it here: next to the destination below, beside the places and bases in a system, or on a base or settlement in Bases. Then pick it here and warp there from any save.</p>`
+      : !list.length ? '<p class="dim" style="margin:0">No favourite matches that.</p>'
+      : `<ul class="fav-list">${list.map((f) => `<li class="${f.portal + '|' + f.gi === cur ? 'on' : ''}" data-fid="${esc(f.id)}">
+          ${glyphRow(f.portal, 'small')}<span class="fav-txt"><b>${esc(f.name)}</b><span class="dim">${esc(f.kind)} · ${esc(GALAXIES[f.gi] || 'Galaxy ' + (f.gi + 1))}${f.spot ? ' · planet ' + f.spot.planet : (+('0x' + f.portal[0]) ? ' · planet ' + +('0x' + f.portal[0]) : '')}${f.note ? ' · ' + esc(f.note) : ''}</span></span>
+          <span class="fav-acts"><button class="btn small primary" type="button" data-fgo>Go here</button><button class="link" type="button" data-fedit>Edit</button></span></li>`).join('')}</ul>`}`;
+}
+function wireFavPanel(box, C, setDest) {
+  const q = $('#favQ', box);
+  if (q) q.oninput = () => { FAVS.q = q.value; const pos = q.selectionStart; box.innerHTML = favPanelHtml(C); wireFavPanel(box, C, setDest); const n = $('#favQ', box); n.focus(); n.setSelectionRange(pos, pos); };
+  const exp = $('#favExp', box); if (exp) exp.onclick = () => downloadText('Favourite places.json', JSON.stringify({ places: FAVS.list }, null, 2));
+  $('#favImp', box).onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) favImport(f); };
+  box.querySelectorAll('[data-fid]').forEach((li) => {
+    const f = FAVS.list.find((x) => x.id === li.dataset.fid); if (!f) return;
+    li.querySelector('[data-fgo]').onclick = () => setDest(f);
+    li.querySelector('[data-fedit]').onclick = () => favEdit(f);
+  });
+}
+
 PAGES.coords = (el) => {
   const here = Place.fromUA(g(ps(), 'UniverseAddress'));
   if (!here) { el.innerHTML = '<div class="page-head"><div><h1>Coordinates</h1></div></div><p class="dim">This save has no location.</p>'; return; }
   const C = S.coords || (S.coords = { p: { ...here }, digits: Place.portal(here) });
+  if (!FAVS.list) favLoad().then(() => { if (S.section === 'coords') render(); });
   el.innerHTML = `<div class="page-head"><div><h1>Coordinates</h1><p>Find a place by its portal glyphs or its galactic address, see what your save knows about it, and warp there.</p></div></div>
     <div class="panel here-card"><h3>You are here</h3>
-      <div class="here-row"><div><b id="hereName"></b><b>${esc(GALAXIES[here.gi] || 'Galaxy ' + (here.gi + 1))}</b><span class="dim"> · galaxy ${here.gi + 1} of 256</span></div>
+      <div class="here-row"><div><span id="hereStar"></span><b id="hereName"></b><b>${esc(GALAXIES[here.gi] || 'Galaxy ' + (here.gi + 1))}</b><span class="dim"> · galaxy ${here.gi + 1} of 256</span></div>
       ${glyphRow(Place.portal(here), 'small')}<span class="mono">${Place.portal(here)}</span><span class="mono dim">${Place.galactic(here)}</span>
       <button class="btn small" id="hereUse">Start from here</button></div></div>
-    <div class="panel"><div class="dest-head"><h3>Destination</h3><span class="dim" id="warpTopNote"></span><button class="btn primary warp-top" id="warpTop" type="button" disabled>Warp here</button></div>
+    <div class="panel fav-panel" id="favBox">${favPanelHtml(C)}</div>
+    <div class="panel" id="destPanel"><div class="dest-head"><h3>Destination</h3><span class="dim" id="warpTopNote"></span><span id="destStar"></span><button class="btn primary warp-top" id="warpTop" type="button" disabled>Warp here</button></div>
       <div class="dest">
         <div class="dest-glyphs" id="destGlyphs" aria-label="Portal code as glyphs"></div>
         <div class="keypad" id="keypad">${GLYPH_NAMES.map((n, i) => `<button type="button" data-d="${hexN(i, 1)}" title="${n}">${glyph(hexN(i, 1))}<span>${hexN(i, 1)}</span></button>`).join('')}</div>
@@ -8805,7 +8939,14 @@ PAGES.coords = (el) => {
     <div class="panel"><h3>About this system</h3><div id="destInfo"></div></div>`;
   const places = knownPlaces();
   const $$ = (s) => el.querySelector(s);
-  predictSystem(here).then((sys) => { const n = $$('#hereName'); if (n) n.textContent = sys.name + ', '; }).catch(() => {});
+  // a system or planet as a favourite: named after the place the save has there, else the system's predicted name
+  const placeFav = (p, sysName) => {
+    const k = knownPlaces().find((x) => x.p.gi === p.gi && Place.portal(x.p) === Place.portal(p));
+    if (k) return favEntry(k.name, k.kind === 'Your base' ? 'Base' : k.kind, p);
+    return favEntry((sysName || Place.portal(p)) + (p.planet ? ', planet ' + p.planet : ''), p.planet ? 'Planet' : 'System', p);
+  };
+  const hereStar = (name) => { const h = $$('#hereStar'); if (h) h.innerHTML = favStar(placeFav(here, name)); };
+  predictSystem(here).then((sys) => { const n = $$('#hereName'); if (n) n.textContent = sys.name + ', '; hereStar(sys.name); }).catch(() => hereStar(''));
   const show = (from) => {
     const full = C.digits.length === 12 && Place.fromPortal(C.digits, C.p.gi);
     if (full) C.p = full;
@@ -8815,7 +8956,7 @@ PAGES.coords = (el) => {
     $$('#fGalaxy').value = String(C.p.gi);
     const info = $$('#destInfo');
     const wt = $$('#warpTop'), wn = $$('#warpTopNote');
-    if (!full) { wt.disabled = true; wn.textContent = 'Enter all 12 glyphs to warp'; info.innerHTML = `<p class="dim">${C.digits.length ? `${12 - C.digits.length} more glyph${C.digits.length === 11 ? '' : 's'} to go.` : 'Tap glyphs, type a portal code or paste a galactic address.'}</p>`; return; }
+    if (!full) { $$('#destStar').innerHTML = ''; wt.disabled = true; wn.textContent = 'Enter all 12 glyphs to warp'; info.innerHTML = `<p class="dim">${C.digits.length ? `${12 - C.digits.length} more glyph${C.digits.length === 11 ? '' : 's'} to go.` : 'Tap glyphs, type a portal code or paste a galactic address.'}</p>`; return; }
     const p = C.p, k = systemKnowledge(p), facts = placeFacts(p);
     const c = (t) => k.counts[t] || 0, found = Object.keys(k.counts).length;
     const bits = [c('Planet') && plural(c('Planet'), 'planet'), c('Animal') && plural(c('Animal'), 'creature'), c('Flora') && plural(c('Flora'), 'plant'), c('Mineral') && plural(c('Mineral'), 'mineral'), c('SpacePoi') && plural(c('SpacePoi'), 'point') + ' of interest', c('SpaceStation') && 'its space station'].filter(Boolean);
@@ -8828,24 +8969,25 @@ PAGES.coords = (el) => {
         ${found ? `<li>You've discovered ${bits.join(', ') || 'this system'} here.</li>` : '<li>You haven\'t discovered anything in this system yet. The game creates its planets, names and resources when someone arrives, so the save has nothing more to show until you go.</li>'}
         ${facts.map((f) => `<li>${esc(f)}</li>`).join('')}
       </ul>
-      ${k.places.length ? `<h4 class="sub-h">Places here</h4><ul class="place-facts">${k.places.map((x) => `<li>${esc(x.name)} <span class="dim">(${esc(x.kind)})</span></li>`).join('')}</ul>` : ''}
+      ${k.places.length ? `<h4 class="sub-h">Places here</h4><ul class="place-facts fav-able">${k.places.map((x) => { const kp = knownPlaces().find((y) => y.name === x.name && Place.sameSystem(y.p, p)); return `<li>${kp ? favStar(favEntry(x.name, kp.kind === 'Your base' ? 'Base' : kp.kind, kp.p, arrivalSpots(p).find((a) => a.name === x.name.replace(/<\/?[A-Z]*>/g, '').trim()))) : ''}${esc(x.name)} <span class="dim">(${esc(x.kind)})</span></li>`; }).join('')}</ul>` : ''}
       <div id="arrive"></div>
       <div class="warp-row"><button class="btn primary" id="warpBtn"${k.isHere ? ' disabled' : ''}>Warp here</button>${hasFreighter() ? '<button class="btn" id="boardBtn">Arrive on your freighter</button>' : ''}
         <span class="dim">You'll load in your ship, in space, in this system. Nothing changes in the game until you press Save to game, and the app backs up the save first.</span></div>`;
     const token = (C.token = (C.token || 0) + 1);
     predictSystem(p).then((sys) => {
       if (C.token !== token) return;   // the destination changed meanwhile
+      const ds = $$('#destStar'); if (ds) { ds.innerHTML = favStar(placeFav(p, sys.name), true); }
       const box = $$('#pred'); if (!box) return; box.innerHTML = predictionHtml(p, { ...sys, biomes: k.biomes });
       box.querySelectorAll('[data-planet]').forEach((b) => b.onclick = () => setDigits(hexN(+b.dataset.planet, 1) + C.digits.slice(1)));
       box.querySelectorAll('[data-card]').forEach((b) => b.onclick = () => shareCard(b.dataset.card, p, sys));
-    }).catch((e) => { const box = $$('#pred'); if (box) box.innerHTML = `<p class="dim">Couldn't predict this system (${esc(e.message)}).</p>`; });
-    const spots = arrivalSpots(p);
+    }).catch((e) => { const ds = $$('#destStar'); if (ds) ds.innerHTML = favStar(placeFav(p, ''), true); const box = $$('#pred'); if (box) box.innerHTML = `<p class="dim">Couldn't predict this system (${esc(e.message)}).</p>`; });
+    const own = arrivalSpots(p), spots = [...own, ...favSpots(p).filter((f) => !own.some((x) => x.name === f.name && x.planet === f.planet))];
     if (spots.length) planetCentres(p).then((centres) => {
       const box = $$('#arrive'); if (!box || C.token !== token) return;
       const ok = (x) => centres && centres[x.planet - 1];
       box.innerHTML = `<h4 class="sub-h">Arrive at a base</h4>
         <p class="dim small-print">${centres ? 'Load on foot at the base, with your ship hovering above it.' : "The game hasn't saved in this system yet, so the app doesn't know where its planets are. Open a save made here once (the app remembers the system), or warp and teleport to the base in the game."}</p>
-        <ul class="arrive-list">${spots.map((x, i) => `<li><span>${esc(x.name)} <span class="dim">(${esc(x.kind)}, planet ${x.planet})</span></span>${ok(x) ? `<button class="btn small" type="button" data-arrive="${i}">Arrive here</button>` : ''}</li>`).join('')}</ul>`;
+        <ul class="arrive-list">${spots.map((x, i) => `<li><span>${favStar(favEntry(x.name, x.fav ? 'Base' : x.kind === 'Your base' ? 'Base' : x.kind, { ...p, planet: x.planet }, x))}${esc(x.name)} <span class="dim">(${esc(x.kind)}, planet ${x.planet})</span></span>${ok(x) ? `<button class="btn small" type="button" data-arrive="${i}">Arrive here</button>` : ''}</li>`).join('')}</ul>`;
       box.querySelectorAll('[data-arrive]').forEach((b) => b.onclick = async () => {
         const x = spots[+b.dataset.arrive];
         const go = await dialog('Arrive at ' + x.name + '?', `<p>Next time you load this save you'll be on foot at <b>${esc(x.name)}</b> on planet ${x.planet} of this system, with your ship hovering above. Your current location is kept as the previous one.</p><p class="dim">Then press Save to game.</p>`, [['Cancel', false], ['Arrive here', true, 'primary']]);
@@ -8866,7 +9008,10 @@ PAGES.coords = (el) => {
       if (!ok) return; warpTo(p); toast('Location set. Press Save to game to keep it.'); render();
     };
   };
-  const setDigits = (d, from) => { C.digits = d.toUpperCase().replace(/[^0-9A-F]/g, '').slice(0, 12); $$('#destErr').hidden = true; show(from); };
+  const setDigits = (d, from) => { C.digits = d.toUpperCase().replace(/[^0-9A-F]/g, '').slice(0, 12); $$('#destErr').hidden = true; show(from); drawFavs(); };
+  const favBox = $$('#favBox');
+  const drawFavs = () => { favBox.innerHTML = favPanelHtml(C); wireFavPanel(favBox, C, (f) => { C.p = Place.fromPortal(f.portal, f.gi); setDigits(f.portal); $$('#destPanel').scrollIntoView({ behavior: 'smooth', block: 'start' }); }); };
+  drawFavs();
   $$('#keypad').onclick = (e) => { const b = e.target.closest('button[data-d]'); if (b && C.digits.length < 12) setDigits(C.digits + b.dataset.d); };
   $$('#gBack').onclick = () => setDigits(C.digits.slice(0, -1));
   $$('#gClear').onclick = () => setDigits('');

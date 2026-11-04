@@ -115,6 +115,7 @@ func main() {
 	mux.HandleFunc("/api/write", handleWrite)
 	mux.HandleFunc("/api/game-running", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, map[string]bool{"running": gameRunning()}) })
 	mux.HandleFunc("/api/reveal", handleReveal)
+	mux.HandleFunc("/api/places", handlePlaces)
 	mux.HandleFunc("/api/render-setup", handleRenderSetup)
 	mux.HandleFunc("/api/render", handleRender)
 	mux.HandleFunc("/api/render-status", handleRenderStatus)

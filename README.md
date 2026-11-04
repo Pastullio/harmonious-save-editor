@@ -86,6 +86,7 @@ Find a place by its portal glyphs or galactic address, see what your save knows 
 - **What your save knows**: the system and planet names you've discovered, biomes from your discovery records, and your bases there.
 - **Biome odds**: the chances of each biome for every planet, from the game's own table, by star colour and galaxy type (lush, harsh, empty or normal). The bodies the game adds after a system's regular planets use their own odds.
 - **Place card**: a picture of the destination's glyphs and details to share (**Save card**, **Copy card**, **Copy as text**).
+- **Favourite places**: star a base, space station, settlement or system (here or on the Bases page) and it's kept outside your saves. **Go here** loads its glyphs, ready to warp. Export and import to share a list.
 - **Warp here** puts you in your ship at the destination. **Arrive here** lands you at one of your bases there, and **Arrive on your freighter** puts you aboard with the freighter in that system.
 
 ### Garage
