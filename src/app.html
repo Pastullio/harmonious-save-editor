@@ -553,6 +553,7 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .loc-go { justify-self: start; margin-top: 8px; }
 .here-row { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; }
 .here-globe { width: 84px; height: 84px; flex: none; margin: -10px -4px -10px -6px; display: grid; place-items: center; }
+.here-globe.wide { width: 150px; }
 .here-globe:empty::before { content: ''; width: 52px; height: 52px; border-radius: 50%; background: var(--well); }
 .here-planet { display: block; font-size: 13px; margin-top: 2px; }
 .here-row .btn { margin-left: auto; }
@@ -583,6 +584,7 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .pred-head > div { display: grid; gap: 2px; }
 .pred-head .k { font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
 .rn-link { font-family: var(--body); font-size: 12px; font-weight: 400; letter-spacing: 0; margin-left: 10px; vertical-align: middle; }
+.rn-off { color: var(--dim); opacity: .7; cursor: help; text-decoration: underline dotted; text-underline-offset: 3px; }
 .gen-name { display: block; font-size: 12px; margin-left: 26px; }
 .pred-name .fav-star svg { width: 20px; height: 20px; }
 .gen-inline { font-weight: 400; }
@@ -4734,7 +4736,7 @@ async function renameDialog(p, genName, onDone) {
   const dm = g(st.r, 'DM'), cur = dm instanceof Map ? untag(str(g(dm, 'CN'))) : '', what = p.planet ? 'planet' : 'system';
   const v = await dialog(`Rename this ${what} in your save`, `<label class="field"><span>Name</span><input class="input" id="rnName" maxlength="40" value="${esc(cur || genName || '')}"></label>
     <p class="dim small-print" style="margin-top:10px">The game's own name is <b>${esc(genName || '')}</b>.</p>
-    <p class="${st.uploaded ? 'err' : 'dim'}" style="margin-top:8px">${st.uploaded ? `This ${what} is already uploaded, so the game's servers may put its old name back.` : `You haven't uploaded this discovery yet, so the game should keep this name and upload it when you do.`}</p>
+    <p class="${st.uploaded ? 'err' : 'dim'}" style="margin-top:8px">${st.uploaded ? `This ${what} is already uploaded, so the game's servers may put its old name back.` : `You haven't uploaded this discovery yet. The game keeps showing its own name until the discovery is uploaded (checked 2026-11-04), so upload it from the game's Discoveries menu and see which name goes up with it.`}</p>
     <p class="dim small-print"><b>Experimental:</b> try it on one ${what} and check it in the game after you press Save to game (the app backs up your save first).</p>`,
     [cur ? ['Use the game\'s name', 'clear', 'ghost'] : null, ['Cancel', false], ['Rename', 'save', 'primary']].filter(Boolean));
   if (!v || !(dm instanceof Map)) return;
@@ -4781,7 +4783,7 @@ function predictionHtml(p, s) {
   return `<div class="pred-head"><div><span class="k">System</span><b class="pred-name">${favStar(sysFav({ ...p, planet: 0 }, s))}${esc(s.name)}${renameState({ ...p, planet: 0 }).ok ? '<button class="link rn-link" type="button" data-rename="0">Rename</button>' : ''}</b>${s.given && s.given.system ? `<span class="dim">Originally ${esc(s.genName)}, ${esc(namedBy(s.given.system))}</span>` : ''}<span class="dim">${esc(s.region)}, ${esc(GALAXIES[p.gi])}</span></div><span class="pred-share"><button class="btn small" type="button" data-card="image">Copy card</button><button class="btn small ghost" type="button" data-card="save">Save card</button><button class="btn small ghost" type="button" data-card="text">Copy as text</button></span><span class="pill">Predicted</span></div>
     <dl class="pred-grid">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
     ${s.planets.length ? `<table class="pred-planets"><thead><tr><th>#</th><th>Name</th><th>Biome</th><th>Portal address</th><th></th></tr></thead><tbody>
-      ${s.planets.map((n, i) => { const code = hexN(i + 1, 1) + rest, bi = (s.biomes || {})[i + 1]; return `<tr${p.planet === i + 1 ? ' class="on"' : ''}><td>${i + 1}</td><td>${favStar(sysFav({ ...p, planet: i + 1 }, s))}${esc(n)}${renameState({ ...p, planet: i + 1 }).ok ? `<button class="link rn-link" type="button" data-rename="${i + 1}">Rename</button>` : ''}${s.given && s.given.planets[i + 1] ? `<span class="dim gen-name" title="${esc(namedBy(s.given.planets[i + 1]))}">${esc(s.genPlanets[i])}</span>` : ''}</td><td>${bi && bi.biome ? esc(bi.biome + (bi.infested ? ', infested' : '')) : (() => { const o = (s.planetOdds || [])[i]; return o ? `<span class="dim" title="${esc('Odds for this planet: ' + o.filter(([, f]) => f >= 0.01).map(([n, f]) => `${n} ${Math.round(f * 100)}%`).join(', '))}">${o[1] && Math.round(o[1][1] * 100) === Math.round(o[0][1] * 100) ? `${esc(o[0][0])} or ${esc(o[1][0])}, ${Math.round(o[0][1] * 100)}% each` : `Most likely ${esc(o[0][0])}, ${Math.round(o[0][1] * 100)}%`}</span>` : '<span class="dim">Not visited</span>'; })()}${(s.prime || [])[i] ? ' <span class="prime-tag" title="A prime body: it draws from the game\'s prime list, the only one with Marsh and Volcanic">Prime</span>' : ''}</td><td>${glyphRow(code, 'tiny')} <span class="mono">${code}</span></td><td><button class="link" type="button" data-planet="${i + 1}">${p.planet === i + 1 ? 'Selected' : 'Use this address'}</button></td></tr>`; }).join('')}
+      ${s.planets.map((n, i) => { const code = hexN(i + 1, 1) + rest, bi = (s.biomes || {})[i + 1]; return `<tr${p.planet === i + 1 ? ' class="on"' : ''}><td>${i + 1}</td><td>${favStar(sysFav({ ...p, planet: i + 1 }, s))}${esc(n)}${(() => { const rs = renameState({ ...p, planet: i + 1 }); return rs.ok ? `<button class="link rn-link" type="button" data-rename="${i + 1}">Rename</button>` : !rs.r ? `<span class="rn-link rn-off" tabindex="0" title="You haven't discovered this planet yet. Land on it or scan it from orbit in the game, save, and it can be renamed here.">Rename</span>` : ''; })()}${s.given && s.given.planets[i + 1] ? `<span class="dim gen-name" title="${esc(namedBy(s.given.planets[i + 1]))}">${esc(s.genPlanets[i])}</span>` : ''}</td><td>${bi && bi.biome ? esc(bi.biome + (bi.infested ? ', infested' : '')) : (() => { const o = (s.planetOdds || [])[i]; return o ? `<span class="dim" title="${esc('Odds for this planet: ' + o.filter(([, f]) => f >= 0.01).map(([n, f]) => `${n} ${Math.round(f * 100)}%`).join(', '))}">${o[1] && Math.round(o[1][1] * 100) === Math.round(o[0][1] * 100) ? `${esc(o[0][0])} or ${esc(o[1][0])}, ${Math.round(o[0][1] * 100)}% each` : `Most likely ${esc(o[0][0])}, ${Math.round(o[0][1] * 100)}%`}</span>` : '<span class="dim">Not visited</span>'; })()}${(s.prime || [])[i] ? ' <span class="prime-tag" title="A prime body: it draws from the game\'s prime list, the only one with Marsh and Volcanic">Prime</span>' : ''}</td><td>${glyphRow(code, 'tiny')} <span class="mono">${code}</span></td><td><button class="link" type="button" data-planet="${i + 1}">${p.planet === i + 1 ? 'Selected' : 'Use this address'}</button></td></tr>`; }).join('')}
     </tbody></table>` : '<p class="dim">No planets.</p>'}
     <p class="pred-note dim">Predicted from the address with the game's own rules, so it works for systems nobody has visited. Checked against 1,000 systems players recorded: about 99% right. Names travellers uploaded later aren't included. Biomes in the planet list come from your own discoveries; for unvisited planets it shows the likeliest ones from each planet's own odds. Biome odds are the game's own chances for this colour of star in this kind of galaxy (yellow stars in lush and empty galaxies have their own lists), read from your game files. Prime planets, the bodies after a system's regular ones, use the game's prime list, the only one with Marsh and Volcanic, and some Dead planets turn Exotic; this matched every one of the 1,487 planets in the owner's save. The exact biome the game draws for each planet isn't known, and weather and resources aren't predicted yet. Generation research: nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, ported to JavaScript as nms-core by elegra1965 (both MIT).</p>`;
 }
@@ -7323,6 +7325,51 @@ function globeCanvas(opts) {
   }
   return cv;
 }
+// which body each moon belongs to, from the save's planet centres (the system the save was made in): -1 for a planet
+function bodyParents(n) {
+  const r = savedPlanetCentres(); if (!r) return null;
+  const c = r.centres, near = (a, b) => a && b && Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) < 400000;
+  const out = [];
+  for (let j = 0; j < n; j++) { let p = -1; for (let i = 0; i < j; i++) if (out[i] === -1 && near(c[i], c[j])) { p = i; break; } out.push(p); }
+  return out;
+}
+// in space: the star with the system's planets going round it, each in its biome's colour (a known biome from your
+// discoveries, else the likeliest one), and moons round their planets when the save shows which belong where
+function orreryCanvas(opts) {
+  const Wd = opts.width || 150, Ht = opts.height || 84, dpr = Math.min(2, devicePixelRatio || 1), W = Math.round(Wd * dpr), H = Math.round(Ht * dpr);
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.className = 'globe orrery'; cv.style.width = Wd + 'px'; cv.style.height = Ht + 'px';
+  cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', opts.label || 'The star and its planets');
+  const ctx = cv.getContext('2d'); if (!ctx) return cv;
+  const cx = W / 2, cy = H / 2, star = opts.star, bodies = opts.bodies || [];
+  const planets = bodies.filter((b) => b.parent < 0), n = Math.max(1, planets.length);
+  const rx0 = W * .14, rx1 = W * .47, tilt = .36;
+  bodies.forEach((b) => { b.phase = (b.seed % 1000) / 1000; });
+  planets.forEach((b, k) => { b.rx = rx0 + (rx1 - rx0) * (n === 1 ? .5 : k / (n - 1)); b.period = 14 * Math.pow(b.rx / rx0, 1.5); });
+  const sphere = (x, y, r, col) => { const g = ctx.createRadialGradient(x - r * .4, y - r * .4, r * .1, x, y, r); g.addColorStop(0, '#ffffff'); g.addColorStop(.3, col); g.addColorStop(.75, col); g.addColorStop(1, '#1a232c'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); };
+  const draw = (t) => {
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(120,160,185,.38)'; ctx.lineWidth = dpr * .7;
+    for (const b of planets) { ctx.beginPath(); ctx.ellipse(cx, cy, b.rx, b.rx * tilt, 0, 0, 7); ctx.stroke(); }
+    const pos = new Map();
+    for (const b of planets) { const a = 2 * Math.PI * (t / b.period + b.phase); pos.set(b, { x: cx + Math.cos(a) * b.rx, y: cy + Math.sin(a) * b.rx * tilt, z: Math.sin(a) }); }
+    for (const b of bodies) if (b.parent >= 0) {
+      const host = bodies[b.parent], hp = host && pos.get(host); if (!hp) continue;
+      const a = 2 * Math.PI * (t / 5 + b.phase), r = (host.gas ? 8 : 6.5) * dpr;
+      pos.set(b, { x: hp.x + Math.cos(a) * r * 1.6, y: hp.y + Math.sin(a) * r * .6, z: hp.z + Math.sin(a) * .01 });
+    }
+    const drawn = [...pos.entries()].sort((p, q) => p[1].z - q[1].z);
+    const body = ([b, p]) => sphere(p.x, p.y, (b.parent >= 0 ? 2.2 : b.gas ? 5.2 : 3.8) * dpr, b.colour);
+    drawn.filter(([, p]) => p.z < 0).forEach(body);   // behind the star
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, H * .34); g.addColorStop(0, '#ffffff'); g.addColorStop(.3, star); g.addColorStop(.6, star + '44'); g.addColorStop(1, star + '00');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, H * .34, 0, 7); ctx.fill();
+    drawn.filter(([, p]) => p.z >= 0).forEach(body);
+  };
+  let raf = 0, last = 0, seen = true; const t0 = performance.now();
+  const loop = (now) => { raf = 0; if (!cv.isConnected) return; if (now - last > 48) { last = now; draw((now - t0) / 1000); } if (seen) raf = requestAnimationFrame(loop); };
+  draw(0);
+  if ('IntersectionObserver' in window) { const io = new IntersectionObserver(([e]) => { seen = e.isIntersecting; if (!cv.isConnected) { io.disconnect(); return; } if (seen && !raf) raf = requestAnimationFrame(loop); }); io.observe(cv); }
+  return cv;
+}
 // the save's moons of a planet: bodies close to it that come after it (a moon follows its planet in the list)
 function moonsOf(planet) {
   const r = savedPlanetCentres(); if (!r || !planet) return null;
@@ -7486,7 +7533,20 @@ PAGES.coords = (el) => {
   const drawHere = (sys) => {
     const box = $$('#hereGlobe'), txt = $$('#herePlanet'); if (!box) return;
     const pl = here.planet, bi = pl ? systemKnowledge(here).biomes[pl] : null;
-    if (!pl) { const star = sys && sys.star; box.replaceChildren(globeCanvas({ star: GLOBE_STARS[star] || GLOBE_STARS.Yellow, label: (star || 'The') + ' star' })); if (txt) txt.textContent = 'In space' + (star ? `, by a ${star.toLowerCase()} star` : ''); return; }
+    if (!pl) {   // in space: the star and its planets
+      const star = sys && sys.star, known = systemKnowledge(here).biomes, n = sys ? sys.planets.length : 0, par = bodyParents(n) || [...Array(n)].map(() => -1);
+      const bodies = [...Array(n)].map((_, i) => {
+        const b = (known[i + 1] && known[i + 1].biome) || (sys.gasGiant && i === 0 ? 'Gas giant' : ((sys.planetOdds || [])[i] || [])[0]?.[0]) || '';
+        const pal = GLOBE_COLOURS[b] || GLOBE_COLOURS[b.startsWith('Exotic') ? 'Exotic' : ''];
+        let h = 0; for (const c of String(sys.planets[i])) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+        return { colour: pal[3], parent: par[i], gas: b === 'Gas giant', seed: h };
+      });
+      box.classList.add('wide');
+      box.replaceChildren(sys ? orreryCanvas({ star: GLOBE_STARS[star] || GLOBE_STARS.Yellow, bodies, label: `${star || 'The'} star with ${plural(n, 'body', 'bodies')}` }) : globeCanvas({ star: GLOBE_STARS.Yellow }));
+      const moons = par.filter((x) => x >= 0).length;
+      if (txt) txt.textContent = 'In space' + (star ? `, by a ${star.toLowerCase()} star` : '') + (n ? ` · ${plural(n - moons, 'planet')}${moons ? ' and ' + plural(moons, 'moon') : ''}` : '');
+      return;
+    }
     const m = moonsOf(pl), biome = (bi && bi.biome) || '', seeds = g(ps(), 'PlanetSeeds'), sv = Array.isArray(seeds) ? seeds[pl - 1] : null;
     const name = sys && sys.planets[pl - 1], moons = m && !m.isMoon ? Math.min(2, m.moons) : 0;
     box.replaceChildren(globeCanvas({ seed: str(Array.isArray(sv) ? sv[1] : sv) || Place.portal(here), biome, moons, label: `${name || 'Planet ' + pl}${biome ? ', ' + biome : ''}${moons ? ', with ' + plural(moons, 'moon') : ''}` }));
