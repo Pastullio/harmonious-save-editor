@@ -589,6 +589,8 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .pred-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
 .pred-head > div { display: grid; gap: 2px; }
 .pred-head .k { font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+.gen-name { display: block; font-size: 12px; }
+.gen-inline { font-weight: 400; }
 .pred-name { font-family: var(--display); font-weight: 300; font-size: 26px; letter-spacing: .04em; line-height: 1.2; }
 .pill { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--ink); white-space: nowrap; }
 .pred-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 1px; margin: 14px 0; border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; background: var(--line); }
@@ -6413,7 +6415,30 @@ function biomeOdds(star, gi, prime) {
   if (!total) return null;
   return [...sums].map(([n, v]) => [n, v / total]).sort((x, y) => y[1] - x[1]);
 }
+// names players gave a system and its planets, from the discovery records in the save: your own uploads and the names
+// of places other players discovered that the game kept when you visited (owner, 2026-11-04). Tags such as <STAT> go.
+const untag = (t) => String(t || '').replace(/<[^>]*>/g, '').trim();
+function givenNames(p) {
+  const out = { system: null, planets: {} };
+  if (!S.save) return out;
+  for (const r of g(S.save.json, 'DiscoveryManagerData', 'DiscoveryData-v1', 'Store', 'Record') || []) {
+    const t = str(g(r, 'DD', 'DT')); if (t !== 'SolarSystem' && t !== 'Planet') continue;
+    const cn = g(r, 'DM') instanceof Map ? untag(str(g(r, 'DM', 'CN'))) : ''; if (!cn) continue;
+    const at = Place.fromPacked(g(r, 'DD', 'UA')); if (!Place.sameSystem(at, p)) continue;
+    const who = untag(str(g(r, 'OWS', 'USN'))), mine = !!myUID() && str(g(r, 'OWS', 'UID')) === myUID();
+    const n = { name: cn, by: who, mine };
+    if (t === 'SolarSystem') out.system = n; else if (at.planet) out.planets[at.planet] = n;
+  }
+  return out;
+}
+const namedBy = (n) => (n.mine ? 'named by you' : n.by ? 'named by ' + n.by : 'named by a traveller');
 async function predictSystem(p) {
+  const s = await predictSystemRaw(p), given = givenNames(p);
+  // the game's own names stay as genName/genPlanets; name/planets are what players see in the game
+  return { ...s, genName: s.name, genPlanets: s.planets, given,
+    name: given.system ? given.system.name : s.name, planets: s.planets.map((n, i) => (given.planets[i + 1] ? given.planets[i + 1].name : n)) };
+}
+async function predictSystemRaw(p) {
   const lm = await letterMap();
   const code = BigInt('0x' + Place.portal({ ...p, planet: 0 })), gi = p.gi;
   const a = NMSGEN.systemAttributes(code, gi), seeds = NMSGEN.planetSeeds(code, gi), sb = NMSGEN.sellBuy(code, gi);
@@ -6442,10 +6467,10 @@ function predictionHtml(p, s) {
     ['Bodies', `${plural(s.planetCount, 'planet')}${s.moonCount ? ' and ' + plural(s.moonCount, 'moon') : ''}`],
   ].filter(Boolean);
   const rest = Place.portal(p).slice(1);
-  return `<div class="pred-head"><div><span class="k">System</span><b class="pred-name">${esc(s.name)}</b><span class="dim">${esc(s.region)}, ${esc(GALAXIES[p.gi])}</span></div><span class="pred-share"><button class="btn small" type="button" data-card="image">Copy card</button><button class="btn small ghost" type="button" data-card="save">Save card</button><button class="btn small ghost" type="button" data-card="text">Copy as text</button></span><span class="pill">Predicted</span></div>
+  return `<div class="pred-head"><div><span class="k">System</span><b class="pred-name">${esc(s.name)}</b>${s.given && s.given.system ? `<span class="dim">Originally ${esc(s.genName)}, ${esc(namedBy(s.given.system))}</span>` : ''}<span class="dim">${esc(s.region)}, ${esc(GALAXIES[p.gi])}</span></div><span class="pred-share"><button class="btn small" type="button" data-card="image">Copy card</button><button class="btn small ghost" type="button" data-card="save">Save card</button><button class="btn small ghost" type="button" data-card="text">Copy as text</button></span><span class="pill">Predicted</span></div>
     <dl class="pred-grid">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
     ${s.planets.length ? `<table class="pred-planets"><thead><tr><th>#</th><th>Name</th><th>Biome</th><th>Portal address</th><th></th></tr></thead><tbody>
-      ${s.planets.map((n, i) => { const code = hexN(i + 1, 1) + rest, bi = (s.biomes || {})[i + 1]; return `<tr${p.planet === i + 1 ? ' class="on"' : ''}><td>${i + 1}</td><td>${esc(n)}</td><td>${bi && bi.biome ? esc(bi.biome + (bi.infested ? ', infested' : '')) : (() => { const o = (s.planetOdds || [])[i]; return o ? `<span class="dim" title="${esc('Odds for this planet: ' + o.filter(([, f]) => f >= 0.01).map(([n, f]) => `${n} ${Math.round(f * 100)}%`).join(', '))}">${o[1] && Math.round(o[1][1] * 100) === Math.round(o[0][1] * 100) ? `${esc(o[0][0])} or ${esc(o[1][0])}, ${Math.round(o[0][1] * 100)}% each` : `Most likely ${esc(o[0][0])}, ${Math.round(o[0][1] * 100)}%`}</span>` : '<span class="dim">Not visited</span>'; })()}${(s.prime || [])[i] ? ' <span class="prime-tag" title="A prime body: it draws from the game\'s prime list, the only one with Marsh and Volcanic">Prime</span>' : ''}</td><td>${glyphRow(code, 'tiny')} <span class="mono">${code}</span></td><td><button class="link" type="button" data-planet="${i + 1}">${p.planet === i + 1 ? 'Selected' : 'Use this address'}</button></td></tr>`; }).join('')}
+      ${s.planets.map((n, i) => { const code = hexN(i + 1, 1) + rest, bi = (s.biomes || {})[i + 1]; return `<tr${p.planet === i + 1 ? ' class="on"' : ''}><td>${i + 1}</td><td>${esc(n)}${s.given && s.given.planets[i + 1] ? `<span class="dim gen-name" title="${esc(namedBy(s.given.planets[i + 1]))}">${esc(s.genPlanets[i])}</span>` : ''}</td><td>${bi && bi.biome ? esc(bi.biome + (bi.infested ? ', infested' : '')) : (() => { const o = (s.planetOdds || [])[i]; return o ? `<span class="dim" title="${esc('Odds for this planet: ' + o.filter(([, f]) => f >= 0.01).map(([n, f]) => `${n} ${Math.round(f * 100)}%`).join(', '))}">${o[1] && Math.round(o[1][1] * 100) === Math.round(o[0][1] * 100) ? `${esc(o[0][0])} or ${esc(o[1][0])}, ${Math.round(o[0][1] * 100)}% each` : `Most likely ${esc(o[0][0])}, ${Math.round(o[0][1] * 100)}%`}</span>` : '<span class="dim">Not visited</span>'; })()}${(s.prime || [])[i] ? ' <span class="prime-tag" title="A prime body: it draws from the game\'s prime list, the only one with Marsh and Volcanic">Prime</span>' : ''}</td><td>${glyphRow(code, 'tiny')} <span class="mono">${code}</span></td><td><button class="link" type="button" data-planet="${i + 1}">${p.planet === i + 1 ? 'Selected' : 'Use this address'}</button></td></tr>`; }).join('')}
     </tbody></table>` : '<p class="dim">No planets.</p>'}
     <p class="pred-note dim">Predicted from the address with the game's own rules, so it works for systems nobody has visited. Checked against 1,000 systems players recorded: about 99% right. Names travellers uploaded later aren't included. Biomes in the planet list come from your own discoveries; for unvisited planets it shows the likeliest ones from each planet's own odds. Biome odds are the game's own chances for this colour of star in this kind of galaxy (yellow stars in lush and empty galaxies have their own lists), read from your game files. Prime planets, the bodies after a system's regular ones, use the game's prime list, the only one with Marsh and Volcanic, and some Dead planets turn Exotic; this matched every one of the 1,487 planets in the owner's save. The exact biome the game draws for each planet isn't known, and weather and resources aren't predicted yet. Generation research: nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, ported to JavaScript as nms-core by elegra1965 (both MIT).</p>`;
 }
@@ -9150,7 +9175,7 @@ PAGES.coords = (el) => {
     box.replaceChildren(globeCanvas({ seed: str(Array.isArray(sv) ? sv[1] : sv) || Place.portal(here), biome, moons, label: `${name || 'Planet ' + pl}${biome ? ', ' + biome : ''}${moons ? ', with ' + plural(moons, 'moon') : ''}` }));
     if (txt) txt.textContent = `On ${name || 'planet ' + pl}${biome ? ' · ' + biome + (bi.infested ? ', infested' : '') : ''}${m && m.isMoon ? ' · a moon' : ''}${moons ? ' · ' + plural(moons, 'moon') : ''}`;
   };
-  predictSystem(here).then((sys) => { const n = $$('#hereName'); if (n) n.textContent = sys.name + ', '; hereStar(sys.name); drawHere(sys); }).catch(() => { hereStar(''); drawHere(null); });
+  predictSystem(here).then((sys) => { const n = $$('#hereName'); if (n) { n.innerHTML = esc(sys.name) + (sys.given.system ? ` <span class="dim gen-inline" title="${esc(`The game's own name, before it was ${namedBy(sys.given.system)}`)}">(${esc(sys.genName)})</span>` : '') + ', '; } hereStar(sys.name); drawHere(sys); }).catch(() => { hereStar(''); drawHere(null); });
   const show = (from) => {
     const full = C.digits.length === 12 && Place.fromPortal(C.digits, C.p.gi);
     if (full) C.p = full;

@@ -138,6 +138,7 @@ The save file holds no images, so a ship's picture has to come from one of these
 - [x] Arrive on foot at a base (Coordinates, "Arrive at a base"): works in any system the app has seen a save made in
 - [x] Arrive on the freighter (Coordinates, "Arrive on your freighter"): calls the freighter to the system and spawns you aboard
 - [x] Warp here asks how to arrive (ship, freighter, a base in the system); one Places here list with stars and Arrive here; a turning globe of your planet on You are here (owner, 2026-11-04)
+- [x] Names players gave systems and planets, from the save's discovery records (owner, 2026-11-04)
 - [x] Favourite places (owner, 2026-11-04: the game's portal favourites don't always keep a place): star bases, stations, settlements and systems on Coordinates and Bases; kept in Documents, with Go here, edit, export and import
 - [x] Place card: Copy card (a PNG with glyphs, address, system, race, economy, conflict and planets), Save card, or Copy as text, on the Coordinates page
 

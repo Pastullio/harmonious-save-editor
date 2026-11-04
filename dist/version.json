@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.04.1453",
+  "version": "2026.11.04.1505",
   "date": "2026-11-04",
-  "size": 12820992,
-  "sha256": "075544b85d2594aafdf3f4ff5ca001c3e1380ff287ea1104c73f271ee3f3c688",
-  "notes": "Your planet's moon is no longer cut off, and the globe turns even with Windows animation effects off.",
+  "size": 12823040,
+  "sha256": "4d9c239e15c70da0e3be6af148866d47d73b32da901d7fefdc247baf20ec7532",
+  "notes": "Systems and planets show the names players gave them (from your save), with the game's own name beside them.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
