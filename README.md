@@ -34,7 +34,7 @@ Nothing is uploaded anywhere. Item names and icons come from your own copy of th
 
 **Close No Man's Sky before saving.** The editor warns you if the game is still running. Steam Cloud can also restore an older copy if it syncs before the game starts.
 
-The app updates itself. When a new version is out it offers to install it, checks the download, swaps itself over and restarts.
+The app updates itself. When a new version is out it offers to install it, checks the download, swaps itself over and restarts, then shows what's new in it. **About** shows which version you have, with **What's new** for the latest changes.
 
 **The editor's own window.** It opens in a window of its own (Windows' built-in WebView2, the same engine as Edge, which comes with Windows 10 and 11), with the editor's icon in the taskbar. If WebView2 is missing it opens an Edge window instead.
 

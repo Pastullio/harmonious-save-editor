@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.05.1429",
+  "version": "2026.11.05.1455",
   "date": "2026-11-05",
-  "size": 13019648,
-  "sha256": "e96daa85b274c16b133af3c68f5312cf1c65cdfcf722d5a1499199f9684d45ce",
-  "notes": "A little more room above LiveLink in Shipwright.",
+  "size": 13030912,
+  "sha256": "ea5e6a910f286822279965ba6aa62c6a75a8417115e6e1eacbbf67dcf3c5e950",
+  "notes": "After an update, the editor now shows what's new (like this).\nAbout shows which version you're using, with a What's new link for recent changes.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

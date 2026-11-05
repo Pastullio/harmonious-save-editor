@@ -1,0 +1,220 @@
+[
+ {
+  "version": "2026.11.05.1455",
+  "date": "2026-11-05",
+  "notes": [
+   "After an update, the editor now shows what's new (like this).",
+   "About shows which version you're using, with a What's new link for recent changes."
+  ]
+ },
+ {
+  "version": "2026.11.05.1429",
+  "date": "2026-11-05",
+  "notes": [
+   "A little more room above LiveLink in Shipwright."
+  ]
+ },
+ {
+  "version": "2026.11.04.1553",
+  "date": "2026-11-04",
+  "notes": [
+   "The editor now has its own window: closing it asks to Save & exit, and the taskbar shows the editor's icon (re-pin it once if you'd pinned the old one). Also: favourite places, nicknames and a star chart on Coordinates."
+  ]
+ },
+ {
+  "version": "2026.11.04.1537",
+  "date": "2026-11-04",
+  "notes": [
+   "Nicknames: give systems and planets your own names, shown only in the editor (they don't rename anything in the game)."
+  ]
+ },
+ {
+  "version": "2026.11.04.1528",
+  "date": "2026-11-04",
+  "notes": [
+   "In space, You are here shows the star with its planets and moons going round it."
+  ]
+ },
+ {
+  "version": "2026.11.04.1511",
+  "date": "2026-11-04",
+  "notes": [
+   "Star a system or any of its planets straight from the Coordinates prediction."
+  ]
+ },
+ {
+  "version": "2026.11.04.1505",
+  "date": "2026-11-04",
+  "notes": [
+   "Systems and planets show the names players gave them (from your save), with the game's own name beside them."
+  ]
+ },
+ {
+  "version": "2026.11.04.1453",
+  "date": "2026-11-04",
+  "notes": [
+   "Your planet's moon is no longer cut off, and the globe turns even with Windows animation effects off."
+  ]
+ },
+ {
+  "version": "2026.11.04.1449",
+  "date": "2026-11-04",
+  "notes": [
+   "Warp here asks how you arrive (ship, freighter or a base); one Places here list; a turning globe of your planet; corvette covers keep their render after a change."
+  ]
+ },
+ {
+  "version": "2026.11.04.1424",
+  "date": "2026-11-04",
+  "notes": [
+   "Favourite places: star bases, space stations, settlements and systems on Coordinates and Bases, then pick one and warp there from any save."
+  ]
+ },
+ {
+  "version": "2026.11.03.2150",
+  "date": "2026-11-03",
+  "notes": [
+   "Save & exit: the new Exit button, and Cancel on the 'Leave app?' box, offer Save & exit, Exit without saving or Keep editing."
+  ]
+ },
+ {
+  "version": "2026.11.03.2142",
+  "date": "2026-11-03",
+  "notes": [
+   "Right-click any inventory slot for a menu: fill, repair, copy, paste, duplicate, supercharge, move to another inventory, remove. Works on selections too."
+  ]
+ },
+ {
+  "version": "2026.11.03.2120",
+  "date": "2026-11-03",
+  "notes": [
+   "Adding items: cargo takes anything, and each technology grid only offers technology that fits it (exosuit, multi-tool, freighter, each kind of ship and exocraft). The item library rebuilds once to learn the categories."
+  ]
+ },
+ {
+  "version": "2026.11.03.2107",
+  "date": "2026-11-03",
+  "notes": [
+   "Add items by name: click an empty slot in any inventory, type (Carbon, Orbital Exocraft Materialiser…), press Enter or click, and it goes in as a full stack. Technology grids offer only technology."
+  ]
+ },
+ {
+  "version": "2026.11.03.1520",
+  "date": "2026-11-03",
+  "notes": [
+   "Dock Yard: ships added since the save was opened (like a new corvette) now show up, and everything you save to the game is kept in the Hangar."
+  ]
+ },
+ {
+  "version": "2026.11.03.1425",
+  "date": "2026-11-03",
+  "notes": [
+   "Customise the sidebar: drag pages up, down or into another group, move groups, and hide pages you don't use (button at the bottom of the sidebar)."
+  ]
+ },
+ {
+  "version": "2026.11.01.2258",
+  "date": "2026-11-01",
+  "notes": [
+   "Dock Yard: every loaded ship shows Loaded, slot N (the first cover could miss it), and loaded ships come first in slot order. Shipwright shows the corvette's picture."
+  ]
+ },
+ {
+  "version": "2026.11.01.2240",
+  "date": "2026-11-01",
+  "notes": [
+   "Names: the cover page is now the Garage, and the Dock Yard's automatic copies are the Hangar. Dock Yard ships in your save say Loaded, slot N on the cover, and Load ship into game puts one in. Page buttons sit above the covers, on the left. Supercharge slots on multi-tools and the freighter."
+  ]
+ },
+ {
+  "version": "2026.11.01.2148",
+  "date": "2026-11-01",
+  "notes": [
+   "Dock Yard: pick a ship to Edit it (opens Starships, or Shipwright for a corvette's build), put it in your save, or open its details. Cards show which ships are in this save. Starships has Versions in the Dock Yard."
+  ]
+ },
+ {
+  "version": "2026.11.01.1613",
+  "date": "2026-11-01",
+  "notes": [
+   "User guide and README updated: companion models, where exports go, pinning to the taskbar, Dock Yard folders, moving ships to the Dock Yard, rewards that won't claim."
+  ]
+ },
+ {
+  "version": "2026.11.01.1608",
+  "date": "2026-11-01",
+  "notes": [
+   "Taskbar: the editor keeps its own icon when pinned (Edge was putting its own back)."
+  ]
+ },
+ {
+  "version": "2026.11.01.1605",
+  "date": "2026-11-01",
+  "notes": [
+   "The editor gets its own taskbar button and icon instead of Edge's."
+  ]
+ },
+ {
+  "version": "2026.11.01.1602",
+  "date": "2026-11-01",
+  "notes": [
+   "Companions: every companion's model is found now (Metal Orb, robot pets and the rest), and each is drawn with exactly the head, wings and tail pieces it has."
+  ]
+ },
+ {
+  "version": "2026.11.01.1552",
+  "date": "2026-11-01",
+  "notes": [
+   "Companions are drawn from your game's own creature models, with the parts each one was born with (new: tell me if one looks wrong). Dock Yard folder box is clearer."
+  ]
+ },
+ {
+  "version": "2026.11.01.1540",
+  "date": "2026-11-01",
+  "notes": [
+   "Dock Yard folders: the path box no longer shows an example that looks like a real folder, and Add path with an empty box opens Browse."
+  ]
+ },
+ {
+  "version": "2026.11.01.1536",
+  "date": "2026-11-01",
+  "notes": [
+   "Companions can have a picture (a screenshot or any image) on their page and beside their name in the list."
+  ]
+ },
+ {
+  "version": "2026.11.01.1524",
+  "date": "2026-11-01",
+  "notes": [
+   "Ship and multi-tool covers stay drawn when you switch pages and show straight away the next time you open the editor; the Dock Yard fills in every cover by itself. The editor now remembers light or dark mode (and your other settings) every time it opens."
+  ]
+ },
+ {
+  "version": "2026.11.01.1459",
+  "date": "2026-11-01",
+  "notes": [
+   "Exports now save to Documents\\Harmonious Save Editor\\Exports and open that folder (they used to vanish into Downloads). A ship's Dock Yard button can now move it out of your save into Ship storage, freeing the slot."
+  ]
+ },
+ {
+  "version": "2026.11.01.1436",
+  "date": "2026-11-01",
+  "notes": [
+   "You can now delete a multi-tool (or ship) when every slot is in use, for example to make room to claim a reward."
+  ]
+ },
+ {
+  "version": "2026.11.01.1414",
+  "date": "2026-11-01",
+  "notes": [
+   "Pages no longer slide sideways under the sidebar: a title glow made every page a little wider than the window."
+  ]
+ },
+ {
+  "version": "2026.11.01.1358",
+  "date": "2026-11-01",
+  "notes": [
+   "Rewards: the page now explains how to get rewards into the game (quit the game first, save, then start it), Unlock all leaves out the platform rewards the game removes on PC, and the editor tells you if the game puts its own rewards back."
+  ]
+ }
+]

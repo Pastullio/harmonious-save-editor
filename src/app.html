@@ -143,6 +143,11 @@ body:not(.on-landing) .land-corner { display: none; }
 .about-sky { margin: -4px 0 14px; padding: 18px 18px 10px; border-radius: var(--r-lg); background: radial-gradient(120% 90% at 50% 20%, #12305a 0%, #0a1630 55%, #050a18 100%); text-align: center; }
 .about-sky img { width: min(420px, 100%); height: auto; display: block; margin: 0 auto; }
 .about-sky .ver { color: #b9d6ff; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; margin-top: 6px; }
+.about-version { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+.whatsnew { display: grid; gap: 14px; max-height: 60vh; overflow-y: auto; }
+.whatsnew h4 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+.whatsnew h4 .dim { font-weight: 400; font-size: 12px; margin-left: 6px; }
+.whatsnew ul { margin: 0; padding-left: 20px; display: grid; gap: 5px; line-height: 1.45; }
 .about-links { display: flex; gap: 6px; margin: 12px 0; }
 .about-links .btn { flex: 1 1 auto; justify-content: center; text-align: center; white-space: nowrap; padding-inline: 8px; }
 @media (max-width: 640px) { .about-links { flex-wrap: wrap; } }
@@ -1280,9 +1285,10 @@ function aboutDialog() {
     <div class="about-links"><a class="btn small primary" href="${GUIDE_URL}" target="_blank" rel="noopener">User guide</a>${LINKS.map(([t, u]) => `<a class="btn small" href="${u}" target="_blank" rel="noopener">${t}</a>`).join('')}</div>
     <p class="dim" style="margin:12px 0 6px">Built with thanks to</p>
     <ul class="about-credits"><li>libNOM.map and libNOM.io by zencq (save keys and format)</li><li>MBINCompiler by monkeyman192 and contributors (game table layouts)</li><li>HGPAKtool by monkeyman192 (game archive format)</li><li>Charon Forge by xX-Charon-Xx (corvette renders)</li><li>nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, and its JavaScript port nms-core by elegra1965 (system and planet prediction; MIT)</li><li>Pillow (texture decoding), klauspost/compress (zstd), Jost by indestructible type* (typeface)</li></ul>
-    <p class="dim" style="font-size:13px;margin:12px 0 0">Free software under the GPL-3.0 licence. Not affiliated with Hello Games.</p>`, window.NMS_APP ? [['Close', false], ['Check for updates', 'upd', 'primary']] : [['Close', true, 'primary']]).then((v) => { if (v === 'upd') checkForUpdate(true); });
+    <p class="dim" style="font-size:13px;margin:12px 0 0">Free software under the GPL-3.0 licence. Not affiliated with Hello Games.</p>
+    <p class="about-version">${window.NMS_APP && appVer() ? `Harmonious Save Editor version: <b class="mono">${esc(appVer())}</b> <button class="link" type="button" id="aboutNew">What's new</button>` : 'Harmonious Save Editor, browser version'}</p>`, window.NMS_APP ? [['Close', false], ['Check for updates', 'upd', 'primary']] : [['Close', true, 'primary']]).then((v) => { if (v === 'upd') checkForUpdate(true); });
 }
-document.addEventListener('click', (e) => { if (e.target.closest('.about-btn')) aboutDialog(); });
+document.addEventListener('click', (e) => { if (e.target.closest('.about-btn')) aboutDialog(); if (e.target.closest('#aboutNew')) whatsNew(true); });
 document.querySelectorAll('.guide-btn').forEach((a) => { a.href = GUIDE_URL; });
 syncThemeButtons();
 
@@ -7890,7 +7896,28 @@ async function appInit() {
   $('#backupsBtn').onclick = () => api('/api/reveal?what=backups', { method: 'POST' }).catch((e) => toast(e.message, true));
   $('#otherForm').onsubmit = (e) => { e.preventDefault(); const p = $('#otherPath').value.trim().replace(/^"|"$/g, ''); if (p) appListAccount({ name: p.split(/[\\/]/).filter(Boolean).pop() || p, path: p }); };
   await appLoadRoots();
-  setTimeout(() => checkForUpdate(false), 4000);
+  const shown = await whatsNew(false).catch(() => false);
+  setTimeout(() => checkForUpdate(false), shown ? 1500 : 4000);
+}
+
+// What's new (owner, 2026-11-05): after an update, the editor shows the notes of every version since the one this window
+// last ran (localStorage hse-seen-version), once. Someone updating from before this existed gets the newest version's
+// notes; a first start shows nothing. The About box reopens it.
+const appVer = () => (window.NMS_APP && window.NMS_APP.version) || '';
+async function whatsNew(always) {
+  const v = appVer(); if (!v || /^dev/.test(v) || v === '1') { if (always) toast("This build has no list of changes."); return false; }
+  let seen = null, used = false;
+  try { seen = localStorage.getItem('hse-seen-version'); used = Object.keys(localStorage).some((k) => k.startsWith('hse-') && k !== 'hse-seen-version'); localStorage.setItem('hse-seen-version', v); } catch (_) {}
+  if (!always && (seen === v || (!seen && !used))) return false;
+  let log = []; try { log = await (await api('/api/changelog')).json(); } catch (_) { return false; }
+  let list = always ? log.slice(0, 8) : seen ? log.filter((e) => e.version > seen && e.version <= v) : log.filter((e) => e.version <= v).slice(0, 1);
+  if (!list.length) return false;
+  const more = list.length > 8; list = list.slice(0, 8);
+  const date = (d) => { try { return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'long' }); } catch (_) { return d; } };
+  const days = []; for (const e of list) { const d = days.find((x) => x.date === e.date); if (d) d.notes.push(...(e.notes || [])); else days.push({ date: e.date, version: e.version, notes: [...(e.notes || [])] }); }
+  await dialog(always ? "What's new" : `Updated to version ${v}`, `<div class="whatsnew">${days.map((e) => `<section><h4>${esc(date(e.date))} <span class="dim mono">${esc(e.version)}</span></h4><ul>${e.notes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul></section>`).join('')}</div>
+    ${more ? '<p class="dim small-print">Older changes are in the user guide and on GitHub.</p>' : ''}`, [['Close', false]]);
+  return true;
 }
 
 async function appLoadRoots() {

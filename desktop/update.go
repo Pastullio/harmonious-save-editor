@@ -7,6 +7,7 @@ package main
 
 import (
 	"crypto/sha256"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -241,4 +242,14 @@ func cleanOldVersion() {
 	if exe, err := os.Executable(); err == nil {
 		os.Remove(exe + ".old")
 	}
+}
+
+// What's new: every release's notes (build-desktop.sh adds each one), shown by the page once after an update
+//
+//go:embed changelog.json
+var changelog []byte
+
+func handleChangelog(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(changelog)
 }
