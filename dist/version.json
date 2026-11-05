@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.05.1501",
+  "version": "2026.11.05.1703",
   "date": "2026-11-05",
-  "size": 13030912,
-  "sha256": "33756b50f129999d123c037edca34397c715157f10b2ada299a89a42298216cf",
-  "notes": "About: What's new and Check for updates sit on one line under the version.",
+  "size": 13186560,
+  "sha256": "068d945a8a14c0469cd54b8e8c5ad267e2c42c9757a0ba8b3fa97730c26f61ff",
+  "notes": "Shipwright: the gear beside Tune up lets you set your own tune-up order. Move the groups with the arrows or drag them; Standard order puts TAZmd's order back.\nNew Blender add-on: the LiveLink panel now shows the LiveLink logo and a Support the creator section. Press Get the Blender add-on on Shipwright and install it over the old one to get it.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

@@ -378,6 +378,16 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .sw-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: #2bb673; }
 .sw-dot.warn { background: #e08a3c; } .sw-dot.bad { background: var(--danger); }
 .sw-tip { font-size: 12.5px; margin: 12px 0 0; }
+.sw-tune-wrap { display: inline-flex; gap: 6px; align-items: center; }
+.sw-tune-set { position: relative; width: 38px; padding: 0; display: inline-grid; place-items: center; }
+.sw-tune-set svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
+.sw-tune-dot { position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.tune-order { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
+.tune-order li { display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: var(--r-sm); background: var(--well); cursor: grab; }
+.tune-order li.dragging { opacity: .5; }
+.tune-order .to-n { width: 22px; text-align: right; color: var(--dim); }
+.tune-order .to-name { flex: 1; }
+.tune-order .to-acts { display: flex; gap: 4px; }
 .sw-side-acts { display: grid; gap: 8px; margin: 14px 0 26px; }
 .sw-probs { margin-top: 12px; display: grid; gap: 6px; font-size: 13px; }
 .sw-main { display: grid; gap: 14px; min-width: 0; }
@@ -5559,7 +5569,18 @@ const PART_GROUPS = [
   ['rockhopper', 'Rockhopper wings'], ['reactor', 'Reactors'], ['engine', 'Thrusters, boosters and wings'], ['weapon', 'Weapons'],
   ['shield', 'Shields'], ['gear', 'Landing gear'], ['bay', 'Landing bays'], ['cockpit', 'Cockpits'], ['other', 'Everything else'],
 ];
-const GROUP_RANK = Object.fromEntries(PART_GROUPS.map(([k], i) => [k, i]));
+const GROUP_NAME = Object.fromEntries(PART_GROUPS);
+// the tune-up order: TAZmd's by default; the owner's own when changed (owner, 2026-11-05, asked for by a player who
+// customises it in Blender Base Editor), kept in localStorage hse-tune-order and read fresh each time
+function tuneOrder() {
+  let o = null; try { o = JSON.parse(localStorage.getItem('hse-tune-order') || 'null'); } catch (_) {}
+  const keys = PART_GROUPS.map(([k]) => k);
+  if (!Array.isArray(o)) return keys;
+  o = o.filter((k) => keys.includes(k)); return [...new Set([...o, ...keys])];   // groups added later go at the end
+}
+const isDefaultTune = () => tuneOrder().join() === PART_GROUPS.map(([k]) => k).join();
+const groupRank = () => Object.fromEntries(tuneOrder().map((k, i) => [k, i]));
+const GROUP_RANK = new Proxy({}, { get: (_, k) => groupRank()[k] });
 const GROUP_BY_SUB = { 'Corvette Reactor Module': 'reactor', 'Corvette Main Engine': 'engine', 'Corvette Rear Thruster': 'engine', 'Corvette Light Thruster': 'engine', 'Corvette Flight Stabliser': 'engine',
   'Corvette Weapon System': 'weapon', 'Corvette Shield Generator': 'shield', 'Corvette Landing Gear': 'gear', 'Corvette Cockpit': 'cockpit' };
 function partGroup(id) {
@@ -5578,8 +5599,38 @@ function partGroup(id) {
 const partScale = (o) => { const u = g(o, 'Up'); return Array.isArray(u) ? Math.hypot(num(u[0]), num(u[1]), num(u[2])) : 1; };
 const partKey = (o) => C.stringifyJSON(new Map([['i', g(o, 'ObjectID')], ['p', g(o, 'Position')], ['u', g(o, 'Up')], ['a', g(o, 'At')]]));
 // stable: parts keep their relative order within a group, so the camera cockpit, boarding cockpit and beam-up bay stay put
-function tunedOrder(objs) { return objs.map((o, i) => [GROUP_RANK[partGroup(g(o, 'ObjectID'))], i, o]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map((x) => x[2]); }
-function isTuned(objs) { let last = -1; for (const o of objs) { const r = GROUP_RANK[partGroup(g(o, 'ObjectID'))]; if (r < last) return false; last = r; } return true; }
+function tunedOrder(objs) { const R = groupRank(); return objs.map((o, i) => [R[partGroup(g(o, 'ObjectID'))], i, o]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map((x) => x[2]); }
+// Tune-up order: move groups up or down (arrows or drag); Save keeps it for every corvette, Standard order goes back
+async function tuneOrderDialog(objs) {
+  let order = tuneOrder();
+  const count = {}; for (const o of objs || []) { const k = partGroup(g(o, 'ObjectID')); count[k] = (count[k] || 0) + 1; }
+  const std = PART_GROUPS.map(([k]) => k);
+  const list = () => order.map((k, i) => `<li draggable="true" data-g="${k}"><span class="to-n mono">${i + 1}</span><span class="to-name">${esc(GROUP_NAME[k])}${count[k] ? ` <span class="dim">(${count[k]} in this build)</span>` : ''}</span>
+    <span class="to-acts"><button class="btn small" type="button" data-up="${i}" aria-label="Move ${esc(GROUP_NAME[k])} up"${i ? '' : ' disabled'}>↑</button><button class="btn small" type="button" data-down="${i}" aria-label="Move ${esc(GROUP_NAME[k])} down"${i < order.length - 1 ? '' : ' disabled'}>↓</button></span></li>`).join('');
+  const ask = dialog('Tune-up order', `<p class="dim" style="margin-top:0">Tune up puts a build's parts in this order, top first. Change it to suit your builds; Standard order is TAZmd's, the one most builds work best with. Parts keep their own order within each group.</p>
+    <ol class="tune-order" id="toList">${list()}</ol>`,
+    [['Standard order', 'std', 'ghost'], ['Cancel', false], ['Save', 'save', 'primary']]);
+  const box = $('#toList');
+  const draw = () => { box.innerHTML = list(); wire(); };
+  let dragK = null;
+  const wire = () => {
+    box.querySelectorAll('[data-up]').forEach((b) => b.onclick = () => { const i = +b.dataset.up; [order[i - 1], order[i]] = [order[i], order[i - 1]]; draw(); const f = box.querySelector(`[data-up="${i - 1}"]`); if (f && !f.disabled) f.focus(); });
+    box.querySelectorAll('[data-down]').forEach((b) => b.onclick = () => { const i = +b.dataset.down; [order[i + 1], order[i]] = [order[i], order[i + 1]]; draw(); const f = box.querySelector(`[data-down="${i + 1}"]`); if (f && !f.disabled) f.focus(); });
+    box.querySelectorAll('li').forEach((li) => {
+      li.ondragstart = (e) => { dragK = li.dataset.g; e.dataTransfer.effectAllowed = 'move'; li.classList.add('dragging'); };
+      li.ondragend = () => { dragK = null; li.classList.remove('dragging'); };
+      li.ondragover = (e) => { if (dragK) e.preventDefault(); };
+      li.ondrop = (e) => { e.preventDefault(); if (!dragK || dragK === li.dataset.g) return; const from = order.indexOf(dragK), to = order.indexOf(li.dataset.g); order.splice(from, 1); order.splice(to, 0, dragK); draw(); };
+    });
+  };
+  wire();
+  const v = await ask;
+  if (v === 'std') order = std;
+  if (v !== 'save' && v !== 'std') return;
+  try { if (order.join() === std.join()) localStorage.removeItem('hse-tune-order'); else localStorage.setItem('hse-tune-order', JSON.stringify(order)); } catch (_) {}
+  toast(order.join() === std.join() ? 'Tune up uses the standard order' : 'Tune-up order saved. Press Tune up to use it on this build.'); render();
+}
+function isTuned(objs) { const R = groupRank(); let last = -1; for (const o of objs) { const r = R[partGroup(g(o, 'ObjectID'))]; if (r < last) return false; last = r; } return true; }
 function duplicateParts(objs) { const seen = new Set(), dup = []; for (const o of objs) { const k = partKey(o); if (seen.has(k)) dup.push(o); else seen.add(k); } return dup; }
 // everything worth knowing about one corvette's build
 function corvetteHealth(i) {
@@ -6168,7 +6219,7 @@ PAGES.shipwright = (el) => {
   main.innerHTML = `<div class="sw-top"><div class="sw-pic"></div><div class="sw-topr"><div class="panel sw-bar">
       <div class="sw-title"><b>${esc(str(g(ship, 'Name')) || 'Corvette')}</b><span class="dim">Slot ${i + 1}${base ? ' · ' + plural(H.objs.length, 'part') : ''}</span></div>
       <div class="sw-acts">
-        <button class="btn primary sw-tune" type="button" data-a="tune"${base ? '' : ' disabled'}>Tune up</button>
+        <span class="sw-tune-wrap"><button class="btn primary sw-tune" type="button" data-a="tune"${base ? '' : ' disabled'}>Tune up</button><button class="btn icon-only sw-tune-set" type="button" id="swTuneSet" title="Tune-up order${isDefaultTune() ? '' : ' (your own)'}" aria-label="Tune-up order"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>${isDefaultTune() ? '' : '<span class="sw-tune-dot"></span>'}</button></span>
         <label class="check"><input type="checkbox" id="swAuto"${W.auto ? ' checked' : ''}> Tune up when pasting or loading</label>
         <span class="sw-gap"></span>
         <button class="btn" type="button" data-a="copy"${base ? '' : ' disabled'}>Copy all</button>
@@ -6186,6 +6237,7 @@ PAGES.shipwright = (el) => {
   // the corvette's picture, as on the Garage page: its render, its parts as a hologram, or a picture of the owner's
   { const it = coverItems().find((x) => x.kind === 'corvette' && x.i === i); if (it) pictureCard($('.sw-pic', main), it, 'Corvette'); }
   const $m = (q) => main.querySelector(q);
+  $m('#swTuneSet').onclick = () => tuneOrderDialog(base ? g(base, 'Objects') : []);
   const commit = (objs, msg) => { set(base, 'Objects', objs); markDirty(); if (msg) toast(msg); W.sel = new Set(); render(); };
   // replace the build with new parts, keeping the slot's own base (UserData, BaseType, name, owner)
   const replaceBuild = async (b, how) => {
@@ -6232,7 +6284,7 @@ PAGES.shipwright = (el) => {
     rows.innerHTML = objs.map((o, k) => {
       const id = str(g(o, 'ObjectID')), info = dbItem(id), nm = info ? info.name : id.replace(/^\^/, ''), grp = partGroup(id);
       if (q && !(nm + ' ' + id + ' ' + grp).toLowerCase().includes(q)) return '';
-      return `<div class="sw-row g-${grp}${W.sel.has(k) ? ' sel' : ''}" data-k="${k}"><span class="mono n">${k}</span><span class="nm">${esc(nm)}</span><span class="mono id">${esc(id.replace(/^\^/, ''))}</span><span class="grp">${esc(PART_GROUPS[GROUP_RANK[grp]][1])}</span><span class="mono sc">${partScale(o).toFixed(3)}</span></div>`;
+      return `<div class="sw-row g-${grp}${W.sel.has(k) ? ' sel' : ''}" data-k="${k}"><span class="mono n">${k}</span><span class="nm">${esc(nm)}</span><span class="mono id">${esc(id.replace(/^\^/, ''))}</span><span class="grp">${esc(GROUP_NAME[grp])}</span><span class="mono sc">${partScale(o).toFixed(3)}</span></div>`;
     }).join('');
   };
   draw();

@@ -244,7 +244,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   <ul class="feat">
     <li><b>Cockpits</b>: the first two in the list are the camera cockpit and the boarding cockpit.</li>
     <li><b>Landing bay</b>: the first one is where you beam up. If it's scaled too small, beam-up won't work, and the check says so.</li>
-    <li><b>Part order</b>: performance parts listed late can lose stats or misbehave. <span class="ui">Tune up</span> fixes the order (TAZmd's documented priority order; cockpits and the beam-up bay stay put). Tick <b>Tune up when pasting or loading</b> to do it every time.</li>
+    <li><b>Part order</b>: performance parts listed late can lose stats or misbehave. <span class="ui">Tune up</span> fixes the order (TAZmd's documented priority order; cockpits and the beam-up bay stay put). Tick <b>Tune up when pasting or loading</b> to do it every time. The gear beside <span class="ui">Tune up</span> sets your own order: move the groups with the arrows or drag them, then <span class="ui">Save</span>; <span class="ui">Standard order</span> puts TAZmd's back. A dot on the gear means your own order is in use.</li>
     <li><b>Stacked parts</b>: parts sitting exactly on top of an identical one, with a one-click fix.</li>
   </ul>
   <h2>Builds in and out</h2>
@@ -623,11 +623,12 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   <ol class="steps">
     <li>On Shipwright (or Bases), press <span class="ui">Get the Blender add-on</span> and install it in Blender (Edit, Preferences, Add-ons, Install from disk).</li>
     <li>Pick a corvette or base and press <span class="ui">Turn on for this corvette</span>. The editor offers to open the <code>.blend</code> it was last built from (<span class="ui">Open in Blender</span>), or <span class="ui">Choose</span> another.</li>
-    <li>In Blender, the 3D view's sidebar has a <b>Harmonious</b> tab that shows the link. Set which corvette or base the file is for.</li>
+    <li>In Blender, the 3D view's sidebar has a <b>LiveLink</b> tab that shows the link. Set which corvette or base the file is for.</li>
     <li>Build. Each time you save the file (or press <b>Send now</b>), the build goes into your save. The editor backs up the save each time, and a card at the top of its window says what arrived.</li>
   </ol>
   <div class="note"><b>The wrong corvette guard</b>Each .blend remembers which corvette or base it's for. If a build arrives for a different one, the editor asks before writing it anywhere.</div>
   <p>Close No Man's Sky before LiveLink writes, and reload the save in the game to see the result.</p>
+  <div class="note"><b>Updating the add-on</b>The editor updates itself, but Blender keeps the add-on you installed. When a new add-on comes out (the What's new list says so), press <span class="ui">Get the Blender add-on</span> again and install it over the old one.</div>
 </section>
 
 <section class="page" id="browser" data-group="more" data-title="Browser version" data-c="#8fb3c4">

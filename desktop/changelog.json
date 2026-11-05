@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.05.1703",
+  "date": "2026-11-05",
+  "notes": [
+   "Shipwright: the gear beside Tune up lets you set your own tune-up order. Move the groups with the arrows or drag them; Standard order puts TAZmd's order back.",
+   "New Blender add-on: the LiveLink panel now shows the LiveLink logo and a Support the creator section. Press Get the Blender add-on on Shipwright and install it over the old one to get it."
+  ]
+ },
+ {
   "version": "2026.11.05.1501",
   "date": "2026-11-05",
   "notes": [

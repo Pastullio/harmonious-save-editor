@@ -70,7 +70,7 @@ Your traveller at a glance.
 
 Corvette build tools.
 
-- **Tune up** puts a corvette's parts in the order the game reads them, so performance parts aren't listed too late and lose stats. The order follows TAZmd's documented priority list; the camera cockpit, boarding cockpit and beam-up bay stay where they are.
+- **Tune up** puts a corvette's parts in the order the game reads them, so performance parts aren't listed too late and lose stats. The order follows TAZmd's documented priority list; the camera cockpit, boarding cockpit and beam-up bay stay where they are. The gear beside Tune up lets you set your own order of groups (arrows or drag); **Standard order** puts TAZmd's back.
 - **Health check** for each build: no cockpit, no landing bay, a beam-up bay scaled too small to work, parts out of order, or parts stacked exactly on top of an identical part (with a one-click fix).
 - **Copy and paste builds**: copy all parts or just the build, and paste a build from TAZ's tools, another corvette or a file. Pasting replaces only the parts; the corvette keeps its name, class and owner.
 - **Save to a file** and **Save as…** for builds.
@@ -258,7 +258,7 @@ These need [Blender](https://www.blender.org) (4.2 or newer) with [Charon Forge]
 
 - **Corvette renders**: real pictures of your corvettes, made by your Blender in the background. Renders are cached, so a build is only rendered once. Turn on **automatic renders** in Cover settings and new corvettes get a picture a few seconds after a save opens. **Render the other angles** adds front, side, back and top views.
 - **Load from a .blend…**: on the Shipwright and Bases pages, read a corvette or base straight from a `.blend` file, without opening Blender yourself.
-- **LiveLink**: get the Blender add-on from the LiveLink panel (**Get the Blender add-on**). Turn LiveLink on for a corvette or base, then every time you save in Blender (or press **Send now** in the Harmonious tab), the build goes into your save. The app backs up the save each time. Both sides show that they're linked. Each `.blend` remembers which corvette or base it's for, and the editor asks before putting a build somewhere else. **Open in Blender** opens the file a corvette was last built from.
+- **LiveLink**: get the Blender add-on from the LiveLink panel (**Get the Blender add-on**). Turn LiveLink on for a corvette or base, then every time you save in Blender (or press **Send now** in the LiveLink tab), the build goes into your save. The app backs up the save each time. Both sides show that they're linked. Each `.blend` remembers which corvette or base it's for, and the editor asks before putting a build somewhere else. **Open in Blender** opens the file a corvette was last built from. Blender keeps the add-on you installed, so when a new one comes out, get it again and install it over the old one.
 
 ## The browser version
 
