@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.05.1712",
+  "date": "2026-11-05",
+  "notes": [
+   "Blender add-on: Support the creator now also links to the Portal Glyph Banner and Traveller credentials makers. Press Get the Blender add-on on Shipwright and install it over the old one to get it."
+  ]
+ },
+ {
   "version": "2026.11.05.1703",
   "date": "2026-11-05",
   "notes": [

@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 1, 0),
+    "version": (1, 1, 1),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -369,6 +369,12 @@ SUPPORT = (
     ("Harmonious Save Editor", "https://github.com/Pastullio/harmonious-save-editor", "URL"),
 )
 
+# the creator's other free tools
+TOOLS = (
+    ("Portal Glyph Banner", "https://portalglyphbanner.netlify.app/", "IMAGE_DATA"),
+    ("Traveller credentials", "https://harmonious-credentials.netlify.app/", "USER"),
+)
+
 _PREVIEWS = None
 
 
@@ -480,6 +486,10 @@ class HARMONIOUS_PT_support(bpy.types.Panel):
             text.label(text=line)
         col = layout.column(align=True)
         for label, url, icon in SUPPORT:
+            col.operator("wm.url_open", text=label, icon=icon).url = url
+        layout.label(text="More free tools")
+        col = layout.column(align=True)
+        for label, url, icon in TOOLS:
             col.operator("wm.url_open", text=label, icon=icon).url = url
 
 

@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.05.1703",
+  "version": "2026.11.05.1712",
   "date": "2026-11-05",
-  "size": 13186560,
-  "sha256": "068d945a8a14c0469cd54b8e8c5ad267e2c42c9757a0ba8b3fa97730c26f61ff",
-  "notes": "Shipwright: the gear beside Tune up lets you set your own tune-up order. Move the groups with the arrows or drag them; Standard order puts TAZmd's order back.\nNew Blender add-on: the LiveLink panel now shows the LiveLink logo and a Support the creator section. Press Get the Blender add-on on Shipwright and install it over the old one to get it.",
+  "size": 13187072,
+  "sha256": "aa4888e31ea2d1577516c2f1b1e6a5e7986c87da96e9eb1fb083035c527cfdce",
+  "notes": "Blender add-on: Support the creator now also links to the Portal Glyph Banner and Traveller credentials makers. Press Get the Blender add-on on Shipwright and install it over the old one to get it.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
