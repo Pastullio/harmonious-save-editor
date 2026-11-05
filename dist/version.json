@@ -1,8 +1,8 @@
 {
-  "version": "2026.11.05.1455",
+  "version": "2026.11.05.1501",
   "date": "2026-11-05",
   "size": 13030912,
-  "sha256": "ea5e6a910f286822279965ba6aa62c6a75a8417115e6e1eacbbf67dcf3c5e950",
-  "notes": "After an update, the editor now shows what's new (like this).\nAbout shows which version you're using, with a What's new link for recent changes.",
+  "sha256": "33756b50f129999d123c037edca34397c715157f10b2ada299a89a42298216cf",
+  "notes": "About: What's new and Check for updates sit on one line under the version.",
   "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

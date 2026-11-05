@@ -143,7 +143,9 @@ body:not(.on-landing) .land-corner { display: none; }
 .about-sky { margin: -4px 0 14px; padding: 18px 18px 10px; border-radius: var(--r-lg); background: radial-gradient(120% 90% at 50% 20%, #12305a 0%, #0a1630 55%, #050a18 100%); text-align: center; }
 .about-sky img { width: min(420px, 100%); height: auto; display: block; margin: 0 auto; }
 .about-sky .ver { color: #b9d6ff; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; margin-top: 6px; }
-.about-version { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+.about-version { margin: 14px 0 0; padding-top: 14px; border-top: 1px solid var(--line); font-size: 14px; display: grid; gap: 10px; }
+.about-version p { margin: 0; }
+.about-ver-acts { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .whatsnew { display: grid; gap: 14px; max-height: 60vh; overflow-y: auto; }
 .whatsnew h4 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
 .whatsnew h4 .dim { font-weight: 400; font-size: 12px; margin-left: 6px; }
@@ -1286,9 +1288,9 @@ function aboutDialog() {
     <p class="dim" style="margin:12px 0 6px">Built with thanks to</p>
     <ul class="about-credits"><li>libNOM.map and libNOM.io by zencq (save keys and format)</li><li>MBINCompiler by monkeyman192 and contributors (game table layouts)</li><li>HGPAKtool by monkeyman192 (game archive format)</li><li>Charon Forge by xX-Charon-Xx (corvette renders)</li><li>nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, and its JavaScript port nms-core by elegra1965 (system and planet prediction; MIT)</li><li>Pillow (texture decoding), klauspost/compress (zstd), Jost by indestructible type* (typeface)</li></ul>
     <p class="dim" style="font-size:13px;margin:12px 0 0">Free software under the GPL-3.0 licence. Not affiliated with Hello Games.</p>
-    <p class="about-version">${window.NMS_APP && appVer() ? `Harmonious Save Editor version: <b class="mono">${esc(appVer())}</b> <button class="link" type="button" id="aboutNew">What's new</button>` : 'Harmonious Save Editor, browser version'}</p>`, window.NMS_APP ? [['Close', false], ['Check for updates', 'upd', 'primary']] : [['Close', true, 'primary']]).then((v) => { if (v === 'upd') checkForUpdate(true); });
+    <div class="about-version">${window.NMS_APP && appVer() ? `<p>Harmonious Save Editor version: <b class="mono">${esc(appVer())}</b></p><div class="about-ver-acts"><button class="link" type="button" id="aboutNew">What's new</button><button class="btn primary" type="button" id="aboutUpd">Check for updates</button></div>` : '<p>Harmonious Save Editor, browser version</p>'}</div>`, [['Close', false]]);
 }
-document.addEventListener('click', (e) => { if (e.target.closest('.about-btn')) aboutDialog(); if (e.target.closest('#aboutNew')) whatsNew(true); });
+document.addEventListener('click', (e) => { if (e.target.closest('.about-btn')) aboutDialog(); if (e.target.closest('#aboutNew')) whatsNew(true); if (e.target.closest('#aboutUpd')) checkForUpdate(true); });
 document.querySelectorAll('.guide-btn').forEach((a) => { a.href = GUIDE_URL; });
 syncThemeButtons();
 

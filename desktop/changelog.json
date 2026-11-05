@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.05.1501",
+  "date": "2026-11-05",
+  "notes": [
+   "About: What's new and Check for updates sit on one line under the version."
+  ]
+ },
+ {
   "version": "2026.11.05.1455",
   "date": "2026-11-05",
   "notes": [
