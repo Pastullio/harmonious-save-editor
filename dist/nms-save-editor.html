@@ -7326,7 +7326,7 @@ async function tuneOrderDialog(objs) {
   let order = tuneOrder();
   const count = {}; for (const o of objs || []) { const k = partGroup(g(o, 'ObjectID')); count[k] = (count[k] || 0) + 1; }
   const std = PART_GROUPS.map(([k]) => k);
-  const list = () => order.map((k, i) => `<li draggable="true" data-g="${k}"><span class="to-n mono">${i + 1}</span><span class="to-name">${esc(GROUP_NAME[k])}${count[k] ? ` <span class="dim">(${count[k]} in this build)</span>` : ''}</span>
+  const list = () => order.map((k, i) => `<li draggable="true" data-g="${k}"><span class="to-n mono">${i + 1}</span><span class="to-name">${esc(GROUP_NAME[k])}${count[k] ? ` <span class="dim">(${count[k].toLocaleString()} in this build)</span>` : ''}</span>
     <span class="to-acts"><button class="btn small" type="button" data-up="${i}" aria-label="Move ${esc(GROUP_NAME[k])} up"${i ? '' : ' disabled'}>↑</button><button class="btn small" type="button" data-down="${i}" aria-label="Move ${esc(GROUP_NAME[k])} down"${i < order.length - 1 ? '' : ' disabled'}>↓</button></span></li>`).join('');
   const ask = dialog('Tune-up order', `<p class="dim" style="margin-top:0">Tune up puts a build's parts in this order, top first. Change it to suit your builds; Standard order is TAZmd's, the one most builds work best with. Parts keep their own order within each group.</p>
     <ol class="tune-order" id="toList">${list()}</ol>`,

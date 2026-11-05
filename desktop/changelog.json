@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.05.1727",
+  "date": "2026-11-05",
+  "notes": [
+   "Tune-up order: big part counts get thousands separators."
+  ]
+ },
+ {
   "version": "2026.11.05.1712",
   "date": "2026-11-05",
   "notes": [
