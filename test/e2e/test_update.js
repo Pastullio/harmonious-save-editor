@@ -10,7 +10,8 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   build('2026.01.01.0000', dir + '/hse'); build('2026.12.31.2359', dir + '/pub/hse-new');
   const bin = fs.readFileSync(dir + '/pub/hse-new');
   const srv = http.createServer((q, r) => {
-    if (q.url === '/version.json') { r.setHeader('content-type', 'application/json'); r.end(JSON.stringify({ version: '2026.12.31.2359', date: '2026-12-31', notes: 'Test release', size: bin.length, sha256: crypto.createHash('sha256').update(bin).digest('hex'), url: `http://127.0.0.1:${srv.address().port}/hse-new` })); return; }
+    if (q.url === '/version.json') { r.setHeader('content-type', 'application/json'); r.end(JSON.stringify({ version: '2026.12.31.2359', date: '2026-12-31', notes: 'Test release', size: bin.length, sha256: crypto.createHash('sha256').update(bin).digest('hex'), url: `http://127.0.0.1:${srv.address().port}/release-not-made-yet`, mirror: `http://127.0.0.1:${srv.address().port}/hse-new` })); return; }
+    if (q.url === '/release-not-made-yet') { r.statusCode = 404; r.end('Not Found'); return; }   // the release isn't there yet: the mirror is used
     if (q.url === '/hse-new') {   // slowly, in 20 pieces over about 4 s, so the updating screen can be seen mid-download
       r.setHeader('content-length', bin.length); let k = 0; const step = Math.ceil(bin.length / 20);
       const t = setInterval(() => { r.write(bin.subarray(k, k + step)); k += step; if (k >= bin.length) { clearInterval(t); r.end(); } }, 200); return;

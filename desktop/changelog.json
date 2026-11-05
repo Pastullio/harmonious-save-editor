@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.05.2227",
+  "date": "2026-11-05",
+  "notes": [
+   "Updates now come from the editor's Releases page on GitHub, where every version is listed."
+  ]
+ },
+ {
   "version": "2026.11.05.1727",
   "date": "2026-11-05",
   "notes": [

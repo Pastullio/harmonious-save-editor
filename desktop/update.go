@@ -32,6 +32,7 @@ const defaultUpdateURL = "https://raw.githubusercontent.com/Pastullio/harmonious
 type releaseInfo struct {
 	Version string `json:"version"`
 	URL     string `json:"url"`
+	Mirror  string `json:"mirror"` // tried when url fails (the release is made by a GitHub Action a minute after the push)
 	Size    int64  `json:"size"`
 	SHA256  string `json:"sha256"`
 	Notes   string `json:"notes"`
@@ -203,8 +204,18 @@ func handleUpdateInstall(w http.ResponseWriter, r *http.Request) {
 }
 
 func download(rel *releaseInfo, dest string) error {
+	err := downloadFrom(rel, rel.URL, dest)
+	if err != nil && rel.Mirror != "" && rel.Mirror != rel.URL {
+		log.Printf("update download failed (%v), trying the mirror", err)
+		setUpdateStage("downloading")
+		err = downloadFrom(rel, rel.Mirror, dest)
+	}
+	return err
+}
+
+func downloadFrom(rel *releaseInfo, url, dest string) error {
 	c := &http.Client{Timeout: 5 * time.Minute}
-	res, err := c.Get(rel.URL)
+	res, err := c.Get(url)
 	if err != nil {
 		return err
 	}

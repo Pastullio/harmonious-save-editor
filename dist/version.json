@@ -1,8 +1,9 @@
 {
-  "version": "2026.11.05.1727",
+  "version": "2026.11.05.2227",
   "date": "2026-11-05",
-  "size": 13187584,
-  "sha256": "e55cb29022b86e4c01c8de2ca2ce9a72966c82b577866a573e2b55372a9dc0f4",
-  "notes": "Tune-up order: big part counts get thousands separators.",
-  "url": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
+  "size": 13188608,
+  "sha256": "806daad3fbba7e5306feb603a326d2363d66fdcb7178536a1710320e8d5286ac",
+  "notes": "Updates now come from the editor's Releases page on GitHub, where every version is listed.",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.05.2227/HarmoniousSaveEditor.exe",
+  "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

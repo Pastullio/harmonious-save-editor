@@ -24,7 +24,7 @@ Nothing is uploaded anywhere. Item names and icons come from your own copy of th
 
 ## Getting started
 
-1. Download **`dist/Harmonious Save Editor.exe`** from this repository. It's one small program with no installer. `dist/Harmonious Save Editor Guide.html` next to it is the user guide; the app also opens it from **Guide** on the save list and **User guide** in the sidebar.
+1. **[Download the editor](https://github.com/Pastullio/harmonious-save-editor/releases/latest/download/HarmoniousSaveEditor.exe)** (always the newest version; every version is on the [Releases](https://github.com/Pastullio/harmonious-save-editor/releases) page). It's one small program with no installer. The user guide is attached to each release too; the app also opens it from **Guide** on the save list and **User guide** in the sidebar.
 2. Run it. Windows SmartScreen warns the first time because the exe isn't code-signed: choose **More info**, then **Run anyway**.
 3. The editor finds your saves in `%APPDATA%\HelloGames\NMS` and opens in its own window. Pick a save.
 4. On first start it builds an item library from your No Man's Sky install (about a minute). That's where item names, icons and descriptions come from.
@@ -274,6 +274,7 @@ These need [Blender](https://www.blender.org) (4.2 or newer) with [Charon Forge]
 ```
 node build.js            # dist/nms-save-editor.html + desktop/index.html
 ./build-desktop.sh       # dist/Harmonious Save Editor.exe (Go 1.22+)
+tools/release.sh --counts   # downloads per release (releases are made by a GitHub Action on push)
 ```
 
 ### Testing

@@ -1,0 +1,30 @@
+# Publishes each build as a GitHub release, so GitHub counts downloads and self-updates of the editor.
+# Runs when dist/version.json changes on main; the release is v<version> with the exe, the guide and the browser version.
+name: Release
+on:
+  push:
+    branches: [main]
+    paths: [dist/version.json]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(jq -r .version dist/version.json)
+          NOTES=$(jq -r '.notes // ""' dist/version.json)
+          [ -n "$NOTES" ] || NOTES="Small fixes."
+          if gh release view "v$VERSION" >/dev/null 2>&1; then echo "v$VERSION already released"; exit 0; fi
+          mkdir out
+          cp "dist/Harmonious Save Editor.exe" out/HarmoniousSaveEditor.exe
+          cp "dist/Harmonious Save Editor Guide.html" out/Harmonious-Save-Editor-Guide.html
+          cp dist/nms-save-editor.html out/nms-save-editor-browser.html
+          printf '%s\n\n**Download:** HarmoniousSaveEditor.exe below (Windows, no installer). If you already have the editor, it updates itself.\nThe user guide and the browser version are attached too.\n' "$NOTES" > notes.md
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "Harmonious Save Editor $VERSION" --notes-file notes.md --latest \
+            out/HarmoniousSaveEditor.exe out/Harmonious-Save-Editor-Guide.html out/nms-save-editor-browser.html
