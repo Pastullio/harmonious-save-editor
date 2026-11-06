@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.05.2227",
-  "date": "2026-11-05",
-  "size": 13188608,
-  "sha256": "806daad3fbba7e5306feb603a326d2363d66fdcb7178536a1710320e8d5286ac",
-  "notes": "Updates now come from the editor's Releases page on GitHub, where every version is listed.",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.05.2227/HarmoniousSaveEditor.exe",
+  "version": "2026.11.06.2132",
+  "date": "2026-11-06",
+  "size": 13189120,
+  "sha256": "bc7711650774654083182e129721d806718172439216563ad77ec29e0718bed4",
+  "notes": "Blender add-on: Support the creator now starts closed; click it to open. Press Get the Blender add-on on Shipwright and install it over the old one to get it.",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.06.2132/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
