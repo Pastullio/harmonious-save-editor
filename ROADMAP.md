@@ -122,7 +122,8 @@ The save file holds no images, so a ship's picture has to come from one of these
 - [x] "Find anything" box (sidebar, Ctrl+K): ships, multi-tools, exocraft, bases, corvettes, settlements, frigates, companions, settings, standings and every item in every inventory; Enter jumps to it
 - [x] Raw data stays available as the expert fallback (the last find result searches it)
 - [x] Companion pictures: each companion's real model from the game's creature files (its own head, wings, tail…), in the list too; or a screenshot (2026-11-01)
-- [ ] Companion battle stats (class overrides, treats, moves): their keys aren't in libNOM's mapping yet, so they stay in Raw data
+- [x] Companion battle type and stat classes (tester request, 2026-11-09): type greyed out for species the game fixes, S class for all; keys mapped by hand in `vendor/libnom/mapping_extra.json`
+- [ ] Companion battle treats, moves and victories (keys still unmapped or ambiguous)
 - [x] Check the standing rank names against a real `leveledstatstable.mbin` (2026-10-30: the layout matches and every rank name resolves, e.g. Gek Trade Lord, Vy'keen Templar, Korvax Traveller of the Atlas)
 
 ## Phase 7 — Coordinates and planets [8] [10]

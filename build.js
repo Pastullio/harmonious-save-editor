@@ -5,6 +5,8 @@ const MAP_DIR = process.env.LIBNOM_MAP || path.join(__dirname, 'vendor/libnom');
 function loadMap(file) { return JSON.parse(fs.readFileSync(path.join(MAP_DIR, file), 'utf8')); }
 const mb = loadMap('mapping_mbincompiler.json');
 const legacy = loadMap('mapping_legacy.json');
+// keys newer than libNOM.map's mapping, matched by hand (see its note); always from vendor/libnom
+const extra = JSON.parse(fs.readFileSync(path.join(__dirname, 'vendor/libnom/mapping_extra.json'), 'utf8'));
 
 // libNOM splits the list at "UserSettingsData": entries before it are for saves, from it onward for accountdata.
 function split(list) { const i = list.findIndex((p) => p.Value === 'UserSettingsData'); return i < 0 ? [list, []] : [list.slice(0, i), list.slice(i)]; }
@@ -14,6 +16,8 @@ for (const src of [mb.Mapping, legacy.Mapping]) {
   for (const p of s) if (!(p.Key in save)) save[p.Key] = p.Value;
   for (const p of a) if (!(p.Key in account)) account[p.Key] = p.Value;
 }
+const known = new Set(Object.values(save));
+for (const p of extra.Mapping) if (!(p.Key in save) && !known.has(p.Value)) save[p.Key] = p.Value;
 const mapping = { version: mb.libMBIN_version, save, account };
 
 let html = fs.readFileSync(path.join(__dirname, 'src/app.html'), 'utf8');

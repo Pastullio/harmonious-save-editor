@@ -286,3 +286,48 @@ func handleCreatureSample(w http.ResponseWriter, r *http.Request) {
 	_ = revealFile(p)
 	writeJSON(w, map[string]any{"path": p, "files": len(names), "size": buf.Len()})
 }
+
+// Battle types the game fixes per species (owner, 2026-11-09, a tester's request: change a companion's type where
+// the game allows it). Other companions take their type from the biome they came from (the pet's Biome field);
+// a species with a forced type (robots are all Mechanical) ignores it. GcCreatureDataTable (template
+// 0x37D55099B13B9F9C, libMBIN 2026-11): a list at 0x20 of 0xD0-byte GcCreatureData entries, Id at 0x30 (fixed
+// 0x10), PetBattlerForcedAffinity at 0xCC (a byte, GcPetBattlerAffinity: 0 Normal = not forced). Checked on the
+// owner's table: 86 entries, 19 forced (8 Mech).
+var petAffinities = []string{"Normal", "Lush", "Cold", "Fire", "Toxic", "Barren", "Radioactive", "Weird", "Mech"}
+
+func creatureTypes(raw []byte) (map[string]string, error) {
+	m, err := openMbin(raw, 0x37D55099B13B9F9C, "creaturedatatable.mbin")
+	if err != nil {
+		return nil, err
+	}
+	out := map[string]string{}
+	a, n := m.list(0x20)
+	for i := 0; i < n; i++ {
+		e := a + i*0xD0
+		if !m.ok(e, 0xD0) {
+			break
+		}
+		id, f := m.fstr(e+0x30, 0x10), int(m.d[e+0xCC])
+		if id != "" && f > 0 && f < len(petAffinities) {
+			out[id] = petAffinities[f]
+		}
+	}
+	return out, nil
+}
+
+func handleCreatureTypes(w http.ResponseWriter, r *http.Request) {
+	t := findGameFile("/creaturedatatable.mbin")
+	if t == "" {
+		writeJSON(w, map[string]any{"types": nil, "error": "the creature table wasn't found in the game files"})
+		return
+	}
+	raw, err := gameFile(t)
+	if err == nil {
+		var types map[string]string
+		if types, err = creatureTypes(raw); err == nil {
+			writeJSON(w, map[string]any{"types": types})
+			return
+		}
+	}
+	writeJSON(w, map[string]any{"types": nil, "error": err.Error()})
+}

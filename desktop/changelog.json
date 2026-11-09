@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.09.1601",
+  "date": "2026-11-09",
+  "notes": [
+   "Companions: a Creature battles panel to change a companion's type (greyed out for species the game fixes, such as robots) and set its health, agility and combat effectiveness classes, or make them all S class."
+  ]
+ },
+ {
   "version": "2026.11.06.2132",
   "date": "2026-11-06",
   "notes": [

@@ -140,6 +140,7 @@ func main() {
 	mux.HandleFunc("/api/model/boxes", handleModelBoxes)
 	mux.HandleFunc("/api/model/creature", handleCreature)
 	mux.HandleFunc("/api/model/creature/sample", handleCreatureSample)
+	mux.HandleFunc("/api/model/creature/types", handleCreatureTypes)
 	mux.HandleFunc("/api/itemlib/items.json", handleItemLibItems)
 	mux.HandleFunc("/api/itemlib/icon", handleItemLibIcon)
 	mux.HandleFunc("/api/backup-all", handleBackupAll)

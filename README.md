@@ -166,6 +166,7 @@ Your creature companions.
 - **A picture of each one**: the desktop app draws each companion's real model from your game files, with the head, wings, tail and other parts it was born with. The model also shows beside its name in the list. **Change picture** uses a screenshot or any image instead.
 - **Name, size, trust, temperament and mood**, as sliders.
 - **Fed, happy and fully trusting** in one click.
+- **Creature battles**: change a companion's type (greyed out for species the game fixes, such as robots, which are always Mechanical) and set its health, agility and combat effectiveness classes, or make them all S class.
 - **Add a companion** to an empty slot.
 
 ### Bases

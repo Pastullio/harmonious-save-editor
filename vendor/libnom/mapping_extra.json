@@ -1,0 +1,11 @@
+{
+ "note": "Keys libNOM.map 6.11.0.1 doesn't have yet, matched by hand to libMBIN's GcPetData (MBINCompiler, 2026-11-04) from their shapes in the owner's save: the only unmapped bool, the 3 InventoryClass entries (one per GcPetBattlerCoreStat: MaxHealth, Speed, CombatPotential), the 3 ints, the 5 move entries and the 5 move IDs. Drop an entry once libNOM.map has it.",
+ "Mapping": [
+  { "Key": "isp", "Value": "PetBattlerUseCoreStatClassOverrides" },
+  { "Key": "E<S", "Value": "PetBattlerCoreStatClassOverrides" },
+  { "Key": "ujr", "Value": "PetBattlerTreatsEaten" },
+  { "Key": "fjE", "Value": "PetBattlerMoveList" },
+  { "Key": ":oU", "Value": "MoveTemplateID" },
+  { "Key": "jtr", "Value": "PetBattlerMoves" }
+ ]
+}

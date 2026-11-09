@@ -46,3 +46,29 @@ func TestCreatureFilenames(t *testing.T) {
 		}
 	}
 }
+
+// the forced battle types: HSE_TEST_CREATURES=<creaturedatatable.mbin> also reads a real table
+func TestCreatureTypes(t *testing.T) {
+	raw := make([]byte, 0x30+2*0xD0)
+	binary.LittleEndian.PutUint32(raw, 0xCCCCCCCC)
+	binary.LittleEndian.PutUint64(raw[0x10:], 0x37D55099B13B9F9C)
+	binary.LittleEndian.PutUint64(raw[0x20:], 0x10)
+	binary.LittleEndian.PutUint32(raw[0x28:], 2)
+	copy(raw[0x30+0x30:], "ROBO_PET")
+	raw[0x30+0xCC] = 8
+	copy(raw[0x30+0xD0+0x30:], "QUAD_PET")
+	got, err := creatureTypes(raw)
+	if err != nil || len(got) != 1 || got["ROBO_PET"] != "Mech" {
+		t.Fatalf("got %v, %v", got, err)
+	}
+	if f := os.Getenv("HSE_TEST_CREATURES"); f != "" {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		real, err := creatureTypes(b)
+		if err != nil || real["ROBO_PET"] != "Mech" || real["FLYINGSNAKE"] != "Barren" || len(real) != 19 {
+			t.Fatalf("real table: %v, %v", real, err)
+		}
+	}
+}

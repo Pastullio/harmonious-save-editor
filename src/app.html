@@ -6787,6 +6787,45 @@ function settlementsEditor(el, B, list, me) {
 // ---------------------------------------------------------------- companions
 const PET_TRAITS = ['Helpfulness', 'Aggression', 'Independence'];   // GcCreaturePetTraits, -1 to 1
 const PET_MOODS = ['Hunger', 'Loneliness'];                          // GcCreaturePetMood, 0 to 1
+// Creature battles (owner, 2026-11-09, a tester's request). A companion's battle type comes from the biome it was
+// found on (its Biome field), except for species the game fixes (GcCreatureData.PetBattlerForcedAffinity, read
+// from the game by /api/model/creature/types; PET_FORCED is the owner's table for when the game isn't found).
+// The three stat classes are rolled by the game unless PetBattlerUseCoreStatClassOverrides is on, when
+// PetBattlerCoreStatClassOverrides (one per GcPetBattlerCoreStat: MaxHealth, Speed, CombatPotential) is used.
+const PET_TYPES = [['Lush', 'Tropical'], ['Frozen', 'Frost'], ['Scorched', 'Fire'], ['Toxic', 'Toxic'], ['Barren', 'Desert'], ['Radioactive', 'Radioactive'], ['Weird', 'Anomalous']];   // biome, the type it gives
+const PET_AFFINITY = { Normal: 'Normal', Lush: 'Tropical', Cold: 'Frost', Fire: 'Fire', Toxic: 'Toxic', Barren: 'Desert', Radioactive: 'Radioactive', Weird: 'Anomalous', Mech: 'Mechanical' };
+const PET_FORCED = { FLYINGSNAKE: 'Barren', ROBOTANTELOPE: 'Mech', PLANTCAT: 'Lush', BONECAT: 'Lush', WALKINGBUILDING: 'Mech', FIEND: 'Toxic', BUGFIEND: 'Toxic', SCUTTLER_PET: 'Toxic', LAND_JELLYFISH: 'Weird', ROBO_PET: 'Mech', HOVER_PET: 'Mech', PURPLE_WEIRD: 'Weird', BONECOW: 'Lush', ROBO_RODENT: 'Mech', WALKER_CRAB: 'Mech', FISHBOWL_PET3: 'Mech', LANDSQUID_PET: 'Weird', SPIDERQUAD_PET: 'Mech', HORROR_PET: 'Toxic' };
+const PET_STATS = ['Health', 'Agility', 'Combat effectiveness'];
+let PET_FORCED_LIVE = null;   // from the game, once fetched
+function petForcedType(p) {
+  const id = str(g(p, 'CreatureID')).replace(/^\^/, '').toUpperCase();
+  const t = (PET_FORCED_LIVE || PET_FORCED)[id];
+  return t ? PET_AFFINITY[t] || t : '';
+}
+function petBattleHtml(p) {
+  const over = g(p, 'PetBattlerCoreStatClassOverrides');
+  if (!Array.isArray(over)) return '';   // a save from before creature battles
+  const forced = petForcedType(p), biome = str(g(p, 'Biome', 'Biome')), use = g(p, 'PetBattlerUseCoreStatClassOverrides') === true;
+  const known = PET_TYPES.find(([b]) => b === biome);
+  const typeSel = forced
+    ? `<select class="input" id="pType" disabled title="Fixed by the game for this species"><option>${esc(forced)}</option></select>`
+    : `<select class="input" id="pType">${known ? '' : `<option value="" selected>${esc(biome && biome !== 'All' ? humanize(biome) + ' world' : 'From where it was found')}</option>`}${PET_TYPES.map(([b, t]) => `<option value="${b}"${b === biome ? ' selected' : ''}>${t}</option>`).join('')}</select>`;
+  const cls = (k) => str(g(over[k], 'InventoryClass')) || 'C';
+  return `<div class="panel pet-battle"><h3>Creature battles</h3><div class="details-grid">
+      <label class="field"><span>Type ${hint(forced ? 'The game gives every one of this species the ' + forced + ' type, so it can\'t be changed.' : 'A companion\'s type comes from the kind of world it was found on. Changing it changes that world.')}</span>${typeSel}</label>
+      ${PET_STATS.map((l, k) => k < over.length ? `<label class="field"><span>${l}</span><select class="input" data-pcls="${k}"${use ? '' : ' disabled'}>${['C', 'B', 'A', 'S'].map((c) => `<option${use && c === cls(k) ? ' selected' : ''}>${c}</option>`).join('')}${use ? '' : '<option selected>Rolled</option>'}</select></label>` : '').join('')}
+    </div>
+    <div class="toolbar"><label class="check"><input type="checkbox" id="pClsUse"${use ? ' checked' : ''}> Set the stat classes here ${hint('Off: the game rolls each class itself. On: the classes above are used instead.')}</label><button class="btn" type="button" id="pAllS">Make every stat S class</button></div></div>`;
+}
+function wirePetBattle(main, p) {
+  const over = g(p, 'PetBattlerCoreStatClassOverrides'); if (!Array.isArray(over)) return;
+  const ty = $('#pType', main);
+  if (ty && !ty.disabled) ty.onchange = () => { if (!ty.value) return; set(g(p, 'Biome'), 'Biome', ty.value); toast('Type set to ' + ty.selectedOptions[0].textContent); render(); };
+  const setUse = (on) => set(p, 'PetBattlerUseCoreStatClassOverrides', on);
+  $('#pClsUse', main).onchange = (e) => { setUse(e.target.checked); render(); };
+  main.querySelectorAll('[data-pcls]').forEach((sel) => sel.onchange = () => { set(over[+sel.dataset.pcls], 'InventoryClass', sel.value); });
+  $('#pAllS', main).onclick = () => { for (const o of over) set(o, 'InventoryClass', 'S'); setUse(true); toast(petName(p, S.pets.pick) + ' has S class stats'); render(); };
+}
 const isPet = (p) => p instanceof Map && str(g(p, 'CreatureID')) !== '^' && str(g(p, 'CreatureID')) !== '';
 const petName = (p, i) => str(g(p, 'CustomName')) || humanize(str(g(p, 'CreatureID')).replace(/^\^/, '').toLowerCase().replace(/_/g, ' ')) || 'Companion ' + (i + 1);
 // a copy of a companion you have, in a free unlocked slot (born now, same look and temperament)
@@ -6854,7 +6893,10 @@ PAGES.companions = (el) => {
       ${PET_TRAITS.map((l, k) => k < traits.length ? slider('data-trait', k, num(traits[k]), -1, 1, l, 'Low', 'High') : '').join('')}
     </div></div>
     <div class="panel"><h3>Mood</h3><div class="pet-grid">${PET_MOODS.map((l, k) => k < moods.length ? slider('data-mood', k, num(moods[k]), 0, 1, l, 'Content', 'Needs you') : '').join('')}</div>
-      <div class="toolbar"><button class="btn primary" type="button" id="pHappy">Fed, happy and fully trusting</button></div></div>`;
+      <div class="toolbar"><button class="btn primary" type="button" id="pHappy">Fed, happy and fully trusting</button></div></div>
+    ${petBattleHtml(p)}`;
+  wirePetBattle(main, p);
+  if (APP && S.lib && S.lib.game && !PET_FORCED_LIVE) api('/api/model/creature/types').then((r) => r.json()).then((d) => { if (d.types && Object.keys(d.types).length) { const was = petForcedType(p); PET_FORCED_LIVE = d.types; if (petForcedType(p) !== was && S.section === 'companions') render(); } }).catch(() => {});
   pictureCard($('.pet-pic', main), petItem(p, P.pick), 'Companion');
   $('#pName', main).onchange = (e) => { set(p, 'CustomName', e.target.value); render(); };
   $('#pScale', main).onchange = (e) => { const v = numberIn(e.target, { min: 0.05, max: 20 }); if (v == null) { e.target.value = fmtNum(num(g(p, 'Scale'))); return; } e.target.value = fmtNum(v); set(p, 'Scale', FL(v)); if (v > 5) toast('Very large companions can get stuck in bases and doorways.'); };
