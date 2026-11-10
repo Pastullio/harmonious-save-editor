@@ -214,6 +214,7 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .tc-cap b { font-size: 15px; color: var(--ink); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tc .k { font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
 .tc .k.sm { margin-top: 12px; }
+.tc-turn { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; align-items: end; } .tc-turn label { display: flex; flex-direction: column; font-size: 13px; color: var(--dim); } .tc-turn input { width: 100%; } .tc-turn .link { grid-column: 1 / -1; justify-self: start; }
 .tc-acts { display: flex; gap: 12px; margin-top: 4px; }
 .pic-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 240px)); gap: 14px; margin-bottom: 18px; }
 .pic-card.drop-over { outline: 2px dashed var(--accent); outline-offset: 3px; }
@@ -2439,14 +2440,122 @@ function travellerCard(el) {
   }).catch(() => {});
 }
 
+// A textured model viewer for 3D poses sent from Blender (owner, 2026-11-10: turn the pose on the Traveller card).
+// Reads a .glb (meshes, node transforms, base colour textures), bakes every mesh into one space, and draws it from
+// any angle with a soft key, fill and rim light onto a transparent square.
+const GLTEX = (() => {
+  let gl = null, cv = null, prog = null, failed = false;
+  const VS = `#version 300 es
+    in vec3 p; in vec3 n; in vec2 uv; uniform vec3 c; uniform float r, yaw, pitch; out vec3 vn; out vec2 vuv; out vec3 vp;
+    vec3 turn(vec3 q) { float cy = cos(yaw), sy = sin(yaw), cp = cos(pitch), sp = sin(pitch);
+      vec3 a = vec3(q.x * cy + q.z * sy, q.y, -q.x * sy + q.z * cy); return vec3(a.x, a.y * cp - a.z * sp, a.y * sp + a.z * cp); }
+    void main() { vec3 b = turn((p - c) / r); vn = turn(n); vuv = uv; vp = b; gl_Position = vec4(b.x * .92, b.y * .92, -b.z * .45, 1.0); }`;
+  const FS = `#version 300 es
+    precision highp float; in vec3 vn; in vec2 vuv; in vec3 vp; uniform sampler2D tex; uniform vec4 base; uniform float hasTex, cutoff; out vec4 o;
+    void main() {
+      vec4 t = hasTex > .5 ? texture(tex, vuv) : vec4(1.0); vec4 a = t * base; if (a.a < cutoff) discard;
+      vec3 alb = pow(a.rgb, vec3(2.2)), N = normalize(vn); if (!gl_FrontFacing) N = -N;
+      vec3 key = normalize(vec3(-.5, .65, .6)), fill = normalize(vec3(.7, .1, .5));
+      float d = max(dot(N, key), 0.0), f = max(dot(N, fill), 0.0), rim = pow(1.0 - max(N.z, 0.0), 3.0);
+      vec3 h = normalize(key + vec3(0, 0, 1)); float sp = pow(max(dot(N, h), 0.0), 40.0) * .25;
+      vec3 col = alb * (.18 + 1.15 * d + .35 * f) + vec3(.6, .85, 1.0) * rim * .35 + sp;
+      o = vec4(pow(col, vec3(1.0 / 2.2)), 1.0);
+    }`;
+  function init() {
+    if (gl || failed) return !!gl;
+    cv = document.createElement('canvas');
+    gl = cv.getContext('webgl2', { premultipliedAlpha: false, preserveDrawingBuffer: true, antialias: true });
+    if (!gl) { failed = true; return false; }
+    const sh = (type, src) => { const x = gl.createShader(type); gl.shaderSource(x, src); gl.compileShader(x); if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(x)); return x; };
+    try { prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog); if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog)); }
+    catch (e) { console.warn('WebGL', e); gl = null; failed = true; return false; }
+    return true;
+  }
+  const mul = (a, b) => { const o = new Array(16); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) { let s = 0; for (let k = 0; k < 4; k++) s += a[k * 4 + j] * b[i * 4 + k]; o[i * 4 + j] = s; } return o; };   // column-major
+  function trs(nd) {
+    if (nd.matrix) return nd.matrix.slice();
+    const [x, y, z, w] = nd.rotation || [0, 0, 0, 1], [sx, sy, sz] = nd.scale || [1, 1, 1], [tx, ty, tz] = nd.translation || [0, 0, 0];
+    return [(1 - 2 * (y * y + z * z)) * sx, 2 * (x * y + z * w) * sx, 2 * (x * z - y * w) * sx, 0, 2 * (x * y - z * w) * sy, (1 - 2 * (x * x + z * z)) * sy, 2 * (y * z + x * w) * sy, 0,
+      2 * (x * z + y * w) * sz, 2 * (y * z - x * w) * sz, (1 - 2 * (x * x + y * y)) * sz, 0, tx, ty, tz, 1];
+  }
+  // parse a .glb into plain arrays (works without WebGL, so a model can be checked before it's drawn)
+  async function parse(buf) {
+    const dv = new DataView(buf); if (buf.byteLength < 20 || dv.getUint32(0, true) !== 0x46546C67) throw new Error("That isn't a .glb");
+    const jl = dv.getUint32(12, true), doc = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 20, jl)));
+    const binOff = 20 + jl + 8, bin = buf.slice(binOff, binOff + dv.getUint32(20 + jl, true));
+    const N = { 5120: 1, 5121: 1, 5122: 2, 5123: 2, 5125: 4, 5126: 4 }, C = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 };
+    const acc = (i) => {
+      const a = doc.accessors[i], v = doc.bufferViews[a.bufferView], n = C[a.type], sz = N[a.componentType], stride = v.byteStride || n * sz;
+      const out = new Float32Array(a.count * n), d = new DataView(bin, (v.byteOffset || 0) + (a.byteOffset || 0));
+      const rd = { 5126: (o) => d.getFloat32(o, true), 5125: (o) => d.getUint32(o, true), 5123: (o) => d.getUint16(o, true), 5121: (o) => d.getUint8(o), 5122: (o) => d.getInt16(o, true), 5120: (o) => d.getInt8(o) }[a.componentType];
+      for (let k = 0; k < a.count; k++) for (let c = 0; c < n; c++) { let x = rd(k * stride + c * sz); if (a.normalized) x /= a.componentType === 5121 ? 255 : a.componentType === 5123 ? 65535 : 1; out[k * n + c] = x; }
+      return out;
+    };
+    const images = await Promise.all((doc.images || []).map(async (im) => { const v = doc.bufferViews[im.bufferView]; if (!v) return null; try { return await createImageBitmap(new Blob([new Uint8Array(bin, v.byteOffset || 0, v.byteLength)], { type: im.mimeType || 'image/png' })); } catch (_) { return null; } }));
+    const prims = [], lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+    const walk = (ni, parent) => {
+      const nd = doc.nodes[ni], m = mul(parent, trs(nd));
+      if (nd.mesh != null) for (const pr of doc.meshes[nd.mesh].primitives) {
+        if (pr.attributes.POSITION == null || (pr.mode != null && pr.mode !== 4)) continue;
+        const P = acc(pr.attributes.POSITION), Nn = pr.attributes.NORMAL != null ? acc(pr.attributes.NORMAL) : null, UV = pr.attributes.TEXCOORD_0 != null ? acc(pr.attributes.TEXCOORD_0) : new Float32Array(P.length / 3 * 2);
+        const nv = P.length / 3, pos = new Float32Array(P.length), nrm = new Float32Array(P.length);
+        for (let k = 0; k < nv; k++) {
+          const x = P[k * 3], y = P[k * 3 + 1], z = P[k * 3 + 2];
+          for (let c = 0; c < 3; c++) { const w = m[c] * x + m[4 + c] * y + m[8 + c] * z + m[12 + c]; pos[k * 3 + c] = w; if (w < lo[c]) lo[c] = w; if (w > hi[c]) hi[c] = w; }
+          if (Nn) { const a = Nn[k * 3], b = Nn[k * 3 + 1], e = Nn[k * 3 + 2]; let q = [0, 1, 2].map((c) => m[c] * a + m[4 + c] * b + m[8 + c] * e); const l = Math.hypot(...q) || 1; q = q.map((u) => u / l); nrm.set(q, k * 3); }
+        }
+        const idx = pr.indices != null ? Uint32Array.from(acc(pr.indices)) : Uint32Array.from({ length: nv }, (_, k) => k);
+        const mat = (doc.materials || [])[pr.material] || {}, pbr = mat.pbrMetallicRoughness || {}, bt = pbr.baseColorTexture;
+        const tex = bt && doc.textures && doc.textures[bt.index] ? images[doc.textures[bt.index].source] : null;
+        prims.push({ pos, nrm: Nn ? nrm : null, uv: UV, idx, base: pbr.baseColorFactor || [1, 1, 1, 1], tex, cutoff: mat.alphaMode === 'MASK' ? (mat.alphaCutoff ?? .5) : mat.alphaMode === 'BLEND' ? .35 : 0 });
+      }
+      for (const k of nd.children || []) walk(k, m);
+    };
+    const id = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+    for (const ni of ((doc.scenes || [])[doc.scene || 0] || { nodes: (doc.nodes || []).map((_, i) => i) }).nodes) walk(ni, id);
+    if (!prims.length) throw new Error('No meshes in that file');
+    const c = lo.map((v, k) => (v + hi[k]) / 2); let r = 0;
+    for (const p of prims) for (let k = 0; k < p.pos.length; k += 3) r = Math.max(r, Math.hypot(p.pos[k] - c[0], p.pos[k + 1] - c[1], p.pos[k + 2] - c[2]));
+    return { prims, c, r: r || 1, size: hi.map((v, k) => v - lo[k]) };
+  }
+  function upload(m) {
+    if (m.up) return; m.up = true;
+    for (const p of m.prims) {
+      if (!p.nrm) { p.nrm = new Float32Array(p.pos.length); for (let k = 0; k + 2 < p.idx.length; k += 3) { const [a, b, e] = [p.idx[k] * 3, p.idx[k + 1] * 3, p.idx[k + 2] * 3]; const u = [0, 1, 2].map((c) => p.pos[b + c] - p.pos[a + c]), v = [0, 1, 2].map((c) => p.pos[e + c] - p.pos[a + c]); const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]; for (const q of [a, b, e]) for (let c = 0; c < 3; c++) p.nrm[q + c] += n[c]; } }
+      p.vao = gl.createVertexArray(); gl.bindVertexArray(p.vao);
+      for (const [name, data, n] of [['p', p.pos, 3], ['n', p.nrm, 3], ['uv', p.uv, 2]]) { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); const loc = gl.getAttribLocation(prog, name); if (loc >= 0) { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, n, gl.FLOAT, false, 0, 0); } }
+      const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, p.idx, gl.STATIC_DRAW);
+      gl.bindVertexArray(null);
+      if (p.tex) { p.gtex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, p.gtex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, p.tex); gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT); }
+    }
+  }
+  // a transparent square picture of the model, turned by yaw and tilted by pitch (radians)
+  function render(m, size, yaw, pitch) {
+    if (!init()) return null;
+    if (cv.width !== size) { cv.width = cv.height = size; }
+    gl.viewport(0, 0, size, size); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.enable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE); gl.useProgram(prog); upload(m);
+    const U = (n) => gl.getUniformLocation(prog, n);
+    gl.uniform3f(U('c'), m.c[0], m.c[1], m.c[2]); gl.uniform1f(U('r'), m.r); gl.uniform1f(U('yaw'), yaw); gl.uniform1f(U('pitch'), pitch); gl.uniform1i(U('tex'), 0);
+    for (const p of m.prims) {
+      gl.uniform4f(U('base'), ...p.base); gl.uniform1f(U('hasTex'), p.gtex ? 1 : 0); gl.uniform1f(U('cutoff'), p.cutoff);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, p.gtex || null);
+      gl.bindVertexArray(p.vao); gl.drawElements(gl.TRIANGLES, p.idx.length, gl.UNSIGNED_INT, 0);
+    }
+    gl.bindVertexArray(null);
+    return cv;
+  }
+  return { parse, render, ok: () => init() };
+})();
+
 // ------------------------------------------------------------------ Traveller page (owner, 2026-11-10)
 // A card made from your posed picture (Blender's "Save the pose as a picture" puts it in Exports): a background
 // (starfield, colours, a screenshot or any image), a ship or corvette, portal glyphs and your name, laid out by
 // dragging on the picture and saved as a PNG.
 const TC_SIZES = { portrait: [1080, 1350, 'Portrait'], square: [1080, 1080, 'Square'], wide: [1920, 1080, 'Wide'] };
 const TC_DEFAULT = () => ({ size: 'portrait', bg: 'stars', c1: '#07131a', c2: '#1d4f5e', pose: '', ship: '', place: 'here', name: travellerName(), title: '', caption: '', credit: true,
-  layers: { trav: { x: .5, y: .55, s: .7 }, ship: { x: .76, y: .3, s: .3 }, glyphs: { x: .5, y: .93, s: .7 }, text: { x: .07, y: .07, s: 1 } } });
-const TC = { state: null, img: { trav: null, bg: null, ship: null }, sel: null, hits: [], pics: [], shipKey: null };
+  layers: { trav: { x: .5, y: .55, s: .7, yaw: 0, pitch: 0 }, ship: { x: .76, y: .3, s: .3, yaw: -55, pitch: 20 }, glyphs: { x: .5, y: .93, s: .7 }, text: { x: .07, y: .07, s: 1 } } });
+const TC = { state: null, img: { trav: null, bg: null, ship: null }, m3d: null, shipModel: null, shipItem: null, shipViews: [], cache: {}, sel: null, hits: [], pics: [], shipKey: null };
 function tcLoad() {
   if (TC.state) return TC.state;
   let st = TC_DEFAULT();
@@ -2474,12 +2583,30 @@ function tcPlaces() {
   for (const f of FAVS.list || []) { const p = f.portal && Place.fromPortal(f.portal, f.gi || 0); if (p) out.push({ id: 'f|' + f.id, name: f.name + ' (favourite)', p }); }
   return out;
 }
+// a ship's picture: the one you gave it, a corvette's renders (each angle Blender made), else its model, to turn
 async function tcShipImage(it) {
+  TC.shipModel = null; TC.shipViews = []; TC.shipItem = it; TC.cache.ship = null;
   const url = await customCover(it.key); if (url) return tcImage(url);
-  if (it.kind === 'corvette') { await loadRender(it); coverFromMemory(it); if (it.renderImg) return tcTrim(it.renderImg); }
+  if (it.kind === 'corvette') {
+    await loadRender(it); coverFromMemory(it);
+    if (it.renderKey) for (const [v, label] of COVER_VIEWS) { const im = await renderImg(it.renderKey, v); if (im) TC.shipViews.push([v, label, tcTrim(im)]); }
+    const st = tcLoad(), pick = TC.shipViews.find(([v]) => v === st.shipView) || TC.shipViews[0];
+    if (pick) return pick[2];
+    if (it.renderImg) return tcTrim(it.renderImg);
+  }
   await loadModel(it); coverFromMemory(it);
-  if (it.model && GL3D.ok()) { const im = GL3D.render(it.model, 900, STILL_ANGLE(it), [228, 236, 242]); if (im) { const c = document.createElement('canvas'); c.width = c.height = 900; c.getContext('2d').drawImage(im, 0, 0); return tcTrim(c); } }
+  if (it.model && GL3D.ok()) { TC.shipModel = it.model; return null; }
   return null;
+}
+// a 3D layer drawn at its angle, kept until the angle or size changes
+function tc3d(kind, size) {
+  const st = tcLoad(), l = st.layers[kind], key = [l.yaw || 0, l.pitch || 0, size].join('|');
+  const hit = TC.cache[kind]; if (hit && hit.key === key) return hit.cv;
+  const rad = Math.PI / 180;
+  const im = kind === 'trav' ? GLTEX.render(TC.m3d, size, (l.yaw || 0) * rad, (l.pitch || 0) * rad) : GL3D.render(TC.shipModel, size, (l.yaw || 0) * rad, [228, 236, 242], (l.pitch || 0) * rad);
+  if (!im) return null;
+  const cv = document.createElement('canvas'); cv.width = cv.height = size; cv.getContext('2d').drawImage(im, 0, 0);
+  TC.cache[kind] = { key, cv }; return cv;
 }
 async function tcDraw(cv, preview) {
   const st = tcLoad(), [W, H] = TC_SIZES[st.size] || TC_SIZES.portrait; cv.width = W; cv.height = H;
@@ -2498,12 +2625,15 @@ async function tcDraw(cv, preview) {
   }
   const L = st.layers;
   const place = (id, im, l) => { const h = l.s * H, w = im.width / im.height * h, x = l.x * W - w / 2, y = l.y * H - h / 2; hits.push({ id, x, y, w, h }); return [x, y, w, h]; };
-  if (st.ship && TC.img.ship) { const [x, y, w, h] = place('ship', TC.img.ship, L.ship); ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = U * .03; ctx.drawImage(TC.img.ship, x, y, w, h); ctx.restore(); }
-  if (TC.img.trav) {
-    const [x, y, w, h] = place('trav', TC.img.trav, L.trav);
+  const size3d = (l) => Math.max(256, Math.min(1600, Math.round(l.s * H * 1.15)));
+  const shipImg = st.ship && (TC.img.ship || (TC.shipModel && tc3d('ship', size3d(L.ship))));
+  if (st.ship && shipImg) { const [x, y, w, h] = place('ship', shipImg, L.ship); ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = U * .03; ctx.drawImage(shipImg, x, y, w, h); ctx.restore(); }
+  const travImg = TC.m3d ? tc3d('trav', size3d(L.trav)) : TC.img.trav;
+  if (travImg) {
+    const [x, y, w, h] = place('trav', travImg, L.trav);
     const sh = ctx.createRadialGradient(x + w / 2, y + h * .98, 0, x + w / 2, y + h * .98, w * .55); sh.addColorStop(0, 'rgba(0,0,0,.35)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.save(); ctx.translate(0, 0); ctx.scale(1, .22); ctx.fillStyle = sh; ctx.restore();
-    ctx.drawImage(TC.img.trav, x, y, w, h);
+    ctx.drawImage(travImg, x, y, w, h);
   } else if (preview) {
     ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = `400 ${Math.round(U * .028)}px "Jost", sans-serif`; ctx.textAlign = 'center';
     ctx.fillText('Your posed traveller goes here', W / 2, H * .5); ctx.font = `400 ${Math.round(U * .02)}px "Jost", sans-serif`;
@@ -2543,9 +2673,14 @@ async function tcDraw(cv, preview) {
 }
 async function tcLoadPose(name) {
   const st = tcLoad();
+  TC.m3d = null; TC.cache.trav = null;
   if (!name) { TC.img.trav = null; return; }
-  const im = await tcImage('/api/exports/file?name=' + encodeURIComponent(name) + '&t=' + encodeURIComponent(APP.token));
-  TC.img.trav = im ? tcTrim(im) : null; st.pose = name;
+  const url = '/api/exports/file?name=' + encodeURIComponent(name) + '&t=' + encodeURIComponent(APP.token);
+  if (/\.glb$/i.test(name)) {   // a 3D pose from Blender: turned and tilted on the card
+    try { const r = await fetch(url); if (!r.ok) throw new Error(await r.text()); TC.m3d = await GLTEX.parse(await r.arrayBuffer()); TC.img.trav = null; }
+    catch (e) { toast("Couldn't open that 3D pose: " + e.message, true); TC.m3d = null; }
+  } else { const im = await tcImage(url); TC.img.trav = im ? tcTrim(im) : null; }
+  st.pose = name;
 }
 async function tcPictures() { if (!APP) return []; try { return (await (await api('/api/exports/pictures')).json()).pictures || []; } catch (_) { return []; } }
 async function tcExport(how) {
@@ -2556,7 +2691,7 @@ async function tcExport(how) {
 }
 PAGES.traveller = (el) => {
   const st = tcLoad();
-  el.innerHTML = `<div class="page-head"><div><h1>Traveller</h1><p>Make a picture of your traveller: your pose from Blender, a background, your ship and your portal glyphs. Drag things on the picture to move them, scroll over one to make it bigger or smaller.</p></div></div>
+  el.innerHTML = `<div class="page-head"><div><h1>Traveller</h1><p>Make a picture of your traveller: your pose from Blender, a background, your ship and your portal glyphs. Drag things on the picture to move them, scroll over one to make it bigger or smaller, and drag a 3D pose or ship with Shift held (or the right mouse button) to turn it.</p></div></div>
     <div class="tc-wrap"><div class="tc-stage"><canvas id="tcCanvas" aria-label="Your traveller picture"></canvas></div><div class="panel tc-side" id="tcSide"></div></div>`;
   const cv = $('#tcCanvas', el), side = $('#tcSide', el);
   let busy = false, again = false;
@@ -2567,21 +2702,25 @@ PAGES.traveller = (el) => {
   const sideHtml = () => `
     <div class="tc-row"><span class="k">Size</span><div class="seg">${Object.entries(TC_SIZES).map(([k, [w, h, l]]) => `<button type="button" data-size="${k}" aria-pressed="${st.size === k}" title="${w} × ${h}">${l}</button>`).join('')}</div></div>
     <div class="tc-row"><span class="k">Your traveller</span>
-      ${TC.pics.length ? `<select id="tcPose">${TC.pics.map((q) => `<option value="${esc(q.name)}"${q.name === st.pose ? ' selected' : ''}>${esc(q.name.replace(/\.png$/i, ''))}</option>`).join('')}<option value="">No traveller</option></select>` : `<p class="dim small-print" data-keep>No pose pictures yet. Pose your traveller in Blender and press Save the pose as a picture in the LiveLink panel; it shows here.</p>`}
-      <div class="tc-acts"><button class="link" type="button" id="tcRefresh">Look again</button><label class="link">Use an image file<input type="file" accept="image/png,image/*" id="tcPoseFile" hidden></label>${APP ? '<button class="link addon-btn" type="button">Get LiveLink</button>' : ''}</div></div>
+      ${TC.pics.length ? `<select id="tcPose">${TC.pics.map((q) => `<option value="${esc(q.name)}"${q.name === st.pose ? ' selected' : ''}>${esc(q.name.replace(/\.(png|glb)$/i, ''))}${/\.glb$/i.test(q.name) ? ' (3D)' : ''}</option>`).join('')}<option value="">No traveller</option></select>` : `<p class="dim small-print" data-keep>No poses yet. Pose your traveller in Blender, then in the LiveLink panel press Send the pose to the editor (3D, to turn here) or Save the pose as a picture; it shows here.</p>`}
+      ${TC.m3d ? turnHtml('trav') : ''}<div class="tc-acts"><button class="link" type="button" id="tcRefresh">Look again</button><label class="link">Use an image file<input type="file" accept="image/png,image/*" id="tcPoseFile" hidden></label>${APP ? '<button class="link addon-btn" type="button">Get LiveLink</button>' : ''}</div></div>
     <div class="tc-row"><span class="k">Background</span><select id="tcBg">${[['stars', 'Starfield'], ['gradient', 'Two colours'], ['colour', 'One colour'], ...(APP ? [['shot', 'One of your screenshots…']] : []), ['file', 'An image file…']].map(([k, l]) => `<option value="${k}"${st.bg === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
       ${st.bg === 'shot' || st.bg === 'file' ? '' : `<div class="tc-cols"><label>Colour <input type="color" id="tcC1" value="${esc(st.c1)}"></label>${st.bg === 'colour' ? '' : `<label>and <input type="color" id="tcC2" value="${esc(st.c2)}"></label>`}</div>`}</div>
-    <div class="tc-row"><span class="k">Ship</span><select id="tcShip"><option value="">No ship</option>${items.filter((x) => x.kind !== 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)} (${esc(x.type.toLowerCase())})</option>`).join('')}<optgroup label="Multi-tools">${items.filter((x) => x.kind === 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</optgroup></select></div>
+    <div class="tc-row"><span class="k">Ship</span><select id="tcShip"><option value="">No ship</option>${items.filter((x) => x.kind !== 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)} (${esc(x.type.toLowerCase())})</option>`).join('')}<optgroup label="Multi-tools">${items.filter((x) => x.kind === 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</optgroup></select>${st.ship && TC.shipModel && !TC.img.ship ? turnHtml('ship') : ''}${st.ship && TC.shipViews.length > 1 ? `<label class="field"><span>Angle</span><select id="tcView">${TC.shipViews.map(([v, l]) => `<option value="${v}"${v === (st.shipView || TC.shipViews[0][0]) ? ' selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}</div>
     <div class="tc-row"><span class="k">Portal glyphs</span><select id="tcPlace"><option value="">No glyphs</option>${places.map((q) => `<option value="${esc(q.id)}"${q.id === st.place ? ' selected' : ''}>${esc(q.name)}</option>`).join('')}</select></div>
     <div class="tc-row"><span class="k">Words</span><label class="field"><span>Name</span><input id="tcName" value="${esc(st.name)}" maxlength="40"></label><label class="field"><span>Title above it</span><input id="tcTitle" value="${esc(st.title)}" maxlength="60" placeholder="Traveller of the Atlas"></label><label class="field"><span>Caption below</span><textarea id="tcCaption" rows="2" maxlength="200" placeholder="A line or two">${esc(st.caption)}</textarea></label></div>
     <label class="check"><input type="checkbox" id="tcCredit"${st.credit ? ' checked' : ''}> Small "Harmonious Save Editor" in the corner</label>
     <div class="tc-acts main"><button class="btn primary" type="button" id="tcSaveBtn">Save picture</button><button class="btn" type="button" id="tcCopy">Copy picture</button><button class="btn ghost" type="button" id="tcReset">Reset layout</button></div>`;
+  const turnHtml = (k) => { const l = st.layers[k]; return `<div class="tc-turn" data-turn="${k}"><label><span>Turn</span><input type="range" min="-180" max="180" step="1" data-ax="yaw" value="${l.yaw || 0}"></label><label><span>Tilt</span><input type="range" min="-60" max="60" step="1" data-ax="pitch" value="${l.pitch || 0}"></label><button class="link" type="button" data-front="${k}">Face the front</button></div>`; };
   const wire = () => {
     side.innerHTML = sideHtml();
+    side.querySelectorAll('.tc-turn input').forEach((inp) => inp.oninput = () => { const k = inp.closest('.tc-turn').dataset.turn; st.layers[k][inp.dataset.ax] = +inp.value; TC.sel = k; tcSave(); redraw(); });
+    side.querySelectorAll('[data-front]').forEach((b) => b.onclick = () => { const l = st.layers[b.dataset.front]; l.yaw = 0; l.pitch = 0; tcSave(); wire(); redraw(); });
+    const vw = $('#tcView', side); if (vw) vw.onchange = () => { st.shipView = vw.value; const v = TC.shipViews.find(([x]) => x === vw.value); if (v) TC.img.ship = v[2]; tcSave(); redraw(); };
     side.querySelectorAll('[data-size]').forEach((b) => b.onclick = () => change(() => { st.size = b.dataset.size; side.querySelectorAll('[data-size]').forEach((x) => x.setAttribute('aria-pressed', x === b)); }));
-    const ps_ = $('#tcPose', side); if (ps_) ps_.onchange = async () => { await tcLoadPose(ps_.value); st.pose = ps_.value; tcSave(); redraw(); };
+    const ps_ = $('#tcPose', side); if (ps_) ps_.onchange = async () => { await tcLoadPose(ps_.value); st.pose = ps_.value; tcSave(); wire(); redraw(); };
     $('#tcRefresh', side).onclick = async () => { TC.pics = await tcPictures(); if (TC.pics[0] && TC.pics[0].name !== st.pose) await tcLoadPose(TC.pics[0].name); tcSave(); wire(); redraw(); };
-    $('#tcPoseFile', side).onchange = async (e) => { const f = e.target.files[0]; if (!f) return; const im = await tcBlobImage(f); TC.img.trav = im ? tcTrim(im) : null; redraw(); };
+    $('#tcPoseFile', side).onchange = async (e) => { const f = e.target.files[0]; if (!f) return; TC.m3d = null; const im = await tcBlobImage(f); TC.img.trav = im ? tcTrim(im) : null; wire(); redraw(); };
     $('#tcBg', side).onchange = async (e) => {
       const v = e.target.value;
       if (v === 'shot') { const b = await pickScreenshot(); if (b) TC.img.bg = await tcBlobImage(b); else { e.target.value = st.bg; return; } }
@@ -2590,7 +2729,7 @@ PAGES.traveller = (el) => {
     };
     const c1 = $('#tcC1', side); if (c1) c1.oninput = () => change(() => { st.c1 = c1.value; });
     const c2 = $('#tcC2', side); if (c2) c2.oninput = () => change(() => { st.c2 = c2.value; });
-    $('#tcShip', side).onchange = async (e) => { st.ship = e.target.value; tcSave(); TC.img.ship = null; TC.shipKey = st.ship; const it = items.find((x) => x.key === st.ship); if (it) { const im = await tcShipImage(it); if (TC.shipKey === st.ship) TC.img.ship = im; if (!im) toast('That one has no picture yet. Give it one in the Garage, or render the corvette.'); } redraw(); };
+    $('#tcShip', side).onchange = async (e) => { st.ship = e.target.value; tcSave(); TC.img.ship = null; TC.shipKey = st.ship; const it = items.find((x) => x.key === st.ship); if (it) { const im = await tcShipImage(it); if (TC.shipKey === st.ship) TC.img.ship = im; if (!im && !TC.shipModel) toast('That one has no picture yet. Give it one in the Garage, or render the corvette.'); } else { TC.shipModel = null; TC.shipViews = []; } wire(); redraw(); };
     $('#tcPlace', side).onchange = (e) => change(() => { st.place = e.target.value; });
     for (const [id, k] of [['tcName', 'name'], ['tcTitle', 'title'], ['tcCaption', 'caption']]) $('#' + id, side).oninput = (e) => change(() => { st[k] = e.target.value; });
     $('#tcCredit', side).onchange = (e) => change(() => { st.credit = e.target.checked; });
@@ -2602,8 +2741,11 @@ PAGES.traveller = (el) => {
   const at = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * cv.width, (e.clientY - r.top) / r.height * cv.height]; };
   const hitAt = ([x, y]) => [...TC.hits].reverse().find((h) => x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h);
   let drag = null;
-  cv.onpointerdown = (e) => { const p = at(e), h = hitAt(p); TC.sel = h ? h.id : null; if (h) { const l = st.layers[h.id]; drag = { id: h.id, p, x: l.x, y: l.y }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} } redraw(); };
-  cv.onpointermove = (e) => { const p = at(e); if (!drag) { cv.style.cursor = hitAt(p) ? 'move' : ''; return; } const l = st.layers[drag.id]; l.x = Math.max(0, Math.min(1, drag.x + (p[0] - drag.p[0]) / cv.width)); l.y = Math.max(0, Math.min(1, drag.y + (p[1] - drag.p[1]) / cv.height)); redraw(); };
+  const is3d = (id) => (id === 'trav' && TC.m3d) || (id === 'ship' && TC.shipModel && !TC.img.ship);
+  cv.onpointerdown = (e) => { const p = at(e), h = hitAt(p); TC.sel = h ? h.id : null; if (h) { const l = st.layers[h.id]; drag = { id: h.id, p, x: l.x, y: l.y, turn: (e.shiftKey || e.button === 2) && is3d(h.id), yaw: l.yaw || 0, pitch: l.pitch || 0 }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} } redraw(); };
+  cv.oncontextmenu = (e) => { const h = hitAt(at(e)); if (h && is3d(h.id)) e.preventDefault(); };
+  cv.onpointermove = (e) => { const p = at(e); if (!drag) { const h = hitAt(p); cv.style.cursor = h ? (e.shiftKey && is3d(h.id) ? 'grab' : 'move') : ''; return; } const l = st.layers[drag.id];
+    if (drag.turn) { const r = cv.getBoundingClientRect(), k = cv.width / r.width; l.yaw = Math.round(((drag.yaw + (p[0] - drag.p[0]) / k * .6) + 540) % 360 - 180); l.pitch = Math.max(-60, Math.min(60, Math.round(drag.pitch + (p[1] - drag.p[1]) / k * .4))); side.querySelectorAll(`.tc-turn[data-turn="${drag.id}"] input`).forEach((inp) => { inp.value = l[inp.dataset.ax]; }); redraw(); return; } l.x = Math.max(0, Math.min(1, drag.x + (p[0] - drag.p[0]) / cv.width)); l.y = Math.max(0, Math.min(1, drag.y + (p[1] - drag.p[1]) / cv.height)); redraw(); };
   cv.onpointerup = () => { if (drag) { drag = null; tcSave(); } };
   cv.addEventListener('wheel', (e) => { const h = hitAt(at(e)); if (!h) return; e.preventDefault(); const l = st.layers[h.id]; l.s = Math.max(.05, Math.min(3, l.s * (e.deltaY < 0 ? 1.06 : 1 / 1.06))); TC.sel = h.id; tcSave(); redraw(); }, { passive: false });
   wire(); redraw();
@@ -3511,13 +3653,13 @@ const GL3D = (() => {
     gl.bindVertexArray(null);
   }
   // draws the mesh into the shared WebGL canvas and returns it, ready for drawImage
-  function render(m, size, yaw, tint) {
+  function render(m, size, yaw, tint, pitch) {
     if (!init()) return null;
     if (cv.width !== size) { cv.width = cv.height = size; }
     gl.viewport(0, 0, size, size); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST); gl.useProgram(prog); upload(m);
     gl.uniform3f(gl.getUniformLocation(prog, 'c'), m.c[0], m.c[1], m.c[2]); gl.uniform1f(gl.getUniformLocation(prog, 'r'), m.r);
-    gl.uniform1f(gl.getUniformLocation(prog, 'yaw'), yaw); gl.uniform1f(gl.getUniformLocation(prog, 'pitch'), .38);
+    gl.uniform1f(gl.getUniformLocation(prog, 'yaw'), yaw); gl.uniform1f(gl.getUniformLocation(prog, 'pitch'), pitch == null ? .38 : pitch);
     gl.vertexAttrib3f(gl.getAttribLocation(prog, 'col'), tint[0] / 255, tint[1] / 255, tint[2] / 255);
     gl.bindVertexArray(m.vao); gl.drawElements(gl.TRIANGLES, m.idx.length, gl.UNSIGNED_INT, 0); gl.bindVertexArray(null);
     return cv;

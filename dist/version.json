@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.10.2007",
+  "version": "2026.11.10.2030",
   "date": "2026-11-10",
-  "size": 13584384,
-  "sha256": "5ce0229fdb2fa3382c7b31c40fb3a441d3c049c9601330994afa3495a8671ac0",
-  "notes": "The Blender add-on buttons are now called LiveLink\nTraveller page: a pose you save in Blender while the page is open goes on the card by itself, and a newer pose picture always replaces the one from last time",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.2007/HarmoniousSaveEditor.exe",
+  "size": 13606400,
+  "sha256": "1daf134e87924386399d76067cf2afd05a76f05679204050853967b35ebcd0a2",
+  "notes": "Traveller page in 3D: in Blender press Send the pose to the editor and your posed traveller arrives in 3D, with its textures; turn and tilt it on the card with the sliders or by dragging with Shift held\nTraveller page: starships and multi-tools without a picture show their 3D model and can be turned too; corvettes can use any of their render angles\nPlease install the LiveLink add-on again (version 1.6.0)",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.2030/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

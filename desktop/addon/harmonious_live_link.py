@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 5, 0),
+    "version": (1, 6, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -1086,6 +1086,83 @@ class HARMONIOUS_OT_poses_folder(bpy.types.Operator):
         return {"FINISHED"}
 
 
+def posed_glb(context, arm):
+    """The traveller as posed now, as a .glb: the pose baked into the mesh, the textures packed in (JPEG)."""
+    meshes = traveller_meshes(arm)
+    if not meshes:
+        raise RuntimeError("The traveller has no mesh")
+    view = context.view_layer
+    mode, active = context.mode, view.objects.active
+    picked = [o for o in view.objects if o.select_get()]
+    path = os.path.join(tempfile.gettempdir(), "harmonious_livelink", "pose.glb")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    try:
+        if mode != "OBJECT":
+            bpy.ops.object.mode_set(mode="OBJECT")
+        for o in view.objects:
+            o.select_set(False)
+        for m in meshes:
+            m.select_set(True)
+        view.objects.active = meshes[0]
+        opts = dict(filepath=path, export_format="GLB", use_selection=True, export_apply=True, export_skins=False,
+                    export_animations=False, export_yup=True, export_image_format="JPEG", export_jpeg_quality=88)
+        try:
+            bpy.ops.export_scene.gltf(**opts)
+        except TypeError:   # an older exporter without some of these
+            for k in ("export_jpeg_quality", "export_image_format", "export_animations"):
+                opts.pop(k, None)
+            bpy.ops.export_scene.gltf(**opts)
+    finally:
+        for o in view.objects:
+            o.select_set(o in picked)
+        view.objects.active = active
+        if mode == "POSE" and active is not None and active.type == "ARMATURE":
+            try:
+                bpy.ops.object.mode_set(mode="POSE")
+            except RuntimeError:
+                pass
+    with open(path, "rb") as f:
+        return f.read()
+
+
+class HARMONIOUS_OT_send_pose(bpy.types.Operator):
+    bl_idname = "harmonious.send_pose"
+    bl_label = "Send the pose to the editor"
+    bl_description = "Send your posed traveller to Harmonious Save Editor in 3D, to turn and place on the Traveller page"
+
+    @classmethod
+    def poll(cls, context):
+        return find_traveller() is not None
+
+    def execute(self, context):
+        addr = editor_address()
+        if addr is None:
+            self.report({"ERROR"}, "Harmonious Save Editor isn't running")
+            return {"CANCELLED"}
+        arm = find_traveller()
+        try:
+            data = posed_glb(context, arm)
+        except (RuntimeError, OSError) as error:
+            self.report({"ERROR"}, "Couldn't export the pose: %s" % error)
+            return {"CANCELLED"}
+        url, token = addr
+        name = str(arm.get("harmonious_traveller") or LINK.get("traveller") or "Traveller")
+        try:
+            req = urllib.request.Request(url.replace("/api/live/build", "/api/live/pose") + "?name=" + urllib.parse.quote(name),
+                                         data=data, method="POST", headers={"X-Live-Token": token, "Content-Type": "model/gltf-binary"})
+            with urllib.request.urlopen(req, timeout=120) as res:
+                out = json.loads(res.read().decode("utf-8"))
+        except urllib.error.HTTPError as error:
+            self.report({"ERROR"}, error.read().decode("utf-8", "replace").strip() or str(error))
+            return {"CANCELLED"}
+        except (urllib.error.URLError, OSError, ValueError) as error:
+            self.report({"ERROR"}, "Couldn't reach Harmonious Save Editor: %s" % error)
+            return {"CANCELLED"}
+        set_status("Sent to the editor in 3D (%d MB): open the Traveller page" % max(1, len(data) // 1048576))
+        self.report({"INFO"}, "Sent " + out.get("name", "the pose"))
+        return {"FINISHED"}
+
+
 class HARMONIOUS_OT_picture(bpy.types.Operator):
     bl_idname = "harmonious.pose_picture"
     bl_label = "Save the pose as a picture"
@@ -1164,6 +1241,9 @@ class HARMONIOUS_PT_traveller(bpy.types.Panel):
             shown = not any(is_hidden(arm, b) for b in body_bones(arm))
             layout.operator(HARMONIOUS_OT_show_bones.bl_idname, text="Hide the sticks" if shown else "Show every stick", icon="HIDE_OFF" if not shown else "HIDE_ON")
         layout.operator(HARMONIOUS_OT_picture.bl_idname, icon="RENDER_STILL")
+        send = layout.row()
+        send.enabled = LINK["state"] != "none"
+        send.operator(HARMONIOUS_OT_send_pose.bl_idname, icon="EXPORT")
 
 
 class HARMONIOUS_PT_support(bpy.types.Panel):
@@ -1204,7 +1284,7 @@ def wrap(text, width):
 _KEYMAPS = []
 
 CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_OT_pick_part, HARMONIOUS_OT_show_bones, HARMONIOUS_OT_pose, HARMONIOUS_OT_pose_reset,
-           HARMONIOUS_OT_pose_save, HARMONIOUS_OT_poses_folder, HARMONIOUS_OT_picture,
+           HARMONIOUS_OT_pose_save, HARMONIOUS_OT_poses_folder, HARMONIOUS_OT_send_pose, HARMONIOUS_OT_picture,
            HARMONIOUS_PT_live, HARMONIOUS_PT_traveller, HARMONIOUS_PT_support)
 
 

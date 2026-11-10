@@ -140,13 +140,15 @@ bpy.ops.harmonious.pose_save('EXEC_DEFAULT', name='Test pose')
 bpy.ops.harmonious.pose_reset()
 back = h.pose_traveller(bpy.context, 'saved:Test pose')
 print('POSES', len(names), moved, floored, back == '' and (aw @ arm.pose.bones['r_arm_Wrist'].head - wrist).length < 1e-3, os.path.exists(os.path.join(h.poses_dir(), 'Test pose.json')))
+bpy.context.scene.harmonious_pose = 'ready:Waving'; bpy.ops.harmonious.pose()
+print('SENDPOSE', bpy.ops.harmonious.send_pose(), bpy.context.mode)
 print('PICTURE', bpy.ops.harmonious.pose_picture())
 print('STATUS', h.STATE['status'])
 h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
     try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 600000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
-    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|HEADPICK|POSES|PICK|SHOWN|Traceback|  File|\w+Error)/.test(l)).join('\n'));
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
@@ -155,6 +157,9 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     const [np, nm, nf, same, file] = line('POSES').split(' ');
     ok('ready-made poses: every one moves the body and keeps the feet on the floor', +np >= 10 && nm === np && nf === np);
     ok('…and a saved pose goes to the Poses folder and comes back the same', same === 'True' && file === 'True');
+    const g3 = fs.readdirSync(path.join(home, 'Documents', 'Harmonious Save Editor', 'Exports')).find((f) => / 3D pose .*\.glb$/.test(f));
+    const gj3 = (() => { try { const bb = fs.readFileSync(path.join(home, 'Documents', 'Harmonious Save Editor', 'Exports', g3)); return JSON.parse(bb.subarray(20, 20 + bb.readUInt32LE(12)).toString()); } catch { return {}; } })();
+    ok('Send the pose to the editor puts a textured 3D pose in Exports, the pose baked in', /FINISHED/.test(line('SENDPOSE')) && /POSE/.test(line('SENDPOSE')) && g3 && (gj3.images || []).length > 10 && !(gj3.skins || []).length);
     ok('Blender shows the game\'s textures', +line('TEXTURED') > 20);
     ok('the sticks are hidden until a part is clicked', line('SHOWN') === '0');
     const [gap, mirror] = line('GAP').split(' ').map(Number);

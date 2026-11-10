@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"sort"
+	"time"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -60,7 +61,8 @@ func handleExport(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]string{"path": p, "name": filepath.Base(p)})
 }
 
-// GET /api/exports/pictures -> the pose pictures Blender saved in Exports ("<name> pose <date>.png"), newest first,
+// GET /api/exports/pictures -> the pose pictures ("<name> pose <date>.png") and 3D poses ("<name> 3D pose <date>.glb")
+// Blender saved in Exports, newest first,
 // for the Traveller page (owner, 2026-11-10).
 func handleExportPictures(w http.ResponseWriter, r *http.Request) {
 	type pic struct {
@@ -72,7 +74,7 @@ func handleExportPictures(w http.ResponseWriter, r *http.Request) {
 	if es, err := os.ReadDir(exportsDir()); err == nil {
 		for _, e := range es {
 			n := e.Name()
-			if e.IsDir() || !strings.EqualFold(filepath.Ext(n), ".png") || !strings.Contains(strings.ToLower(n), " pose ") {
+			if ext := strings.ToLower(filepath.Ext(n)); e.IsDir() || (ext != ".png" && ext != ".glb") || !strings.Contains(strings.ToLower(n), " pose ") {
 				continue
 			}
 			if fi, err := e.Info(); err == nil {
@@ -87,7 +89,8 @@ func handleExportPictures(w http.ResponseWriter, r *http.Request) {
 // GET /api/exports/file?name=… -> one PNG from the Exports folder (no other folders, no other kinds of file).
 func handleExportFile(w http.ResponseWriter, r *http.Request) {
 	name := filepath.Base(r.URL.Query().Get("name"))
-	if name == "" || name == "." || strings.ContainsAny(name, `/\`) || !strings.EqualFold(filepath.Ext(name), ".png") {
+	ext := strings.ToLower(filepath.Ext(name))
+	if name == "" || name == "." || strings.ContainsAny(name, `/\`) || (ext != ".png" && ext != ".glb") {
 		http.Error(w, "not a picture", http.StatusBadRequest)
 		return
 	}
@@ -96,7 +99,44 @@ func handleExportFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	w.Header().Set("Content-Type", "image/png")
+	if ext == ".glb" {
+		w.Header().Set("Content-Type", "model/gltf-binary")
+	} else {
+		w.Header().Set("Content-Type", "image/png")
+	}
 	w.Header().Set("Cache-Control", "no-store")
 	http.ServeFile(w, r, p)
+}
+
+// POST /api/live/pose?name=Pastullio (from the LiveLink add-on, a .glb of the posed traveller, textured, the pose
+// baked into the mesh) -> saved in Exports as "<name> 3D pose <date>.glb" for the Traveller page to turn and place.
+func handleLivePose(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	b, err := io.ReadAll(io.LimitReader(r.Body, 200<<20))
+	if err != nil || len(b) < 12 || string(b[:4]) != "glTF" {
+		http.Error(w, "that isn't a .glb", http.StatusBadRequest)
+		return
+	}
+	name := strings.TrimSpace(exportBad.ReplaceAllString(r.URL.Query().Get("name"), "_"))
+	if name == "" || strings.HasPrefix(name, ".") {
+		name = "Traveller"
+	}
+	dir := exportsDir()
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	stem := name + " 3D pose " + time.Now().Format("2006-01-02 150405")
+	p := filepath.Join(dir, stem+".glb")
+	for n := 2; fileExists(p); n++ {
+		p = filepath.Join(dir, stem+" ("+strconv.Itoa(n)+").glb")
+	}
+	if err := atomicWrite(p, b); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, map[string]string{"path": p, "name": filepath.Base(p)})
 }

@@ -5,6 +5,7 @@
 const { chromium } = require('/opt/npm-tools/node_modules/playwright');
 const { spawn, execFileSync } = require('child_process'); const fs = require('fs'); const path = require('path');
 const [SP, BANKS] = process.argv.slice(2);
+const TC_ok = (a, b) => Math.abs(a - b) > 0.5;
 const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n); if (!c) fails.push(n); };
 (async () => {
   const T = path.join(SP, 'tcardtest'); fs.rmSync(T, { recursive: true, force: true });
@@ -74,6 +75,39 @@ im.save(${JSON.stringify(file)})`]);
   mk(path.join(exp, 'Pastullio pose 2026-11-10 150000.png'), '(60, 200, 90, 255)');
   await p.waitForFunction(() => TC.state.pose === 'Pastullio pose 2026-11-10 150000.png', null, { timeout: 8000 }).catch(() => {});
   ok('a new pose picture from Blender goes on the card by itself', await p.evaluate(() => TC.state.pose === 'Pastullio pose 2026-11-10 150000.png' && $('#tcPose').value === 'Pastullio pose 2026-11-10 150000.png'));
+  await p.selectOption('#tcPose', 'Pastullio pose 2026-11-10 120000.png'); await p.waitForTimeout(300);
+  // a 3D pose sent from Blender (here the editor's own traveller model stands in for it)
+  if (BANKS) {
+    const sent = await p.evaluate(async () => {
+      const gs = travellerGroups(); if (!gs.length) return null;
+      const glb = await (await api('/api/model/traveller/glb?groups=' + encodeURIComponent(gs.join(',')) + '&name=Pastullio')).arrayBuffer();
+      return (await (await api('/api/live/pose?name=Pastullio', { method: 'POST', body: glb })).json()).name;
+    });
+    ok('a 3D pose is kept in Exports', sent && /^Pastullio 3D pose .*\.glb$/.test(sent) && fs.existsSync(path.join(exp, sent)));
+    await p.waitForFunction(() => TC.m3d, null, { timeout: 10000 }).catch(() => {});
+    ok('…and lands on the card by itself, as 3D', await p.evaluate((n) => TC.state.pose === n && !!TC.m3d && TC.m3d.prims.length > 5 && TC.m3d.prims.some((q) => q.tex), sent));
+    ok('…listed as 3D', /\(3D\)/.test(await p.$eval('#tcPose', (x) => x.selectedOptions[0].textContent)));
+    const shot = () => p.evaluate(() => { const h = TC.hits.find((x) => x.id === 'trav'), c = $('#tcCanvas'), d = c.getContext('2d').getImageData(Math.round(h.x), Math.round(h.y), Math.round(h.w), Math.round(h.h)).data; let n = 0, sum = 0; for (let i = 0; i < d.length; i += 16) { sum += d[i] + d[i + 1] * 3 + d[i + 2] * 7; n++; } return sum / n; });
+    await p.waitForTimeout(300); const a1 = await shot();
+    ok('it has Turn and Tilt', !!(await p.$('.tc-turn[data-turn="trav"] input[data-ax="yaw"]')));
+    await p.$eval('.tc-turn[data-turn="trav"] input[data-ax="yaw"]', (x) => { x.value = 90; x.dispatchEvent(new Event('input')); }); await p.waitForTimeout(400);
+    const a2 = await shot();
+    ok('turning it draws it from another side', TC_ok(a1, a2) && await p.evaluate(() => TC.state.layers.trav.yaw === 90));
+    const hb = await p.$eval('#tcCanvas', (c) => { const r = c.getBoundingClientRect(), h = TC.hits.find((x) => x.id === 'trav'), k = r.width / c.width; return { x: r.left + (h.x + h.w / 2) * k, y: r.top + (h.y + h.h / 2) * k }; });
+    await p.keyboard.down('Shift'); await p.mouse.move(hb.x, hb.y); await p.mouse.down(); await p.mouse.move(hb.x - 60, hb.y + 30, { steps: 4 }); await p.mouse.up(); await p.keyboard.up('Shift'); await p.waitForTimeout(300);
+    ok('Shift-dragging turns and tilts it instead of moving it', await p.evaluate(() => TC.state.layers.trav.yaw !== 90 && TC.state.layers.trav.pitch !== 0 && Math.abs(TC.state.layers.trav.x - .5) < .001));
+    await p.click('[data-front="trav"]'); ok('Face the front puts it back', await p.evaluate(() => TC.state.layers.trav.yaw === 0 && TC.state.layers.trav.pitch === 0));
+    await p.screenshot({ path: SP + '/shots/traveller-card-3d.png' });
+  }
+  // a ship with a model turns too
+  const withModel = await p.evaluate(async () => { const it = coverItems().find((x) => x.kind === 'ship' && x.scene); if (!it) return null; const sel = $('#tcShip'); sel.value = it.key; sel.dispatchEvent(new Event('change')); return it.key; });
+  if (withModel && BANKS) {
+    await p.waitForFunction(() => TC.shipModel || TC.img.ship, null, { timeout: 20000 }).catch(() => {});
+    if (await p.evaluate(() => !!TC.shipModel)) {
+      ok('a ship with a model can be turned', !!(await p.$('.tc-turn[data-turn="ship"]')) && await p.evaluate(() => TC.hits.some((h) => h.id === 'ship')));
+    } else console.log('(no ship model in the test files)');
+  }
+  await p.selectOption('#tcShip', ''); await p.waitForTimeout(200);
   await p.selectOption('#tcPose', 'Pastullio pose 2026-11-10 120000.png'); await p.waitForTimeout(300);
   // it remembers the layout
   await p.click('nav button[data-s="exosuit"]'); await p.click('nav button[data-s="traveller"]'); await p.waitForSelector('#tcCanvas'); await p.waitForTimeout(500);

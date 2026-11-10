@@ -1,5 +1,14 @@
 [
  {
+  "version": "2026.11.10.2030",
+  "date": "2026-11-10",
+  "notes": [
+   "Traveller page in 3D: in Blender press Send the pose to the editor and your posed traveller arrives in 3D, with its textures; turn and tilt it on the card with the sliders or by dragging with Shift held",
+   "Traveller page: starships and multi-tools without a picture show their 3D model and can be turned too; corvettes can use any of their render angles",
+   "Please install the LiveLink add-on again (version 1.6.0)"
+  ]
+ },
+ {
   "version": "2026.11.10.2007",
   "date": "2026-11-10",
   "notes": [
