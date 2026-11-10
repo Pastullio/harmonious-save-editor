@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.10.1828",
+  "date": "2026-11-10",
+  "notes": [
+   "Exosuit: Save traveller files for the developer also lists the game's colour-layer files, for the next step: your own colours on the model in Blender"
+  ]
+ },
+ {
   "version": "2026.11.10.1804",
   "date": "2026-11-10",
   "notes": [

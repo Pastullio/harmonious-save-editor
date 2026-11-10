@@ -681,7 +681,7 @@ func handleTravellerSample(w http.ResponseWriter, r *http.Request) {
 			files[n] = true
 		}
 	}
-	report := []string{"Parts: " + strings.Join(names, ", "), "", "Materials:"}
+	report := []string{"Editor version: " + appVersion, "Parts: " + strings.Join(names, ", "), "", "Materials:"}
 	texRe := regexp.MustCompile(`(?i)textures/[a-z0-9_./\-]+?\.dds`)
 	seen, stems := map[string]bool{}, map[string]bool{}
 	for _, p := range out.parts {
@@ -716,6 +716,22 @@ func handleTravellerSample(w http.ResponseWriter, r *http.Request) {
 		}
 		report = append(report, m+" ("+p.name+"): "+strings.Join(tex, ", "))
 	}
+	// the game's layered textures (.texture.mbin: which layer gets which palette colour) are small: take every one
+	// for the player, and list every texture file of the player character, to find where the save's colours go
+	report = append(report, "", "Layered textures in the game:")
+	var playerTex []string
+	for _, n := range allGameFiles() {
+		if strings.HasSuffix(n, ".texture.mbin") {
+			report = append(report, n)
+			if strings.Contains(n, "/player/") {
+				files[n] = true
+			}
+		} else if strings.HasPrefix(n, "textures/common/player/") {
+			playerTex = append(playerTex, n)
+		}
+	}
+	report = append(report, "", "Player textures in the game:")
+	report = append(report, playerTex...)
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 	list := make([]string, 0, len(files))

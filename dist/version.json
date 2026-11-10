@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.10.1804",
+  "version": "2026.11.10.1828",
   "date": "2026-11-10",
-  "size": 13419520,
-  "sha256": "ad46cba5147dc21d70f8a9bdd1b4174be752c1b4c56e33bc306fb9d80097fa30",
-  "notes": "Blender: your traveller now comes with the game's own textures (colour, surface detail, metal and rough parts); switch Blender to Material Preview or Rendered to see them\nExosuit: Save traveller files for the developer also collects the colour layers, for the next step: the colours you picked in the game",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.1804/HarmoniousSaveEditor.exe",
+  "size": 13422592,
+  "sha256": "6a2d3113e06b8541105b18914703af7f4c0558e546b53b749a6f8c4710bd7f31",
+  "notes": "Exosuit: Save traveller files for the developer also lists the game's colour-layer files, for the next step: your own colours on the model in Blender",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.1828/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
