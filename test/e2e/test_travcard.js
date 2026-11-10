@@ -111,14 +111,65 @@ im.save(${JSON.stringify(file)})`]);
   const withModel = await p.evaluate(async () => { const it = coverItems().find((x) => x.kind === 'ship' && x.scene); if (!it) return null; const sel = $('#tcShip'); sel.value = it.key; sel.dispatchEvent(new Event('change')); return it.key; });
   if (withModel && BANKS) {
     await p.waitForFunction(() => TC.shipModel || TC.img.ship, null, { timeout: 20000 }).catch(() => {});
-    if (await p.evaluate(() => !!TC.shipModel)) {
+    await p.waitForFunction(() => TC.shipGlb || TC.shipModel, null, { timeout: 30000 }).catch(() => {});
+    if (await p.evaluate(() => !!(TC.shipGlb || TC.shipModel))) {
       ok('a ship with a model can be turned', !!(await p.$('.tc-turn[data-turn="ship"]')) && await p.evaluate(() => TC.hits.some((h) => h.id === 'ship')));
+      ok('…as the game model (a .glb)', await p.evaluate(() => !!TC.shipGlb && TC.shipGlb.prims.length > 3));
+      if (!(await p.evaluate(() => TC.shipGlb.prims.some((q) => q.tex)))) console.log('(no ship textures in the test files)');
+      // with a custom picture as well, a switch picks the picture or the turnable model
+      await p.evaluate(async (k) => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#ff0080'; x.fillRect(0, 0, 64, 64); const blob = await new Promise((r) => c.toBlob(r)); await setCustomCover(k, blob); }, withModel).catch(() => {});
+      if (await p.evaluate(async (k) => { coverCache.delete(k); return !!(await customCover(k)); }, withModel)) {
+        await p.$eval('#tcShip', (x) => x.dispatchEvent(new Event('change'))); await p.waitForTimeout(1500);
+        ok('a ship with its own picture offers Picture / 3D', !!(await p.$('[data-show="pic"]')) && !!(await p.$('[data-show="3d"]')));
+        await p.click('[data-show="pic"]'); await p.waitForTimeout(300);
+        ok('…Picture shows the picture, without Turn', await p.evaluate(() => !!TC.img.ship) && !(await p.$('.tc-turn[data-turn="ship"]')));
+        await p.click('[data-show="3d"]'); await p.waitForTimeout(500);
+        ok('…3D turns the model again', await p.evaluate(() => !TC.img.ship) && !!(await p.$('.tc-turn[data-turn="ship"]')));
+      } else console.log('(custom pictures not reachable from the test)');
     } else console.log('(no ship model in the test files)');
   }
   if (await p.$('#tcFront')) {
     const order = () => p.evaluate(() => TC.hits.map((h) => h.id).join(','));
     const o1 = await order(); await p.click('#tcFront'); await p.waitForTimeout(300); const o2 = await order();
     ok('the ship can go in front of the traveller', o1.indexOf('ship') < o1.indexOf('trav') && o2.indexOf('ship') > o2.indexOf('trav'));
+  }
+  // a corvette with its own picture can still show each angle Blender rendered (renders stood in for here)
+  const corv = await p.evaluate(async () => {
+    const it = coverItems().find((x) => x.kind === 'corvette'); if (!it) return null;
+    const pic = (col) => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.fillStyle = col; x.fillRect(8, 8, 48, 48); return c; };
+    const cols = { hero: '#ff0000', front: '#00ff00', side: '#0000ff', back: '#ffffff', top: '#00ffff' };
+    window.renderImg = async (h, v) => pic(cols[v] || '#888888'); it.renderKey = it.renderKey || 'test';
+    const blob = await new Promise((r) => pic('#ff00ff').toBlob(r)); await setCustomCover(it.key, blob); coverCache.delete(it.key);
+    const sel = $('#tcShip'); sel.value = it.key; sel.dispatchEvent(new Event('change')); return it.key;
+  });
+  if (corv) {
+    await p.waitForSelector('[data-show="pic"]', { timeout: 15000 }).catch(() => {});
+    ok('a corvette with its own picture offers Your picture / Renders', !!(await p.$('[data-show="pic"]')) && (await p.textContent('[data-show="3d"]')) === 'Renders');
+    await p.click('[data-show="3d"]'); await p.waitForTimeout(400);
+    await p.screenshot({ path: SP + '/shots/traveller-card-corvette.png' });
+    ok('…Renders has every angle', await p.evaluate(() => $('#tcView') && $('#tcView').options.length >= 4));
+    await p.selectOption('#tcView', 'side'); await p.waitForTimeout(400);
+    ok('…and picking one draws it', await p.evaluate(() => { const h = TC.hits.find((x) => x.id === 'ship'), d = $('#tcCanvas').getContext('2d').getImageData(Math.round(h.x + h.w / 2), Math.round(h.y + h.h / 2), 1, 1).data; return d[2] > 200 && d[0] < 60; }));
+    await p.click('[data-show="pic"]'); await p.waitForTimeout(400);
+    ok('…Your picture goes back to it', await p.evaluate(() => TC.img.ship === TC.shipPic && !$('#tcView')));
+  } else console.log('(no corvette in the test save)');
+  // In front of your traveller sits on one line at the left
+  if (await p.$('#tcFront')) ok('"In front of your traveller" is on one line at the left', await p.evaluate(() => { const l = $('#tcFront').closest('label'), r = l.getBoundingClientRect(), row = l.parentElement.getBoundingClientRect(); return r.height < 30 && r.left - row.left < 20; }));
+  // removing things: select, then Remove or Delete
+  await p.evaluate(() => { TC.sel = 'glyphs'; }); await p.selectOption('#tcPlace', { index: 1 }).catch(() => {}); await p.waitForTimeout(300);
+  const gl = await p.$eval('#tcCanvas', (c) => { const r = c.getBoundingClientRect(), h = TC.hits.find((x) => x.id === 'glyphs'), k = r.width / c.width; return h ? { x: r.left + (h.x + h.w / 2) * k, y: r.top + (h.y + h.h / 2) * k } : null; });
+  if (gl) {
+    await p.mouse.click(gl.x, gl.y); await p.waitForTimeout(300);
+    ok('selecting something shows a Remove button', await p.isVisible('#tcRemove'));
+    await p.click('#tcRemove'); await p.waitForTimeout(300);
+    ok('…which takes it off the picture', await p.evaluate(() => !TC.hits.some((h) => h.id === 'glyphs') && !TC.state.place && $('#tcPlace').value === ''));
+  }
+  const tx = await p.$eval('#tcCanvas', (c) => { const r = c.getBoundingClientRect(), h = TC.hits.find((x) => x.id === 'text'), k = r.width / c.width; return h ? { x: r.left + (h.x + h.w / 2) * k, y: r.top + (h.y + h.h / 2) * k } : null; });
+  if (tx) {
+    const words = await p.evaluate(() => [TC.state.name, TC.state.title, TC.state.caption]);
+    await p.mouse.click(tx.x, tx.y); await p.waitForTimeout(200); await p.keyboard.press('Delete'); await p.waitForTimeout(300);
+    ok('the Delete key removes the words', await p.evaluate(() => !TC.hits.some((h) => h.id === 'text') && !TC.state.title));
+    await p.fill('#tcName', words[0] || ''); await p.fill('#tcTitle', words[1]); await p.fill('#tcCaption', words[2]); await p.waitForTimeout(200);
   }
   await p.selectOption('#tcShip', ''); await p.waitForTimeout(200);
   await p.selectOption('#tcPose', 'Pastullio pose 2026-11-10 120000.png'); await p.waitForTimeout(300);

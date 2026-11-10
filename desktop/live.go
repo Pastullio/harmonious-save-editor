@@ -9,7 +9,6 @@ package main
 // programs and web pages can't send builds: /api/live/build needs that token, everything else needs the page's.
 
 import (
-	"regexp"
 	"crypto/subtle"
 	_ "embed"
 	"encoding/json"
@@ -19,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -169,9 +169,9 @@ func handleLiveBuild(w http.ResponseWriter, r *http.Request) {
 			base = json.RawMessage("null")
 		}
 		trav.Lock()
-		tname := trav.name
+		tname, tools := trav.name, toolNames()
 		trav.Unlock()
-		writeJSON(w, map[string]any{"ok": true, "armed": armed, "target": target, "slot": slot, "corvettes": corvettes, "kind": kind, "base": base, "version": appVersion, "traveller": tname, "exports": exportsDir(), "addon": addonVersion})
+		writeJSON(w, map[string]any{"ok": true, "armed": armed, "target": target, "slot": slot, "corvettes": corvettes, "kind": kind, "base": base, "version": appVersion, "traveller": tname, "tools": tools, "exports": exportsDir(), "addon": addonVersion})
 		return
 	}
 	if r.Method != http.MethodPost {

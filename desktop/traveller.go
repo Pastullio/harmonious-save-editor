@@ -154,6 +154,60 @@ var trav struct {
 	groups []string
 	name   string
 	look   string // the save's colours and texture choices (travLook as JSON)
+	tools  []toolRef
+}
+
+// the save's multi-tools, for the add-on's "Hold a multi-tool"
+type toolRef struct {
+	Name  string          `json:"name"`
+	Scene string          `json:"scene"`
+	Seed  string          `json:"seed"`
+	Picks json.RawMessage `json:"picks"`
+}
+
+func toolNames() []string {
+	out := []string{}
+	for _, t := range trav.tools {
+		out = append(out, t.Name)
+	}
+	return out
+}
+
+// GET /api/live/tool?i=N (the add-on, with the live token) -> that multi-tool as a textured .glb
+func handleLiveTool(w http.ResponseWriter, r *http.Request) {
+	i, err := strconv.Atoi(r.URL.Query().Get("i"))
+	trav.Lock()
+	var t toolRef
+	ok := err == nil && i >= 0 && i < len(trav.tools)
+	if ok {
+		t = trav.tools[i]
+	}
+	trav.Unlock()
+	if !ok {
+		http.Error(w, "Open a save in Harmonious Save Editor first.", http.StatusNotFound)
+		return
+	}
+	sc := normGamePath(t.Scene)
+	if !scenePathRe.MatchString(sc) || strings.Contains(sc, "..") {
+		http.Error(w, "not a model path", http.StatusBadRequest)
+		return
+	}
+	trav.Lock()
+	groups := trav.groups
+	trav.Unlock()
+	var place *mat4
+	if names, _, err := travellerNames(groups); err == nil {
+		if m, ok := travellerSocket(names, "r_hand_socket_Aux"); ok {
+			place = &m
+		}
+	}
+	glb, err := modelGLB(sc, t.Seed, string(t.Picks), "", t.Name, place)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "model/gltf-binary")
+	w.Write(glb)
 }
 
 func handleLiveTraveller(w http.ResponseWriter, r *http.Request) {
@@ -162,13 +216,14 @@ func handleLiveTraveller(w http.ResponseWriter, r *http.Request) {
 			Groups []string        `json:"groups"`
 			Name   string          `json:"name"`
 			Look   json.RawMessage `json:"look"`
+			Tools  []toolRef       `json:"tools"`
 		}
 		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&v); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		trav.Lock()
-		trav.groups, trav.name, trav.look = v.Groups, strings.TrimSpace(v.Name), string(v.Look)
+		trav.groups, trav.name, trav.look, trav.tools = v.Groups, strings.TrimSpace(v.Name), string(v.Look), v.Tools
 		trav.Unlock()
 		writeJSON(w, map[string]any{"ok": true})
 		return
@@ -294,6 +349,31 @@ func bindPose(js []tJoint, ibm [][16]float32) {
 	}
 }
 
+// travellerSocket: where a joint (the right hand's weapon socket) sits on this traveller at rest, in model space.
+func travellerSocket(names []string, joint string) (mat4, bool) {
+	root, err := loadScene(travellerScene)
+	if err != nil {
+		return mat4{}, false
+	}
+	out := &meshOut{onlyDepth: 1, collect: true}
+	if buildMesh(travellerScene, map[string]string{"_names": strings.Join(names, "|")}, "", 0, out, identity(), 0) != nil {
+		return mat4{}, false
+	}
+	joints := travellerJoints(root)
+	for _, p := range out.parts {
+		if p.skinned && p.geo != nil && len(p.geo.invBind) > 0 {
+			bindPose(joints, p.geo.invBind)
+			break
+		}
+	}
+	for _, j := range joints {
+		if strings.Contains(j.name, joint) {
+			return j.world, true
+		}
+	}
+	return mat4{}, false
+}
+
 func travellerGLB(names []string, name string, textures bool, look *travLook) ([]byte, error) {
 	root, err := loadScene(travellerScene)
 	if err != nil {
@@ -343,6 +423,7 @@ type prim struct {
 }
 
 func writeGLB(name string, parts []meshPart, joints []tJoint, byIndex map[int]int, withTextures bool, look *travLook) ([]byte, error) {
+	static := len(joints) == 0
 	// one primitive per material
 	prims := map[string]*prim{}
 	var order []string
@@ -490,8 +571,11 @@ func writeGLB(name string, parts []meshPart, joints []tJoint, byIndex map[int]in
 		pa := addAcc(accessor{put(pr.pos, 34962), 5126, nv, "VEC3", mn, mx})
 		na := addAcc(accessor{put(pr.nrm, 34962), 5126, nv, "VEC3", nil, nil})
 		ua := addAcc(accessor{put(pr.uv, 34962), 5126, nv, "VEC2", nil, nil})
-		ja := addAcc(accessor{put(pr.joints, 34962), 5123, nv, "VEC4", nil, nil})
-		wa := addAcc(accessor{put(pr.weights, 34962), 5126, nv, "VEC4", nil, nil})
+		attrs := map[string]int{}
+		if !static { // a static model (a ship, a multi-tool) has no skeleton
+			attrs["JOINTS_0"] = addAcc(accessor{put(pr.joints, 34962), 5123, nv, "VEC4", nil, nil})
+			attrs["WEIGHTS_0"] = addAcc(accessor{put(pr.weights, 34962), 5126, nv, "VEC4", nil, nil})
+		}
 		ia := addAcc(accessor{put(pr.idx, 34963), 5125, len(pr.idx), "SCALAR", nil, nil})
 		gm := gMat{Name: k, PBR: map[string]any{"baseColorFactor": []float32{0.55, 0.57, 0.6, 1}, "metallicFactor": 0.1, "roughnessFactor": 0.7}}
 		if lk := looks[pr.matPath]; lk != nil {
@@ -508,10 +592,11 @@ func writeGLB(name string, parts []meshPart, joints []tJoint, byIndex map[int]in
 			}
 		}
 		mats = append(mats, gm)
-		gprims = append(gprims, gPrim{map[string]int{"POSITION": pa, "NORMAL": na, "TEXCOORD_0": ua, "JOINTS_0": ja, "WEIGHTS_0": wa}, ia, len(mats) - 1})
+		attrs["POSITION"], attrs["NORMAL"], attrs["TEXCOORD_0"] = pa, na, ua
+		gprims = append(gprims, gPrim{attrs, ia, len(mats) - 1})
 	}
 	if len(gprims) == 0 {
-		return nil, fmt.Errorf("the traveller has no geometry")
+		return nil, fmt.Errorf("the model has no geometry")
 	}
 	// inverse bind matrices from the rest pose (column-major)
 	ibm := make([]float32, 0, 16*len(joints))
@@ -523,7 +608,10 @@ func writeGLB(name string, parts []meshPart, joints []tJoint, byIndex map[int]in
 			}
 		}
 	}
-	ibmAcc := addAcc(accessor{put(ibm, 0), 5126, len(joints), "MAT4", nil, nil})
+	ibmAcc := -1
+	if !static {
+		ibmAcc = addAcc(accessor{put(ibm, 0), 5126, len(joints), "MAT4", nil, nil})
+	}
 
 	type gNode struct {
 		Name     string    `json:"name"`
@@ -535,7 +623,12 @@ func writeGLB(name string, parts []meshPart, joints []tJoint, byIndex map[int]in
 	// node 0: the traveller, node 1: the mesh, nodes 2…: the joints in order
 	nodes := []gNode{{Name: name, Matrix: []float64{-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1}}, {Name: name + " body"}}
 	zero := 0
-	nodes[1].Mesh, nodes[1].Skin = &zero, &zero
+	nodes[1].Mesh = &zero
+	if !static {
+		nodes[1].Skin = &zero
+	} else {
+		nodes[0].Matrix = nil
+	}
 	nodes[0].Children = []int{1}
 	jointNodes := make([]int, len(joints))
 	for i, j := range joints {
@@ -569,10 +662,12 @@ func writeGLB(name string, parts []meshPart, joints []tJoint, byIndex map[int]in
 		"nodes":       nodes,
 		"meshes":      []any{map[string]any{"name": name, "primitives": gprims}},
 		"materials":   mats,
-		"skins":       []any{map[string]any{"name": name + " skeleton", "joints": jointNodes, "inverseBindMatrices": ibmAcc, "skeleton": skel}},
 		"accessors":   accs,
 		"bufferViews": views,
 		"buffers":     []any{map[string]any{"byteLength": bin.b.Len()}},
+	}
+	if !static {
+		doc["skins"] = []any{map[string]any{"name": name + " skeleton", "joints": jointNodes, "inverseBindMatrices": ibmAcc, "skeleton": skel}}
 	}
 	if len(images) > 0 {
 		doc["images"], doc["textures"] = images, texs
@@ -979,4 +1074,47 @@ func encodeTexture(img *image.NRGBA, kind string) []byte {
 		return nil
 	}
 	return buf.Bytes()
+}
+
+// GET /api/model/glb?scene=…&seed=…&picks={…}&look={…}&name=… -> any model (a ship, a multi-tool) as a textured,
+// static .glb, painted with the look's colours where its textures are layered (owner, 2026-11-10: ships in their
+// own colours on the Traveller card, a multi-tool in the traveller's hand in Blender).
+func handleModelGLB(w http.ResponseWriter, r *http.Request) {
+	p, err := sceneParam(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	glb, err := modelGLB(p, r.URL.Query().Get("seed"), r.URL.Query().Get("picks"), r.URL.Query().Get("look"), r.URL.Query().Get("name"), nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "model/gltf-binary")
+	w.Write(glb)
+}
+
+func modelGLB(scene, seed, picksJSON, look, name string, place *mat4) ([]byte, error) {
+	picks := map[string]string{}
+	if picksJSON != "" {
+		_ = json.Unmarshal([]byte(picksJSON), &picks)
+	}
+	out := &meshOut{onlyDepth: 1, collect: true}
+	if err := buildMesh(scene, picks, seed, 0, out, identity(), 0); err != nil {
+		return nil, err
+	}
+	if len(out.parts) == 0 {
+		return nil, fmt.Errorf("the model has no geometry")
+	}
+	if name == "" {
+		name = strings.TrimSuffix(path.Base(scene), ".scene.mbin")
+	}
+	if place != nil { // placed in the traveller's model space (in the hand), turned like the traveller's .glb
+		r180 := mat4{-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1}
+		m := matMul(r180, *place)
+		for i := range out.parts {
+			out.parts[i].m = matMul(m, out.parts[i].m)
+		}
+	}
+	return writeGLB(name, out.parts, nil, nil, true, parseLook(look))
 }

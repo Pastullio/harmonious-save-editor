@@ -145,7 +145,7 @@ type meshStream struct {
 
 type geomStreams struct {
 	byName, byHash map[string]*meshStream
-	skinLayout     []int32      // SkinMatrixLayout: a mesh's bone slot (FIRSTSKINMAT + i) -> joint index
+	skinLayout     []int32       // SkinMatrixLayout: a mesh's bone slot (FIRSTSKINMAT + i) -> joint index
 	invBind        [][16]float32 // JointBindings[j].InvBindMatrix, by joint index
 }
 

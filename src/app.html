@@ -392,12 +392,17 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .tune-order .to-name { flex: 1; }
 .tune-order .to-acts { display: flex; gap: 4px; }
 .tc-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.tc-stagecol { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.tc-selbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 12px; border-radius: 10px; background: var(--well); font-size: 14px; }
+.tc-stage canvas:focus { outline: none; }
+.tc-show { margin-top: 6px; }
 .tc-stage { background: var(--well); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: flex; justify-content: center; }
 .tc-stage canvas { max-width: 100%; max-height: calc(100vh - 210px); height: auto; border-radius: 8px; touch-action: none; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
 .tc-side { display: flex; flex-direction: column; gap: 14px; }
 .tc-row { display: flex; flex-direction: column; gap: 6px; }
 .tc-row > .k { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
-.tc-row select, .tc-row input:not([type=color]), .tc-row textarea { width: 100%; }
+.tc-row select, .tc-row input:not([type=color]):not([type=checkbox]):not([type=range]), .tc-row textarea { width: 100%; }
+.tc-row .check { display: flex; align-items: center; gap: 8px; justify-content: flex-start; width: auto; }
 .tc-row .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .tc-cols { display: flex; gap: 12px; align-items: center; } .tc-cols label { display: flex; gap: 6px; align-items: center; }
 .tc-cols input[type=color] { width: 40px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; }
@@ -1945,8 +1950,11 @@ function travellerGroups() {
   return ((e && g(e, 'CustomData', 'DescriptorGroups')) || []).map(str).filter((x) => x && x !== '^');
 }
 // the save's colours and texture choices, for painting the model (owner, 2026-11-10): {c: [{p, a, c}], t: [[group, option]]}
-function travellerLook() {
-  const cc = g(ps(), 'CharacterCustomisationData'); const e = Array.isArray(cc) ? cc[0] : null; const cd = e && g(e, 'CustomData');
+function travellerLook() { const cc = g(ps(), 'CharacterCustomisationData'); return lookOf(Array.isArray(cc) ? cc[0] : null); }
+// a ship's own colours, when it was painted in the game (its CharacterCustomisationData entry)
+function shipLook(i) { const cc = g(ps(), 'CharacterCustomisationData'); return Array.isArray(cc) ? lookOf(cc[shipCcdIndex(i)]) : null; }
+function lookOf(e) {
+  const cd = e && g(e, 'CustomData');
   if (!cd) return null;
   const c = (g(cd, 'Colours') || []).map((x) => ({ p: str(g(x, 'Palette', 'Palette')), a: str(g(x, 'Palette', 'ColourAlt')), c: (g(x, 'Colour') || []).map(num) })).filter((x) => x.p && x.c.length >= 3);
   const t = (g(cd, 'TextureOptions') || []).map((x) => [str(g(x, 'TextureOptionGroupName')).replace(/^\^/, ''), str(g(x, 'TextureOptionName')).replace(/^\^/, '')]).filter(([a, b]) => a && b);
@@ -1956,10 +1964,13 @@ function travellerName() {
   for (const b of g(ps(), 'PersistentPlayerBases') || []) { const n = untag(str(g(b, 'Owner', 'USN'))); if (n) return n; }
   return 'Traveller';
 }
-function travellerShare() {
+async function travellerShare() {
   if (!APP) return;
   const groups = travellerGroups(); if (!groups.length) return;
-  api('/api/live/traveller', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groups, name: travellerName(), look: travellerLook() }) }).catch(() => {});
+  // the save's multi-tools too, for "Hold a multi-tool" in Blender
+  const tools = [];
+  try { for (const it of coverItems().filter((x) => x.kind === 'tool' && x.scene)) tools.push({ name: it.name, scene: it.scene, seed: it.seed || '', picks: { ...(it.picks || {}), ...(await partsOf(it.key)) } }); } catch (_) {}
+  api('/api/live/traveller', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groups, name: travellerName(), look: travellerLook(), tools }) }).catch(() => {});
 }
 async function travellerExport(btn) {
   const groups = travellerGroups(), name = travellerName();
@@ -2117,12 +2128,12 @@ const GLTEX = (() => {
 const TC_SIZES = { portrait: [1080, 1350, 'Portrait'], square: [1080, 1080, 'Square'], wide: [1920, 1080, 'Wide'] };
 const TC_DEFAULT = () => ({ size: 'portrait', bg: 'stars', c1: '#07131a', c2: '#1d4f5e', pose: '', ship: '', place: 'here', name: travellerName(), title: '', caption: '', credit: true,
   layers: { trav: { x: .5, y: .55, s: .7, yaw: 0, pitch: 0 }, ship: { x: .76, y: .3, s: .3, yaw: -55, pitch: 20 }, glyphs: { x: .5, y: .93, s: .7 }, text: { x: .07, y: .07, s: 1 } } });
-const TC = { state: null, img: { trav: null, bg: null, ship: null }, m3d: null, shipModel: null, shipItem: null, shipViews: [], cache: {}, sel: null, hits: [], pics: [], shipKey: null };
+const TC = { state: null, img: { trav: null, bg: null, ship: null }, m3d: null, shipModel: null, shipGlb: null, shipPic: null, shipItem: null, shipViews: [], cache: {}, sel: null, hits: [], pics: [], shipKey: null };
 function tcLoad() {
   if (TC.state) return TC.state;
   let st = TC_DEFAULT();
   try { const o = JSON.parse(localStorage.getItem('hse-trav-card') || 'null'); if (o && typeof o === 'object') st = { ...st, ...o, layers: { ...st.layers, ...(o.layers || {}) } }; } catch (_) {}
-  if (!st.name) st.name = travellerName();
+  if (st.name == null) st.name = travellerName();
   if (st.bg === 'shot' || st.bg === 'file') st.bg = 'stars';   // pictures aren't kept between visits
   return (TC.state = st);
 }
@@ -2147,14 +2158,28 @@ function tcPlaces() {
 }
 // a ship's picture: the one you gave it, a corvette's renders (each angle Blender made), else its model, to turn
 async function tcShipImage(it) {
-  TC.shipModel = null; TC.shipViews = []; TC.shipItem = it; TC.cache.ship = null;
-  const url = await customCover(it.key); if (url) return tcImage(url);
+  TC.shipModel = null; TC.shipGlb = null; TC.shipPic = null; TC.shipViews = []; TC.shipItem = it; TC.cache.ship = null;
+  const url = await customCover(it.key);
+  if (url) TC.shipPic = await tcImage(url);
+  // starships and multi-tools: the real model with the game's textures, in the ship's own colours when it was painted
+  if (it.scene && it.kind !== 'corvette' && APP && S.lib && S.lib.game) {
+    try {
+      const picks = { ...(it.picks || {}), ...(await partsOf(it.key)) }, look = it.kind === 'ship' ? shipLook(it.i) : null;
+      const r = await api('/api/model/glb?scene=' + encodeURIComponent(it.scene) + '&seed=' + encodeURIComponent(it.seed || '') + '&picks=' + encodeURIComponent(JSON.stringify(picks)) + (look ? '&look=' + encodeURIComponent(JSON.stringify(look)) : ''));
+      TC.shipGlb = await GLTEX.parse(await r.arrayBuffer());
+    } catch (_) { TC.shipGlb = null; }
+  }
+  // corvettes: every angle Blender rendered, so a corvette with its own picture can still be turned between them
   if (it.kind === 'corvette') {
     await loadRender(it); coverFromMemory(it);
     if (it.renderKey) for (const [v, label] of COVER_VIEWS) { const im = await renderImg(it.renderKey, v); if (im) TC.shipViews.push([v, label, tcTrim(im)]); }
+    if (!TC.shipViews.length && it.renderImg) TC.shipViews.push(['hero', 'Cover', tcTrim(it.renderImg)]);
+  }
+  if (TC.shipPic && (tcLoad().shipUsePic || !(TC.shipGlb || TC.shipViews.length))) return TC.shipPic;
+  if (TC.shipGlb) return null;
+  if (it.kind === 'corvette') {
     const st = tcLoad(), pick = TC.shipViews.find(([v]) => v === st.shipView) || TC.shipViews[0];
     if (pick) return pick[2];
-    if (it.renderImg) return tcTrim(it.renderImg);
   }
   await loadModel(it); coverFromMemory(it);
   if (it.model && GL3D.ok()) { TC.shipModel = it.model; return null; }
@@ -2165,7 +2190,7 @@ function tc3d(kind, size) {
   const st = tcLoad(), l = st.layers[kind], key = [l.yaw || 0, l.pitch || 0, size].join('|');
   const hit = TC.cache[kind]; if (hit && hit.key === key) return hit.cv;
   const rad = Math.PI / 180;
-  const im = kind === 'trav' ? GLTEX.render(TC.m3d, size, (l.yaw || 0) * rad, (l.pitch || 0) * rad) : GL3D.render(TC.shipModel, size, (l.yaw || 0) * rad, [228, 236, 242], (l.pitch || 0) * rad);
+  const im = kind === 'trav' ? GLTEX.render(TC.m3d, size, (l.yaw || 0) * rad, (l.pitch || 0) * rad) : TC.shipGlb ? GLTEX.render(TC.shipGlb, size, (l.yaw || 0) * rad, (l.pitch || 0) * rad) : GL3D.render(TC.shipModel, size, (l.yaw || 0) * rad, [228, 236, 242], (l.pitch || 0) * rad);
   if (!im) return null;
   const cv = document.createElement('canvas'); cv.width = cv.height = size; cv.getContext('2d').drawImage(im, 0, 0);
   TC.cache[kind] = { key, cv }; return cv;
@@ -2188,7 +2213,7 @@ async function tcDraw(cv, preview) {
   const L = st.layers;
   const place = (id, im, l) => { const h = l.s * H, w = im.width / im.height * h, x = l.x * W - w / 2, y = l.y * H - h / 2; hits.push({ id, x, y, w, h }); return [x, y, w, h]; };
   const size3d = (l) => Math.max(256, Math.min(1600, Math.round(l.s * H * 1.15)));
-  const shipImg = st.ship && (TC.img.ship || (TC.shipModel && tc3d('ship', size3d(L.ship))));
+  const shipImg = st.ship && (TC.img.ship || ((TC.shipGlb || TC.shipModel) && tc3d('ship', size3d(L.ship))));
   const drawShip = () => { if (st.ship && shipImg) { const [x, y, w, h] = place('ship', shipImg, L.ship); ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = U * .03; ctx.drawImage(shipImg, x, y, w, h); ctx.restore(); } };
   if (!st.shipFront) drawShip();
   const travImg = TC.m3d ? tc3d('trav', size3d(L.trav)) : TC.img.trav;
@@ -2255,11 +2280,21 @@ async function tcExport(how) {
 }
 PAGES.traveller = (el) => {
   const st = tcLoad();
-  el.innerHTML = `<div class="page-head"><div><h1>Traveller</h1><p>Make a picture of your traveller: your pose from Blender, a background, your ship and your portal glyphs. Drag things on the picture to move them, scroll over one to make it bigger or smaller, and drag a 3D pose or ship with Shift held (or the right mouse button) to turn it.</p></div></div>
-    <div class="tc-wrap"><div class="tc-stage"><canvas id="tcCanvas" aria-label="Your traveller picture"></canvas></div><div class="panel tc-side" id="tcSide"></div></div>`;
+  el.innerHTML = `<div class="page-head"><div><h1>Traveller</h1><p>Make a picture of your traveller: your pose from Blender, a background, your ship and your portal glyphs. Drag things on the picture to move them, scroll over one to make it bigger or smaller, and drag a 3D pose or ship with Shift held (or the right mouse button) to turn it. Click one and press Delete to take it off.</p></div></div>
+    <div class="tc-wrap"><div class="tc-stagecol"><div class="tc-stage"><canvas id="tcCanvas" aria-label="Your traveller picture" tabindex="0"></canvas></div><div class="tc-selbar" id="tcSel" hidden></div></div><div class="panel tc-side" id="tcSide"></div></div>`;
   const cv = $('#tcCanvas', el), side = $('#tcSide', el);
   let busy = false, again = false;
-  const redraw = async () => { if (busy) { again = true; return; } busy = true; await tcDraw(cv, true); busy = false; if (again) { again = false; redraw(); } };
+  const LAYER_NAMES = { trav: 'Your traveller', ship: 'Ship', glyphs: 'Portal glyphs', text: 'Words' };
+  const selBar = () => { const b = $('#tcSel', el); if (!b) return; if (!TC.sel || !TC.hits.some((h) => h.id === TC.sel)) { b.hidden = true; return; } b.hidden = false; b.innerHTML = `<span><b>${LAYER_NAMES[TC.sel]}</b> selected</span><button class="btn small ghost" type="button" id="tcRemove">Remove from the picture</button>`; $('#tcRemove', b).onclick = () => removeLayer(TC.sel); };
+  const redraw = async () => { if (busy) { again = true; return; } busy = true; await tcDraw(cv, true); busy = false; selBar(); if (again) { again = false; redraw(); } };
+  const removeLayer = (id) => {
+    if (id === 'trav') { st.pose = ''; TC.img.trav = null; TC.m3d = null; TC.cache.trav = null; }
+    if (id === 'ship') { st.ship = ''; TC.img.ship = null; TC.shipModel = null; TC.shipGlb = null; TC.shipPic = null; TC.shipViews = []; }
+    if (id === 'glyphs') st.place = '';
+    if (id === 'text') { st.name = ''; st.title = ''; st.caption = ''; }
+    TC.sel = null; tcSave(); wire(); redraw();
+  };
+  cv.addEventListener('keydown', (e) => { if ((e.key === 'Delete' || e.key === 'Backspace') && TC.sel) { e.preventDefault(); removeLayer(TC.sel); } });
   const change = (fn) => { fn(); tcSave(); redraw(); };
   const items = coverItems();
   const places = tcPlaces();
@@ -2270,7 +2305,7 @@ PAGES.traveller = (el) => {
       ${TC.m3d ? turnHtml('trav') : ''}<div class="tc-acts"><button class="link" type="button" id="tcRefresh">Look again</button><label class="link">Use an image file<input type="file" accept="image/png,image/*" id="tcPoseFile" hidden></label>${APP ? '<button class="link addon-btn" type="button">Get LiveLink</button>' : ''}</div></div>
     <div class="tc-row"><span class="k">Background</span><select id="tcBg">${[['stars', 'Starfield'], ['gradient', 'Two colours'], ['colour', 'One colour'], ...(APP ? [['shot', 'One of your screenshots…']] : []), ['file', 'An image file…']].map(([k, l]) => `<option value="${k}"${st.bg === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
       ${st.bg === 'shot' || st.bg === 'file' ? '' : `<div class="tc-cols"><label>Colour <input type="color" id="tcC1" value="${esc(st.c1)}"></label>${st.bg === 'colour' ? '' : `<label>and <input type="color" id="tcC2" value="${esc(st.c2)}"></label>`}</div>`}</div>
-    <div class="tc-row"><span class="k">Ship</span><select id="tcShip"><option value="">No ship</option>${items.filter((x) => x.kind !== 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)} (${esc(x.type.toLowerCase())})</option>`).join('')}<optgroup label="Multi-tools">${items.filter((x) => x.kind === 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</optgroup></select>${st.ship && TC.shipModel && !TC.img.ship ? turnHtml('ship') : ''}${st.ship ? `<label class="check"><input type="checkbox" id="tcFront"${st.shipFront ? ' checked' : ''}> In front of your traveller</label>` : ''}${st.ship && TC.shipViews.length > 1 ? `<label class="field"><span>Angle</span><select id="tcView">${TC.shipViews.map(([v, l]) => `<option value="${v}"${v === (st.shipView || TC.shipViews[0][0]) ? ' selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}</div>
+    <div class="tc-row"><span class="k">Ship</span><select id="tcShip"><option value="">No ship</option>${items.filter((x) => x.kind !== 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)} (${esc(x.type.toLowerCase())})</option>`).join('')}<optgroup label="Multi-tools">${items.filter((x) => x.kind === 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</optgroup></select>${st.ship && TC.shipPic && (TC.shipGlb || TC.shipViews.length) ? `<div class="seg tc-show"><button type="button" data-show="3d" aria-pressed="${!st.shipUsePic}">${TC.shipGlb ? '3D model' : 'Renders'}</button><button type="button" data-show="pic" aria-pressed="${!!st.shipUsePic}">Your picture</button></div>` : ''}${st.ship && (TC.shipGlb || TC.shipModel) && !TC.img.ship ? turnHtml('ship') : ''}${st.ship ? `<label class="check"><input type="checkbox" id="tcFront"${st.shipFront ? ' checked' : ''}> In front of your traveller</label>` : ''}${st.ship && TC.shipViews.length > 1 && !(TC.shipPic && st.shipUsePic) ? `<label class="field"><span>Angle</span><select id="tcView">${TC.shipViews.map(([v, l]) => `<option value="${v}"${v === (st.shipView || TC.shipViews[0][0]) ? ' selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}${APP && st.ship && TC.shipItem && TC.shipItem.kind === 'corvette' && TC.shipViews.length < 2 && !(TC.shipPic && st.shipUsePic) ? `<button class="btn small" type="button" id="tcRenderViews" title="Blender renders the corvette from the front, side, back and top (needs Blender and Charon Forge)">Render the angles</button>` : ''}</div>
     <div class="tc-row"><span class="k">Portal glyphs</span><select id="tcPlace"><option value="">No glyphs</option>${places.map((q) => `<option value="${esc(q.id)}"${q.id === st.place ? ' selected' : ''}>${esc(q.name)}</option>`).join('')}</select></div>
     <div class="tc-row"><span class="k">Words</span><label class="field"><span>Name</span><input id="tcName" value="${esc(st.name)}" maxlength="40"></label><label class="field"><span>Title above it</span><input id="tcTitle" value="${esc(st.title)}" maxlength="60" placeholder="Traveller of the Atlas"></label><label class="field"><span>Caption below</span><textarea id="tcCaption" rows="2" maxlength="200" placeholder="A line or two">${esc(st.caption)}</textarea></label></div>
     <label class="check"><input type="checkbox" id="tcCredit"${st.credit ? ' checked' : ''}> Small "Harmonious Save Editor" in the corner</label>
@@ -2280,6 +2315,22 @@ PAGES.traveller = (el) => {
     side.innerHTML = sideHtml();
     side.querySelectorAll('.tc-turn input').forEach((inp) => inp.oninput = () => { const k = inp.closest('.tc-turn').dataset.turn; st.layers[k][inp.dataset.ax] = +inp.value; TC.sel = k; tcSave(); redraw(); });
     side.querySelectorAll('[data-front]').forEach((b) => b.onclick = () => { const l = st.layers[b.dataset.front]; l.yaw = 0; l.pitch = 0; tcSave(); wire(); redraw(); });
+    side.querySelectorAll('[data-show]').forEach((b) => b.onclick = () => {
+      st.shipUsePic = b.dataset.show === 'pic';
+      const view = TC.shipViews.find(([v]) => v === st.shipView) || TC.shipViews[0];
+      TC.img.ship = st.shipUsePic ? TC.shipPic : TC.shipGlb ? null : view ? view[2] : null; TC.cache.ship = null; tcSave(); wire(); redraw();
+    });
+    const rv = $('#tcRenderViews', side);
+    if (rv) rv.onclick = async () => {
+      const it = TC.shipItem; rv.disabled = true; rv.textContent = 'Rendering…';
+      try {
+        await renderCorvette(it, false, (s2) => { rv.textContent = s2 === 'queued' ? 'Waiting for Blender…' : 'Rendering…'; }, true);
+        const pk = (await buildPayload(it)).key; for (const k of [...renderImgs.keys()]) if (k.startsWith(pk + '|') || (it.renderKey && k.startsWith(it.renderKey + '|'))) renderImgs.delete(k);
+        const im = await tcShipImage(it); if (TC.shipKey === st.ship) TC.img.ship = im;
+        if (TC.shipViews.length < 2) toast("Blender didn't make the other angles. Check Cover settings in the Garage.", true);
+      } catch (e) { toast('Could not render it: ' + e.message, true); }
+      wire(); redraw();
+    };
     const fr = $('#tcFront', side); if (fr) fr.onchange = () => change(() => { st.shipFront = fr.checked; });
     const vw = $('#tcView', side); if (vw) vw.onchange = () => { st.shipView = vw.value; const v = TC.shipViews.find(([x]) => x === vw.value); if (v) TC.img.ship = v[2]; tcSave(); redraw(); };
     side.querySelectorAll('[data-size]').forEach((b) => b.onclick = () => change(() => { st.size = b.dataset.size; side.querySelectorAll('[data-size]').forEach((x) => x.setAttribute('aria-pressed', x === b)); }));
@@ -2294,7 +2345,7 @@ PAGES.traveller = (el) => {
     };
     const c1 = $('#tcC1', side); if (c1) c1.oninput = () => change(() => { st.c1 = c1.value; });
     const c2 = $('#tcC2', side); if (c2) c2.oninput = () => change(() => { st.c2 = c2.value; });
-    $('#tcShip', side).onchange = async (e) => { st.ship = e.target.value; tcSave(); TC.img.ship = null; TC.shipKey = st.ship; const it = items.find((x) => x.key === st.ship); if (it) { const im = await tcShipImage(it); if (TC.shipKey === st.ship) TC.img.ship = im; if (!im && !TC.shipModel) toast('That one has no picture yet. Give it one in the Garage, or render the corvette.'); } else { TC.shipModel = null; TC.shipViews = []; } wire(); redraw(); };
+    $('#tcShip', side).onchange = async (e) => { st.ship = e.target.value; tcSave(); TC.img.ship = null; TC.shipKey = st.ship; const it = items.find((x) => x.key === st.ship); if (it) { const im = await tcShipImage(it); if (TC.shipKey === st.ship) TC.img.ship = im; if (!im && !TC.shipModel && !TC.shipGlb) toast('That one has no picture yet. Give it one in the Garage, or render the corvette.'); } else { TC.shipModel = null; TC.shipGlb = null; TC.shipPic = null; TC.shipViews = []; } wire(); redraw(); };
     $('#tcPlace', side).onchange = (e) => change(() => { st.place = e.target.value; });
     for (const [id, k] of [['tcName', 'name'], ['tcTitle', 'title'], ['tcCaption', 'caption']]) $('#' + id, side).oninput = (e) => change(() => { st[k] = e.target.value; });
     $('#tcCredit', side).onchange = (e) => change(() => { st.credit = e.target.checked; });
@@ -2306,8 +2357,8 @@ PAGES.traveller = (el) => {
   const at = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * cv.width, (e.clientY - r.top) / r.height * cv.height]; };
   const hitAt = ([x, y]) => [...TC.hits].reverse().find((h) => x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h);
   let drag = null;
-  const is3d = (id) => (id === 'trav' && TC.m3d) || (id === 'ship' && TC.shipModel && !TC.img.ship);
-  cv.onpointerdown = (e) => { const p = at(e), h = hitAt(p); TC.sel = h ? h.id : null; if (h) { const l = st.layers[h.id]; drag = { id: h.id, p, x: l.x, y: l.y, turn: (e.shiftKey || e.button === 2) && is3d(h.id), yaw: l.yaw || 0, pitch: l.pitch || 0 }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} } redraw(); };
+  const is3d = (id) => (id === 'trav' && TC.m3d) || (id === 'ship' && (TC.shipGlb || TC.shipModel) && !TC.img.ship);
+  cv.onpointerdown = (e) => { cv.focus({ preventScroll: true }); const p = at(e), h = hitAt(p); TC.sel = h ? h.id : null; if (h) { const l = st.layers[h.id]; drag = { id: h.id, p, x: l.x, y: l.y, turn: (e.shiftKey || e.button === 2) && is3d(h.id), yaw: l.yaw || 0, pitch: l.pitch || 0 }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} } redraw(); };
   cv.oncontextmenu = (e) => { const h = hitAt(at(e)); if (h && is3d(h.id)) e.preventDefault(); };
   cv.onpointermove = (e) => { const p = at(e); if (!drag) { const h = hitAt(p); cv.style.cursor = h ? (e.shiftKey && is3d(h.id) ? 'grab' : 'move') : ''; return; } const l = st.layers[drag.id];
     if (drag.turn) { const r = cv.getBoundingClientRect(), k = cv.width / r.width; l.yaw = Math.round(((drag.yaw + (p[0] - drag.p[0]) / k * .6) + 540) % 360 - 180); l.pitch = Math.max(-60, Math.min(60, Math.round(drag.pitch + (p[1] - drag.p[1]) / k * .4))); side.querySelectorAll(`.tc-turn[data-turn="${drag.id}"] input`).forEach((inp) => { inp.value = l[inp.dataset.ax]; }); redraw(); return; } l.x = Math.max(0, Math.min(1, drag.x + (p[0] - drag.p[0]) / cv.width)); l.y = Math.max(0, Math.min(1, drag.y + (p[1] - drag.p[1]) / cv.height)); redraw(); };

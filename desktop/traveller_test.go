@@ -2,9 +2,9 @@ package main
 
 import (
 	"bytes"
-	"image"
 	"encoding/binary"
 	"encoding/json"
+	"image"
 	"os"
 	"path/filepath"
 	"strings"

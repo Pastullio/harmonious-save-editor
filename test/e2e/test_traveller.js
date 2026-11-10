@@ -144,11 +144,27 @@ bpy.context.scene.harmonious_pose = 'ready:Waving'; bpy.ops.harmonious.pose()
 print('SENDPOSE', bpy.ops.harmonious.send_pose(), bpy.context.mode)
 print('PICTURE', bpy.ops.harmonious.pose_picture())
 print('STATUS', h.STATE['status'])
+# a multi-tool in the right hand, following the hand from pose to pose
+hold = 'none'
+if h.LINK.get('tools'):
+    bpy.context.scene.harmonious_tool = '0'
+    r = bpy.ops.harmonious.hold_tool()
+    held = h.held_tools(arm)
+    def centre():
+        pts = [o.matrix_world @ v.co for o in held for v in o.data.vertices]
+        return sum(pts, mathutils.Vector()) / len(pts)
+    hand = lambda: aw @ arm.pose.bones['r_arm_Wrist'].head
+    d1 = (centre() - hand()).length
+    bpy.context.scene.harmonious_pose = 'ready:Standing'; bpy.ops.harmonious.pose(); bpy.context.view_layer.update()
+    d2 = (centre() - hand()).length
+    bpy.ops.harmonious.drop_tool()
+    hold = '%s %d %.3f %.3f %d' % ('FINISHED' in r, len(held), d1, d2, len(h.held_tools(arm)))
+print('HOLD', hold)
 h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
     try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 600000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
-    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|Traceback|  File|\w+Error)/.test(l)).join('\n'));
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
@@ -171,6 +187,9 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     const [hpick, hact, hz] = line('HEADPICK').split(' ');
     ok('clicking the head turns it at the neck', hpick === 'head_Top' && hact === 'neck_01_02' && +hz < 1.75);
     ok('…and shows just that stick', /^1 /.test(line('SHOWNAFTER')) && line('SHOWNAFTER').endsWith(got));
+    const hold = line('HOLD').split(' ');
+    if (hold[0] === 'none') console.log('(no multi-tools in the test save)');
+    else ok('Hold it puts the multi-tool in the right hand, it follows the hand, and Put it away removes it', hold[0] === 'True' && +hold[1] > 0 && +hold[2] < 0.6 && Math.abs(+hold[3] - +hold[2]) < 0.05 && hold[4] === '0');
     const png = (line('STATUS').match(/Saved (.*\.png)/) || [])[1];
     ok('Save the pose as a picture writes a transparent PNG to Exports', png && fs.existsSync(png) && png.includes('Exports') && fs.readFileSync(png)[25] === 6);
   } else console.log('SKIP the add-on part (no bpy)');

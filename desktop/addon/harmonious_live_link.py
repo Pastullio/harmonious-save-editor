@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 6, 0),
+    "version": (1, 7, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -58,7 +58,7 @@ def editor_address():
 # ---------------------------------------------------------------- is the editor linked?
 # Every few seconds the add-on asks the editor whether LiveLink is on and for which corvette; the panel shows it,
 # and the editor sees Blender check in.
-LINK = {"state": "none", "target": "", "slot": -1, "corvettes": [], "kind": "corvette", "base": None, "traveller": "", "exports": "", "addon": ""}
+LINK = {"state": "none", "target": "", "slot": -1, "corvettes": [], "kind": "corvette", "base": None, "traveller": "", "exports": "", "addon": "", "tools": []}
 
 
 def newer_addon():
@@ -84,7 +84,8 @@ def check_link_now():
         LINK.update(state="on" if info.get("armed") else "off", target=info.get("target") or "",
                     slot=int(info.get("slot", -1)), corvettes=info.get("corvettes") or LINK["corvettes"],
                     kind=info.get("kind") or "corvette", base=info.get("base"),
-                    traveller=info.get("traveller") or "", exports=info.get("exports") or "", addon=info.get("addon") or "")
+                    traveller=info.get("traveller") or "", exports=info.get("exports") or "", addon=info.get("addon") or "",
+                    tools=list(info.get("tools") or []))
     except (urllib.error.URLError, OSError, ValueError):
         LINK.update(state="none", target="")
 
@@ -1087,8 +1088,9 @@ class HARMONIOUS_OT_poses_folder(bpy.types.Operator):
 
 
 def posed_glb(context, arm):
-    """The traveller as posed now, as a .glb: the pose baked into the mesh, the textures packed in (JPEG)."""
-    meshes = traveller_meshes(arm)
+    """The traveller as posed now, as a .glb: the pose baked into the mesh, the textures packed in (JPEG), with the
+    multi-tool in their hand if they hold one."""
+    meshes = traveller_meshes(arm) + [o for o in held_tools(arm) if o.type == "MESH"]
     if not meshes:
         raise RuntimeError("The traveller has no mesh")
     view = context.view_layer
@@ -1123,6 +1125,129 @@ def posed_glb(context, arm):
                 pass
     with open(path, "rb") as f:
         return f.read()
+
+
+# ---------------------------------------------------------------- a multi-tool in the hand (owner, 2026-11-10)
+# The editor sends the save's multi-tools; one comes in as a textured model and rides on the right hand's weapon
+# socket (r_hand_socket_Aux), so it follows every pose.
+HAND_SOCKETS = ("r_hand_socket_Aux", "r_arm_Wrist")
+# the turn from the socket to the multi-tool's own axes (checked on the owner's traveller and multi-tools)
+
+
+_TOOL_ITEMS = []
+
+
+def tool_items(self, context):
+    global _TOOL_ITEMS
+    _TOOL_ITEMS = [(str(i), n or "Multi-tool %d" % (i + 1), "Put %s in your traveller's hand" % (n or "this multi-tool")) for i, n in enumerate(LINK.get("tools") or [])] or [("-1", "No multi-tools (open a save in the editor)", "")]
+    return _TOOL_ITEMS
+
+
+def held_tools(arm):
+    return [o for o in bpy.data.objects if o.get("harmonious_tool") and o.parent == arm]
+
+
+def hold_tool(context, arm, data, name):
+    """Bring in a multi-tool .glb and put it in the traveller's right hand; replaces one held before."""
+    import mathutils
+    for o in held_tools(arm):
+        bpy.data.objects.remove(o, do_unlink=True)
+    path = os.path.join(tempfile.gettempdir(), "harmonious_livelink", "tool.glb")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "wb") as f:
+        f.write(data)
+    before = set(bpy.data.objects)
+    mode = context.mode
+    if mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
+    bpy.ops.import_scene.gltf(filepath=path)
+    new = [o for o in bpy.data.objects if o not in before]
+    socket = next((n for n in HAND_SOCKETS if arm.pose.bones.get(n)), None)
+    if socket is None:
+        raise RuntimeError("This traveller has no hand to hold it")
+    pb = arm.pose.bones[socket]
+    # the editor already placed the tool where the hand's socket is at rest; move it on with the hand's pose
+    # the socket bone's frame: the arm runs along -X, the fingers curl towards +Y, the thumb is at +Z; the tool's
+    # barrel comes in along +Z and its handle along -Y, so turn it barrel forward with the handle out of the fist
+    grip = mathutils.Matrix(((0, 0, -1, 0), (-1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
+    # the game puts a tool's grip at its origin, so the socket's place is where the hand holds it
+    follow = arm.matrix_world @ pb.matrix @ grip @ pb.bone.matrix_local.inverted() @ arm.matrix_world.inverted()
+    for o in new:
+        if o.type != "MESH":
+            continue
+        rest = o.matrix_world.copy()
+        o.parent = arm
+        o.parent_type = "BONE"
+        o.parent_bone = socket
+        o["harmonious_tool"] = name
+        o.matrix_world = follow @ rest
+    for o in new:   # the importer's empty parents aren't needed
+        if o.type != "MESH" and o.name in bpy.data.objects:
+            bpy.data.objects.remove(o, do_unlink=True)
+    view = context.view_layer
+    for o in view.objects:
+        o.select_set(False)
+    arm.select_set(True)
+    view.objects.active = arm
+    if mode == "POSE":
+        bpy.ops.object.mode_set(mode="POSE")
+    return len([o for o in held_tools(arm)])
+
+
+class HARMONIOUS_OT_hold_tool(bpy.types.Operator):
+    bl_idname = "harmonious.hold_tool"
+    bl_label = "Hold it"
+    bl_description = "Put the multi-tool picked above in your traveller's right hand; it follows every pose"
+    bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context):
+        return find_traveller() is not None and bool(LINK.get("tools"))
+
+    def execute(self, context):
+        addr = editor_address()
+        if addr is None:
+            self.report({"ERROR"}, "Harmonious Save Editor isn't running")
+            return {"CANCELLED"}
+        i = int(context.scene.harmonious_tool or -1)
+        if i < 0:
+            return {"CANCELLED"}
+        url, token = addr
+        try:
+            req = urllib.request.Request(url.replace("/api/live/build", "/api/live/tool") + "?i=%d" % i, headers={"X-Live-Token": token})
+            with urllib.request.urlopen(req, timeout=120) as res:
+                data = res.read()
+        except urllib.error.HTTPError as error:
+            self.report({"ERROR"}, error.read().decode("utf-8", "replace").strip() or str(error))
+            return {"CANCELLED"}
+        except (urllib.error.URLError, OSError) as error:
+            self.report({"ERROR"}, "Couldn't reach Harmonious Save Editor: %s" % error)
+            return {"CANCELLED"}
+        name = (LINK.get("tools") or [""])[i] if i < len(LINK.get("tools") or []) else "Multi-tool"
+        try:
+            hold_tool(context, find_traveller(), data, name)
+        except RuntimeError as error:
+            self.report({"ERROR"}, str(error))
+            return {"CANCELLED"}
+        set_status("%s is in your traveller's hand" % name)
+        return {"FINISHED"}
+
+
+class HARMONIOUS_OT_drop_tool(bpy.types.Operator):
+    bl_idname = "harmonious.drop_tool"
+    bl_label = "Put it away"
+    bl_description = "Take the multi-tool out of your traveller's hand"
+    bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context):
+        arm = find_traveller()
+        return arm is not None and bool(held_tools(arm))
+
+    def execute(self, context):
+        for o in held_tools(find_traveller()):
+            bpy.data.objects.remove(o, do_unlink=True)
+        return {"FINISHED"}
 
 
 class HARMONIOUS_OT_send_pose(bpy.types.Operator):
@@ -1237,6 +1362,12 @@ class HARMONIOUS_PT_traveller(bpy.types.Panel):
             row = box.row(align=True)
             row.operator(HARMONIOUS_OT_pose_save.bl_idname, icon="FILE_TICK")
             row.operator(HARMONIOUS_OT_poses_folder.bl_idname, text="", icon="FILE_FOLDER")
+            box = layout.box()
+            box.label(text="Multi-tool", icon="TOOL_SETTINGS")
+            box.prop(context.scene, "harmonious_tool", text="")
+            row = box.row(align=True)
+            row.operator(HARMONIOUS_OT_hold_tool.bl_idname, icon="HAND")
+            row.operator(HARMONIOUS_OT_drop_tool.bl_idname, icon="X")
             layout.prop(arm, "harmonious_keep_shape")
             shown = not any(is_hidden(arm, b) for b in body_bones(arm))
             layout.operator(HARMONIOUS_OT_show_bones.bl_idname, text="Hide the sticks" if shown else "Show every stick", icon="HIDE_OFF" if not shown else "HIDE_ON")
@@ -1284,7 +1415,7 @@ def wrap(text, width):
 _KEYMAPS = []
 
 CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_OT_pick_part, HARMONIOUS_OT_show_bones, HARMONIOUS_OT_pose, HARMONIOUS_OT_pose_reset,
-           HARMONIOUS_OT_pose_save, HARMONIOUS_OT_poses_folder, HARMONIOUS_OT_send_pose, HARMONIOUS_OT_picture,
+           HARMONIOUS_OT_pose_save, HARMONIOUS_OT_poses_folder, HARMONIOUS_OT_hold_tool, HARMONIOUS_OT_drop_tool, HARMONIOUS_OT_send_pose, HARMONIOUS_OT_picture,
            HARMONIOUS_PT_live, HARMONIOUS_PT_traveller, HARMONIOUS_PT_support)
 
 
@@ -1295,6 +1426,8 @@ def register():
         name="Send on save", default=True,
         description="Send the build to Harmonious Save Editor every time this file is saved")
     bpy.types.Scene.harmonious_target_slot = bpy.props.IntProperty(name="Corvette slot", default=-1)
+    bpy.types.Scene.harmonious_tool = bpy.props.EnumProperty(name="Multi-tool", items=tool_items,
+        description="One of the multi-tools in the save open in the editor")
     bpy.types.Scene.harmonious_pose = bpy.props.EnumProperty(name="Pose", items=pose_items,
         description="A ready-made pose, or one saved in your Poses folder")
     bpy.types.Object.harmonious_keep_shape = bpy.props.BoolProperty(
@@ -1335,6 +1468,7 @@ def unregister():
     del bpy.types.Scene.harmonious_target_name
     del bpy.types.Object.harmonious_keep_shape
     del bpy.types.Scene.harmonious_pose
+    del bpy.types.Scene.harmonious_tool
     for cls in reversed(CLASSES):
         bpy.utils.unregister_class(cls)
 

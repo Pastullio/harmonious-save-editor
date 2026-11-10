@@ -120,6 +120,7 @@ func main() {
 	mux.HandleFunc("/api/exports/pictures", handleExportPictures)
 	mux.HandleFunc("/api/exports/file", handleExportFile)
 	mux.HandleFunc("/api/live/pose", handleLivePose)
+	mux.HandleFunc("/api/live/tool", handleLiveTool)
 	mux.HandleFunc("/api/read", handleRead)
 	mux.HandleFunc("/api/write", handleWrite)
 	mux.HandleFunc("/api/game-running", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, map[string]bool{"running": gameRunning()}) })
@@ -140,6 +141,7 @@ func main() {
 	mux.HandleFunc("/api/itemlib", handleItemLib)
 	mux.HandleFunc("/api/model/parts", handleModelParts)
 	mux.HandleFunc("/api/model/mesh", handleModelMesh)
+	mux.HandleFunc("/api/model/glb", handleModelGLB)
 	mux.HandleFunc("/api/model/boxes", handleModelBoxes)
 	mux.HandleFunc("/api/model/creature", handleCreature)
 	mux.HandleFunc("/api/model/creature/sample", handleCreatureSample)
@@ -227,7 +229,7 @@ func guard(addr string, next http.Handler) http.Handler {
 			return
 		}
 		// the Blender add-on has its own token (from live.json) and may only send builds, fetch the traveller and send a 3D pose
-		if (r.URL.Path == "/api/live/build" || (r.URL.Path == "/api/live/traveller" && r.Method == http.MethodGet) || (r.URL.Path == "/api/live/pose" && r.Method == http.MethodPost)) && liveTokenOK(r) {
+		if (r.URL.Path == "/api/live/build" || (r.URL.Path == "/api/live/traveller" && r.Method == http.MethodGet) || (r.URL.Path == "/api/live/pose" && r.Method == http.MethodPost) || (r.URL.Path == "/api/live/tool" && r.Method == http.MethodGet)) && liveTokenOK(r) {
 			next.ServeHTTP(w, r)
 			return
 		}

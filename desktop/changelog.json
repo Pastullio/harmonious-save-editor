@@ -1,5 +1,17 @@
 [
  {
+  "version": "2026.11.10.2157",
+  "date": "2026-11-10",
+  "notes": [
+   "Please install the LiveLink add-on again (version 1.7.0): it can now put one of your multi-tools in your traveller's hand (Your traveller, Multi-tool, Hold it), and it stays there in every pose",
+   "Traveller page: starships and multi-tools show the game's model with its textures in the ship's own colours",
+   "Traveller page: a ship or corvette with your own picture can switch between your picture and the 3D model or the corvette's renders, so the angles still work",
+   "Traveller page: Render the angles makes a corvette's front, side, back and top renders when it only has its cover",
+   "Traveller page: click something on the picture and press Remove from the picture (or Delete) to take it off",
+   "Traveller page: In front of your traveller sits on one line"
+  ]
+ },
+ {
   "version": "2026.11.10.2039",
   "date": "2026-11-10",
   "notes": [

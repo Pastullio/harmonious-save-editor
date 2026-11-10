@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.10.2039",
+  "version": "2026.11.10.2157",
   "date": "2026-11-10",
-  "size": 13607424,
-  "sha256": "1051cbe3b76e3bcaa49d34d6d99467a947abe62b2c64715fdcfe646905024df7",
-  "notes": "About fits without scrolling sideways\nSave list: light and dark mode is an icon in the bottom-right corner\nTraveller page: In front of your traveller puts the ship in front instead of behind",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.2039/HarmoniousSaveEditor.exe",
+  "size": 13630976,
+  "sha256": "1320d765983fccfa1365900663003bbebd997fffc2e1a1a93342e8378c349cad",
+  "notes": "Please install the LiveLink add-on again (version 1.7.0): it can now put one of your multi-tools in your traveller's hand (Your traveller, Multi-tool, Hold it), and it stays there in every pose\nTraveller page: starships and multi-tools show the game's model with its textures in the ship's own colours\nTraveller page: a ship or corvette with your own picture can switch between your picture and the 3D model or the corvette's renders, so the angles still work\nTraveller page: Render the angles makes a corvette's front, side, back and top renders when it only has its cover\nTraveller page: click something on the picture and press Remove from the picture (or Delete) to take it off\nTraveller page: In front of your traveller sits on one line",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.2157/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
