@@ -1096,7 +1096,7 @@ nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .
 </head>
 <body class="on-landing">
 
-<div class="land-corner"><a class="btn small guide-btn" href="/guide" target="_blank" rel="noopener">Guide</a><button class="btn small addon-btn app-only" type="button" title="The LiveLink add-on: pose your traveller and send builds from Blender">Blender add-on</button><button class="btn small about-btn" type="button">About</button><button class="btn small theme-btn" type="button">Dark mode</button></div>
+<div class="land-corner"><a class="btn small guide-btn" href="/guide" target="_blank" rel="noopener">Guide</a><button class="btn small addon-btn app-only" type="button" title="The LiveLink add-on for Blender: pose your traveller and send builds">LiveLink</button><button class="btn small about-btn" type="button">About</button><button class="btn small theme-btn" type="button">Dark mode</button></div>
 <section id="landing">
   <div class="landing-inner">
     <div class="landing-copy">
@@ -1309,7 +1309,7 @@ function aboutDialog() {
   const ver = window.NMS_APP ? 'Desktop app' + (window.NMS_APP.version && window.NMS_APP.version !== '1' ? ' · version ' + window.NMS_APP.version : '') : 'Browser version';
   dialog('About', `<div class="about-sky"><img src="@@LOGO@@" alt="Harmonious Save Editor"><div class="ver">${ver}</div></div>
     <p>A No Man's Sky save editor for Steam and GOG on PC, by Pastullio the Harmonious. It reads your own game files for item names, icons and models, and backs up every save before it changes it.</p>
-    <div class="about-links"><a class="btn small primary" href="${GUIDE_URL}" target="_blank" rel="noopener">User guide</a>${APP ? '<button class="btn small addon-btn" type="button">Blender add-on</button>' : ''}${LINKS.map(([t, u]) => `<a class="btn small" href="${u}" target="_blank" rel="noopener">${t}</a>`).join('')}</div>
+    <div class="about-links"><a class="btn small primary" href="${GUIDE_URL}" target="_blank" rel="noopener">User guide</a>${APP ? '<button class="btn small addon-btn" type="button">LiveLink</button>' : ''}${LINKS.map(([t, u]) => `<a class="btn small" href="${u}" target="_blank" rel="noopener">${t}</a>`).join('')}</div>
     <p class="dim" style="margin:12px 0 6px">Built with thanks to</p>
     <ul class="about-credits"><li>libNOM.map and libNOM.io by zencq (save keys and format)</li><li>MBINCompiler by monkeyman192 and contributors (game table layouts)</li><li>HGPAKtool by monkeyman192 (game archive format)</li><li>Charon Forge by xX-Charon-Xx (corvette renders)</li><li>nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, and its JavaScript port nms-core by elegra1965 (system and planet prediction; MIT)</li><li>Pillow (texture decoding), klauspost/compress (zstd), Jost by indestructible type* (typeface)</li></ul>
     <p class="dim" style="font-size:13px;margin:12px 0 0">Free software under the GPL-3.0 licence. Not affiliated with Hello Games.</p>
@@ -1976,7 +1976,7 @@ function travellerCard(el) {
   const card = pictureCard(wrap, it, 'Your traveller');
   const info = document.createElement('div'); info.className = 'panel trav-info';
   info.innerHTML = `<h3>Pose ${esc(name)} in Blender</h3><p class="dim">Your traveller as the game builds them from your save, with the skeleton, ready to pose. In Blender: File, Import, glTF. Or press Import my traveller in the LiveLink add-on's panel, pose them, and make a picture of the pose on the Traveller page.</p>
-    <div class="toolbar"><button class="btn primary" type="button" id="travGlb">Export for Blender (.glb)</button><button class="btn addon-btn" type="button">Get the Blender add-on</button><button class="btn" type="button" id="travPic">Make a picture</button>${APP ? '<button class="btn ghost" type="button" id="travSample">Save traveller files for the developer</button>' : ''}</div>`;
+    <div class="toolbar"><button class="btn primary" type="button" id="travGlb">Export for Blender (.glb)</button><button class="btn addon-btn" type="button">Get LiveLink</button><button class="btn" type="button" id="travPic">Make a picture</button>${APP ? '<button class="btn ghost" type="button" id="travSample">Save traveller files for the developer</button>' : ''}</div>`;
   wrap.appendChild(info);
   $('#travGlb', info).onclick = (e) => travellerExport(e.currentTarget);
   $('#travPic', info).onclick = () => go('traveller');
@@ -2127,7 +2127,7 @@ PAGES.traveller = (el) => {
     <div class="tc-row"><span class="k">Size</span><div class="seg">${Object.entries(TC_SIZES).map(([k, [w, h, l]]) => `<button type="button" data-size="${k}" aria-pressed="${st.size === k}" title="${w} × ${h}">${l}</button>`).join('')}</div></div>
     <div class="tc-row"><span class="k">Your traveller</span>
       ${TC.pics.length ? `<select id="tcPose">${TC.pics.map((q) => `<option value="${esc(q.name)}"${q.name === st.pose ? ' selected' : ''}>${esc(q.name.replace(/\.png$/i, ''))}</option>`).join('')}<option value="">No traveller</option></select>` : `<p class="dim small-print" data-keep>No pose pictures yet. Pose your traveller in Blender and press Save the pose as a picture in the LiveLink panel; it shows here.</p>`}
-      <div class="tc-acts"><button class="link" type="button" id="tcRefresh">Look again</button><label class="link">Use an image file<input type="file" accept="image/png,image/*" id="tcPoseFile" hidden></label>${APP ? '<button class="link addon-btn" type="button">Get the Blender add-on</button>' : ''}</div></div>
+      <div class="tc-acts"><button class="link" type="button" id="tcRefresh">Look again</button><label class="link">Use an image file<input type="file" accept="image/png,image/*" id="tcPoseFile" hidden></label>${APP ? '<button class="link addon-btn" type="button">Get LiveLink</button>' : ''}</div></div>
     <div class="tc-row"><span class="k">Background</span><select id="tcBg">${[['stars', 'Starfield'], ['gradient', 'Two colours'], ['colour', 'One colour'], ...(APP ? [['shot', 'One of your screenshots…']] : []), ['file', 'An image file…']].map(([k, l]) => `<option value="${k}"${st.bg === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
       ${st.bg === 'shot' || st.bg === 'file' ? '' : `<div class="tc-cols"><label>Colour <input type="color" id="tcC1" value="${esc(st.c1)}"></label>${st.bg === 'colour' ? '' : `<label>and <input type="color" id="tcC2" value="${esc(st.c2)}"></label>`}</div>`}</div>
     <div class="tc-row"><span class="k">Ship</span><select id="tcShip"><option value="">No ship</option>${items.filter((x) => x.kind !== 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)} (${esc(x.type.toLowerCase())})</option>`).join('')}<optgroup label="Multi-tools">${items.filter((x) => x.kind === 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</optgroup></select></div>
@@ -2169,10 +2169,21 @@ PAGES.traveller = (el) => {
   (async () => {
     if (APP && !FAVS.list) { try { await favLoad(); } catch (_) {} }
     TC.pics = await tcPictures();
-    const want = TC.pics.find((q) => q.name === st.pose) ? st.pose : (TC.pics[0] || {}).name || '';
+    // a pose picture newer than the last one seen goes on the card; otherwise the one picked last time stays
+    const newest = TC.pics[0], fresh = newest && newest.mtime > (st.seen || 0);
+    if (newest) st.seen = Math.max(st.seen || 0, newest.mtime);
+    const want = fresh ? newest.name : TC.pics.find((q) => q.name === st.pose) ? st.pose : (newest || {}).name || '';
     if (want && (!TC.img.trav || want !== st.pose)) await tcLoadPose(want);
     if (st.ship && !TC.img.ship) { const it = items.find((x) => x.key === st.ship); if (it) TC.img.ship = await tcShipImage(it); }
-    if (!el.isConnected) return; wire(); redraw();
+    if (!el.isConnected) return; tcSave(); wire(); redraw();
+    // Blender's "Save the pose as a picture" lands here by itself while the page is open
+    const watch = setInterval(async () => {
+      if (!el.isConnected) { clearInterval(watch); return; }
+      const pics = await tcPictures(), n = pics[0];
+      if (!n || n.mtime <= (st.seen || 0)) return;
+      st.seen = n.mtime; TC.pics = pics; await tcLoadPose(n.name); tcSave();
+      if (!el.isConnected) return; wire(); redraw(); toast('New pose from Blender: ' + n.name.replace(/\.png$/i, ''));
+    }, 3000);
   })();
 };
 // the LiveLink add-on, from anywhere: the save list, About, Exosuit, Traveller and Shipwright (owner, 2026-11-10:
@@ -2183,7 +2194,7 @@ async function getLiveAddon() {
     const r = await api('/api/live/addon'); const blob = await r.blob();
     await api('/api/export?reveal=1&name=harmonious_live_link.py', { method: 'POST', body: blob });
   } catch (e) { toast("Couldn't save the add-on: " + e.message, true); return; }
-  dialog('Install the Blender add-on', `<p>Saved <span class="mono">harmonious_live_link.py</span> in <b>Documents\\Harmonious Save Editor\\Exports</b> (the folder just opened).</p><ol class="steps"><li>In Blender, open <b>Edit › Preferences › Add-ons</b>.</li><li>Choose <b>Install from Disk</b> (in the menu at the top right) and pick <span class="mono">harmonious_live_link.py</span>. Installing it again replaces the old one.</li><li>Tick <b>Harmonious LiveLink</b>. Its panel is in the 3D view sidebar (press N), under <b>LiveLink</b>.</li><li>Your traveller: open a save here, then press <b>Import my traveller</b> in that panel to pose them. Builds: turn LiveLink on for a corvette (Shipwright) or base (Bases), then every Ctrl+S in Blender sends the build.</li></ol>`, [['Close', false]]);
+  dialog('Install LiveLink in Blender', `<p>Saved <span class="mono">harmonious_live_link.py</span> in <b>Documents\\Harmonious Save Editor\\Exports</b> (the folder just opened).</p><ol class="steps"><li>In Blender, open <b>Edit › Preferences › Add-ons</b>.</li><li>Choose <b>Install from Disk</b> (in the menu at the top right) and pick <span class="mono">harmonious_live_link.py</span>. Installing it again replaces the old one.</li><li>Tick <b>Harmonious LiveLink</b>. Its panel is in the 3D view sidebar (press N), under <b>LiveLink</b>.</li><li>Your traveller: open a save here, then press <b>Import my traveller</b> in that panel to pose them. Builds: turn LiveLink on for a corvette (Shipwright) or base (Bases), then every Ctrl+S in Blender sends the build.</li></ol>`, [['Close', false]]);
 }
 document.addEventListener('click', (e) => { if (e.target.closest('.addon-btn')) { e.preventDefault(); getLiveAddon(); } });
 if (!window.NMS_APP) document.querySelectorAll('.app-only').forEach((x) => x.remove());
@@ -6293,7 +6304,7 @@ function livePanelHtml(t) {
     ${on && LIVE.last ? `<div class="live-last${LIVE.last.ok ? '' : ' bad'}${Date.now() - LIVE.last.at < 8000 ? ' fresh' : ''}"><span class="k">Last build</span><b>${LIVE.last.ok ? `✓ ${LIVE.last.parts.toLocaleString()} parts ${LIVE.last.written ? 'written to the game' : 'put on the ' + kw}` : '✗ Not written'}</b>${!LIVE.last.ok && LIVE.last.message ? `<span class="small-print">${esc(LIVE.last.message)}</span>` : ''}<span class="dim small-print">${esc(LIVE.last.time)}${LIVE.last.file ? ' · ' + esc(blendName(LIVE.last.file)) : ''}</span></div>` : on ? '<div class="live-last waiting"><span class="k">Last build</span><span class="dim small-print">Nothing received yet. Save in Blender (Ctrl+S) or press Send now.</span></div>' : ''}
     ${on ? (() => { const f = liveFileOf(t); return `<div class="live-file"><span class="k">Blender file</span>${f ? `<b title="${esc(f.file)}">${esc(blendName(f.file))}</b>` : '<span class="dim small-print">None linked yet</span>'}<span class="live-file-acts">${f ? '<button class="link" type="button" id="liveOpen">Open in Blender</button>' : ''}<button class="link" type="button" id="livePick">${f ? 'Change' : 'Choose the .blend…'}</button></span></div>`; })() : ''}
     <label class="check"><input type="checkbox" id="liveWrite"${LIVE.write ? ' checked' : ''}> Write to the game as each build arrives</label>
-    <div class="sw-side-acts"><button class="btn${on ? '' : ' primary'}" type="button" id="liveToggle">${on ? 'Turn off' : 'Turn on for this ' + kw}</button><button class="btn ghost" type="button" id="liveAddon">Get the Blender add-on</button></div>
+    <div class="sw-side-acts"><button class="btn${on ? '' : ' primary'}" type="button" id="liveToggle">${on ? 'Turn off' : 'Turn on for this ' + kw}</button><button class="btn ghost" type="button" id="liveAddon">Get LiveLink</button></div>
     ${LIVE.log.length ? `<ul class="live-log">${LIVE.log.slice(0, 5).map((e) => `<li class="${e.ok ? '' : 'bad'}"><span class="mono">${esc(e.time)}</span> ${esc(e.text)}</li>`).join('')}</ul>` : ''}</div>`;
 }
 function wireLivePanel(side, t) {

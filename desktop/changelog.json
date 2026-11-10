@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.10.2007",
+  "date": "2026-11-10",
+  "notes": [
+   "The Blender add-on buttons are now called LiveLink",
+   "Traveller page: a pose you save in Blender while the page is open goes on the card by itself, and a newer pose picture always replaces the one from last time"
+  ]
+ },
+ {
   "version": "2026.11.10.1954",
   "date": "2026-11-10",
   "notes": [

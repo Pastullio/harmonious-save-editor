@@ -26,7 +26,7 @@ im.save(${JSON.stringify(file)})`]);
   const errs = []; p.on('pageerror', (e) => errs.push(e.message));
   await p.goto(url); await p.waitForSelector('.slot-row');
   // the add-on from the save list
-  ok('the save list has a Blender add-on button', await p.isVisible('.land-corner .addon-btn'));
+  ok('the save list has a LiveLink button', await p.isVisible('.land-corner .addon-btn') && (await p.textContent('.land-corner .addon-btn')) === 'LiveLink');
   await p.click('.land-corner .addon-btn'); await p.waitForSelector('#dlg[open]');
   for (let k = 0; k < 40 && !fs.existsSync(path.join(exp, 'harmonious_live_link.py')); k++) await p.waitForTimeout(100);
   ok('…which saves the add-on to Exports and says how to install it', fs.existsSync(path.join(exp, 'harmonious_live_link.py')) && /bl_info/.test(fs.readFileSync(path.join(exp, 'harmonious_live_link.py'), 'utf8')) && /Install from Disk/.test(await p.textContent('#dlg')) && /Exports/.test(await p.textContent('#dlg')));
@@ -70,6 +70,11 @@ im.save(${JSON.stringify(file)})`]);
   const opt = await p.$$eval('#tcShip option', (o) => o.map((x) => x.value).filter(Boolean));
   ok('the ship list has your ships and multi-tools', opt.length >= 3);
   await p.screenshot({ path: SP + '/shots/traveller-card.png' });
+  // a pose saved in Blender while the page is open lands on the card by itself
+  mk(path.join(exp, 'Pastullio pose 2026-11-10 150000.png'), '(60, 200, 90, 255)');
+  await p.waitForFunction(() => TC.state.pose === 'Pastullio pose 2026-11-10 150000.png', null, { timeout: 8000 }).catch(() => {});
+  ok('a new pose picture from Blender goes on the card by itself', await p.evaluate(() => TC.state.pose === 'Pastullio pose 2026-11-10 150000.png' && $('#tcPose').value === 'Pastullio pose 2026-11-10 150000.png'));
+  await p.selectOption('#tcPose', 'Pastullio pose 2026-11-10 120000.png'); await p.waitForTimeout(300);
   // it remembers the layout
   await p.click('nav button[data-s="exosuit"]'); await p.click('nav button[data-s="traveller"]'); await p.waitForSelector('#tcCanvas'); await p.waitForTimeout(500);
   ok('it remembers the layout and words', await p.evaluate(() => TC.state.size === 'wide' && TC.state.title === 'Traveller of the Atlas' && JSON.parse(localStorage.getItem('hse-trav-card')).caption === 'Hello from Euclid'));

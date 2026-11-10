@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.10.1954",
+  "version": "2026.11.10.2007",
   "date": "2026-11-10",
-  "size": 13582848,
-  "sha256": "68e6cae49033624cc8c09db46855f4205a7c64257b1e4cfd44097d18f5c34524",
-  "notes": "New Traveller page: make a picture of your posed traveller with a background (starfield, colours, your screenshots or any image), your ship, portal glyphs and your name; drag things to move them, scroll to resize, then save or copy it\nThe Blender add-on can now be had from the save list, About, Exosuit and the Traveller page (not just Shipwright); it's saved to your Exports folder",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.1954/HarmoniousSaveEditor.exe",
+  "size": 13584384,
+  "sha256": "5ce0229fdb2fa3382c7b31c40fb3a441d3c049c9601330994afa3495a8671ac0",
+  "notes": "The Blender add-on buttons are now called LiveLink\nTraveller page: a pose you save in Blender while the page is open goes on the card by itself, and a newer pose picture always replaces the one from last time",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.2007/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
