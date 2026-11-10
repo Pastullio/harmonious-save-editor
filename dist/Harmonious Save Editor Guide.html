@@ -379,7 +379,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   <p>At the top of the page is your traveller, built from your save the way the game builds them: the head, torso, armour, gloves, legs, boots, backpack, cape and cloth you wear. It needs the game on your PC (the editor finds it).</p>
   <ul>
     <li><span class="ui">Export for Blender (.glb)</span> saves your traveller with their skeleton to <b>Documents\Harmonious Save Editor\Exports</b>. In Blender, use File, Import, glTF 2.0 and pose the bones.</li>
-    <li>Easier: in Blender's LiveLink panel, open <b>Your traveller</b> and press <span class="ui">Import my traveller</span>. It brings in the traveller from the save open in the editor. Select the skeleton, press <span class="ui">Ctrl+Tab</span> for Pose mode, and turn the bones.</li>
+    <li>Easier: in Blender's LiveLink panel, open <b>Your traveller</b> and press <span class="ui">Import my traveller</span>. It brings in the traveller from the save open in the editor. Select the skeleton, press <span class="ui">Ctrl+Tab</span> for Pose mode, and turn the bones. Only the bones that move the body show; the game's helper joints (cameras, effects, attach points) are in a hidden bone collection called <b>Helpers</b>.</li>
     <li><span class="ui">Save the pose as a picture</span> renders your pose to a PNG with a transparent background in the same Exports folder. If your scene has no camera, one is added looking at your traveller; move it to frame the shot you want and press the button again.</li>
   </ul>
   <div class="note"><b>Colours</b>The model comes in grey for now, with one material per part of the outfit, so you can colour it in Blender. The game's own colours and textures are coming in a later update.</div>

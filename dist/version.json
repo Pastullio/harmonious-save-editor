@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.10.1545",
+  "version": "2026.11.10.1626",
   "date": "2026-11-10",
-  "size": 13289984,
-  "sha256": "e99707dcdbe0c03a27c47524165afc1bfdfa5b8bcca9a57621d3d5b2232d0fa2",
-  "notes": "Exosuit: your traveller, built from your save and your game files with exactly the parts you wear. Export for Blender (.glb) saves them with their skeleton, ready to pose.\nNew Blender add-on: Your traveller in the LiveLink panel. Import my traveller brings your character in to pose, and Save the pose as a picture renders it to a transparent PNG. Get the add-on again on Shipwright and install it over the old one.\nBlender add-on fix: Support the creator now starts closed and the LiveLink panel starts open (they were the wrong way round).",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.1545/HarmoniousSaveEditor.exe",
+  "size": 13292544,
+  "sha256": "64bf4d8f7d7bad6ad4c847e0a01d6eb3a6388e688c2d267b53731ea2bb0772bd",
+  "notes": "Blender add-on: Import my traveller now shows a clean skeleton, without the big spheres on every bone, and hides the game's helper joints (cameras, effects) in a Helpers bone collection. Get the add-on again on Shipwright and install it over the old one.",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.1626/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 2, 0),
+    "version": (1, 2, 1),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -487,6 +487,30 @@ def find_traveller():
     return arms[0] if len(arms) == 1 else None
 
 
+def tidy_skeleton(arm, meshes):
+    """Plain stick bones, and the game's helper joints (cameras, effects, attach points: bones that move no part of
+    the body) in a hidden bone collection, so only the bones that pose the traveller show."""
+    for pb in arm.pose.bones:
+        pb.custom_shape = None
+    arm.data.display_type = "STICK"
+    used = set()
+    for m in meshes:
+        names = {g.index: g.name for g in m.vertex_groups}
+        for v in m.data.vertices:
+            for g in v.groups:
+                if g.weight > 0.001:
+                    used.add(names.get(g.group))
+    if not used or not hasattr(arm.data, "collections"):
+        return
+    body = arm.data.collections.new("Body")
+    helpers = arm.data.collections.new("Helpers")
+    for b in arm.data.bones:
+        # a bone that moves nothing itself but has bones under it that do (the hips, the spine) is part of the body too
+        moves = b.name in used or any(c.name in used for c in b.children_recursive)
+        (body if moves else helpers).assign(b)
+    helpers.is_visible = False
+
+
 class HARMONIOUS_OT_traveller(bpy.types.Operator):
     bl_idname = "harmonious.import_traveller"
     bl_label = "Import my traveller"
@@ -513,13 +537,24 @@ class HARMONIOUS_OT_traveller(bpy.types.Operator):
         with open(path, "wb") as f:
             f.write(data)
         before = set(bpy.data.objects)
-        bpy.ops.import_scene.gltf(filepath=path)
+        try:   # bones that point at their children pose most naturally in Blender
+            bpy.ops.import_scene.gltf(filepath=path, bone_heuristic="BLENDER")
+        except TypeError:
+            bpy.ops.import_scene.gltf(filepath=path)
         new = [o for o in bpy.data.objects if o not in before]
         for o in new:
             if o.type == "ARMATURE":
                 o["harmonious_traveller"] = name
                 o.show_in_front = True
+                tidy_skeleton(o, [m for m in new if m.type == "MESH" and m.parent == o])
                 context.view_layer.objects.active = o
+        # the importer draws each bone as a sphere (an Icosphere in a glTF_not_exported collection); plain bones instead
+        for o in new:
+            if o.type == "MESH" and o.name.startswith("Icosphere") and not o.users_collection[0].name.startswith(name):
+                coll = o.users_collection[0]
+                bpy.data.objects.remove(o)
+                if coll.name.startswith("glTF_not_exported") and not coll.objects:
+                    bpy.data.collections.remove(coll)
         set_status("%s is in the scene. Select the skeleton, press Ctrl+Tab for Pose mode and turn the bones." % name)
         return {"FINISHED"}
 

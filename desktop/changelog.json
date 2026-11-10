@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.10.1626",
+  "date": "2026-11-10",
+  "notes": [
+   "Blender add-on: Import my traveller now shows a clean skeleton, without the big spheres on every bone, and hides the game's helper joints (cameras, effects) in a Helpers bone collection. Get the add-on again on Shipwright and install it over the old one."
+  ]
+ },
+ {
   "version": "2026.11.10.1545",
   "date": "2026-11-10",
   "notes": [
