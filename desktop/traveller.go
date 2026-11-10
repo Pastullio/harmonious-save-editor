@@ -255,6 +255,34 @@ func travellerJoints(root *sceneNode) []tJoint {
 	return js
 }
 
+// bindPose puts each joint where the mesh was bound to it. The scene's own joint transforms
+// don't match the geometry (the hips came out 0.24 m apart vertically), but the geometry's
+// inverse bind matrices do: stored column-major, so transpose, then invert for the joint's world.
+// Locals are rebuilt from the new worlds; a joint without a binding keeps its scene placement
+// relative to its (corrected) parent.
+func bindPose(js []tJoint, ibm [][16]float32) {
+	for i := range js {
+		j := &js[i]
+		old := j.local
+		if j.index >= 0 && j.index < len(ibm) {
+			var m mat4
+			for r := 0; r < 4; r++ {
+				for c := 0; c < 4; c++ {
+					m[r*4+c] = float64(ibm[j.index][c*4+r])
+				}
+			}
+			j.world = invert(m)
+		} else if j.parent >= 0 {
+			j.world = matMul(js[j.parent].world, old)
+		}
+		if j.parent >= 0 {
+			j.local = matMul(invert(js[j.parent].world), j.world)
+		} else {
+			j.local = j.world
+		}
+	}
+}
+
 func travellerGLB(names []string, name string) ([]byte, error) {
 	root, err := loadScene(travellerScene)
 	if err != nil {
@@ -268,6 +296,12 @@ func travellerGLB(names []string, name string) ([]byte, error) {
 		return nil, fmt.Errorf("the traveller has no geometry")
 	}
 	joints := travellerJoints(root)
+	for _, p := range out.parts {
+		if p.skinned && p.geo != nil && len(p.geo.invBind) > 0 {
+			bindPose(joints, p.geo.invBind)
+			break
+		}
+	}
 	byIndex := map[int]int{}
 	for i, j := range joints {
 		if j.index >= 0 {

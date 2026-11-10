@@ -51,16 +51,65 @@ pb.rotation_mode = 'XYZ'; pb.rotation_euler = (0, 0, math.radians(-60)); bpy.con
 dg = bpy.context.evaluated_depsgraph_get(); after = mesh.evaluated_get(dg).to_mesh().vertices
 print('MOVED', sum(1 for a, b in zip(before, after) if (a - b.co).length > 0.01))
 s = bpy.context.scene; s.render.resolution_percentage = 20
+print('SHOWN', sum(1 for b in h.body_bones(arm) if not b.hide))
+# every bone sits where it joins the body: its head is close to the vertices it moves most
+import mathutils, statistics
+mw = mesh.matrix_world; aw = arm.matrix_world
+gi = {g.index: g.name for g in mesh.vertex_groups}
+own = {}
+for v in mesh.data.vertices:
+    for gg in v.groups:
+        pass
+    if v.groups:
+        top = max(v.groups, key=lambda gg: gg.weight)
+        if top.weight > 0.3: own.setdefault(gi[top.group], []).append(mw @ v.co)
+for pb in arm.pose.bones: pb.rotation_euler = (0, 0, 0); pb.rotation_quaternion = (1, 0, 0, 0)
+bpy.context.view_layer.update()
+gaps = {}
+for b in h.body_bones(arm):
+    pts = own.get(b.name)
+    if pts and len(pts) > 5: gaps[b.name] = min((p - aw @ b.head_local).length for p in pts)
+pairs = [(b, arm.data.bones.get('r_' + b.name[2:])) for b in arm.data.bones if b.name.startswith('l_')]
+mirror = max(((aw @ a.head_local) - (aw @ c.head_local) * mathutils.Vector((-1, 1, 1))).length for a, c in pairs if c)
+print('GAP', round(statistics.median(gaps.values()), 4), round(mirror, 4))
+print('WORST', sorted(gaps.items(), key=lambda x: -x[1])[:5])
+# turning a finger turns it at the hand, not around a point in the air
+fb = arm.pose.bones[max((n for n in own if n.startswith('r_hand_0')), key=lambda n: len(own[n]))]
+print('FINGER', fb.name)
+idx = mesh.vertex_groups[fb.name].index
+vs = [v.index for v in mesh.data.vertices if v.groups and max(v.groups, key=lambda gg: gg.weight).group == idx]
+dg = bpy.context.evaluated_depsgraph_get(); m0 = mesh.evaluated_get(dg).to_mesh(); p0 = [mw @ m0.vertices[i].co for i in vs]
+fb.rotation_mode = 'XYZ'; fb.rotation_euler = (math.radians(45), 0, 0); bpy.context.view_layer.update()
+dg = bpy.context.evaluated_depsgraph_get(); m1 = mesh.evaluated_get(dg).to_mesh(); p1 = [mw @ m1.vertices[i].co for i in vs]
+print('FINGERMOVE', round(max([(a - b).length for a, b in zip(p0, p1)] or [0]), 4), len(vs))
+fb.rotation_euler = (0, 0, 0); bpy.context.view_layer.update()
+# clicking the right hand shows only the bone that moves it
+hb = arm.data.bones['r_arm_Wrist']
+target = statistics.mean([p.x for p in own[hb.name]]), statistics.mean([p.y for p in own[hb.name]]), statistics.mean([p.z for p in own[hb.name]])
+target = mathutils.Vector(target)
+got = h.pick_ray(bpy.context, arm, target + mathutils.Vector((0, -3, 0)), mathutils.Vector((0, 1, 0)))
+print('PICK', hb.name, got)
+if got: h.show_bone(arm, got)
+print('SHOWNAFTER', sum(1 for b in h.body_bones(arm) if not b.hide), arm.data.bones.active.name if arm.data.bones.active else '')
 print('PICTURE', bpy.ops.harmonious.pose_picture())
 print('STATUS', h.STATE['status'])
 h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
     try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 600000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|PICK|SHOWN|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
     ok('turning a bone moves the body', +line('MOVED') > 100);
+    ok('the sticks are hidden until a part is clicked', line('SHOWN') === '0');
+    const [gap, mirror] = line('GAP').split(' ').map(Number);
+    ok('every bone starts where it joins the body', gap < 0.05 && mirror < 0.01);
+    const [fmove] = line('FINGERMOVE').split(' ').map(Number);
+    ok('turning a finger bends it at the hand', fmove > 0.002 && fmove < 0.06);
+    const [want, got] = line('PICK').split(' ');
+    ok('clicking the hand picks the bone that moves it', got && got !== 'None' && /r_(arm|hand)/.test(got));
+    ok('…and shows just that stick', /^1 /.test(line('SHOWNAFTER')) && line('SHOWNAFTER').endsWith(got));
     const png = (line('STATUS').match(/Saved (.*\.png)/) || [])[1];
     ok('Save the pose as a picture writes a transparent PNG to Exports', png && fs.existsSync(png) && png.includes('Exports') && fs.readFileSync(png)[25] === 6);
   } else console.log('SKIP the add-on part (no bpy)');

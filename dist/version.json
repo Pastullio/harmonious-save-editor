@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.10.1632",
+  "version": "2026.11.10.1706",
   "date": "2026-11-10",
-  "size": 13295616,
-  "sha256": "018f0cadaf32f17db011c1275d709ea36f9d64aa3367dd3bf3b9a9d60fd904bb",
-  "notes": "Blender add-on 1.2.2: Import my traveller goes straight into Pose mode (click a bone and press R) and shows plain bones instead of spheres. From now on the add-on tells you in Blender when a newer one is ready. Get it on Shipwright and install it over the old one.",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.1632/HarmoniousSaveEditor.exe",
+  "size": 13305344,
+  "sha256": "d74d0c13dbf38b387d1d453ed4dd2d72f7853de6e2060d52e1799d90d6295d10",
+  "notes": "Blender: your traveller's bones now sit where they join the body, so a finger, hand or leg turns at the joint instead of swinging through the air\nBlender: the bones stay hidden until you click a part of the body; the bone that moves it shows, ready to turn with R (Shift+click adds another, a click on empty space hides them, Show every stick shows them all)\nPlease install the LiveLink add-on again (version 1.3.0) to get the click-to-pose",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.1706/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

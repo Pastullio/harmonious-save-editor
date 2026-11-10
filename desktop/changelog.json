@@ -1,5 +1,14 @@
 [
  {
+  "version": "2026.11.10.1706",
+  "date": "2026-11-10",
+  "notes": [
+   "Blender: your traveller's bones now sit where they join the body, so a finger, hand or leg turns at the joint instead of swinging through the air",
+   "Blender: the bones stay hidden until you click a part of the body; the bone that moves it shows, ready to turn with R (Shift+click adds another, a click on empty space hides them, Show every stick shows them all)",
+   "Please install the LiveLink add-on again (version 1.3.0) to get the click-to-pose"
+  ]
+ },
+ {
   "version": "2026.11.10.1632",
   "date": "2026-11-10",
   "notes": [

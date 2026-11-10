@@ -124,7 +124,7 @@ Every ship you own, build or download, in one place, kept in `Documents\Harmonio
 
 Your exosuit's technology and cargo, laid out as in the game. Everything in [Inventories](#inventories) works here, including supercharged slots.
 
-**Your traveller** sits at the top: your character built from your save and your game files, with exactly the parts you wear. **Export for Blender (.glb)** saves them with their skeleton, ready to pose (File > Import > glTF in Blender), or press **Import my traveller** in Blender's LiveLink panel. **Save the pose as a picture** renders the pose to a transparent PNG. The model is grey for now; the game's colours and textures come later.
+**Your traveller** sits at the top: your character built from your save and your game files, with exactly the parts you wear. **Export for Blender (.glb)** saves them with their skeleton, ready to pose (File > Import > glTF in Blender), or press **Import my traveller** in Blender's LiveLink panel, then click a part of the body to show the bone that moves it. **Save the pose as a picture** renders the pose to a transparent PNG. The model is grey for now; the game's colours and textures come later.
 
 ### Multi-tools
 

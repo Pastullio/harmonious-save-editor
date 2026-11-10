@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 2, 2),
+    "version": (1, 3, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -523,6 +523,58 @@ def tidy_skeleton(arm, meshes):
         moves = b.name in used or any(c.name in used for c in b.children_recursive)
         (body if moves else helpers).assign(b)
     helpers.is_visible = False
+    for b in arm.data.bones:   # every stick hidden: click a part of the body to show the one that moves it
+        b.hide = True
+
+
+def body_bones(arm):
+    coll = arm.data.collections.get("Body") if hasattr(arm.data, "collections") else None
+    return [b for b in arm.data.bones if coll is None or coll in b.collections.values()] if coll else list(arm.data.bones)
+
+
+def traveller_meshes(arm):
+    return [o for o in bpy.data.objects if o.type == "MESH" and o.find_armature() == arm]
+
+
+def bone_at(arm, obj, face, location):
+    """The bone that moves the part of the body under a click: the face's vertices, nearest ones counting most,
+    voting with their weights."""
+    dg = bpy.context.evaluated_depsgraph_get()
+    ev = obj.evaluated_get(dg)
+    me = ev.to_mesh()
+    try:
+        if face < 0 or face >= len(me.polygons):
+            return None
+        local = obj.matrix_world.inverted() @ location
+        verts = list(me.polygons[face].vertices)
+        names = {g.index: g.name for g in obj.vertex_groups}
+        bones = {b.name for b in body_bones(arm)}
+        votes = {}
+        for v in verts:
+            near = 1.0 / (0.002 + (me.vertices[v].co - local).length)
+            for g in obj.data.vertices[v].groups:
+                n = names.get(g.group)
+                if n in bones and g.weight > 0.001:
+                    votes[n] = votes.get(n, 0.0) + g.weight * near
+        return max(votes, key=votes.get) if votes else None
+    finally:
+        ev.to_mesh_clear()
+
+
+def show_bone(arm, name, extend=False):
+    """Show and select one bone (keeping the others shown with extend); None hides every stick."""
+    body = {x.name for x in body_bones(arm)}
+    for b in arm.data.bones:
+        keep = extend and not b.hide and b.select
+        if b.name == name:
+            b.hide = False
+            b.select = b.select_head = b.select_tail = True
+        elif not keep:
+            b.select = b.select_head = b.select_tail = False
+            if b.name in body:
+                b.hide = True
+    if name:
+        arm.data.bones.active = arm.data.bones[name]
 
 
 class HARMONIOUS_OT_traveller(bpy.types.Operator):
@@ -581,7 +633,7 @@ class HARMONIOUS_OT_traveller(bpy.types.Operator):
                 bpy.ops.object.mode_set(mode="POSE")
             except RuntimeError:
                 pass
-        set_status("%s is in the scene, in Pose mode: click a bone and press R to turn it. Ctrl+Tab goes back to Object mode." % name)
+        set_status("%s is in the scene, in Pose mode: click a part of the body to show its bone, then press R to turn it. Ctrl+Tab goes back to Object mode." % name)
         return {"FINISHED"}
 
 
@@ -603,6 +655,84 @@ def frame_camera(scene, mesh):
         sun.data.energy = 3.0
         sun.rotation_euler = (0.9, 0.2, 0.6)
         scene.collection.objects.link(sun)
+
+
+class HARMONIOUS_OT_pick_part(bpy.types.Operator):
+    """Click on the traveller in Pose mode: the stick that moves that part appears, selected, ready to turn (R)."""
+    bl_idname = "harmonious.pick_part"
+    bl_label = "Pick a part to pose"
+    bl_options = {"REGISTER", "UNDO"}
+    extend: bpy.props.BoolProperty(name="Add to the selection", default=False)
+
+    @classmethod
+    def poll(cls, context):
+        o = context.active_object
+        return o is not None and o.type == "ARMATURE" and context.mode == "POSE" and bool(o.get("harmonious_traveller"))
+
+    def invoke(self, context, event):
+        from bpy_extras import view3d_utils
+        arm, region, rv3d = context.active_object, context.region, context.region_data
+        if region is None or rv3d is None:
+            return {"PASS_THROUGH"}
+        mouse = (event.mouse_region_x, event.mouse_region_y)
+        # a stick already showing is picked as usual
+        for b in arm.data.bones:
+            if b.hide:
+                continue
+            a = view3d_utils.location_3d_to_region_2d(region, rv3d, arm.matrix_world @ b.head_local)
+            c = view3d_utils.location_3d_to_region_2d(region, rv3d, arm.matrix_world @ b.tail_local)
+            if a is None or c is None:
+                continue
+            pb = arm.pose.bones[b.name]
+            a = view3d_utils.location_3d_to_region_2d(region, rv3d, arm.matrix_world @ pb.head) or a
+            c = view3d_utils.location_3d_to_region_2d(region, rv3d, arm.matrix_world @ pb.tail) or c
+            seg = c - a
+            t = 0.0 if seg.length_squared == 0 else max(0.0, min(1.0, (mouse[0] - a.x) * seg.x / seg.length_squared + (mouse[1] - a.y) * seg.y / seg.length_squared))
+            if ((a + seg * t).x - mouse[0]) ** 2 + ((a + seg * t).y - mouse[1]) ** 2 < 64:
+                return {"PASS_THROUGH"}
+        origin = view3d_utils.region_2d_to_origin_3d(region, rv3d, mouse)
+        direction = view3d_utils.region_2d_to_vector_3d(region, rv3d, mouse)
+        name = pick_ray(context, arm, origin, direction)
+        if name is None:
+            if not self.extend:
+                show_bone(arm, None)
+            return {"PASS_THROUGH"}
+        show_bone(arm, name, self.extend)
+        return {"FINISHED"}
+
+
+def pick_ray(context, arm, origin, direction):
+    """The bone for the traveller's body where a ray first hits it, or None."""
+    meshes = traveller_meshes(arm)
+    dg = context.evaluated_depsgraph_get()
+    for _ in range(8):   # look through anything else in the way (a camera, a prop)
+        hit, loc, _n, face, obj, _m = context.scene.ray_cast(dg, origin, direction)
+        if not hit:
+            return None
+        obj = obj.original if obj is not None else None
+        if obj in meshes:
+            return bone_at(arm, obj, face, loc)
+        origin = loc + direction * 0.0005
+    return None
+
+
+class HARMONIOUS_OT_show_bones(bpy.types.Operator):
+    bl_idname = "harmonious.show_bones"
+    bl_label = "Show every stick"
+    bl_description = "Show all the bones of the traveller, or hide them again so only the part you click shows"
+
+    @classmethod
+    def poll(cls, context):
+        return find_traveller() is not None
+
+    def execute(self, context):
+        arm = find_traveller()
+        bones = body_bones(arm)
+        hide = not any(b.hide for b in bones)
+        for b in bones:
+            if not (hide and b.select):
+                b.hide = hide
+        return {"FINISHED"}
 
 
 class HARMONIOUS_OT_picture(bpy.types.Operator):
@@ -664,6 +794,14 @@ class HARMONIOUS_PT_traveller(bpy.types.Panel):
         row = layout.row()
         row.enabled = bool(LINK.get("traveller"))
         row.operator(HARMONIOUS_OT_traveller.bl_idname, icon="IMPORT")
+        arm = find_traveller()
+        if arm is not None and arm.get("harmonious_traveller"):
+            tip = layout.column(align=True)
+            tip.scale_y = 0.8
+            for line in wrap("In Pose mode, click a part of the body: its bone shows. R turns it, Shift+click adds another part, a click on empty space hides them.", 40):
+                tip.label(text=line)
+            shown = not any(b.hide for b in body_bones(arm))
+            layout.operator(HARMONIOUS_OT_show_bones.bl_idname, text="Hide the sticks" if shown else "Show every stick", icon="HIDE_OFF" if not shown else "HIDE_ON")
         layout.operator(HARMONIOUS_OT_picture.bl_idname, icon="RENDER_STILL")
 
 
@@ -702,7 +840,9 @@ def wrap(text, width):
     return lines + ([cur] if cur else [])
 
 
-CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_OT_picture,
+_KEYMAPS = []
+
+CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_OT_pick_part, HARMONIOUS_OT_show_bones, HARMONIOUS_OT_picture,
            HARMONIOUS_PT_live, HARMONIOUS_PT_traveller, HARMONIOUS_PT_support)
 
 
@@ -718,10 +858,23 @@ def register():
         bpy.app.handlers.save_post.append(on_save)
     if not bpy.app.timers.is_registered(link_timer):
         bpy.app.timers.register(link_timer, first_interval=1.0, persistent=True)
+    kc = bpy.context.window_manager.keyconfigs.addon
+    if kc is not None:   # a click on the traveller in Pose mode picks the part under it
+        km = kc.keymaps.new(name="Pose", space_type="EMPTY")
+        for shift in (False, True):
+            kmi = km.keymap_items.new(HARMONIOUS_OT_pick_part.bl_idname, "LEFTMOUSE", "CLICK", shift=shift)
+            kmi.properties.extend = shift
+            _KEYMAPS.append((km, kmi))
 
 
 def unregister():
     global _PREVIEWS
+    for km, kmi in _KEYMAPS:
+        try:
+            km.keymap_items.remove(kmi)
+        except (ReferenceError, RuntimeError):
+            pass
+    _KEYMAPS.clear()
     if _PREVIEWS is not None:
         from bpy.utils import previews
         previews.remove(_PREVIEWS)
