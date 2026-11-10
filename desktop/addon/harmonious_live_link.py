@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 4, 0),
+    "version": (1, 4, 1),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -611,8 +611,21 @@ def bone_at(arm, obj, face, location):
         ev.to_mesh_clear()
 
 
+# Joints the game skins a part to but that sit at the part's far end: the head's joint is at the top of the head, so
+# turning it swings the head round its crown (owner, 2026-11-10). Clicking such a part picks the joint it hangs from.
+PIVOT_FROM_PARENT = ("head_Top",)
+
+
+def pivot_bone(arm, name):
+    b = arm.data.bones.get(name) if name else None
+    if b is not None and b.parent is not None and any(name == n or name.endswith("_" + n) for n in PIVOT_FROM_PARENT):
+        return b.parent.name
+    return name
+
+
 def show_bone(arm, name, extend=False):
     """Show and select one bone (keeping the others shown with extend); None hides every stick."""
+    name = pivot_bone(arm, name)
     body = {x.name for x in body_bones(arm)}
     for b in arm.data.bones:
         keep = extend and not is_hidden(arm, b) and is_selected(arm, b)

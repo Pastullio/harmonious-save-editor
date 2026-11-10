@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.10.1855",
+  "date": "2026-11-10",
+  "notes": [
+   "Blender: clicking your traveller's head now picks the neck, so the head turns where it joins the body instead of round the top of the helmet",
+   "Please install the LiveLink add-on again (version 1.4.1)"
+  ]
+ },
+ {
   "version": "2026.11.10.1846",
   "date": "2026-11-10",
   "notes": [

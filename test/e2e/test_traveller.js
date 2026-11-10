@@ -43,7 +43,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.click('#travSample');
   const exp = path.join(home, 'Documents', 'Harmonious Save Editor', 'Exports');
   let zipf = '';
-  for (let k = 0; k < 120 && !zipf; k++) { await new Promise((r) => setTimeout(r, 250)); zipf = (fs.readdirSync(exp).find((f) => /^Traveller files/.test(f)) || ''); }
+  for (let k = 0; k < 120 && !zipf; k++) { await new Promise((r) => setTimeout(r, 250)); zipf = (fs.readdirSync(exp).find((f) => /^Traveller files.*\.zip$/.test(f)) || ''); }
   const inZip = zipf ? execFileSync('python3', ['-c', 'import zipfile,sys;print("\\n".join(zipfile.ZipFile(sys.argv[1]).namelist()))', path.join(exp, zipf)]).toString() : '';
   ok('Save traveller files for the developer zips the materials and the save\'s look', /\.material\.mbin/.test(inZip) && /save-look\.json/.test(inZip) && /about\.txt/.test(inZip));
   await new Promise((r) => setTimeout(r, 1000));
@@ -115,6 +115,12 @@ target = mathutils.Vector(target)
 got = h.pick_ray(bpy.context, arm, target + mathutils.Vector((0, -3, 0)), mathutils.Vector((0, 1, 0)))
 print('PICK', hb.name, got)
 if got: h.show_bone(arm, got)
+hp = [mw @ v.co for v in mesh.data.vertices if (mw @ v.co).z > 1.8 and abs((mw @ v.co).x) < 0.1]
+hc = mathutils.Vector((statistics.mean(p.x for p in hp), statistics.mean(p.y for p in hp), statistics.mean(p.z for p in hp)))
+hit = h.pick_ray(bpy.context, arm, hc + mathutils.Vector((0, -3, 0)), mathutils.Vector((0, 1, 0)))
+h.show_bone(arm, hit)
+print('HEADPICK', hit, arm.data.bones.active.name, round((aw @ arm.data.bones.active.head_local).z, 3))
+h.show_bone(arm, got)
 print('SHOWNAFTER', sum(1 for b in h.body_bones(arm) if not h.is_hidden(arm, b)), arm.data.bones.active.name if arm.data.bones.active else '')
 print('PICTURE', bpy.ops.harmonious.pose_picture())
 print('STATUS', h.STATE['status'])
@@ -122,7 +128,7 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
     try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 600000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
-    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|PICK|SHOWN|Traceback|  File|\w+Error)/.test(l)).join('\n'));
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|HEADPICK|PICK|SHOWN|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
@@ -136,6 +142,8 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     ok('turning a finger bends it at the hand', fmove > 0.002 && fmove < 0.06);
     const [want, got] = line('PICK').split(' ');
     ok('clicking the hand picks the bone that moves it', got && got !== 'None' && /r_(arm|hand)/.test(got));
+    const [hpick, hact, hz] = line('HEADPICK').split(' ');
+    ok('clicking the head turns it at the neck', hpick === 'head_Top' && hact === 'neck_01_02' && +hz < 1.75);
     ok('…and shows just that stick', /^1 /.test(line('SHOWNAFTER')) && line('SHOWNAFTER').endsWith(got));
     const png = (line('STATUS').match(/Saved (.*\.png)/) || [])[1];
     ok('Save the pose as a picture writes a transparent PNG to Exports', png && fs.existsSync(png) && png.includes('Exports') && fs.readFileSync(png)[25] === 6);
