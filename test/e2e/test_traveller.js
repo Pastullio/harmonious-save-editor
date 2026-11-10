@@ -1,0 +1,69 @@
+// Your traveller (owner, 2026-11-10): the Exosuit page builds the player from the save's descriptor groups and the
+// game files, exports a rigged .glb, and the LiveLink add-on imports it ready to pose and renders the pose.
+// Usage: node test/e2e/test_traveller.js <scratch dir with dbroot/NMS and bpyenv> <PCBANKS with the player character
+//   and metadata/gamestate/playerdata (tools/extract-nms-player-files.bat + extract-nms-player-tables.bat, repacked)>
+const { chromium } = require('/opt/npm-tools/node_modules/playwright');
+const { spawn, execFileSync } = require('child_process'); const fs = require('fs'); const path = require('path');
+const [SP, BANKS] = process.argv.slice(2);
+const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n); if (!c) fails.push(n); };
+(async () => {
+  if (!BANKS) { console.log('SKIP (no player banks)'); return; }
+  const T = path.join(SP, 'travtest'); fs.rmSync(T, { recursive: true, force: true });
+  const home = path.join(T, 'home'), root = path.join(T, 'root'), cfg = path.join(T, 'cfg');
+  fs.mkdirSync(path.join(home, 'Documents'), { recursive: true }); fs.cpSync(SP + '/dbroot/NMS', root, { recursive: true });
+  const proc = spawn(path.join(__dirname, '../../dist/hse-linux'), ['-no-window', '-root', root, '-port', '48151'], { env: { ...process.env, HOME: home, XDG_CONFIG_HOME: cfg, HSE_GAME: BANKS, HSE_BLENDER: '/nonexistent' } });
+  const url = await new Promise((res) => proc.stdout.on('data', (d) => res(String(d).trim())));
+  const b = await chromium.launch({ args: ['--use-angle=swiftshader'] }); const p = await b.newPage({ viewport: { width: 1440, height: 1000 } });
+  const errs = []; p.on('pageerror', (e) => errs.push(e.message));
+  await p.goto(url); await p.waitForSelector('.slot-row'); await p.click('.slot-row'); await p.waitForSelector('#app:not(.hidden)');
+  await p.waitForFunction(() => S.lib && S.lib.game, null, { timeout: 120000 }).catch(() => {});
+  const groups = await p.evaluate(() => travellerGroups());
+  ok('the save names the traveller\'s look', groups.includes('^HEAD_ASTBOT2') && groups.length > 5);
+  await p.click('nav button[data-s="exosuit"]'); await p.waitForSelector('.trav-top');
+  ok('Exosuit shows your traveller, named', /Pastullio/.test(await p.textContent('.trav-top')));
+  const t = await p.evaluate(async (gs) => (await api('/api/model/traveller?groups=' + encodeURIComponent(gs.join(',')))).json(), groups);
+  ok('the look turns into the scene\'s parts', t.scene && t.names.includes('_Torso_Vykeen') && t.names.includes('_Chest_Builders3') && !t.missing.length);
+  await p.waitForFunction(() => document.querySelector('.trav-top canvas'), null, { timeout: 30000 }).catch(() => {});
+  await p.click('#travGlb');
+  const glb = path.join(home, 'Documents', 'Harmonious Save Editor', 'Exports', 'Pastullio.glb');
+  for (let k = 0; k < 40 && !fs.existsSync(glb); k++) await new Promise((r) => setTimeout(r, 250));
+  ok('Export for Blender writes a .glb to Exports', fs.existsSync(glb) && fs.readFileSync(glb).subarray(0, 4).toString() === 'glTF');
+  await new Promise((r) => setTimeout(r, 1000));
+  const live = await p.evaluate(async () => { const r = await api('/api/live/traveller'); return r.ok ? (await r.arrayBuffer()).byteLength : 0; });
+  ok('the open save\'s traveller is ready for the add-on', live > 1e6);
+  ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
+  // the add-on in Blender's Python: Import my traveller, pose a bone, Save the pose as a picture
+  const py = path.join(SP, 'bpyenv/bin/python');
+  if (fs.existsSync(py)) {
+    const script = path.join(T, 'addon.py');
+    fs.writeFileSync(script, `import sys, os, math, bpy
+sys.path.insert(0, ${JSON.stringify(path.join(__dirname, '../../desktop/addon'))})
+bpy.ops.wm.read_factory_settings(use_empty=True)
+import harmonious_live_link as h
+h.register(); h.check_link_now()
+print('TRAVELLER', h.LINK['traveller'])
+print('IMPORT', bpy.ops.harmonious.import_traveller())
+arm = h.find_traveller(); print('BONES', len(arm.data.bones))
+mesh = max([o for o in bpy.data.objects if o.type == 'MESH'], key=lambda o: len(o.data.vertices))
+pb = next(b for b in arm.pose.bones if b.name.endswith('r_arm_Shoulder'))
+dg = bpy.context.evaluated_depsgraph_get(); before = [v.co.copy() for v in mesh.evaluated_get(dg).to_mesh().vertices]
+pb.rotation_mode = 'XYZ'; pb.rotation_euler = (0, 0, math.radians(-60)); bpy.context.view_layer.update()
+dg = bpy.context.evaluated_depsgraph_get(); after = mesh.evaluated_get(dg).to_mesh().vertices
+print('MOVED', sum(1 for a, b in zip(before, after) if (a - b.co).length > 0.01))
+s = bpy.context.scene; s.render.resolution_percentage = 20
+print('PICTURE', bpy.ops.harmonious.pose_picture())
+print('STATUS', h.STATE['status'])
+h.unregister(); sys.stdout.flush(); os._exit(0)
+`);
+    let out = '';
+    try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 600000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
+    const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
+    ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
+    ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
+    ok('turning a bone moves the body', +line('MOVED') > 100);
+    const png = (line('STATUS').match(/Saved (.*\.png)/) || [])[1];
+    ok('Save the pose as a picture writes a transparent PNG to Exports', png && fs.existsSync(png) && png.includes('Exports') && fs.readFileSync(png)[25] === 6);
+  } else console.log('SKIP the add-on part (no bpy)');
+  await b.close(); proc.kill();
+  console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS'); process.exit(fails.length ? 1 : 0);
+})();

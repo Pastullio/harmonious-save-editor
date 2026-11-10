@@ -157,7 +157,10 @@ func handleLiveBuild(w http.ResponseWriter, r *http.Request) {
 		if base == nil {
 			base = json.RawMessage("null")
 		}
-		writeJSON(w, map[string]any{"ok": true, "armed": armed, "target": target, "slot": slot, "corvettes": corvettes, "kind": kind, "base": base, "version": appVersion})
+		trav.Lock()
+		tname := trav.name
+		trav.Unlock()
+		writeJSON(w, map[string]any{"ok": true, "armed": armed, "target": target, "slot": slot, "corvettes": corvettes, "kind": kind, "base": base, "version": appVersion, "traveller": tname, "exports": exportsDir()})
 		return
 	}
 	if r.Method != http.MethodPost {

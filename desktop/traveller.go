@@ -1,0 +1,558 @@
+package main
+
+// Your traveller (owner, 2026-11-10: "import their character's model into Blender to pose them"). The save lists the
+// player's look as descriptor groups (CharacterCustomisationData[0].CustomData.DescriptorGroups: ^HEAD_ASTBOT2,
+// ^TORSO_VYK…); the game's descriptor group table turns each into the option nodes of the player character scene
+// (^TORSO_VYK -> _Torso_Vykeen, _VykNeck_XV…), which buildMesh picks the way it does a companion's Descriptors.
+//
+//   metadata/gamestate/playerdata/charactercustomisationdescriptorgroupsdata.mbin  GcCustomisationDescriptorGroups,
+//     template 0x6E1D4A06924711BB: DescriptorGroupSets at 0x30 (0x38-byte sets, DescriptorGroups at 0x00), each
+//     group 0x108 bytes: Descriptors (0x20-byte names) at 0x40, GroupID at 0x50. Checked 2026-11-10 on the owner's
+//     table: 63 sets, 1002 groups.
+//
+// The .glb export carries the skeleton: the scene's JOINT nodes (287 in the player character) as glTF nodes, with
+// inverse bind matrices from their rest pose, and each skinned mesh's 4 bone slots per vertex (blend indices and
+// weights in the vertex stream) mapped through the geometry's SkinMatrixLayout from the mesh's FIRSTSKINMAT. Meshes
+// under a JOINT are already in model space at the rest pose, so the rest pose is the bind pose. Blender imports it
+// with File > Import > glTF, bones ready to pose.
+
+import (
+	"bytes"
+	"encoding/binary"
+	"encoding/json"
+	"fmt"
+	"io"
+	"math"
+	"net/http"
+	"path"
+	"strings"
+	"sync"
+)
+
+const travellerScene = "models/common/player/playercharacter/playercharacter.scene.mbin"
+
+var (
+	descGroupsOnce sync.Once
+	descGroups     map[string][]string
+	descGroupsErr  error
+)
+
+// travellerGroups: group ID (no ^) -> the option node names it stands for.
+func travellerGroups() (map[string][]string, error) {
+	descGroupsOnce.Do(func() {
+		t := findGameFile("/charactercustomisationdescriptorgroupsdata.mbin")
+		if t == "" {
+			descGroupsErr = fmt.Errorf("the game's character customisation table wasn't found")
+			return
+		}
+		raw, err := gameFile(t)
+		if err != nil {
+			descGroupsErr = err
+			return
+		}
+		descGroups, descGroupsErr = parseDescriptorGroups(raw)
+	})
+	return descGroups, descGroupsErr
+}
+
+func parseDescriptorGroups(raw []byte) (map[string][]string, error) {
+	m, err := openMbin(raw, 0x6E1D4A06924711BB, "charactercustomisationdescriptorgroupsdata.mbin")
+	if err != nil {
+		return nil, err
+	}
+	out := map[string][]string{}
+	sa, sn := m.list(0x20 + 0x30)
+	for i := 0; i < sn; i++ {
+		set := sa + i*0x38
+		if !m.ok(set, 0x38) {
+			break
+		}
+		ga, gn := m.list(set)
+		for j := 0; j < gn; j++ {
+			g := ga + j*0x108
+			if !m.ok(g, 0x108) {
+				break
+			}
+			id := m.fstr(g+0x50, 0x10)
+			da, dn := m.list(g + 0x40)
+			var names []string
+			for k := 0; k < dn; k++ {
+				if d := m.fstr(da+k*0x20, 0x20); d != "" {
+					names = append(names, d)
+				}
+			}
+			if id != "" {
+				out[strings.ToUpper(id)] = names
+			}
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("the character customisation table has no groups")
+	}
+	return out, nil
+}
+
+// travellerNames turns the save's descriptor groups into option node names; unknown groups are returned too.
+func travellerNames(groups []string) (names, missing []string, err error) {
+	names, missing = []string{}, []string{}
+	tab, err := travellerGroups()
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, g := range groups {
+		id := strings.ToUpper(strings.TrimPrefix(strings.TrimSpace(g), "^"))
+		if id == "" {
+			continue
+		}
+		if ns, ok := tab[id]; ok {
+			names = append(names, ns...)
+		} else {
+			missing = append(missing, id)
+		}
+	}
+	return names, missing, nil
+}
+
+func travellerGroupsParam(r *http.Request) []string {
+	var gs []string
+	for _, g := range strings.Split(r.URL.Query().Get("groups"), ",") {
+		if g = strings.TrimSpace(g); g != "" {
+			gs = append(gs, g)
+		}
+	}
+	return gs
+}
+
+// GET /api/model/traveller?groups=^HEAD_ASTBOT2,^TORSO_VYK,…  -> {scene, names, missing}; the page draws it with
+// /api/model/mesh?scene=…&picks={"_names": names joined with "|"}.
+func handleTraveller(w http.ResponseWriter, r *http.Request) {
+	names, missing, err := travellerNames(travellerGroupsParam(r))
+	if err != nil {
+		writeJSON(w, map[string]any{"error": err.Error()})
+		return
+	}
+	if _, err := loadScene(travellerScene); err != nil {
+		writeJSON(w, map[string]any{"error": err.Error()})
+		return
+	}
+	writeJSON(w, map[string]any{"scene": travellerScene, "names": names, "missing": missing})
+}
+
+// The open save's traveller, for the Blender add-on's "Import my traveller" (it may fetch it with the live token):
+// the page POSTs {groups, name} when a save opens, the add-on GETs the .glb.
+var trav struct {
+	sync.Mutex
+	groups []string
+	name   string
+}
+
+func handleLiveTraveller(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		var v struct {
+			Groups []string `json:"groups"`
+			Name   string   `json:"name"`
+		}
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&v); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		trav.Lock()
+		trav.groups, trav.name = v.Groups, strings.TrimSpace(v.Name)
+		trav.Unlock()
+		writeJSON(w, map[string]any{"ok": true})
+		return
+	}
+	trav.Lock()
+	groups, name := trav.groups, trav.name
+	trav.Unlock()
+	if len(groups) == 0 {
+		http.Error(w, "Open a save in Harmonious Save Editor first.", http.StatusNotFound)
+		return
+	}
+	names, _, err := travellerNames(groups)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	if name == "" {
+		name = "Traveller"
+	}
+	glb, err := travellerGLB(names, name)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "model/gltf-binary")
+	w.Header().Set("X-Traveller", safeFileName(name))
+	w.Write(glb)
+}
+
+// GET /api/model/traveller/glb?groups=…&name=Pastullio -> the rigged model as a binary glTF.
+func handleTravellerGLB(w http.ResponseWriter, r *http.Request) {
+	names, _, err := travellerNames(travellerGroupsParam(r))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	name := strings.TrimSpace(r.URL.Query().Get("name"))
+	if name == "" {
+		name = "Traveller"
+	}
+	glb, err := travellerGLB(names, name)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "model/gltf-binary")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", safeFileName(name)+".glb"))
+	w.Write(glb)
+}
+
+func safeFileName(s string) string {
+	s = strings.Map(func(r rune) rune {
+		if strings.ContainsRune(`<>:"/\|?*`, r) || r < 32 {
+			return '_'
+		}
+		return r
+	}, s)
+	if s == "" {
+		return "Traveller"
+	}
+	return s
+}
+
+type tJoint struct {
+	name   string
+	index  int // JOINTINDEX
+	parent int // index into the joint list, -1 for a root
+	world  mat4
+	local  mat4
+}
+
+// travellerJoints walks the scene's skeleton: every JOINT with its world (model space) and local transforms.
+func travellerJoints(root *sceneNode) []tJoint {
+	var js []tJoint
+	var walk func(n *sceneNode, m mat4, parent int)
+	walk = func(n *sceneNode, m mat4, parent int) {
+		m = matMul(m, transformOf(n.T))
+		if n.Type == "JOINT" {
+			idx := -1
+			fmt.Sscan(n.Attrs["JOINTINDEX"], &idx)
+			j := tJoint{name: n.Name, index: idx, parent: parent, world: m}
+			if parent >= 0 {
+				j.local = matMul(invert(js[parent].world), m)
+			} else {
+				j.local = m
+			}
+			js = append(js, j)
+			parent = len(js) - 1
+		}
+		for _, k := range n.Kids {
+			walk(k, m, parent)
+		}
+	}
+	walk(root, identity(), -1)
+	return js
+}
+
+func travellerGLB(names []string, name string) ([]byte, error) {
+	root, err := loadScene(travellerScene)
+	if err != nil {
+		return nil, err
+	}
+	out := &meshOut{onlyDepth: 1, collect: true}
+	if err := buildMesh(travellerScene, map[string]string{"_names": strings.Join(names, "|")}, "", 0, out, identity(), 0); err != nil {
+		return nil, err
+	}
+	if len(out.parts) == 0 {
+		return nil, fmt.Errorf("the traveller has no geometry")
+	}
+	joints := travellerJoints(root)
+	byIndex := map[int]int{}
+	for i, j := range joints {
+		if j.index >= 0 {
+			byIndex[j.index] = i
+		}
+	}
+	return writeGLB(name, out.parts, joints, byIndex)
+}
+
+// ------------------------------------------------------------------ glTF
+
+type glbBuf struct{ b bytes.Buffer }
+
+func (g *glbBuf) align() {
+	for g.b.Len()%4 != 0 {
+		g.b.WriteByte(0)
+	}
+}
+
+type prim struct {
+	material string
+	pos, nrm []float32
+	uv       []float32
+	joints   []uint16
+	weights  []float32
+	idx      []uint32
+}
+
+func writeGLB(name string, parts []meshPart, joints []tJoint, byIndex map[int]int) ([]byte, error) {
+	// one primitive per material
+	prims := map[string]*prim{}
+	var order []string
+	for _, p := range parts {
+		mat := strings.TrimSuffix(path.Base(strings.ToLower(strings.ReplaceAll(p.material, "\\", "/"))), ".material.mbin")
+		if mat == "" || mat == "." {
+			mat = "default"
+		}
+		pr := prims[mat]
+		if pr == nil {
+			pr = &prim{material: mat}
+			prims[mat] = pr
+			order = append(order, mat)
+		}
+		s := p.s
+		nv := len(s.pos) / 3
+		base := uint32(len(pr.pos) / 3)
+		m := p.m
+		for v := 0; v < nv; v++ {
+			x, y, z := float64(s.pos[v*3]), float64(s.pos[v*3+1]), float64(s.pos[v*3+2])
+			pr.pos = append(pr.pos, float32(m[0]*x+m[1]*y+m[2]*z+m[3]), float32(m[4]*x+m[5]*y+m[6]*z+m[7]), float32(m[8]*x+m[9]*y+m[10]*z+m[11]))
+			if len(s.uv) >= (v+1)*2 {
+				pr.uv = append(pr.uv, s.uv[v*2], s.uv[v*2+1])
+			} else {
+				pr.uv = append(pr.uv, 0, 0)
+			}
+			var jj [4]uint16
+			var ww [4]float32
+			if p.skinned && len(s.bones) >= (v+1)*4 && p.geo != nil {
+				sum := float32(0)
+				for c := 0; c < 4; c++ {
+					w := s.weights[v*4+c]
+					slot := p.firstSkin + int(s.bones[v*4+c])
+					if w <= 0 || slot < 0 || slot >= len(p.geo.skinLayout) {
+						continue
+					}
+					ji, ok := byIndex[int(p.geo.skinLayout[slot])]
+					if !ok {
+						continue
+					}
+					jj[c], ww[c] = uint16(ji), w
+					sum += w
+				}
+				if sum > 0 {
+					for c := range ww {
+						ww[c] /= sum
+					}
+				} else {
+					ww[0] = 1
+				}
+			} else {
+				ww[0] = 1 // a rigid piece: rides on the first joint
+			}
+			pr.joints = append(pr.joints, jj[:]...)
+			pr.weights = append(pr.weights, ww[:]...)
+		}
+		for k := 0; k+2 < len(s.idx); k += 3 {
+			a, b, c := s.idx[k], s.idx[k+1], s.idx[k+2]
+			if int(a) < nv && int(b) < nv && int(c) < nv {
+				pr.idx = append(pr.idx, base+a, base+b, base+c)
+			}
+		}
+	}
+
+	var bin glbBuf
+	type view struct {
+		Buffer     int `json:"buffer"`
+		ByteOffset int `json:"byteOffset"`
+		ByteLength int `json:"byteLength"`
+		Target     int `json:"target,omitempty"`
+	}
+	type accessor struct {
+		BufferView    int       `json:"bufferView"`
+		ComponentType int       `json:"componentType"`
+		Count         int       `json:"count"`
+		Type          string    `json:"type"`
+		Min           []float32 `json:"min,omitempty"`
+		Max           []float32 `json:"max,omitempty"`
+	}
+	var views []view
+	var accs []accessor
+	put := func(data any, target int) int {
+		bin.align()
+		off := bin.b.Len()
+		_ = binary.Write(&bin.b, binary.LittleEndian, data)
+		views = append(views, view{0, off, bin.b.Len() - off, target})
+		return len(views) - 1
+	}
+	addAcc := func(a accessor) int { accs = append(accs, a); return len(accs) - 1 }
+
+	type gPrim struct {
+		Attributes map[string]int `json:"attributes"`
+		Indices    int            `json:"indices"`
+		Material   int            `json:"material"`
+	}
+	type gMat struct {
+		Name string         `json:"name"`
+		PBR  map[string]any `json:"pbrMetallicRoughness"`
+	}
+	var gprims []gPrim
+	var mats []gMat
+	for _, k := range order {
+		pr := prims[k]
+		nv := len(pr.pos) / 3
+		if nv == 0 || len(pr.idx) == 0 {
+			continue
+		}
+		pr.nrm = vertexNormals(pr.pos, pr.idx)
+		mn, mx := []float32{math.MaxFloat32, math.MaxFloat32, math.MaxFloat32}, []float32{-math.MaxFloat32, -math.MaxFloat32, -math.MaxFloat32}
+		for v := 0; v < nv; v++ {
+			for c := 0; c < 3; c++ {
+				x := pr.pos[v*3+c]
+				mn[c] = float32(math.Min(float64(mn[c]), float64(x)))
+				mx[c] = float32(math.Max(float64(mx[c]), float64(x)))
+			}
+		}
+		pa := addAcc(accessor{put(pr.pos, 34962), 5126, nv, "VEC3", mn, mx})
+		na := addAcc(accessor{put(pr.nrm, 34962), 5126, nv, "VEC3", nil, nil})
+		ua := addAcc(accessor{put(pr.uv, 34962), 5126, nv, "VEC2", nil, nil})
+		ja := addAcc(accessor{put(pr.joints, 34962), 5123, nv, "VEC4", nil, nil})
+		wa := addAcc(accessor{put(pr.weights, 34962), 5126, nv, "VEC4", nil, nil})
+		ia := addAcc(accessor{put(pr.idx, 34963), 5125, len(pr.idx), "SCALAR", nil, nil})
+		mats = append(mats, gMat{Name: k, PBR: map[string]any{"baseColorFactor": []float32{0.55, 0.57, 0.6, 1}, "metallicFactor": 0.1, "roughnessFactor": 0.7}})
+		gprims = append(gprims, gPrim{map[string]int{"POSITION": pa, "NORMAL": na, "TEXCOORD_0": ua, "JOINTS_0": ja, "WEIGHTS_0": wa}, ia, len(mats) - 1})
+	}
+	if len(gprims) == 0 {
+		return nil, fmt.Errorf("the traveller has no geometry")
+	}
+	// inverse bind matrices from the rest pose (column-major)
+	ibm := make([]float32, 0, 16*len(joints))
+	for _, j := range joints {
+		inv := invert(j.world)
+		for c := 0; c < 4; c++ {
+			for r := 0; r < 4; r++ {
+				ibm = append(ibm, float32(inv[r*4+c]))
+			}
+		}
+	}
+	ibmAcc := addAcc(accessor{put(ibm, 0), 5126, len(joints), "MAT4", nil, nil})
+
+	type gNode struct {
+		Name     string    `json:"name"`
+		Children []int     `json:"children,omitempty"`
+		Matrix   []float64 `json:"matrix,omitempty"`
+		Mesh     *int      `json:"mesh,omitempty"`
+		Skin     *int      `json:"skin,omitempty"`
+	}
+	// node 0: the traveller, node 1: the mesh, nodes 2…: the joints in order
+	nodes := []gNode{{Name: name, Matrix: []float64{-1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1}}, {Name: name + " body"}}
+	zero := 0
+	nodes[1].Mesh, nodes[1].Skin = &zero, &zero
+	nodes[0].Children = []int{1}
+	jointNodes := make([]int, len(joints))
+	for i, j := range joints {
+		var mtx []float64
+		for c := 0; c < 4; c++ {
+			for r := 0; r < 4; r++ {
+				mtx = append(mtx, j.local[r*4+c])
+			}
+		}
+		nodes = append(nodes, gNode{Name: strings.TrimSuffix(strings.TrimPrefix(j.name, "player01_"), "SHJnt"), Matrix: mtx})
+		jointNodes[i] = len(nodes) - 1
+	}
+	var skelRoots []int
+	for i, j := range joints {
+		if j.parent >= 0 {
+			p := &nodes[jointNodes[j.parent]]
+			p.Children = append(p.Children, jointNodes[i])
+		} else {
+			skelRoots = append(skelRoots, jointNodes[i])
+		}
+	}
+	nodes[0].Children = append(nodes[0].Children, skelRoots...)
+	skel := 0
+	if len(skelRoots) > 0 {
+		skel = skelRoots[0]
+	}
+	doc := map[string]any{
+		"asset":       map[string]any{"version": "2.0", "generator": "Harmonious Save Editor " + appVersion},
+		"scene":       0,
+		"scenes":      []any{map[string]any{"name": name, "nodes": []int{0}}},
+		"nodes":       nodes,
+		"meshes":      []any{map[string]any{"name": name, "primitives": gprims}},
+		"materials":   mats,
+		"skins":       []any{map[string]any{"name": name + " skeleton", "joints": jointNodes, "inverseBindMatrices": ibmAcc, "skeleton": skel}},
+		"accessors":   accs,
+		"bufferViews": views,
+		"buffers":     []any{map[string]any{"byteLength": bin.b.Len()}},
+	}
+	js, err := json.Marshal(doc)
+	if err != nil {
+		return nil, err
+	}
+	for len(js)%4 != 0 {
+		js = append(js, ' ')
+	}
+	bin.align()
+	var outb bytes.Buffer
+	total := 12 + 8 + len(js) + 8 + bin.b.Len()
+	binary.Write(&outb, binary.LittleEndian, []uint32{0x46546C67, 2, uint32(total), uint32(len(js)), 0x4E4F534A})
+	outb.Write(js)
+	binary.Write(&outb, binary.LittleEndian, []uint32{uint32(bin.b.Len()), 0x004E4942})
+	outb.Write(bin.b.Bytes())
+	return outb.Bytes(), nil
+}
+
+// vertexNormals: area-weighted smooth normals (the game's packed normals aren't read yet).
+func vertexNormals(pos []float32, idx []uint32) []float32 {
+	n := make([]float32, len(pos))
+	for k := 0; k+2 < len(idx); k += 3 {
+		a, b, c := idx[k]*3, idx[k+1]*3, idx[k+2]*3
+		ux, uy, uz := pos[b]-pos[a], pos[b+1]-pos[a+1], pos[b+2]-pos[a+2]
+		vx, vy, vz := pos[c]-pos[a], pos[c+1]-pos[a+1], pos[c+2]-pos[a+2]
+		nx, ny, nz := uy*vz-uz*vy, uz*vx-ux*vz, ux*vy-uy*vx
+		for _, i := range []uint32{a, b, c} {
+			n[i] += nx
+			n[i+1] += ny
+			n[i+2] += nz
+		}
+	}
+	for i := 0; i+2 < len(n); i += 3 {
+		l := float32(math.Sqrt(float64(n[i]*n[i] + n[i+1]*n[i+1] + n[i+2]*n[i+2])))
+		if l > 0 {
+			n[i], n[i+1], n[i+2] = n[i]/l, n[i+1]/l, n[i+2]/l
+		} else {
+			n[i+1] = 1
+		}
+	}
+	return n
+}
+
+// invert: the inverse of a 4×4 transform (row-major), by cofactors.
+func invert(m mat4) mat4 {
+	var inv mat4
+	inv[0] = m[5]*m[10]*m[15] - m[5]*m[11]*m[14] - m[9]*m[6]*m[15] + m[9]*m[7]*m[14] + m[13]*m[6]*m[11] - m[13]*m[7]*m[10]
+	inv[4] = -m[4]*m[10]*m[15] + m[4]*m[11]*m[14] + m[8]*m[6]*m[15] - m[8]*m[7]*m[14] - m[12]*m[6]*m[11] + m[12]*m[7]*m[10]
+	inv[8] = m[4]*m[9]*m[15] - m[4]*m[11]*m[13] - m[8]*m[5]*m[15] + m[8]*m[7]*m[13] + m[12]*m[5]*m[11] - m[12]*m[7]*m[9]
+	inv[12] = -m[4]*m[9]*m[14] + m[4]*m[10]*m[13] + m[8]*m[5]*m[14] - m[8]*m[6]*m[13] - m[12]*m[5]*m[10] + m[12]*m[6]*m[9]
+	inv[1] = -m[1]*m[10]*m[15] + m[1]*m[11]*m[14] + m[9]*m[2]*m[15] - m[9]*m[3]*m[14] - m[13]*m[2]*m[11] + m[13]*m[3]*m[10]
+	inv[5] = m[0]*m[10]*m[15] - m[0]*m[11]*m[14] - m[8]*m[2]*m[15] + m[8]*m[3]*m[14] + m[12]*m[2]*m[11] - m[12]*m[3]*m[10]
+	inv[9] = -m[0]*m[9]*m[15] + m[0]*m[11]*m[13] + m[8]*m[1]*m[15] - m[8]*m[3]*m[13] - m[12]*m[1]*m[11] + m[12]*m[3]*m[9]
+	inv[13] = m[0]*m[9]*m[14] - m[0]*m[10]*m[13] - m[8]*m[1]*m[14] + m[8]*m[2]*m[13] + m[12]*m[1]*m[10] - m[12]*m[2]*m[9]
+	inv[2] = m[1]*m[6]*m[15] - m[1]*m[7]*m[14] - m[5]*m[2]*m[15] + m[5]*m[3]*m[14] + m[13]*m[2]*m[7] - m[13]*m[3]*m[6]
+	inv[6] = -m[0]*m[6]*m[15] + m[0]*m[7]*m[14] + m[4]*m[2]*m[15] - m[4]*m[3]*m[14] - m[12]*m[2]*m[7] + m[12]*m[3]*m[6]
+	inv[10] = m[0]*m[5]*m[15] - m[0]*m[7]*m[13] - m[4]*m[1]*m[15] + m[4]*m[3]*m[13] + m[12]*m[1]*m[7] - m[12]*m[3]*m[5]
+	inv[14] = -m[0]*m[5]*m[14] + m[0]*m[6]*m[13] + m[4]*m[1]*m[14] - m[4]*m[2]*m[13] - m[12]*m[1]*m[6] + m[12]*m[2]*m[5]
+	inv[3] = -m[1]*m[6]*m[11] + m[1]*m[7]*m[10] + m[5]*m[2]*m[11] - m[5]*m[3]*m[10] - m[9]*m[2]*m[7] + m[9]*m[3]*m[6]
+	inv[7] = m[0]*m[6]*m[11] - m[0]*m[7]*m[10] - m[4]*m[2]*m[11] + m[4]*m[3]*m[10] + m[8]*m[2]*m[7] - m[8]*m[3]*m[6]
+	inv[11] = -m[0]*m[5]*m[11] + m[0]*m[7]*m[9] + m[4]*m[1]*m[11] - m[4]*m[3]*m[9] - m[8]*m[1]*m[7] + m[8]*m[3]*m[5]
+	inv[15] = m[0]*m[5]*m[10] - m[0]*m[6]*m[9] - m[4]*m[1]*m[10] + m[4]*m[2]*m[9] + m[8]*m[1]*m[6] - m[8]*m[2]*m[5]
+	det := m[0]*inv[0] + m[1]*inv[4] + m[2]*inv[8] + m[3]*inv[12]
+	if det == 0 {
+		return identity()
+	}
+	for i := range inv {
+		inv[i] /= det
+	}
+	return inv
+}

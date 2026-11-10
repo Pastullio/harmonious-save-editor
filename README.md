@@ -124,6 +124,8 @@ Every ship you own, build or download, in one place, kept in `Documents\Harmonio
 
 Your exosuit's technology and cargo, laid out as in the game. Everything in [Inventories](#inventories) works here, including supercharged slots.
 
+**Your traveller** sits at the top: your character built from your save and your game files, with exactly the parts you wear. **Export for Blender (.glb)** saves them with their skeleton, ready to pose (File > Import > glTF in Blender), or press **Import my traveller** in Blender's LiveLink panel. **Save the pose as a picture** renders the pose to a transparent PNG. The model is grey for now; the game's colours and textures come later.
+
 ### Multi-tools
 
 Every multi-tool you own.
@@ -258,6 +260,7 @@ A dark mode and a light mode (the theme button at the bottom of the sidebar), an
 These need [Blender](https://www.blender.org) (4.2 or newer) with [Charon Forge](https://github.com/xX-Charon-Xx/charon_forge) for corvettes, or NMS Base Builder for bases. The app finds both on your PC and never includes anything from them.
 
 - **Corvette renders**: real pictures of your corvettes, made by your Blender in the background. Renders are cached, so a build is only rendered once. Turn on **automatic renders** in Cover settings and new corvettes get a picture a few seconds after a save opens. **Render the other angles** adds front, side, back and top views.
+- **Your traveller**: **Import my traveller** in the LiveLink panel brings in your character with their skeleton to pose, and **Save the pose as a picture** renders it to a transparent PNG (see [Exosuit](#exosuit)).
 - **Load from a .blend…**: on the Shipwright and Bases pages, read a corvette or base straight from a `.blend` file, without opening Blender yourself.
 - **LiveLink**: get the Blender add-on from the LiveLink panel (**Get the Blender add-on**). Turn LiveLink on for a corvette or base, then every time you save in Blender (or press **Send now** in the LiveLink tab), the build goes into your save. The app backs up the save each time. Both sides show that they're linked. Each `.blend` remembers which corvette or base it's for, and the editor asks before putting a build somewhere else. **Open in Blender** opens the file a corvette was last built from. Blender keeps the add-on you installed, so when a new one comes out, get it again and install it over the old one.
 

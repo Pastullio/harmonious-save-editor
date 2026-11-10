@@ -1,5 +1,14 @@
 [
  {
+  "version": "2026.11.10.1545",
+  "date": "2026-11-10",
+  "notes": [
+   "Exosuit: your traveller, built from your save and your game files with exactly the parts you wear. Export for Blender (.glb) saves them with their skeleton, ready to pose.",
+   "New Blender add-on: Your traveller in the LiveLink panel. Import my traveller brings your character in to pose, and Save the pose as a picture renders it to a transparent PNG. Get the add-on again on Shipwright and install it over the old one.",
+   "Blender add-on fix: Support the creator now starts closed and the LiveLink panel starts open (they were the wrong way round)."
+  ]
+ },
+ {
   "version": "2026.11.09.1601",
   "date": "2026-11-09",
   "notes": [

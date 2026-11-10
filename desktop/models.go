@@ -136,9 +136,36 @@ func loadScene(path string) (*sceneNode, error) {
 type meshStream struct {
 	pos []float32 // x, y, z per vertex
 	idx []uint32
+	// for the traveller export (traveller.go): u, v per vertex, and 4 bone slots per vertex (indices into the
+	// mesh's run of the skin matrix layout, from FIRSTSKINMAT) with their weights; empty when the file has none
+	uv      []float32
+	bones   []uint8
+	weights []float32
 }
 
-type geomStreams struct{ byName, byHash map[string]*meshStream }
+type geomStreams struct {
+	byName, byHash map[string]*meshStream
+	skinLayout     []int32      // SkinMatrixLayout: a mesh's bone slot (FIRSTSKINMAT + i) -> joint index
+	invBind        [][16]float32 // JointBindings[j].InvBindMatrix, by joint index
+}
+
+// vertex element: where a semantic sits in a vertex layout (TkVertexElement, 12 bytes: Instancing, Type,
+// Normalise, Offset, SemanticID, Size); semantics as the player's geometry has them: 0 position, 1 uv
+// (position stream), 5 blend indices (4 bytes), 6 blend weights (half4)
+type vtxElem struct{ typ, off, size int }
+
+func vertexLayout(hm *mbin, at int) map[int]vtxElem {
+	out := map[int]vtxElem{}
+	a, n := hm.list(at)
+	for i := 0; i < n && i < 16; i++ {
+		e := a + i*12
+		if !hm.ok(e, 12) {
+			break
+		}
+		out[int(hm.u8(e+10))] = vtxElem{typ: int(hm.i32(e + 4)), off: int(hm.u8(e + 9)), size: int(hm.u8(e + 11))}
+	}
+	return out
+}
 
 // loadGeometry reads every mesh stream of a model's GEOMETRY.DATA.MBIN.PC.
 func loadGeometry(geomPath string) (*geomStreams, error) {
@@ -162,6 +189,8 @@ func loadGeometry(geomPath string) (*geomStreams, error) {
 	if stride < 8 {
 		stride = 16
 	}
+	posLay, vtxLay := vertexLayout(hm, 0x20), vertexLayout(hm, 0x20+0x20)
+	vstride := int(hm.i32(0x20 + 0x20 + 0x1C))
 	raw, err := gameFile(base + ".geometry.data.mbin.pc")
 	if err != nil {
 		return nil, err
@@ -171,6 +200,23 @@ func loadGeometry(geomPath string) (*geomStreams, error) {
 		return nil, err
 	}
 	g := &geomStreams{byName: map[string]*meshStream{}, byHash: map[string]*meshStream{}}
+	if la, ln := hm.list(0x20 + 0x130); ln > 0 && hm.ok(la, ln*4) {
+		g.skinLayout = make([]int32, ln)
+		for i := range g.skinLayout {
+			g.skinLayout[i] = hm.i32(la + i*4)
+		}
+	}
+	if ja, jn := hm.list(0x20 + 0x80); jn > 0 && hm.ok(ja, jn*0x68) {
+		g.invBind = make([][16]float32, jn)
+		for j := range g.invBind {
+			for k := 0; k < 16; k++ {
+				g.invBind[j][k] = math.Float32frombits(binary.LittleEndian.Uint32(hm.d[ja+j*0x68+k*4:]))
+			}
+		}
+	}
+	uvEl, hasUV := posLay[1]
+	biEl, hasBI := vtxLay[5]
+	bwEl, hasBW := vtxLay[6]
 	a, n := m.list(0x20)
 	for i := 0; i < n; i++ {
 		e := a + i*0x48
@@ -188,6 +234,28 @@ func loadGeometry(geomPath string) (*geomStreams, error) {
 			o := pa + v*stride
 			for c := 0; c < 3; c++ {
 				s.pos = append(s.pos, half(binary.LittleEndian.Uint16(m.d[o+2*c:])))
+			}
+		}
+		if hasUV && uvEl.typ == 0x140B && uvEl.off+4 <= stride {
+			s.uv = make([]float32, 0, nv*2)
+			for v := 0; v < nv; v++ {
+				o := pa + v*stride + uvEl.off
+				s.uv = append(s.uv, half(binary.LittleEndian.Uint16(m.d[o:])), half(binary.LittleEndian.Uint16(m.d[o+2:])))
+			}
+		}
+		if hasBI && hasBW && vstride > 0 && vsz >= nv*vstride && biEl.off+4 <= vstride {
+			s.bones, s.weights = make([]uint8, nv*4), make([]float32, nv*4)
+			for v := 0; v < nv; v++ {
+				o := da + v*vstride
+				copy(s.bones[v*4:v*4+4], m.d[o+biEl.off:o+biEl.off+4])
+				for c := 0; c < 4; c++ {
+					switch bwEl.typ {
+					case 0x140B: // half
+						s.weights[v*4+c] = half(binary.LittleEndian.Uint16(m.d[o+bwEl.off+2*c:]))
+					case 0x1401: // byte
+						s.weights[v*4+c] = float32(m.d[o+bwEl.off+c]) / 255
+					}
+				}
 			}
 		}
 		ib := m.d[da+vsz : da+vsz+isz]
@@ -394,6 +462,18 @@ type meshOut struct {
 	only      string
 	onlyDepth int // which of the same-named groups along the path (1 = the outermost)
 	inside    int
+	// collect: also keep each mesh as it was placed (the traveller export needs the skin data per mesh)
+	collect bool
+	parts   []meshPart
+}
+
+type meshPart struct {
+	name, material string
+	s              *meshStream
+	geo            *geomStreams
+	m              mat4 // model space
+	skinned        bool
+	firstSkin      int // FIRSTSKINMAT: where this mesh's bone slots start in geo.skinLayout
 }
 
 func (o *meshOut) add(s *meshStream, m mat4) {
@@ -456,6 +536,19 @@ func buildMesh(scenePath string, picks map[string]string, seed string, lod int, 
 						out.add(s, *bind)
 					} else {
 						out.add(s, m)
+					}
+					if out.collect {
+						p := meshPart{name: n.Name, material: n.Attrs["MATERIAL"], s: s, geo: geo, m: m, skinned: bind != nil}
+						if bind != nil {
+							p.m = *bind
+						}
+						p.firstSkin, _ = strconv.Atoi(n.Attrs["FIRSTSKINMAT"])
+						// the player character's meshes sit beside its skeleton, not under it, but carry bone data:
+						// a mesh with a run of skin matrices (FIRSTSKINMAT..LASTSKINMAT) is skinned too
+						if last, _ := strconv.Atoi(n.Attrs["LASTSKINMAT"]); last > p.firstSkin && len(s.bones) > 0 {
+							p.skinned = true
+						}
+						out.parts = append(out.parts, p)
 					}
 				}
 			}

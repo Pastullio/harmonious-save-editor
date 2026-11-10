@@ -141,6 +141,9 @@ func main() {
 	mux.HandleFunc("/api/model/creature", handleCreature)
 	mux.HandleFunc("/api/model/creature/sample", handleCreatureSample)
 	mux.HandleFunc("/api/model/creature/types", handleCreatureTypes)
+	mux.HandleFunc("/api/model/traveller", handleTraveller)
+	mux.HandleFunc("/api/model/traveller/glb", handleTravellerGLB)
+	mux.HandleFunc("/api/live/traveller", handleLiveTraveller)
 	mux.HandleFunc("/api/itemlib/items.json", handleItemLibItems)
 	mux.HandleFunc("/api/itemlib/icon", handleItemLibIcon)
 	mux.HandleFunc("/api/backup-all", handleBackupAll)
@@ -219,8 +222,8 @@ func guard(addr string, next http.Handler) http.Handler {
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
-		// the Blender add-on has its own token (from live.json) and may only send builds
-		if r.URL.Path == "/api/live/build" && liveTokenOK(r) {
+		// the Blender add-on has its own token (from live.json) and may only send builds and fetch the traveller
+		if (r.URL.Path == "/api/live/build" || (r.URL.Path == "/api/live/traveller" && r.Method == http.MethodGet)) && liveTokenOK(r) {
 			next.ServeHTTP(w, r)
 			return
 		}

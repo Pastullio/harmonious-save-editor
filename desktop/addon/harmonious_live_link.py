@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 1, 2),
+    "version": (1, 2, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -58,7 +58,7 @@ def editor_address():
 # ---------------------------------------------------------------- is the editor linked?
 # Every few seconds the add-on asks the editor whether LiveLink is on and for which corvette; the panel shows it,
 # and the editor sees Blender check in.
-LINK = {"state": "none", "target": "", "slot": -1, "corvettes": [], "kind": "corvette", "base": None}   # none: editor not running; off: running, LiveLink off; on: linked
+LINK = {"state": "none", "target": "", "slot": -1, "corvettes": [], "kind": "corvette", "base": None, "traveller": "", "exports": ""}   # none: editor not running; off: running, LiveLink off; on: linked
 
 
 def check_link_now():
@@ -74,7 +74,8 @@ def check_link_now():
             info = json.loads(res.read().decode("utf-8"))
         LINK.update(state="on" if info.get("armed") else "off", target=info.get("target") or "",
                     slot=int(info.get("slot", -1)), corvettes=info.get("corvettes") or LINK["corvettes"],
-                    kind=info.get("kind") or "corvette", base=info.get("base"))
+                    kind=info.get("kind") or "corvette", base=info.get("base"),
+                    traveller=info.get("traveller") or "", exports=info.get("exports") or "")
     except (urllib.error.URLError, OSError, ValueError):
         LINK.update(state="none", target="")
 
@@ -417,7 +418,6 @@ class HARMONIOUS_PT_live(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "LiveLink"
-    bl_options = {"DEFAULT_CLOSED"}  # one line until opened (owner, 2026-11-06: open was too in-your-face)
 
     def draw(self, context):
         layout = self.layout
@@ -471,6 +471,141 @@ class HARMONIOUS_PT_live(bpy.types.Panel):
             lines.label(text=line)
 
 
+# ---------------------------------------------------------------- your traveller (owner, 2026-11-10)
+# The editor builds the open save's traveller from the game files, skeleton included (a .glb); this brings it in,
+# ready to pose, and renders the pose as a picture with a transparent background.
+
+def find_traveller():
+    """The traveller's armature in this file: the one we imported, else the selected or only armature."""
+    arms = [o for o in bpy.data.objects if o.type == "ARMATURE"]
+    for o in arms:
+        if o.get("harmonious_traveller"):
+            return o
+    act = bpy.context.view_layer.objects.active
+    if act is not None and act.type == "ARMATURE":
+        return act
+    return arms[0] if len(arms) == 1 else None
+
+
+class HARMONIOUS_OT_traveller(bpy.types.Operator):
+    bl_idname = "harmonious.import_traveller"
+    bl_label = "Import my traveller"
+    bl_description = "Bring in the traveller from the save open in Harmonious Save Editor, with its skeleton, ready to pose"
+
+    def execute(self, context):
+        addr = editor_address()
+        if addr is None:
+            self.report({"ERROR"}, "Harmonious Save Editor isn't running")
+            return {"CANCELLED"}
+        url, token = addr
+        try:
+            req = urllib.request.Request(url.replace("/api/live/build", "/api/live/traveller"), headers={"X-Live-Token": token})
+            with urllib.request.urlopen(req, timeout=120) as res:
+                data, name = res.read(), res.headers.get("X-Traveller") or "Traveller"
+        except urllib.error.HTTPError as error:
+            self.report({"ERROR"}, error.read().decode("utf-8", "replace").strip() or str(error))
+            return {"CANCELLED"}
+        except (urllib.error.URLError, OSError) as error:
+            self.report({"ERROR"}, "Couldn't reach Harmonious Save Editor: %s" % error)
+            return {"CANCELLED"}
+        path = os.path.join(tempfile.gettempdir(), "harmonious_livelink", name + ".glb")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "wb") as f:
+            f.write(data)
+        before = set(bpy.data.objects)
+        bpy.ops.import_scene.gltf(filepath=path)
+        new = [o for o in bpy.data.objects if o not in before]
+        for o in new:
+            if o.type == "ARMATURE":
+                o["harmonious_traveller"] = name
+                o.show_in_front = True
+                context.view_layer.objects.active = o
+        set_status("%s is in the scene. Select the skeleton, press Ctrl+Tab for Pose mode and turn the bones." % name)
+        return {"FINISHED"}
+
+
+def frame_camera(scene, mesh):
+    """A camera looking at the traveller from the front, a little to the side, when the scene has none."""
+    import mathutils
+    pts = [mesh.matrix_world @ mathutils.Vector(c) for c in mesh.bound_box]
+    lo = mathutils.Vector([min(p[i] for p in pts) for i in range(3)])
+    hi = mathutils.Vector([max(p[i] for p in pts) for i in range(3)])
+    centre, height = (lo + hi) / 2, max(hi.z - lo.z, 0.5)
+    cam = bpy.data.objects.new("Traveller camera", bpy.data.cameras.new("Traveller camera"))
+    scene.collection.objects.link(cam)
+    cam.data.lens = 70
+    cam.location = centre + mathutils.Vector((height * 0.75, -height * 2.6, height * 0.12))
+    cam.rotation_euler = (centre - cam.location).to_track_quat("-Z", "Y").to_euler()
+    scene.camera = cam
+    if not any(o.type == "LIGHT" for o in scene.objects):
+        sun = bpy.data.objects.new("Traveller light", bpy.data.lights.new("Traveller light", "SUN"))
+        sun.data.energy = 3.0
+        sun.rotation_euler = (0.9, 0.2, 0.6)
+        scene.collection.objects.link(sun)
+
+
+class HARMONIOUS_OT_picture(bpy.types.Operator):
+    bl_idname = "harmonious.pose_picture"
+    bl_label = "Save the pose as a picture"
+    bl_description = "Render the scene's camera (one is added looking at your traveller if there's none) to a PNG with a transparent background"
+
+    def execute(self, context):
+        import datetime
+        scene = context.scene
+        arm = find_traveller()
+        name = (arm.get("harmonious_traveller") if arm is not None else None) or "Traveller"
+        if scene.camera is None:
+            meshes = [o for o in scene.objects if o.type == "MESH" and (arm is None or o.parent == arm or any(m.type == "ARMATURE" and m.object == arm for m in o.modifiers))]
+            if not meshes:
+                self.report({"ERROR"}, "Import your traveller first, or add a camera")
+                return {"CANCELLED"}
+            frame_camera(scene, max(meshes, key=lambda o: len(o.data.vertices)))
+        r = scene.render
+        for engine in ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE"):
+            try:
+                r.engine = engine
+                break
+            except TypeError:
+                continue
+        r.film_transparent = True
+        r.image_settings.file_format = "PNG"
+        r.image_settings.color_mode = "RGBA"
+        if r.resolution_x == 1920 and r.resolution_y == 1080:   # Blender's default: make it a portrait picture
+            r.resolution_x, r.resolution_y = 1080, 1350
+        folder = LINK.get("exports") or (os.path.dirname(bpy.data.filepath) if bpy.data.filepath else os.path.expanduser("~"))
+        os.makedirs(folder, exist_ok=True)
+        out = os.path.join(folder, "%s pose %s.png" % (name, datetime.datetime.now().strftime("%Y-%m-%d %H%M%S")))
+        r.filepath = out
+        bpy.ops.render.render(write_still=True)
+        set_status("Saved " + out)
+        self.report({"INFO"}, "Saved " + out)
+        return {"FINISHED"}
+
+
+class HARMONIOUS_PT_traveller(bpy.types.Panel):
+    bl_label = "Your traveller"
+    bl_idname = "HARMONIOUS_PT_traveller"
+    bl_parent_id = "HARMONIOUS_PT_live"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "LiveLink"
+
+    def draw(self, context):
+        layout = self.layout
+        col = layout.column(align=True)
+        col.scale_y = 0.8
+        if LINK["state"] == "none":
+            col.label(text="Open Harmonious Save Editor and a save")
+        elif LINK.get("traveller"):
+            col.label(text="In the editor: " + LINK["traveller"], icon="ARMATURE_DATA")
+        else:
+            col.label(text="Open a save in the editor")
+        row = layout.row()
+        row.enabled = bool(LINK.get("traveller"))
+        row.operator(HARMONIOUS_OT_traveller.bl_idname, icon="IMPORT")
+        layout.operator(HARMONIOUS_OT_picture.bl_idname, icon="RENDER_STILL")
+
+
 class HARMONIOUS_PT_support(bpy.types.Panel):
     bl_label = "Support the creator"
     bl_idname = "HARMONIOUS_PT_support"
@@ -478,6 +613,7 @@ class HARMONIOUS_PT_support(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "LiveLink"
+    bl_options = {"DEFAULT_CLOSED"}  # one line until opened (owner, 2026-11-06: open was too in-your-face)
 
     def draw(self, context):
         layout = self.layout
@@ -505,7 +641,8 @@ def wrap(text, width):
     return lines + ([cur] if cur else [])
 
 
-CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_PT_live, HARMONIOUS_PT_support)
+CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_OT_picture,
+           HARMONIOUS_PT_live, HARMONIOUS_PT_traveller, HARMONIOUS_PT_support)
 
 
 def register():

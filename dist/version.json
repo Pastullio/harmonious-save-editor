@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.09.1601",
-  "date": "2026-11-09",
-  "size": 13197312,
-  "sha256": "886b35a03976612e35f98ad8abcdc5b18f2cfd2f6b13a50bfdcf86611703f29c",
-  "notes": "Companions: a Creature battles panel to change a companion's type (greyed out for species the game fixes, such as robots) and set its health, agility and combat effectiveness classes, or make them all S class.",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.09.1601/HarmoniousSaveEditor.exe",
+  "version": "2026.11.10.1545",
+  "date": "2026-11-10",
+  "size": 13289984,
+  "sha256": "e99707dcdbe0c03a27c47524165afc1bfdfa5b8bcca9a57621d3d5b2232d0fa2",
+  "notes": "Exosuit: your traveller, built from your save and your game files with exactly the parts you wear. Export for Blender (.glb) saves them with their skeleton, ready to pose.\nNew Blender add-on: Your traveller in the LiveLink panel. Import my traveller brings your character in to pose, and Save the pose as a picture renders it to a transparent PNG. Get the add-on again on Shipwright and install it over the old one.\nBlender add-on fix: Support the creator now starts closed and the LiveLink panel starts open (they were the wrong way round).",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.1545/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

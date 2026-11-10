@@ -368,6 +368,14 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   <p class="lede">Your exosuit's technology and cargo, laid out exactly as the game shows them.</p>
   <figure><img src="shots/exosuit-slot.webp" alt="Exosuit technology grid with a slot selected and its details open" loading="lazy"><figcaption>Click a slot to see and change it.</figcaption></figure>
   <p>The exosuit uses all the <a href="#everywhere">inventory tools</a>: <b>Technology / Cargo / Both</b>, unlocking slots, filling stacks, repairing, resizing and supercharged slots.</p>
+  <h2>Your traveller</h2>
+  <p>At the top of the page is your traveller, built from your save the way the game builds them: the head, torso, armour, gloves, legs, boots, backpack, cape and cloth you wear. It needs the game on your PC (the editor finds it).</p>
+  <ul>
+    <li><span class="ui">Export for Blender (.glb)</span> saves your traveller with their skeleton to <b>Documents\Harmonious Save Editor\Exports</b>. In Blender, use File, Import, glTF 2.0 and pose the bones.</li>
+    <li>Easier: in Blender's LiveLink panel, open <b>Your traveller</b> and press <span class="ui">Import my traveller</span>. It brings in the traveller from the save open in the editor. Select the skeleton, press <span class="ui">Ctrl+Tab</span> for Pose mode, and turn the bones.</li>
+    <li><span class="ui">Save the pose as a picture</span> renders your pose to a PNG with a transparent background in the same Exports folder. If your scene has no camera, one is added looking at your traveller; move it to frame the shot you want and press the button again.</li>
+  </ul>
+  <div class="note"><b>Colours</b>The model comes in grey for now, with one material per part of the outfit, so you can colour it in Blender. The game's own colours and textures are coming in a later update.</div>
 </section>
 
 <section class="page" id="multitools" data-group="carry" data-title="Multi-tools" data-c="#a37bff">
@@ -629,6 +637,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   </ol>
   <div class="note"><b>The wrong corvette guard</b>Each .blend remembers which corvette or base it's for. If a build arrives for a different one, the editor asks before writing it anywhere.</div>
   <p>Close No Man's Sky before LiveLink writes, and reload the save in the game to see the result.</p>
+  <p>The LiveLink panel also has <b>Your traveller</b>: <span class="ui">Import my traveller</span> and <span class="ui">Save the pose as a picture</span>. See <a href="#exosuit">Exosuit</a>.</p>
   <div class="note"><b>Updating the add-on</b>The editor updates itself, but Blender keeps the add-on you installed. When a new add-on comes out (the What's new list says so), press <span class="ui">Get the Blender add-on</span> again and install it over the old one.</div>
 </section>
 

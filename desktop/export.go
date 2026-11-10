@@ -13,7 +13,7 @@ import (
 // Exports (ship, multi-tool, freighter and build files) go to Documents\Harmonious Save Editor\Exports and are shown in
 // Explorer. A browser download from the app window lands in Downloads without anything on screen, so it looked like
 // nothing happened (owner, 2026-11-01).
-var exportExts = map[string]bool{".json": true, ".nmsship": true, ".so": true, ".png": true, ".txt": true}
+var exportExts = map[string]bool{".json": true, ".nmsship": true, ".so": true, ".png": true, ".txt": true, ".glb": true}
 var exportBad = regexp.MustCompile(`[<>:"/\\|?*\x00-\x1f]`)
 
 func exportsDir() string {
