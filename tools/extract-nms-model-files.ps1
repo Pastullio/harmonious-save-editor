@@ -102,7 +102,8 @@ try {
         # name each creature's model; geometry comes later, only for the creatures that are companions
         creatures  = 'models/planets/creatures'
         # the traveller (owner, 2026-11-10: pose your own character in Blender): the player character's scene,
-        # descriptor (which parts it can wear), geometry and materials; no animations or textures
+        # descriptor (which parts it can wear), geometry and materials, and the tables in metadata/gamestate/playerdata;
+        # no animations or textures
         player     = 'models/common/player/playercharacter'
     }
     $args2 = @('-U', '-q', '-O', (Join-Path $work 'EXTRACTED'))
@@ -113,6 +114,8 @@ try {
         # base parts: only their scenes (part sizes for the corvette hologram), which keeps the zip small
         $exts = if ($set.Trim() -eq 'baseparts') { @('*.scene.mbin') } elseif ($set.Trim() -eq 'creatures') { @('*.scene.mbin', '*.descriptor.mbin') } elseif ($set.Trim() -eq 'player') { @('*.scene.mbin', '*.descriptor.mbin', '*.geometry.mbin.pc', '*.geometry.data.mbin.pc', '*.material.mbin') } else { @('*.scene.mbin', '*.descriptor.mbin', '*.geometry.mbin.pc', '*.geometry.data.mbin.pc') }
         if ($set.Trim() -eq 'creatures') { $args2 += @('-f', '*metadata/simulation/ecosystem/*.mbin') }
+        # which parts and colours each look in the save stands for (descriptor groups, palettes, texture options)
+        if ($set.Trim() -eq 'player') { $args2 += @('-f', '*metadata/gamestate/playerdata/*.mbin') }
         foreach ($folder in ($f -split '\|')) {
             foreach ($ext in $exts) { $args2 += @('-f', "*$folder/$ext") }
         }
