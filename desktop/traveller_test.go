@@ -91,3 +91,35 @@ func TestWriteGLB(t *testing.T) {
 		t.Fatalf("primitive %+v materials %+v", a, doc.Materials)
 	}
 }
+
+func TestShrinkDDS(t *testing.T) {
+	// a 2048 px BC7 texture with 12 mips (DX10 header): shrunk to 1024 px it drops exactly the top level
+	mk := func() []byte {
+		b := make([]byte, 148)
+		copy(b, "DDS ")
+		le := binary.LittleEndian
+		le.PutUint32(b[12:], 2048)
+		le.PutUint32(b[16:], 2048)
+		le.PutUint32(b[28:], 12)
+		copy(b[84:], "DX10")
+		le.PutUint32(b[128:], 98)
+		le.PutUint32(b[140:], 1)
+		for w, lvl := 2048, 0; lvl < 12; w, lvl = w/2, lvl+1 {
+			n := ((w + 3) / 4) * ((w + 3) / 4) * 16
+			b = append(b, bytes.Repeat([]byte{byte(lvl)}, n)...)
+		}
+		return b
+	}
+	b := mk()
+	s := shrinkDDS(b, 1024)
+	le := binary.LittleEndian
+	if le.Uint32(s[16:]) != 1024 || le.Uint32(s[12:]) != 1024 || le.Uint32(s[28:]) != 11 || s[148] != 1 || len(s) != len(b)-512*512*16 {
+		t.Fatalf("w %d h %d mips %d first byte %d size %d", le.Uint32(s[16:]), le.Uint32(s[12:]), le.Uint32(s[28:]), s[148], len(s))
+	}
+	if _, err := decodeDDS(s); err != nil {
+		t.Fatal(err)
+	}
+	if small := shrinkDDS(s, 1024); len(small) != len(s) {
+		t.Fatal("a texture already small enough changed")
+	}
+}

@@ -2396,9 +2396,20 @@ function travellerCard(el) {
   const card = pictureCard(wrap, it, 'Your traveller');
   const info = document.createElement('div'); info.className = 'panel trav-info';
   info.innerHTML = `<h3>Pose ${esc(name)} in Blender</h3><p class="dim">Your traveller as the game builds them from your save, with the skeleton, ready to pose. In Blender: File, Import, glTF. Or press Import my traveller in the LiveLink panel (get the add-on on Shipwright).</p>
-    <div class="toolbar"><button class="btn primary" type="button" id="travGlb">Export for Blender (.glb)</button></div>`;
+    <div class="toolbar"><button class="btn primary" type="button" id="travGlb">Export for Blender (.glb)</button>${APP ? '<button class="btn ghost" type="button" id="travSample">Save traveller files for the developer</button>' : ''}</div>`;
   wrap.appendChild(info);
   $('#travGlb', info).onclick = (e) => travellerExport(e.currentTarget);
+  const smp = $('#travSample', info); if (smp) smp.onclick = async () => {
+    // the materials and textures this traveller wears, for working on the real colours and textures
+    const cc = g(ps(), 'CharacterCustomisationData'); const e0 = Array.isArray(cc) ? cc[0] : null;
+    smp.disabled = true; toast('Collecting your traveller\'s textures…');
+    try {
+      const r = await api('/api/model/traveller/sample', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"groups":' + JSON.stringify(groups) + ',"custom":' + (e0 ? C.stringifyJSON(toPlain(cloneJSON(e0))) : 'null') + '}' });
+      if (!r.ok) throw new Error(await r.text());
+      const d = await r.json(); toast('Saved ' + d.path.split(/[\\/]/).pop() + ' (' + Math.round(d.size / 1048576) + ' MB) in your Exports folder. Send that zip to the developer.');
+    } catch (err) { toast('Couldn\'t collect the files: ' + err.message, true); }
+    smp.disabled = false;
+  };
   api('/api/model/traveller?groups=' + encodeURIComponent(groups.join(','))).then((r) => r.json()).then(async (d) => {
     if (!d.scene) { info.querySelector('p').textContent = d.error || 'Your traveller couldn\'t be built from the game files.'; $('#travGlb', info).disabled = true; return; }
     it.scene = d.scene; it.picks = { _names: d.names.join('|') };

@@ -17,6 +17,7 @@ package main
 // with File > Import > glTF, bones ready to pose.
 
 import (
+	"archive/zip"
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
@@ -24,9 +25,15 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"os"
 	"path"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 const travellerScene = "models/common/player/playercharacter/playercharacter.scene.mbin"
@@ -589,4 +596,163 @@ func invert(m mat4) mat4 {
 		inv[i] /= det
 	}
 	return inv
+}
+
+// ------------------------------------------------------------------ files for the developer (textures)
+
+// handleTravellerSample zips what the traveller's materials use (owner, 2026-11-10: realistic textures next):
+// each material, the DDS textures it names (shrunk to 1024 px so the zip fits in a chat upload), the playerdata
+// tables (palettes) and the save's look as the page sends it ({groups, custom}: CharacterCustomisationData[0]).
+func handleTravellerSample(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	if _, err := openGamePaks(); err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	var v struct {
+		Groups []string        `json:"groups"`
+		Custom json.RawMessage `json:"custom"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 8<<20)).Decode(&v); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	names, _, _ := travellerNames(v.Groups)
+	out := &meshOut{onlyDepth: 1, collect: true}
+	if err := buildMesh(travellerScene, map[string]string{"_names": strings.Join(names, "|")}, "", 0, out, identity(), 0); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	files := map[string]bool{normGamePath(travellerScene): true}
+	for _, n := range allGameFiles() {
+		if strings.Contains(n, "metadata/gamestate/playerdata/") && strings.HasSuffix(n, ".mbin") {
+			files[n] = true
+		}
+	}
+	report := []string{"Parts: " + strings.Join(names, ", "), "", "Materials:"}
+	texRe := regexp.MustCompile(`(?i)textures/[a-z0-9_./\-]+?\.dds`)
+	seen := map[string]bool{}
+	for _, p := range out.parts {
+		m := normGamePath(p.material)
+		if m == "" || seen[m] {
+			continue
+		}
+		seen[m] = true
+		raw, err := gameFile(m)
+		if err != nil {
+			report = append(report, m+": "+err.Error())
+			continue
+		}
+		files[m] = true
+		var tex []string
+		for _, t := range texRe.FindAll(raw, -1) {
+			tn := normGamePath(string(t))
+			if _, err := gameFile(tn); err == nil {
+				files[tn] = true
+				tex = append(tex, filepath.Base(tn))
+			}
+		}
+		report = append(report, m+" ("+p.name+"): "+strings.Join(tex, ", "))
+	}
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	list := make([]string, 0, len(files))
+	for n := range files {
+		list = append(list, n)
+	}
+	sort.Strings(list)
+	for _, n := range list {
+		b, err := gameFile(n)
+		if err != nil {
+			continue
+		}
+		if strings.HasSuffix(n, ".dds") {
+			b = shrinkDDS(b, 1024)
+		}
+		if f, err := zw.Create(n); err == nil {
+			f.Write(b)
+		}
+	}
+	if len(v.Custom) > 0 {
+		if f, err := zw.Create("save-look.json"); err == nil {
+			f.Write(v.Custom)
+		}
+	}
+	if f, err := zw.Create("about.txt"); err == nil {
+		f.Write([]byte(strings.Join(report, "\r\n")))
+	}
+	zw.Close()
+	dir := exportsDir()
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	p := filepath.Join(dir, "Traveller files for the developer "+time.Now().Format("2006-01-02 1504")+".zip")
+	for n := 2; fileExists(p); n++ {
+		p = strings.TrimSuffix(p, ".zip") + " (" + strconv.Itoa(n) + ").zip"
+	}
+	if err := atomicWrite(p, buf.Bytes()); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	_ = revealFile(p)
+	writeJSON(w, map[string]any{"path": p, "files": len(list), "size": buf.Len()})
+}
+
+// shrinkDDS drops a block-compressed texture's top mip levels until it is at most max pixels across. Anything it
+// doesn't understand (arrays, cube maps, other formats, no mips) comes back unchanged.
+func shrinkDDS(b []byte, max int) []byte {
+	if len(b) < 128 || string(b[:4]) != "DDS " {
+		return b
+	}
+	le := binary.LittleEndian
+	h, w, mips := int(le.Uint32(b[12:])), int(le.Uint32(b[16:])), int(le.Uint32(b[28:]))
+	if le.Uint32(b[112:])&0x200 != 0 { // DDSCAPS2_CUBEMAP
+		return b
+	}
+	head, bs := 128, 0
+	switch string(b[84:88]) {
+	case "DXT1", "ATI1", "BC4U":
+		bs = 8
+	case "DXT3", "DXT5", "ATI2", "BC5U":
+		bs = 16
+	case "DX10":
+		if len(b) < 148 || le.Uint32(b[140:]) != 1 {
+			return b
+		}
+		head = 148
+		switch le.Uint32(b[128:]) {
+		case 70, 71, 72, 79, 80, 81:
+			bs = 8
+		case 73, 74, 75, 76, 77, 78, 82, 83, 84, 94, 95, 96, 97, 98, 99:
+			bs = 16
+		}
+	}
+	if bs == 0 || mips < 2 || w <= max {
+		return b
+	}
+	off := head
+	for w > max && mips > 1 {
+		size := ((w + 3) / 4) * ((h + 3) / 4) * bs
+		if off+size >= len(b) {
+			return b
+		}
+		off += size
+		w, h, mips = (w+1)/2, (h+1)/2, mips-1
+		if w < 1 {
+			w = 1
+		}
+		if h < 1 {
+			h = 1
+		}
+	}
+	out := append(append([]byte{}, b[:head]...), b[off:]...)
+	le.PutUint32(out[12:], uint32(h))
+	le.PutUint32(out[16:], uint32(w))
+	le.PutUint32(out[20:], uint32(((w+3)/4)*((h+3)/4)*bs))
+	le.PutUint32(out[28:], uint32(mips))
+	return out
 }

@@ -1,5 +1,14 @@
 [
  {
+  "version": "2026.11.10.1724",
+  "date": "2026-11-10",
+  "notes": [
+   "Blender: bones keep your traveller's proportions, so moving or scaling can't stretch an arm or a leg (turn off Keep the body's proportions in the panel to move bones freely)",
+   "Exosuit: Save traveller files for the developer collects your traveller's materials and textures, for the work on real colours and textures",
+   "Please install the LiveLink add-on again (version 1.4.0)"
+  ]
+ },
+ {
   "version": "2026.11.10.1711",
   "date": "2026-11-10",
   "notes": [

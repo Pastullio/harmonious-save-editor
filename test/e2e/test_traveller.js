@@ -28,6 +28,13 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const glb = path.join(home, 'Documents', 'Harmonious Save Editor', 'Exports', 'Pastullio.glb');
   for (let k = 0; k < 40 && !fs.existsSync(glb); k++) await new Promise((r) => setTimeout(r, 250));
   ok('Export for Blender writes a .glb to Exports', fs.existsSync(glb) && fs.readFileSync(glb).subarray(0, 4).toString() === 'glTF');
+  // the files for working on textures: materials (and their textures, when the game has them) and the save's look
+  await p.click('#travSample');
+  const exp = path.join(home, 'Documents', 'Harmonious Save Editor', 'Exports');
+  let zipf = '';
+  for (let k = 0; k < 120 && !zipf; k++) { await new Promise((r) => setTimeout(r, 250)); zipf = (fs.readdirSync(exp).find((f) => /^Traveller files/.test(f)) || ''); }
+  const inZip = zipf ? execFileSync('python3', ['-c', 'import zipfile,sys;print("\\n".join(zipfile.ZipFile(sys.argv[1]).namelist()))', path.join(exp, zipf)]).toString() : '';
+  ok('Save traveller files for the developer zips the materials and the save\'s look', /\.material\.mbin/.test(inZip) && /save-look\.json/.test(inZip) && /about\.txt/.test(inZip));
   await new Promise((r) => setTimeout(r, 1000));
   const live = await p.evaluate(async () => { const r = await api('/api/live/traveller'); return r.ok ? (await r.arrayBuffer()).byteLength : 0; });
   ok('the open save\'s traveller is ready for the add-on', live > 1e6);
@@ -51,6 +58,12 @@ pb.rotation_mode = 'XYZ'; pb.rotation_euler = (0, 0, math.radians(-60)); bpy.con
 dg = bpy.context.evaluated_depsgraph_get(); after = mesh.evaluated_get(dg).to_mesh().vertices
 print('MOVED', sum(1 for a, b in zip(before, after) if (a - b.co).length > 0.01))
 s = bpy.context.scene; s.render.resolution_percentage = 20
+w = arm.pose.bones['r_arm_Wrist']; r = arm.pose.bones['ROOT']
+k1 = all(w.lock_location) and all(w.lock_scale) and not any(r.lock_location)
+arm.harmonious_keep_shape = False
+k2 = not any(w.lock_location) and not any(w.lock_scale)
+arm.harmonious_keep_shape = True
+print('KEEP', k1, k2, all(w.lock_location))
 print('SHOWN', sum(1 for b in h.body_bones(arm) if not h.is_hidden(arm, b)))
 # every bone sits where it joins the body: its head is close to the vertices it moves most
 import mathutils, statistics
@@ -97,11 +110,12 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
     try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 600000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
-    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|PICK|SHOWN|Traceback|  File|\w+Error)/.test(l)).join('\n'));
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|PICK|SHOWN|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
     ok('turning a bone moves the body', +line('MOVED') > 100);
+    ok('bones keep the body\'s proportions (only the root moves), and that can be turned off', line('KEEP') === 'True True True');
     ok('the sticks are hidden until a part is clicked', line('SHOWN') === '0');
     const [gap, mirror] = line('GAP').split(' ').map(Number);
     ok('every bone starts where it joins the body', gap < 0.05 && mirror < 0.01);

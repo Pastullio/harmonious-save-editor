@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 3, 1),
+    "version": (1, 4, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -553,6 +553,30 @@ def is_selected(arm, b):
     return pb.select if pb is not None and hasattr(pb, "select") else b.select
 
 
+def free_bone(pb):
+    """The bone that carries the whole traveller (ROOT, or the top of the skeleton): the only one that moves."""
+    return pb.parent is None or pb.name == "ROOT" or (pb.parent is not None and pb.parent.parent is None and pb.parent.name == "Trajectory")
+
+
+def apply_keep_shape(arm):
+    """Keep the body's proportions (owner, 2026-11-10: moving an arm stretched it): every bone only turns, its
+    length and size stay; the root still moves the whole traveller. Off: bones move and scale freely."""
+    on = bool(getattr(arm, "harmonious_keep_shape", True))
+    for pb in arm.pose.bones:
+        lock = on and not free_bone(pb)
+        pb.lock_location = (lock, lock, lock)
+        pb.lock_scale = (on, on, on)
+        if lock:
+            pb.location = (0.0, 0.0, 0.0)
+        if on:
+            pb.scale = (1.0, 1.0, 1.0)
+
+
+def keep_shape_changed(self, context):
+    if self.type == "ARMATURE":
+        apply_keep_shape(self)
+
+
 def body_bones(arm):
     coll = arm.data.collections.get("Body") if hasattr(arm.data, "collections") else None
     return [b for b in arm.data.bones if coll is None or coll in b.collections.values()] if coll else list(arm.data.bones)
@@ -640,6 +664,7 @@ class HARMONIOUS_OT_traveller(bpy.types.Operator):
                 o["harmonious_traveller"] = name
                 o.show_in_front = True
                 tidy_skeleton(o, [m for m in new if m.type == "MESH" and m.parent == o])
+                apply_keep_shape(o)
                 context.view_layer.objects.active = o
                 arm = o
         # the importer draws each bone as a sphere (an Icosphere in a glTF_not_exported collection); plain bones instead
@@ -826,6 +851,7 @@ class HARMONIOUS_PT_traveller(bpy.types.Panel):
             tip.scale_y = 0.8
             for line in wrap("In Pose mode, click a part of the body: its bone shows. R turns it, Shift+click adds another part, a click on empty space hides them.", 40):
                 tip.label(text=line)
+            layout.prop(arm, "harmonious_keep_shape")
             shown = not any(is_hidden(arm, b) for b in body_bones(arm))
             layout.operator(HARMONIOUS_OT_show_bones.bl_idname, text="Hide the sticks" if shown else "Show every stick", icon="HIDE_OFF" if not shown else "HIDE_ON")
         layout.operator(HARMONIOUS_OT_picture.bl_idname, icon="RENDER_STILL")
@@ -879,6 +905,9 @@ def register():
         name="Send on save", default=True,
         description="Send the build to Harmonious Save Editor every time this file is saved")
     bpy.types.Scene.harmonious_target_slot = bpy.props.IntProperty(name="Corvette slot", default=-1)
+    bpy.types.Object.harmonious_keep_shape = bpy.props.BoolProperty(
+        name="Keep the body's proportions", default=True, update=keep_shape_changed,
+        description="Bones only turn, so arms and legs never stretch. Turn off to move and scale bones freely")
     bpy.types.Scene.harmonious_target_name = bpy.props.StringProperty(name="Corvette")
     if on_save not in bpy.app.handlers.save_post:
         bpy.app.handlers.save_post.append(on_save)
@@ -912,6 +941,7 @@ def unregister():
     del bpy.types.Scene.harmonious_live_on
     del bpy.types.Scene.harmonious_target_slot
     del bpy.types.Scene.harmonious_target_name
+    del bpy.types.Object.harmonious_keep_shape
     for cls in reversed(CLASSES):
         bpy.utils.unregister_class(cls)
 
