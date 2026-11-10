@@ -33,7 +33,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   ok('the open save\'s traveller is ready for the add-on', live > 1e6);
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
   // the add-on in Blender's Python: Import my traveller, pose a bone, Save the pose as a picture
-  const py = path.join(SP, 'bpyenv/bin/python');
+  const py = process.env.HSE_BPY || path.join(SP, 'bpyenv/bin/python');
   if (fs.existsSync(py)) {
     const script = path.join(T, 'addon.py');
     fs.writeFileSync(script, `import sys, os, math, bpy
@@ -51,7 +51,7 @@ pb.rotation_mode = 'XYZ'; pb.rotation_euler = (0, 0, math.radians(-60)); bpy.con
 dg = bpy.context.evaluated_depsgraph_get(); after = mesh.evaluated_get(dg).to_mesh().vertices
 print('MOVED', sum(1 for a, b in zip(before, after) if (a - b.co).length > 0.01))
 s = bpy.context.scene; s.render.resolution_percentage = 20
-print('SHOWN', sum(1 for b in h.body_bones(arm) if not b.hide))
+print('SHOWN', sum(1 for b in h.body_bones(arm) if not h.is_hidden(arm, b)))
 # every bone sits where it joins the body: its head is close to the vertices it moves most
 import mathutils, statistics
 mw = mesh.matrix_world; aw = arm.matrix_world
@@ -90,7 +90,7 @@ target = mathutils.Vector(target)
 got = h.pick_ray(bpy.context, arm, target + mathutils.Vector((0, -3, 0)), mathutils.Vector((0, 1, 0)))
 print('PICK', hb.name, got)
 if got: h.show_bone(arm, got)
-print('SHOWNAFTER', sum(1 for b in h.body_bones(arm) if not b.hide), arm.data.bones.active.name if arm.data.bones.active else '')
+print('SHOWNAFTER', sum(1 for b in h.body_bones(arm) if not h.is_hidden(arm, b)), arm.data.bones.active.name if arm.data.bones.active else '')
 print('PICTURE', bpy.ops.harmonious.pose_picture())
 print('STATUS', h.STATE['status'])
 h.unregister(); sys.stdout.flush(); os._exit(0)

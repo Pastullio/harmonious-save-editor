@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.10.1706",
+  "version": "2026.11.10.1711",
   "date": "2026-11-10",
-  "size": 13305344,
-  "sha256": "d74d0c13dbf38b387d1d453ed4dd2d72f7853de6e2060d52e1799d90d6295d10",
-  "notes": "Blender: your traveller's bones now sit where they join the body, so a finger, hand or leg turns at the joint instead of swinging through the air\nBlender: the bones stay hidden until you click a part of the body; the bone that moves it shows, ready to turn with R (Shift+click adds another, a click on empty space hides them, Show every stick shows them all)\nPlease install the LiveLink add-on again (version 1.3.0) to get the click-to-pose",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.1706/HarmoniousSaveEditor.exe",
+  "size": 13306368,
+  "sha256": "a1df427835dbae0064c312115c7b0873269b78c7d799e98713bc96b9ee233a0e",
+  "notes": "Blender: clicking on your traveller no longer shows an error in Blender 5, and the bones now stay hidden until you click a part\nPlease install the LiveLink add-on again (version 1.3.1)",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.1711/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

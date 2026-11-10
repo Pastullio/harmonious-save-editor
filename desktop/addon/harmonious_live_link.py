@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 3, 0),
+    "version": (1, 3, 1),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -524,7 +524,33 @@ def tidy_skeleton(arm, meshes):
         (body if moves else helpers).assign(b)
     helpers.is_visible = False
     for b in arm.data.bones:   # every stick hidden: click a part of the body to show the one that moves it
-        b.hide = True
+        set_hidden(arm, b, True)
+
+
+# Blender 5 keeps a bone's selection and visibility in Pose mode on the pose bone; Blender 4 on the bone.
+def set_hidden(arm, b, hide):
+    pb = arm.pose.bones.get(b.name)
+    if pb is not None and hasattr(pb, "hide"):
+        pb.hide = hide
+    b.hide = hide
+
+
+def is_hidden(arm, b):
+    pb = arm.pose.bones.get(b.name)
+    return pb.hide if pb is not None and hasattr(pb, "hide") else b.hide
+
+
+def set_selected(arm, b, on):
+    pb = arm.pose.bones.get(b.name)
+    if pb is not None and hasattr(pb, "select"):
+        pb.select = on
+    else:
+        b.select = b.select_head = b.select_tail = on
+
+
+def is_selected(arm, b):
+    pb = arm.pose.bones.get(b.name)
+    return pb.select if pb is not None and hasattr(pb, "select") else b.select
 
 
 def body_bones(arm):
@@ -565,14 +591,14 @@ def show_bone(arm, name, extend=False):
     """Show and select one bone (keeping the others shown with extend); None hides every stick."""
     body = {x.name for x in body_bones(arm)}
     for b in arm.data.bones:
-        keep = extend and not b.hide and b.select
+        keep = extend and not is_hidden(arm, b) and is_selected(arm, b)
         if b.name == name:
-            b.hide = False
-            b.select = b.select_head = b.select_tail = True
+            set_hidden(arm, b, False)
+            set_selected(arm, b, True)
         elif not keep:
-            b.select = b.select_head = b.select_tail = False
+            set_selected(arm, b, False)
             if b.name in body:
-                b.hide = True
+                set_hidden(arm, b, True)
     if name:
         arm.data.bones.active = arm.data.bones[name]
 
@@ -677,7 +703,7 @@ class HARMONIOUS_OT_pick_part(bpy.types.Operator):
         mouse = (event.mouse_region_x, event.mouse_region_y)
         # a stick already showing is picked as usual
         for b in arm.data.bones:
-            if b.hide:
+            if is_hidden(arm, b):
                 continue
             a = view3d_utils.location_3d_to_region_2d(region, rv3d, arm.matrix_world @ b.head_local)
             c = view3d_utils.location_3d_to_region_2d(region, rv3d, arm.matrix_world @ b.tail_local)
@@ -728,10 +754,10 @@ class HARMONIOUS_OT_show_bones(bpy.types.Operator):
     def execute(self, context):
         arm = find_traveller()
         bones = body_bones(arm)
-        hide = not any(b.hide for b in bones)
+        hide = not any(is_hidden(arm, b) for b in bones)
         for b in bones:
-            if not (hide and b.select):
-                b.hide = hide
+            if not (hide and is_selected(arm, b)):
+                set_hidden(arm, b, hide)
         return {"FINISHED"}
 
 
@@ -800,7 +826,7 @@ class HARMONIOUS_PT_traveller(bpy.types.Panel):
             tip.scale_y = 0.8
             for line in wrap("In Pose mode, click a part of the body: its bone shows. R turns it, Shift+click adds another part, a click on empty space hides them.", 40):
                 tip.label(text=line)
-            shown = not any(b.hide for b in body_bones(arm))
+            shown = not any(is_hidden(arm, b) for b in body_bones(arm))
             layout.operator(HARMONIOUS_OT_show_bones.bl_idname, text="Hide the sticks" if shown else "Show every stick", icon="HIDE_OFF" if not shown else "HIDE_ON")
         layout.operator(HARMONIOUS_OT_picture.bl_idname, icon="RENDER_STILL")
 
