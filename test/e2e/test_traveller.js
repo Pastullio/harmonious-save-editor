@@ -28,6 +28,9 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const glb = path.join(home, 'Documents', 'Harmonious Save Editor', 'Exports', 'Pastullio.glb');
   for (let k = 0; k < 40 && !fs.existsSync(glb); k++) await new Promise((r) => setTimeout(r, 250));
   ok('Export for Blender writes a .glb to Exports', fs.existsSync(glb) && fs.readFileSync(glb).subarray(0, 4).toString() === 'glTF');
+  const gj = (() => { try { const b = fs.readFileSync(glb); return JSON.parse(b.subarray(20, 20 + b.readUInt32LE(12)).toString()); } catch { return {}; } })();
+  const texd = (gj.materials || []).filter((m) => m.pbrMetallicRoughness && m.pbrMetallicRoughness.baseColorTexture);
+  ok('…with the game\'s textures (colour, normal, roughness and metal) when the game has them', (gj.images || []).length > 20 && texd.length > 20 && texd.some((m) => m.normalTexture) && texd.some((m) => m.pbrMetallicRoughness.metallicRoughnessTexture) && gj.images.every((im) => im.mimeType === 'image/jpeg'));
   // the files for working on textures: materials (and their textures, when the game has them) and the save's look
   await p.click('#travSample');
   const exp = path.join(home, 'Documents', 'Harmonious Save Editor', 'Exports');
@@ -64,6 +67,7 @@ arm.harmonious_keep_shape = False
 k2 = not any(w.lock_location) and not any(w.lock_scale)
 arm.harmonious_keep_shape = True
 print('KEEP', k1, k2, all(w.lock_location))
+print('TEXTURED', sum(1 for m in bpy.data.materials if m.node_tree and any(n.type == 'TEX_IMAGE' for n in m.node_tree.nodes)))
 print('SHOWN', sum(1 for b in h.body_bones(arm) if not h.is_hidden(arm, b)))
 # every bone sits where it joins the body: its head is close to the vertices it moves most
 import mathutils, statistics
@@ -116,6 +120,7 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
     ok('turning a bone moves the body', +line('MOVED') > 100);
     ok('bones keep the body\'s proportions (only the root moves), and that can be turned off', line('KEEP') === 'True True True');
+    ok('Blender shows the game\'s textures', +line('TEXTURED') > 20);
     ok('the sticks are hidden until a part is clicked', line('SHOWN') === '0');
     const [gap, mirror] = line('GAP').split(' ').map(Number);
     ok('every bone starts where it joins the body', gap < 0.05 && mirror < 0.01);

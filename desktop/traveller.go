@@ -22,6 +22,8 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/jpeg"
 	"io"
 	"math"
 	"net/http"
@@ -184,7 +186,7 @@ func handleLiveTraveller(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		name = "Traveller"
 	}
-	glb, err := travellerGLB(names, name)
+	glb, err := travellerGLB(names, name, r.URL.Query().Get("textures") != "0")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -205,7 +207,7 @@ func handleTravellerGLB(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		name = "Traveller"
 	}
-	glb, err := travellerGLB(names, name)
+	glb, err := travellerGLB(names, name, r.URL.Query().Get("textures") != "0")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -290,7 +292,7 @@ func bindPose(js []tJoint, ibm [][16]float32) {
 	}
 }
 
-func travellerGLB(names []string, name string) ([]byte, error) {
+func travellerGLB(names []string, name string, textures bool) ([]byte, error) {
 	root, err := loadScene(travellerScene)
 	if err != nil {
 		return nil, err
@@ -315,7 +317,7 @@ func travellerGLB(names []string, name string) ([]byte, error) {
 			byIndex[j.index] = i
 		}
 	}
-	return writeGLB(name, out.parts, joints, byIndex)
+	return writeGLB(name, out.parts, joints, byIndex, textures)
 }
 
 // ------------------------------------------------------------------ glTF
@@ -330,6 +332,7 @@ func (g *glbBuf) align() {
 
 type prim struct {
 	material string
+	matPath  string // the game material, for its textures
 	pos, nrm []float32
 	uv       []float32
 	joints   []uint16
@@ -337,7 +340,7 @@ type prim struct {
 	idx      []uint32
 }
 
-func writeGLB(name string, parts []meshPart, joints []tJoint, byIndex map[int]int) ([]byte, error) {
+func writeGLB(name string, parts []meshPart, joints []tJoint, byIndex map[int]int, withTextures bool) ([]byte, error) {
 	// one primitive per material
 	prims := map[string]*prim{}
 	var order []string
@@ -348,7 +351,7 @@ func writeGLB(name string, parts []meshPart, joints []tJoint, byIndex map[int]in
 		}
 		pr := prims[mat]
 		if pr == nil {
-			pr = &prim{material: mat}
+			pr = &prim{material: mat, matPath: p.material}
 			prims[mat] = pr
 			order = append(order, mat)
 		}
@@ -434,11 +437,39 @@ func writeGLB(name string, parts []meshPart, joints []tJoint, byIndex map[int]in
 		Material   int            `json:"material"`
 	}
 	type gMat struct {
-		Name string         `json:"name"`
-		PBR  map[string]any `json:"pbrMetallicRoughness"`
+		Name   string         `json:"name"`
+		PBR    map[string]any `json:"pbrMetallicRoughness"`
+		Normal any            `json:"normalTexture,omitempty"`
+	}
+	type gTex struct {
+		Index int `json:"index"`
 	}
 	var gprims []gPrim
 	var mats []gMat
+	// the game's textures (owner, 2026-11-10): colour, normal and roughness/metal maps per material, as JPEGs
+	var images []map[string]any
+	var texs []map[string]any
+	texIndex := map[string]int{}
+	var looks map[string]*glbLook
+	if withTextures {
+		looks = materialImages(order, prims)
+	}
+	texFor := func(t *glbImage) *gTex {
+		if t == nil || len(t.jpeg) == 0 {
+			return nil
+		}
+		if i, ok := texIndex[t.key]; ok {
+			return &gTex{i}
+		}
+		bin.align()
+		off := bin.b.Len()
+		bin.b.Write(t.jpeg)
+		views = append(views, view{0, off, len(t.jpeg), 0})
+		images = append(images, map[string]any{"name": t.name, "bufferView": len(views) - 1, "mimeType": "image/jpeg"})
+		texs = append(texs, map[string]any{"source": len(images) - 1, "sampler": 0})
+		texIndex[t.key] = len(texs) - 1
+		return &gTex{len(texs) - 1}
+	}
 	for _, k := range order {
 		pr := prims[k]
 		nv := len(pr.pos) / 3
@@ -460,7 +491,21 @@ func writeGLB(name string, parts []meshPart, joints []tJoint, byIndex map[int]in
 		ja := addAcc(accessor{put(pr.joints, 34962), 5123, nv, "VEC4", nil, nil})
 		wa := addAcc(accessor{put(pr.weights, 34962), 5126, nv, "VEC4", nil, nil})
 		ia := addAcc(accessor{put(pr.idx, 34963), 5125, len(pr.idx), "SCALAR", nil, nil})
-		mats = append(mats, gMat{Name: k, PBR: map[string]any{"baseColorFactor": []float32{0.55, 0.57, 0.6, 1}, "metallicFactor": 0.1, "roughnessFactor": 0.7}})
+		gm := gMat{Name: k, PBR: map[string]any{"baseColorFactor": []float32{0.55, 0.57, 0.6, 1}, "metallicFactor": 0.1, "roughnessFactor": 0.7}}
+		if lk := looks[pr.matPath]; lk != nil {
+			if t := texFor(lk.diffuse); t != nil {
+				gm.PBR["baseColorTexture"] = t
+				gm.PBR["baseColorFactor"] = []float32{1, 1, 1, 1}
+			}
+			if t := texFor(lk.masks); t != nil {
+				gm.PBR["metallicRoughnessTexture"] = t
+				gm.PBR["metallicFactor"], gm.PBR["roughnessFactor"] = 1.0, 1.0
+			}
+			if t := texFor(lk.normal); t != nil {
+				gm.Normal = t
+			}
+		}
+		mats = append(mats, gm)
 		gprims = append(gprims, gPrim{map[string]int{"POSITION": pa, "NORMAL": na, "TEXCOORD_0": ua, "JOINTS_0": ja, "WEIGHTS_0": wa}, ia, len(mats) - 1})
 	}
 	if len(gprims) == 0 {
@@ -526,6 +571,10 @@ func writeGLB(name string, parts []meshPart, joints []tJoint, byIndex map[int]in
 		"accessors":   accs,
 		"bufferViews": views,
 		"buffers":     []any{map[string]any{"byteLength": bin.b.Len()}},
+	}
+	if len(images) > 0 {
+		doc["images"], doc["textures"] = images, texs
+		doc["samplers"] = []any{map[string]any{"magFilter": 9729, "minFilter": 9987, "wrapS": 10497, "wrapT": 10497}}
 	}
 	js, err := json.Marshal(doc)
 	if err != nil {
@@ -634,7 +683,7 @@ func handleTravellerSample(w http.ResponseWriter, r *http.Request) {
 	}
 	report := []string{"Parts: " + strings.Join(names, ", "), "", "Materials:"}
 	texRe := regexp.MustCompile(`(?i)textures/[a-z0-9_./\-]+?\.dds`)
-	seen := map[string]bool{}
+	seen, stems := map[string]bool{}, map[string]bool{}
 	for _, p := range out.parts {
 		m := normGamePath(p.material)
 		if m == "" || seen[m] {
@@ -653,6 +702,16 @@ func handleTravellerSample(w http.ResponseWriter, r *http.Request) {
 			if _, err := gameFile(tn); err == nil {
 				files[tn] = true
 				tex = append(tex, filepath.Base(tn))
+			}
+			// the layers the game paints the save's colours with: <stem>.texture.mbin and every texture of that stem
+			stem := path.Dir(tn) + "/" + strings.SplitN(path.Base(tn), ".", 2)[0] + "."
+			if !stems[stem] {
+				stems[stem] = true
+				for _, n := range allGameFiles() {
+					if strings.HasPrefix(n, stem) && (strings.HasSuffix(n, ".dds") || strings.HasSuffix(n, ".texture.mbin")) {
+						files[n] = true
+					}
+				}
 			}
 		}
 		report = append(report, m+" ("+p.name+"): "+strings.Join(tex, ", "))
@@ -755,4 +814,141 @@ func shrinkDDS(b []byte, max int) []byte {
 	le.PutUint32(out[20:], uint32(((w+3)/4)*((h+3)/4)*bs))
 	le.PutUint32(out[28:], uint32(mips))
 	return out
+}
+
+// ------------------------------------------------------------------ textures
+
+// A material names its textures with the sampler that uses them right after each path (TkMaterialSampler: Map,
+// then Name): gDiffuseMap (colour, greyscale where the game tints it with the save's colours), gMasksMap (two
+// channels: roughness, metal) and gNormalMap (two channels, X and Y).
+var texPathRe = regexp.MustCompile(`(?i)textures/[a-z0-9_./\-]+?\.dds`)
+var samplerRe = regexp.MustCompile(`g[A-Z][A-Za-z0-9]*Map`)
+
+func materialSamplers(raw []byte) map[string]string {
+	out := map[string]string{}
+	for _, loc := range texPathRe.FindAllIndex(raw, -1) {
+		p := normGamePath(string(raw[loc[0]:loc[1]]))
+		end := loc[1] + 0xC0
+		if end > len(raw) {
+			end = len(raw)
+		}
+		name := ""
+		if m := samplerRe.Find(raw[loc[1]:end]); m != nil {
+			name = string(m)
+		} else if strings.Contains(p, ".normal.") {
+			name = "gNormalMap"
+		} else if strings.Contains(p, ".masks.") {
+			name = "gMasksMap"
+		} else {
+			name = "gDiffuseMap"
+		}
+		if _, ok := out[name]; !ok {
+			out[name] = p
+		}
+	}
+	return out
+}
+
+type glbImage struct {
+	key, name string
+	jpeg      []byte
+}
+
+type glbLook struct{ diffuse, masks, normal *glbImage }
+
+var (
+	texCacheMu sync.Mutex
+	texCache   = map[string]*glbImage{}
+)
+
+// materialImages reads every material's textures in parallel (each decoded once per run of the app).
+func materialImages(order []string, prims map[string]*prim) map[string]*glbLook {
+	out := map[string]*glbLook{}
+	type job struct {
+		tex, kind string
+		dst       **glbImage
+	}
+	var jobs []job
+	for _, k := range order {
+		mp := prims[k].matPath
+		if mp == "" || out[mp] != nil {
+			continue
+		}
+		raw, err := gameFile(normGamePath(mp))
+		if err != nil {
+			continue
+		}
+		smp := materialSamplers(raw)
+		lk := &glbLook{}
+		out[mp] = lk
+		if t := smp["gDiffuseMap"]; t != "" {
+			jobs = append(jobs, job{t, "diffuse", &lk.diffuse})
+		}
+		if t := smp["gMasksMap"]; t != "" {
+			jobs = append(jobs, job{t, "masks", &lk.masks})
+		}
+		if t := smp["gNormalMap"]; t != "" {
+			jobs = append(jobs, job{t, "normal", &lk.normal})
+		}
+	}
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 4)
+	for _, j := range jobs {
+		wg.Add(1)
+		go func(j job) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			*j.dst = textureImage(j.tex, j.kind)
+		}(j)
+	}
+	wg.Wait()
+	return out
+}
+
+func textureImage(tex, kind string) *glbImage {
+	key := kind + "|" + tex
+	texCacheMu.Lock()
+	if im, ok := texCache[key]; ok {
+		texCacheMu.Unlock()
+		return im
+	}
+	texCacheMu.Unlock()
+	im := &glbImage{key: key, name: strings.TrimSuffix(path.Base(tex), ".dds")}
+	if raw, err := gameFile(tex); err == nil {
+		if img, err := decodeDDS(shrinkDDS(raw, 1024)); err == nil {
+			im.jpeg = encodeTexture(img, kind)
+		}
+	}
+	texCacheMu.Lock()
+	texCache[key] = im
+	texCacheMu.Unlock()
+	return im
+}
+
+// encodeTexture turns a decoded game texture into what glTF expects: colour as is (no alpha: the game uses it
+// for its own masks), metal/roughness with roughness in G and metal in B, and normals with Z rebuilt from X and Y.
+func encodeTexture(img *image.NRGBA, kind string) []byte {
+	w, h := img.Rect.Dx(), img.Rect.Dy()
+	out := image.NewRGBA(image.Rect(0, 0, w, h))
+	for i := 0; i < w*h; i++ {
+		r, g, b := img.Pix[i*4], img.Pix[i*4+1], img.Pix[i*4+2]
+		switch kind {
+		case "masks":
+			r, g, b = 255, r, g
+		case "normal":
+			x, y := float64(r)/127.5-1, float64(g)/127.5-1
+			z := 1 - x*x - y*y
+			if z < 0 {
+				z = 0
+			}
+			b = byte(math.Round((math.Sqrt(z) + 1) * 127.5))
+		}
+		out.Pix[i*4], out.Pix[i*4+1], out.Pix[i*4+2], out.Pix[i*4+3] = r, g, b, 255
+	}
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, out, &jpeg.Options{Quality: 88}); err != nil {
+		return nil
+	}
+	return buf.Bytes()
 }

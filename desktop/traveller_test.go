@@ -57,7 +57,7 @@ func TestWriteGLB(t *testing.T) {
 	w2 := identity()
 	w2[7] = 1
 	j2 := tJoint{name: "player01_NeckSHJnt", index: 3, parent: 0, world: w2, local: w2}
-	b, err := writeGLB("Tester", parts, []tJoint{j1, j2}, map[int]int{2: 0, 3: 1})
+	b, err := writeGLB("Tester", parts, []tJoint{j1, j2}, map[int]int{2: 0, 3: 1}, false)
 	if err != nil {
 		t.Fatal(err)
 	}

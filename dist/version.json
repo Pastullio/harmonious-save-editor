@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.10.1724",
+  "version": "2026.11.10.1804",
   "date": "2026-11-10",
-  "size": 13321728,
-  "sha256": "af262750b973b98c0f1f4b1a85af2c762b521762dc5f69a0a63e1c7f41641090",
-  "notes": "Blender: bones keep your traveller's proportions, so moving or scaling can't stretch an arm or a leg (turn off Keep the body's proportions in the panel to move bones freely)\nExosuit: Save traveller files for the developer collects your traveller's materials and textures, for the work on real colours and textures\nPlease install the LiveLink add-on again (version 1.4.0)",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.1724/HarmoniousSaveEditor.exe",
+  "size": 13419520,
+  "sha256": "ad46cba5147dc21d70f8a9bdd1b4174be752c1b4c56e33bc306fb9d80097fa30",
+  "notes": "Blender: your traveller now comes with the game's own textures (colour, surface detail, metal and rough parts); switch Blender to Material Preview or Rendered to see them\nExosuit: Save traveller files for the developer also collects the colour layers, for the next step: the colours you picked in the game",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.1804/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

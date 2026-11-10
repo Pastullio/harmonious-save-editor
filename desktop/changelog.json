@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.10.1804",
+  "date": "2026-11-10",
+  "notes": [
+   "Blender: your traveller now comes with the game's own textures (colour, surface detail, metal and rough parts); switch Blender to Material Preview or Rendered to see them",
+   "Exosuit: Save traveller files for the developer also collects the colour layers, for the next step: the colours you picked in the game"
+  ]
+ },
+ {
   "version": "2026.11.10.1724",
   "date": "2026-11-10",
   "notes": [

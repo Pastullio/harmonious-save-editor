@@ -264,6 +264,12 @@ func decodeDDS(b []byte) (*image.NRGBA, error) {
 	fourcc := string(b[84:88])
 	data := b[128:]
 	format := fourcc
+	switch fourcc { // two-channel (normals, masks) and one-channel textures
+	case "ATI2", "BC5U":
+		format = "BC5"
+	case "ATI1", "BC4U":
+		format = "BC4"
+	}
 	if fourcc == "DX10" {
 		if len(b) < 148 {
 			return nil, errors.New("short DX10 header")
@@ -277,6 +283,10 @@ func decodeDDS(b []byte) (*image.NRGBA, error) {
 			format = "DXT5"
 		case 28, 29:
 			format = "RGBA"
+		case 83, 84:
+			format = "BC5"
+		case 80, 81:
+			format = "BC4"
 		default:
 			return nil, fmt.Errorf("unsupported DXGI format %d", le.Uint32(b[128:]))
 		}
@@ -294,7 +304,7 @@ func decodeDDS(b []byte) (*image.NRGBA, error) {
 		return img, nil
 	}
 	bs := 16
-	if format == "DXT1" {
+	if format == "DXT1" || format == "BC4" {
 		bs = 8
 	}
 	bw, bh := (w+3)/4, (h+3)/4
@@ -313,6 +323,18 @@ func decodeDDS(b []byte) (*image.NRGBA, error) {
 			case "DXT5":
 				decodeBC1(blk[8:], &px, false)
 				decodeBC3Alpha(blk, &px)
+			case "BC4", "BC5": // red (and green) as BC3 alpha blocks; grey for BC4, blue 0 for BC5
+				var r, gg [16][4]byte
+				decodeBC3Alpha(blk, &r)
+				if format == "BC5" {
+					decodeBC3Alpha(blk[8:], &gg)
+				}
+				for i := range px {
+					px[i] = [4]byte{r[i][3], gg[i][3], 0, 255}
+					if format == "BC4" {
+						px[i][1], px[i][2] = r[i][3], r[i][3]
+					}
+				}
 			default:
 				return nil, fmt.Errorf("unsupported DDS format %q", format)
 			}
