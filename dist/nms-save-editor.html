@@ -145,7 +145,10 @@ body.is-app .open-grid, body.is-app .where { display: none; }
 .other-folder summary { cursor: pointer; color: var(--accent); }
 .other-folder form { margin-top: 10px; }
 .land-corner { position: fixed; top: 14px; right: 16px; z-index: 30; display: flex; gap: 8px; }
-body:not(.on-landing) .land-corner { display: none; }
+body:not(.on-landing) .land-corner, body:not(.on-landing) .land-theme { display: none; }
+.land-theme { position: fixed; right: 18px; bottom: 16px; z-index: 30; width: 40px; height: 40px; flex: none; border-radius: 50%; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); box-shadow: var(--lift); }
+.land-theme:hover { color: var(--accent); border-color: var(--accent); }
+.land-theme svg { width: 18px; height: 18px; }
 /* About: the logo sits on its own night-sky panel so it looks the same in light and dark mode */
 .about-sky { margin: -4px 0 14px; padding: 18px 18px 10px; border-radius: var(--r-lg); background: radial-gradient(120% 90% at 50% 20%, #12305a 0%, #0a1630 55%, #050a18 100%); text-align: center; }
 .about-sky img { width: min(420px, 100%); height: auto; display: block; margin: 0 auto; }
@@ -157,9 +160,8 @@ body:not(.on-landing) .land-corner { display: none; }
 .whatsnew h4 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
 .whatsnew h4 .dim { font-weight: 400; font-size: 12px; margin-left: 6px; }
 .whatsnew ul { margin: 0; padding-left: 20px; display: grid; gap: 5px; line-height: 1.45; }
-.about-links { display: flex; gap: 6px; margin: 12px 0; }
-.about-links .btn { flex: 1 1 auto; justify-content: center; text-align: center; white-space: nowrap; padding-inline: 8px; }
-@media (max-width: 640px) { .about-links { flex-wrap: wrap; } }
+.about-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; margin: 12px 0; }
+.about-links .btn { justify-content: center; text-align: center; white-space: nowrap; padding-inline: 8px; }
 .about-credits { font-size: 13px; color: var(--dim); line-height: 1.55; margin: 0; padding-left: 18px; }
 #dlg:has(.about-sky) { width: min(620px, calc(100vw - 32px)); }
 
@@ -1104,7 +1106,8 @@ nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .
 </head>
 <body class="on-landing">
 
-<div class="land-corner"><a class="btn small guide-btn" href="/guide" target="_blank" rel="noopener">Guide</a><button class="btn small addon-btn app-only" type="button" title="The LiveLink add-on for Blender: pose your traveller and send builds">LiveLink</button><button class="btn small about-btn" type="button">About</button><button class="btn small theme-btn" type="button">Dark mode</button></div>
+<div class="land-corner"><a class="btn small guide-btn" href="/guide" target="_blank" rel="noopener">Guide</a><button class="btn small addon-btn app-only" type="button" title="The LiveLink add-on for Blender: pose your traveller and send builds">LiveLink</button><button class="btn small about-btn" type="button">About</button></div>
+<button class="icon-btn theme-btn land-theme" type="button" title="Dark mode" aria-label="Dark mode"></button>
 <section id="landing">
   <div class="landing-inner">
     <div class="landing-copy">
@@ -2627,7 +2630,8 @@ async function tcDraw(cv, preview) {
   const place = (id, im, l) => { const h = l.s * H, w = im.width / im.height * h, x = l.x * W - w / 2, y = l.y * H - h / 2; hits.push({ id, x, y, w, h }); return [x, y, w, h]; };
   const size3d = (l) => Math.max(256, Math.min(1600, Math.round(l.s * H * 1.15)));
   const shipImg = st.ship && (TC.img.ship || (TC.shipModel && tc3d('ship', size3d(L.ship))));
-  if (st.ship && shipImg) { const [x, y, w, h] = place('ship', shipImg, L.ship); ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = U * .03; ctx.drawImage(shipImg, x, y, w, h); ctx.restore(); }
+  const drawShip = () => { if (st.ship && shipImg) { const [x, y, w, h] = place('ship', shipImg, L.ship); ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = U * .03; ctx.drawImage(shipImg, x, y, w, h); ctx.restore(); } };
+  if (!st.shipFront) drawShip();
   const travImg = TC.m3d ? tc3d('trav', size3d(L.trav)) : TC.img.trav;
   if (travImg) {
     const [x, y, w, h] = place('trav', travImg, L.trav);
@@ -2639,6 +2643,7 @@ async function tcDraw(cv, preview) {
     ctx.fillText('Your posed traveller goes here', W / 2, H * .5); ctx.font = `400 ${Math.round(U * .02)}px "Jost", sans-serif`;
     ctx.fillText('In Blender: LiveLink panel, Save the pose as a picture', W / 2, H * .5 + U * .04); ctx.textAlign = 'left';
   }
+  if (st.shipFront) drawShip();
   const F = '"Jost", "Segoe UI", sans-serif', M = 'ui-monospace, Consolas, monospace';
   const track = (t, x, y, sp) => { let cx = x; for (const ch of t) { ctx.fillText(ch, cx, y); cx += ctx.measureText(ch).width + sp; } return cx - x; };
   // glyphs
@@ -2706,7 +2711,7 @@ PAGES.traveller = (el) => {
       ${TC.m3d ? turnHtml('trav') : ''}<div class="tc-acts"><button class="link" type="button" id="tcRefresh">Look again</button><label class="link">Use an image file<input type="file" accept="image/png,image/*" id="tcPoseFile" hidden></label>${APP ? '<button class="link addon-btn" type="button">Get LiveLink</button>' : ''}</div></div>
     <div class="tc-row"><span class="k">Background</span><select id="tcBg">${[['stars', 'Starfield'], ['gradient', 'Two colours'], ['colour', 'One colour'], ...(APP ? [['shot', 'One of your screenshots…']] : []), ['file', 'An image file…']].map(([k, l]) => `<option value="${k}"${st.bg === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
       ${st.bg === 'shot' || st.bg === 'file' ? '' : `<div class="tc-cols"><label>Colour <input type="color" id="tcC1" value="${esc(st.c1)}"></label>${st.bg === 'colour' ? '' : `<label>and <input type="color" id="tcC2" value="${esc(st.c2)}"></label>`}</div>`}</div>
-    <div class="tc-row"><span class="k">Ship</span><select id="tcShip"><option value="">No ship</option>${items.filter((x) => x.kind !== 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)} (${esc(x.type.toLowerCase())})</option>`).join('')}<optgroup label="Multi-tools">${items.filter((x) => x.kind === 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</optgroup></select>${st.ship && TC.shipModel && !TC.img.ship ? turnHtml('ship') : ''}${st.ship && TC.shipViews.length > 1 ? `<label class="field"><span>Angle</span><select id="tcView">${TC.shipViews.map(([v, l]) => `<option value="${v}"${v === (st.shipView || TC.shipViews[0][0]) ? ' selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}</div>
+    <div class="tc-row"><span class="k">Ship</span><select id="tcShip"><option value="">No ship</option>${items.filter((x) => x.kind !== 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)} (${esc(x.type.toLowerCase())})</option>`).join('')}<optgroup label="Multi-tools">${items.filter((x) => x.kind === 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</optgroup></select>${st.ship && TC.shipModel && !TC.img.ship ? turnHtml('ship') : ''}${st.ship ? `<label class="check"><input type="checkbox" id="tcFront"${st.shipFront ? ' checked' : ''}> In front of your traveller</label>` : ''}${st.ship && TC.shipViews.length > 1 ? `<label class="field"><span>Angle</span><select id="tcView">${TC.shipViews.map(([v, l]) => `<option value="${v}"${v === (st.shipView || TC.shipViews[0][0]) ? ' selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}</div>
     <div class="tc-row"><span class="k">Portal glyphs</span><select id="tcPlace"><option value="">No glyphs</option>${places.map((q) => `<option value="${esc(q.id)}"${q.id === st.place ? ' selected' : ''}>${esc(q.name)}</option>`).join('')}</select></div>
     <div class="tc-row"><span class="k">Words</span><label class="field"><span>Name</span><input id="tcName" value="${esc(st.name)}" maxlength="40"></label><label class="field"><span>Title above it</span><input id="tcTitle" value="${esc(st.title)}" maxlength="60" placeholder="Traveller of the Atlas"></label><label class="field"><span>Caption below</span><textarea id="tcCaption" rows="2" maxlength="200" placeholder="A line or two">${esc(st.caption)}</textarea></label></div>
     <label class="check"><input type="checkbox" id="tcCredit"${st.credit ? ' checked' : ''}> Small "Harmonious Save Editor" in the corner</label>
@@ -2716,6 +2721,7 @@ PAGES.traveller = (el) => {
     side.innerHTML = sideHtml();
     side.querySelectorAll('.tc-turn input').forEach((inp) => inp.oninput = () => { const k = inp.closest('.tc-turn').dataset.turn; st.layers[k][inp.dataset.ax] = +inp.value; TC.sel = k; tcSave(); redraw(); });
     side.querySelectorAll('[data-front]').forEach((b) => b.onclick = () => { const l = st.layers[b.dataset.front]; l.yaw = 0; l.pitch = 0; tcSave(); wire(); redraw(); });
+    const fr = $('#tcFront', side); if (fr) fr.onchange = () => change(() => { st.shipFront = fr.checked; });
     const vw = $('#tcView', side); if (vw) vw.onchange = () => { st.shipView = vw.value; const v = TC.shipViews.find(([x]) => x === vw.value); if (v) TC.img.ship = v[2]; tcSave(); redraw(); };
     side.querySelectorAll('[data-size]').forEach((b) => b.onclick = () => change(() => { st.size = b.dataset.size; side.querySelectorAll('[data-size]').forEach((x) => x.setAttribute('aria-pressed', x === b)); }));
     const ps_ = $('#tcPose', side); if (ps_) ps_.onchange = async () => { await tcLoadPose(ps_.value); st.pose = ps_.value; tcSave(); wire(); redraw(); };

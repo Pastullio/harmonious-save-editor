@@ -33,7 +33,15 @@ im.save(${JSON.stringify(file)})`]);
   ok('…which saves the add-on to Exports and says how to install it', fs.existsSync(path.join(exp, 'harmonious_live_link.py')) && /bl_info/.test(fs.readFileSync(path.join(exp, 'harmonious_live_link.py'), 'utf8')) && /Install from Disk/.test(await p.textContent('#dlg')) && /Exports/.test(await p.textContent('#dlg')));
   await p.click('#dlgX');
   await p.click('.land-corner .about-btn'); await p.waitForSelector('#dlg[open]');
-  ok('About has the add-on too', !!(await p.$('#dlg .about-links .addon-btn'))); await p.click('#dlgX');
+  ok('About has the add-on too', !!(await p.$('#dlg .about-links .addon-btn')));
+  await p.setViewportSize({ width: 1100, height: 900 });
+  ok('About fits without scrolling sideways', await p.evaluate(() => { const d = $('#dlg'); return [...d.querySelectorAll('*')].every((x) => x.scrollWidth <= x.clientWidth + 1 || getComputedStyle(x).overflowX === 'visible') && d.scrollWidth <= d.clientWidth + 1; }));
+  await p.screenshot({ path: SP + '/shots/about-fit.png' });
+  await p.setViewportSize({ width: 1440, height: 1000 }); await p.click('#dlgX');
+  const lt = await p.$eval('.land-theme', (x) => { const r = x.getBoundingClientRect(); return { r: innerWidth - r.right, b: innerHeight - r.bottom, svg: !!x.querySelector('svg'), text: x.textContent.trim() }; });
+  ok('light/dark is an icon in the bottom-right corner of the save list', lt.r < 40 && lt.b < 40 && lt.svg && !lt.text);
+  const d0 = await p.evaluate(() => isDark()); await p.click('.land-theme'); ok('…and switches the look', (await p.evaluate(() => isDark())) !== d0); await p.click('.land-theme');
+  await p.screenshot({ path: SP + '/shots/landing-theme.png' });
   await p.click('.slot-row'); await p.waitForSelector('#app:not(.hidden)');
   ok('Traveller is in the sidebar after Exosuit', await p.evaluate(() => { const ids = [...document.querySelectorAll('nav button[data-s]')].map((x) => x.dataset.s); return ids.indexOf('traveller') === ids.indexOf('exosuit') + 1; }));
   await p.click('nav button[data-s="traveller"]'); await p.waitForSelector('#tcCanvas');
@@ -106,6 +114,11 @@ im.save(${JSON.stringify(file)})`]);
     if (await p.evaluate(() => !!TC.shipModel)) {
       ok('a ship with a model can be turned', !!(await p.$('.tc-turn[data-turn="ship"]')) && await p.evaluate(() => TC.hits.some((h) => h.id === 'ship')));
     } else console.log('(no ship model in the test files)');
+  }
+  if (await p.$('#tcFront')) {
+    const order = () => p.evaluate(() => TC.hits.map((h) => h.id).join(','));
+    const o1 = await order(); await p.click('#tcFront'); await p.waitForTimeout(300); const o2 = await order();
+    ok('the ship can go in front of the traveller', o1.indexOf('ship') < o1.indexOf('trav') && o2.indexOf('ship') > o2.indexOf('trav'));
   }
   await p.selectOption('#tcShip', ''); await p.waitForTimeout(200);
   await p.selectOption('#tcPose', 'Pastullio pose 2026-11-10 120000.png'); await p.waitForTimeout(300);

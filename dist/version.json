@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.10.2030",
+  "version": "2026.11.10.2039",
   "date": "2026-11-10",
-  "size": 13606400,
-  "sha256": "1daf134e87924386399d76067cf2afd05a76f05679204050853967b35ebcd0a2",
-  "notes": "Traveller page in 3D: in Blender press Send the pose to the editor and your posed traveller arrives in 3D, with its textures; turn and tilt it on the card with the sliders or by dragging with Shift held\nTraveller page: starships and multi-tools without a picture show their 3D model and can be turned too; corvettes can use any of their render angles\nPlease install the LiveLink add-on again (version 1.6.0)",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.2030/HarmoniousSaveEditor.exe",
+  "size": 13607424,
+  "sha256": "1051cbe3b76e3bcaa49d34d6d99467a947abe62b2c64715fdcfe646905024df7",
+  "notes": "About fits without scrolling sideways\nSave list: light and dark mode is an icon in the bottom-right corner\nTraveller page: In front of your traveller puts the ship in front instead of behind",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.2039/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

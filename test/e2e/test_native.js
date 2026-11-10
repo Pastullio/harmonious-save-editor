@@ -22,7 +22,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   let m = await msgs();
   ok('the page says it is ready for close requests', m.includes('ready'));
   ok('and tells the window its theme', m.some((x) => /^theme:(dark|light)$/.test(x)));
-  await clear(); await p.click('.land-corner .theme-btn');
+  await clear(); await p.click('.land-theme');
   m = await msgs();
   ok('switching light/dark tells the window', m.some((x) => /^theme:/.test(x)));
   // X with nothing open or unsaved: out at once

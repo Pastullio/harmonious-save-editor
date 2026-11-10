@@ -1,5 +1,14 @@
 [
  {
+  "version": "2026.11.10.2039",
+  "date": "2026-11-10",
+  "notes": [
+   "About fits without scrolling sideways",
+   "Save list: light and dark mode is an icon in the bottom-right corner",
+   "Traveller page: In front of your traveller puts the ship in front instead of behind"
+  ]
+ },
+ {
   "version": "2026.11.10.2030",
   "date": "2026-11-10",
   "notes": [
