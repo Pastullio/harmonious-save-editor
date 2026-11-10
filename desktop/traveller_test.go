@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"image"
 	"encoding/binary"
 	"encoding/json"
 	"os"
@@ -57,7 +58,7 @@ func TestWriteGLB(t *testing.T) {
 	w2 := identity()
 	w2[7] = 1
 	j2 := tJoint{name: "player01_NeckSHJnt", index: 3, parent: 0, world: w2, local: w2}
-	b, err := writeGLB("Tester", parts, []tJoint{j1, j2}, map[int]int{2: 0, 3: 1}, false)
+	b, err := writeGLB("Tester", parts, []tJoint{j1, j2}, map[int]int{2: 0, 3: 1}, false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,5 +122,39 @@ func TestShrinkDDS(t *testing.T) {
 	}
 	if small := shrinkDDS(s, 1024); len(small) != len(s) {
 		t.Fatal("a texture already small enough changed")
+	}
+}
+
+// HSE_TEST_TEXTURE=<a player .texture.mbin, e.g. vykeentorso.texture.mbin> reads a real layered texture.
+func TestParseProceduralTexture(t *testing.T) {
+	f := os.Getenv("HSE_TEST_TEXTURE")
+	if f == "" {
+		t.Skip("HSE_TEST_TEXTURE not set")
+	}
+	raw, err := os.ReadFile(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ls := parseProceduralTexture(raw)
+	if len(ls) < 2 || ls[len(ls)-1].name != "BASE" {
+		t.Fatalf("layers %+v", ls)
+	}
+	for _, l := range ls {
+		for _, x := range l.texs {
+			if x.file != "" && (!strings.HasPrefix(x.file, "textures/") || x.alt == "") {
+				t.Fatalf("texture %+v", x)
+			}
+		}
+		t.Logf("%s (%s): %d textures, first %+v", l.name, l.group, len(l.texs), l.texs[0])
+	}
+}
+
+func TestRecolour(t *testing.T) {
+	// a mid-teal layer painted pure blue keeps its light and dark pixels apart
+	img := image.NewNRGBA(image.Rect(0, 0, 2, 1))
+	copy(img.Pix, []byte{40, 120, 120, 255, 80, 200, 200, 255})
+	recolour(img, [3]float64{0.24, 0.57, 0.87}, &ptTex{})
+	if !(img.Pix[2] > img.Pix[0] && img.Pix[6] > img.Pix[2] && img.Pix[6] > img.Pix[4]) {
+		t.Fatalf("pixels %v", img.Pix)
 	}
 }

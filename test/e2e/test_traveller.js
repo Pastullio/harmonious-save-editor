@@ -31,6 +31,14 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const gj = (() => { try { const b = fs.readFileSync(glb); return JSON.parse(b.subarray(20, 20 + b.readUInt32LE(12)).toString()); } catch { return {}; } })();
   const texd = (gj.materials || []).filter((m) => m.pbrMetallicRoughness && m.pbrMetallicRoughness.baseColorTexture);
   ok('…with the game\'s textures (colour, normal, roughness and metal) when the game has them', (gj.images || []).length > 20 && texd.length > 20 && texd.some((m) => m.normalTexture) && texd.some((m) => m.pbrMetallicRoughness.metallicRoughnessTexture) && gj.images.every((im) => im.mimeType === 'image/jpeg'));
+  const lk = await p.evaluate(() => travellerLook());
+  ok('the save\'s colours and texture choices are read', lk && lk.c.length >= 10 && lk.c.some((x) => x.p === 'Custom_Torso' && x.a === 'Primary') && lk.t.some(([g2, o]) => g2 === 'TORSO_VYK' && o));
+  const differ = await p.evaluate(async ([gs, l]) => {
+    const get = async (q) => new Uint8Array(await (await api('/api/model/traveller/glb?groups=' + encodeURIComponent(gs.join(',')) + '&name=T' + q)).arrayBuffer());
+    const a = await get(''), b = await get('&look=' + encodeURIComponent(JSON.stringify(l)));
+    return a.length !== b.length || a.some((x, i) => x !== b[i]);
+  }, [groups, lk]);
+  ok('the save\'s own colours paint the textures', differ);
   // the files for working on textures: materials (and their textures, when the game has them) and the save's look
   await p.click('#travSample');
   const exp = path.join(home, 'Documents', 'Harmonious Save Editor', 'Exports');

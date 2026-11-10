@@ -153,26 +153,28 @@ var trav struct {
 	sync.Mutex
 	groups []string
 	name   string
+	look   string // the save's colours and texture choices (travLook as JSON)
 }
 
 func handleLiveTraveller(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		var v struct {
-			Groups []string `json:"groups"`
-			Name   string   `json:"name"`
+			Groups []string        `json:"groups"`
+			Name   string          `json:"name"`
+			Look   json.RawMessage `json:"look"`
 		}
 		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&v); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		trav.Lock()
-		trav.groups, trav.name = v.Groups, strings.TrimSpace(v.Name)
+		trav.groups, trav.name, trav.look = v.Groups, strings.TrimSpace(v.Name), string(v.Look)
 		trav.Unlock()
 		writeJSON(w, map[string]any{"ok": true})
 		return
 	}
 	trav.Lock()
-	groups, name := trav.groups, trav.name
+	groups, name, look := trav.groups, trav.name, trav.look
 	trav.Unlock()
 	if len(groups) == 0 {
 		http.Error(w, "Open a save in Harmonious Save Editor first.", http.StatusNotFound)
@@ -186,7 +188,7 @@ func handleLiveTraveller(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		name = "Traveller"
 	}
-	glb, err := travellerGLB(names, name, r.URL.Query().Get("textures") != "0")
+	glb, err := travellerGLB(names, name, r.URL.Query().Get("textures") != "0", parseLook(look))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -207,7 +209,7 @@ func handleTravellerGLB(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		name = "Traveller"
 	}
-	glb, err := travellerGLB(names, name, r.URL.Query().Get("textures") != "0")
+	glb, err := travellerGLB(names, name, r.URL.Query().Get("textures") != "0", parseLook(r.URL.Query().Get("look")))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -292,7 +294,7 @@ func bindPose(js []tJoint, ibm [][16]float32) {
 	}
 }
 
-func travellerGLB(names []string, name string, textures bool) ([]byte, error) {
+func travellerGLB(names []string, name string, textures bool, look *travLook) ([]byte, error) {
 	root, err := loadScene(travellerScene)
 	if err != nil {
 		return nil, err
@@ -317,7 +319,7 @@ func travellerGLB(names []string, name string, textures bool) ([]byte, error) {
 			byIndex[j.index] = i
 		}
 	}
-	return writeGLB(name, out.parts, joints, byIndex, textures)
+	return writeGLB(name, out.parts, joints, byIndex, textures, look)
 }
 
 // ------------------------------------------------------------------ glTF
@@ -340,7 +342,7 @@ type prim struct {
 	idx      []uint32
 }
 
-func writeGLB(name string, parts []meshPart, joints []tJoint, byIndex map[int]int, withTextures bool) ([]byte, error) {
+func writeGLB(name string, parts []meshPart, joints []tJoint, byIndex map[int]int, withTextures bool, look *travLook) ([]byte, error) {
 	// one primitive per material
 	prims := map[string]*prim{}
 	var order []string
@@ -452,7 +454,7 @@ func writeGLB(name string, parts []meshPart, joints []tJoint, byIndex map[int]in
 	texIndex := map[string]int{}
 	var looks map[string]*glbLook
 	if withTextures {
-		looks = materialImages(order, prims)
+		looks = materialImages(order, prims, look)
 	}
 	texFor := func(t *glbImage) *gTex {
 		if t == nil || len(t.jpeg) == 0 {
@@ -878,7 +880,7 @@ var (
 )
 
 // materialImages reads every material's textures in parallel (each decoded once per run of the app).
-func materialImages(order []string, prims map[string]*prim) map[string]*glbLook {
+func materialImages(order []string, prims map[string]*prim, look *travLook) map[string]*glbLook {
 	out := map[string]*glbLook{}
 	type job struct {
 		tex, kind string
@@ -915,15 +917,18 @@ func materialImages(order []string, prims map[string]*prim) map[string]*glbLook 
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			*j.dst = textureImage(j.tex, j.kind)
+			*j.dst = textureImage(j.tex, j.kind, look)
 		}(j)
 	}
 	wg.Wait()
 	return out
 }
 
-func textureImage(tex, kind string) *glbImage {
+func textureImage(tex, kind string, look *travLook) *glbImage {
 	key := kind + "|" + tex
+	if kind == "diffuse" {
+		key += "|" + look.key()
+	}
 	texCacheMu.Lock()
 	if im, ok := texCache[key]; ok {
 		texCacheMu.Unlock()
@@ -932,7 +937,14 @@ func textureImage(tex, kind string) *glbImage {
 	texCacheMu.Unlock()
 	im := &glbImage{key: key, name: strings.TrimSuffix(path.Base(tex), ".dds")}
 	if raw, err := gameFile(tex); err == nil {
-		if img, err := decodeDDS(shrinkDDS(raw, 1024)); err == nil {
+		var img *image.NRGBA
+		if kind == "diffuse" {
+			img = layeredColour(tex, look) // the save's own colours, when the texture is painted in layers
+		}
+		if img == nil {
+			img, _ = decodeDDS(shrinkDDS(raw, 1024))
+		}
+		if img != nil {
 			im.jpeg = encodeTexture(img, kind)
 		}
 	}

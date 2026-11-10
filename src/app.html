@@ -1928,6 +1928,14 @@ function travellerGroups() {
   const cc = g(ps(), 'CharacterCustomisationData'); const e = Array.isArray(cc) ? cc[0] : null;
   return ((e && g(e, 'CustomData', 'DescriptorGroups')) || []).map(str).filter((x) => x && x !== '^');
 }
+// the save's colours and texture choices, for painting the model (owner, 2026-11-10): {c: [{p, a, c}], t: [[group, option]]}
+function travellerLook() {
+  const cc = g(ps(), 'CharacterCustomisationData'); const e = Array.isArray(cc) ? cc[0] : null; const cd = e && g(e, 'CustomData');
+  if (!cd) return null;
+  const c = (g(cd, 'Colours') || []).map((x) => ({ p: str(g(x, 'Palette', 'Palette')), a: str(g(x, 'Palette', 'ColourAlt')), c: (g(x, 'Colour') || []).map(num) })).filter((x) => x.p && x.c.length >= 3);
+  const t = (g(cd, 'TextureOptions') || []).map((x) => [str(g(x, 'TextureOptionGroupName')).replace(/^\^/, ''), str(g(x, 'TextureOptionName')).replace(/^\^/, '')]).filter(([a, b]) => a && b);
+  return c.length || t.length ? { c, t } : null;
+}
 function travellerName() {
   for (const b of g(ps(), 'PersistentPlayerBases') || []) { const n = untag(str(g(b, 'Owner', 'USN'))); if (n) return n; }
   return 'Traveller';
@@ -1935,13 +1943,14 @@ function travellerName() {
 function travellerShare() {
   if (!APP) return;
   const groups = travellerGroups(); if (!groups.length) return;
-  api('/api/live/traveller', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groups, name: travellerName() }) }).catch(() => {});
+  api('/api/live/traveller', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groups, name: travellerName(), look: travellerLook() }) }).catch(() => {});
 }
 async function travellerExport(btn) {
   const groups = travellerGroups(), name = travellerName();
   if (btn) btn.disabled = true;
   try {
-    const r = await api('/api/model/traveller/glb?groups=' + encodeURIComponent(groups.join(',')) + '&name=' + encodeURIComponent(name));
+    const look = travellerLook();
+    const r = await api('/api/model/traveller/glb?groups=' + encodeURIComponent(groups.join(',')) + '&name=' + encodeURIComponent(name) + (look ? '&look=' + encodeURIComponent(JSON.stringify(look)) : ''));
     if (!r.ok) throw new Error(await r.text());
     await downloadBlob(name + '.glb', await r.blob());
   } catch (e) { toast('Couldn\'t export your traveller: ' + e.message, true); }
