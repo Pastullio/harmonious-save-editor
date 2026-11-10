@@ -9,6 +9,7 @@ package main
 // programs and web pages can't send builds: /api/live/build needs that token, everything else needs the page's.
 
 import (
+	"regexp"
 	"crypto/subtle"
 	_ "embed"
 	"encoding/json"
@@ -26,6 +27,16 @@ import (
 
 //go:embed addon/harmonious_live_link.py
 var liveAddon []byte
+
+// addonVersion: the embedded add-on's bl_info version ("1.2.1"); GET /api/live/build reports it so an older add-on
+// in Blender can say a newer one is waiting (owner, 2026-11-10: kept using 1.2.0 after an update)
+var addonVersion = func() string {
+	m := regexp.MustCompile(`"version":\s*\((\d+),\s*(\d+),\s*(\d+)\)`).FindSubmatch(liveAddon)
+	if m == nil {
+		return ""
+	}
+	return string(m[1]) + "." + string(m[2]) + "." + string(m[3])
+}()
 
 var (
 	liveToken string
@@ -160,7 +171,7 @@ func handleLiveBuild(w http.ResponseWriter, r *http.Request) {
 		trav.Lock()
 		tname := trav.name
 		trav.Unlock()
-		writeJSON(w, map[string]any{"ok": true, "armed": armed, "target": target, "slot": slot, "corvettes": corvettes, "kind": kind, "base": base, "version": appVersion, "traveller": tname, "exports": exportsDir()})
+		writeJSON(w, map[string]any{"ok": true, "armed": armed, "target": target, "slot": slot, "corvettes": corvettes, "kind": kind, "base": base, "version": appVersion, "traveller": tname, "exports": exportsDir(), "addon": addonVersion})
 		return
 	}
 	if r.Method != http.MethodPost {

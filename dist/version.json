@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.10.1626",
+  "version": "2026.11.10.1632",
   "date": "2026-11-10",
-  "size": 13292544,
-  "sha256": "64bf4d8f7d7bad6ad4c847e0a01d6eb3a6388e688c2d267b53731ea2bb0772bd",
-  "notes": "Blender add-on: Import my traveller now shows a clean skeleton, without the big spheres on every bone, and hides the game's helper joints (cameras, effects) in a Helpers bone collection. Get the add-on again on Shipwright and install it over the old one.",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.1626/HarmoniousSaveEditor.exe",
+  "size": 13295616,
+  "sha256": "018f0cadaf32f17db011c1275d709ea36f9d64aa3367dd3bf3b9a9d60fd904bb",
+  "notes": "Blender add-on 1.2.2: Import my traveller goes straight into Pose mode (click a bone and press R) and shows plain bones instead of spheres. From now on the add-on tells you in Blender when a newer one is ready. Get it on Shipwright and install it over the old one.",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.1632/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

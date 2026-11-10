@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 2, 1),
+    "version": (1, 2, 2),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -58,7 +58,16 @@ def editor_address():
 # ---------------------------------------------------------------- is the editor linked?
 # Every few seconds the add-on asks the editor whether LiveLink is on and for which corvette; the panel shows it,
 # and the editor sees Blender check in.
-LINK = {"state": "none", "target": "", "slot": -1, "corvettes": [], "kind": "corvette", "base": None, "traveller": "", "exports": ""}   # none: editor not running; off: running, LiveLink off; on: linked
+LINK = {"state": "none", "target": "", "slot": -1, "corvettes": [], "kind": "corvette", "base": None, "traveller": "", "exports": "", "addon": ""}
+
+
+def newer_addon():
+    """The add-on version the running editor carries, when it's newer than this one."""
+    try:
+        theirs = tuple(int(x) for x in LINK.get("addon", "").split("."))
+    except ValueError:
+        return ""
+    return LINK["addon"] if theirs > tuple(bl_info["version"]) else ""   # none: editor not running; off: running, LiveLink off; on: linked
 
 
 def check_link_now():
@@ -75,7 +84,7 @@ def check_link_now():
         LINK.update(state="on" if info.get("armed") else "off", target=info.get("target") or "",
                     slot=int(info.get("slot", -1)), corvettes=info.get("corvettes") or LINK["corvettes"],
                     kind=info.get("kind") or "corvette", base=info.get("base"),
-                    traveller=info.get("traveller") or "", exports=info.get("exports") or "")
+                    traveller=info.get("traveller") or "", exports=info.get("exports") or "", addon=info.get("addon") or "")
     except (urllib.error.URLError, OSError, ValueError):
         LINK.update(state="none", target="")
 
@@ -422,6 +431,11 @@ class HARMONIOUS_PT_live(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         draw_logo(context, layout)
+        if newer_addon():
+            up = layout.box()
+            up.alert = True
+            up.label(text="A newer add-on (%s) is ready" % newer_addon(), icon="ERROR")
+            up.label(text="Get it on Shipwright and install it over this one")
         # the link, first and clearest
         link = layout.box()
         if LINK["state"] == "on":
@@ -537,6 +551,7 @@ class HARMONIOUS_OT_traveller(bpy.types.Operator):
         with open(path, "wb") as f:
             f.write(data)
         before = set(bpy.data.objects)
+        arm = None
         try:   # bones that point at their children pose most naturally in Blender
             bpy.ops.import_scene.gltf(filepath=path, bone_heuristic="BLENDER")
         except TypeError:
@@ -548,6 +563,7 @@ class HARMONIOUS_OT_traveller(bpy.types.Operator):
                 o.show_in_front = True
                 tidy_skeleton(o, [m for m in new if m.type == "MESH" and m.parent == o])
                 context.view_layer.objects.active = o
+                arm = o
         # the importer draws each bone as a sphere (an Icosphere in a glTF_not_exported collection); plain bones instead
         for o in new:
             if o.type == "MESH" and o.name.startswith("Icosphere") and not o.users_collection[0].name.startswith(name):
@@ -555,7 +571,17 @@ class HARMONIOUS_OT_traveller(bpy.types.Operator):
                 bpy.data.objects.remove(o)
                 if coll.name.startswith("glTF_not_exported") and not coll.objects:
                     bpy.data.collections.remove(coll)
-        set_status("%s is in the scene. Select the skeleton, press Ctrl+Tab for Pose mode and turn the bones." % name)
+        if arm is not None:   # straight into Pose mode: click a bone and press R to turn it
+            try:
+                if context.mode != "OBJECT":
+                    bpy.ops.object.mode_set(mode="OBJECT")
+                for o in context.view_layer.objects:
+                    o.select_set(False)
+                arm.select_set(True)
+                bpy.ops.object.mode_set(mode="POSE")
+            except RuntimeError:
+                pass
+        set_status("%s is in the scene, in Pose mode: click a bone and press R to turn it. Ctrl+Tab goes back to Object mode." % name)
         return {"FINISHED"}
 
 

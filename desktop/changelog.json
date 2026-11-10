@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.10.1632",
+  "date": "2026-11-10",
+  "notes": [
+   "Blender add-on 1.2.2: Import my traveller goes straight into Pose mode (click a bone and press R) and shows plain bones instead of spheres. From now on the add-on tells you in Blender when a newer one is ready. Get it on Shipwright and install it over the old one."
+  ]
+ },
+ {
   "version": "2026.11.10.1626",
   "date": "2026-11-10",
   "notes": [
