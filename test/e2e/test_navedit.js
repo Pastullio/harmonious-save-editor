@@ -9,7 +9,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const home = path.join(T, 'home'), root = path.join(T, 'root'); fs.mkdirSync(path.join(home, 'Documents'), { recursive: true }); fs.cpSync(SP + '/dbroot/NMS', root, { recursive: true });
   const proc = spawn(path.join(__dirname, '../../dist/hse-linux'), ['-no-window', '-root', root, '-port', '48104'], { env: { ...process.env, HOME: home, XDG_CONFIG_HOME: path.join(T, 'cfg'), HSE_BLENDER: '/nonexistent' } });
   const url = await new Promise((res) => proc.stdout.on('data', (d) => res(String(d).trim())));
-  const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1440, height: 1100 } });
+  const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1440, height: 1500 } });
   const errs = []; p.on('pageerror', (e) => errs.push(e.message));
   const open = async () => { await p.waitForSelector('.slot-row'); await p.click('.slot-row'); await p.waitForSelector('#app:not(.hidden)'); };
   const groups = () => p.$$eval('#nav .nav-group', (gs) => gs.map((g) => [...g.querySelectorAll('button')].map((x) => x.dataset.s).join(',')));

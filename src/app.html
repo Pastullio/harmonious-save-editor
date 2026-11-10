@@ -388,6 +388,18 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .tune-order .to-n { width: 22px; text-align: right; color: var(--dim); }
 .tune-order .to-name { flex: 1; }
 .tune-order .to-acts { display: flex; gap: 4px; }
+.tc-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.tc-stage { background: var(--well); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: flex; justify-content: center; }
+.tc-stage canvas { max-width: 100%; max-height: calc(100vh - 210px); height: auto; border-radius: 8px; touch-action: none; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
+.tc-side { display: flex; flex-direction: column; gap: 14px; }
+.tc-row { display: flex; flex-direction: column; gap: 6px; }
+.tc-row > .k { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+.tc-row select, .tc-row input:not([type=color]), .tc-row textarea { width: 100%; }
+.tc-row .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tc-cols { display: flex; gap: 12px; align-items: center; } .tc-cols label { display: flex; gap: 6px; align-items: center; }
+.tc-cols input[type=color] { width: 40px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; }
+.tc-acts { display: flex; flex-wrap: wrap; gap: 4px 14px; } .tc-acts.main { gap: 8px; }
+@media (max-width: 980px) { .tc-wrap { grid-template-columns: 1fr; } }
 .trav-top { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 16px; align-items: start; margin-bottom: 16px; }
 .trav-info h3 { margin-top: 0; }
 @media (max-width: 760px) { .trav-top { grid-template-columns: 1fr; } }
@@ -1084,7 +1096,7 @@ nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .
 </head>
 <body class="on-landing">
 
-<div class="land-corner"><a class="btn small guide-btn" href="/guide" target="_blank" rel="noopener">Guide</a><button class="btn small about-btn" type="button">About</button><button class="btn small theme-btn" type="button">Dark mode</button></div>
+<div class="land-corner"><a class="btn small guide-btn" href="/guide" target="_blank" rel="noopener">Guide</a><button class="btn small addon-btn app-only" type="button" title="The LiveLink add-on: pose your traveller and send builds from Blender">Blender add-on</button><button class="btn small about-btn" type="button">About</button><button class="btn small theme-btn" type="button">Dark mode</button></div>
 <section id="landing">
   <div class="landing-inner">
     <div class="landing-copy">
@@ -1297,7 +1309,7 @@ function aboutDialog() {
   const ver = window.NMS_APP ? 'Desktop app' + (window.NMS_APP.version && window.NMS_APP.version !== '1' ? ' · version ' + window.NMS_APP.version : '') : 'Browser version';
   dialog('About', `<div class="about-sky"><img src="@@LOGO@@" alt="Harmonious Save Editor"><div class="ver">${ver}</div></div>
     <p>A No Man's Sky save editor for Steam and GOG on PC, by Pastullio the Harmonious. It reads your own game files for item names, icons and models, and backs up every save before it changes it.</p>
-    <div class="about-links"><a class="btn small primary" href="${GUIDE_URL}" target="_blank" rel="noopener">User guide</a>${LINKS.map(([t, u]) => `<a class="btn small" href="${u}" target="_blank" rel="noopener">${t}</a>`).join('')}</div>
+    <div class="about-links"><a class="btn small primary" href="${GUIDE_URL}" target="_blank" rel="noopener">User guide</a>${APP ? '<button class="btn small addon-btn" type="button">Blender add-on</button>' : ''}${LINKS.map(([t, u]) => `<a class="btn small" href="${u}" target="_blank" rel="noopener">${t}</a>`).join('')}</div>
     <p class="dim" style="margin:12px 0 6px">Built with thanks to</p>
     <ul class="about-credits"><li>libNOM.map and libNOM.io by zencq (save keys and format)</li><li>MBINCompiler by monkeyman192 and contributors (game table layouts)</li><li>HGPAKtool by monkeyman192 (game archive format)</li><li>Charon Forge by xX-Charon-Xx (corvette renders)</li><li>nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, and its JavaScript port nms-core by elegra1965 (system and planet prediction; MIT)</li><li>Pillow (texture decoding), klauspost/compress (zstd), Jost by indestructible type* (typeface)</li></ul>
     <p class="dim" style="font-size:13px;margin:12px 0 0">Free software under the GPL-3.0 licence. Not affiliated with Hello Games.</p>
@@ -1627,7 +1639,7 @@ function download(bytes, name) { const u = URL.createObjectURL(new Blob([bytes])
 // ------------------------------------------------------------------ navigation
 const SECTIONS = [
   ['overview', 'Overview'], ['shipwright', 'Shipwright'], ['coords', 'Coordinates'], ['hangar', 'Garage'], ['library', 'Dock Yard'],
-  ['exosuit', 'Exosuit'], ['tools', 'Multi-tools'], ['ships', 'Starships'], ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['companions', 'Companions'],
+  ['exosuit', 'Exosuit'], ['traveller', 'Traveller'], ['tools', 'Multi-tools'], ['ships', 'Starships'], ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['companions', 'Companions'],
   ['bases', 'Bases'], ['storage', 'Storage'], ['cargo', 'Cargo'],
   ['knowledge', 'Knowledge'], ['rewards', 'Rewards'], ['standing', 'Standing'], ['difficulty', 'Difficulty'],
   ['items', 'Item names'], ['raw', 'Raw data'],
@@ -1635,7 +1647,7 @@ const SECTIONS = [
 // The sidebar in groups of related pages, each with a faint tint of its own colour behind it.
 const NAV_GROUPS = [
   { tint: '#2fc3d6', ids: ['overview', 'shipwright', 'coords', 'hangar', 'library'] },          // getting around and your fleet
-  { tint: '#a37bff', ids: ['exosuit', 'tools', 'ships', 'freighter', 'vehicles', 'companions'] }, // what you carry and ride
+  { tint: '#a37bff', ids: ['exosuit', 'traveller', 'tools', 'ships', 'freighter', 'vehicles', 'companions'] }, // what you carry and ride
   { tint: '#ff8a70', ids: ['bases', 'storage', 'cargo'] },                                         // where things are kept
   { tint: '#7ba2ff', ids: ['knowledge', 'rewards', 'standing', 'difficulty'] },                   // progress and settings
   { tint: '#8fb3c4', ids: ['items', 'raw'] },                                                      // tools
@@ -1643,7 +1655,7 @@ const NAV_GROUPS = [
 // Spectrum: each section's colour sweeps down the sidebar, teal and aqua through blue, violet, magenta, rose and coral
 // (owner's pick), then sky, periwinkle and steel for progress and settings, mint (item names) and slate (raw data).
 // One bright base per section; light mode darkens it automatically.
-const SECTION_COLORS = { overview: '#2fc3d6', shipwright: '#36d6c3', coords: '#3cb6ea', hangar: '#4ea8ff', library: '#6598ff', exosuit: '#7d8bff', tools: '#a37bff', ships: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', companions: '#ff7690', bases: '#ff8079', storage: '#ff8a70', cargo: '#ffa086', knowledge: '#5ab8f0', rewards: '#7ba2ff', standing: '#9a8cff', difficulty: '#a3b3cf', items: '#3fd9a3', raw: '#8fb3c4' };
+const SECTION_COLORS = { overview: '#2fc3d6', shipwright: '#36d6c3', coords: '#3cb6ea', hangar: '#4ea8ff', library: '#6598ff', exosuit: '#7d8bff', traveller: '#9083ff', tools: '#a37bff', ships: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', companions: '#ff7690', bases: '#ff8079', storage: '#ff8a70', cargo: '#ffa086', knowledge: '#5ab8f0', rewards: '#7ba2ff', standing: '#9a8cff', difficulty: '#a3b3cf', items: '#3fd9a3', raw: '#8fb3c4' };
 const secColor = (id) => SECTION_COLORS[id];
 function applySection(id) {
   const c = secColor(id);
@@ -1963,10 +1975,11 @@ function travellerCard(el) {
   const it = { kind: 'traveller', i: 0, name, type: 'Traveller', cls: '', seed: '', key: 'traveller|' + groups.join(','), scene: '', picks: {} };
   const card = pictureCard(wrap, it, 'Your traveller');
   const info = document.createElement('div'); info.className = 'panel trav-info';
-  info.innerHTML = `<h3>Pose ${esc(name)} in Blender</h3><p class="dim">Your traveller as the game builds them from your save, with the skeleton, ready to pose. In Blender: File, Import, glTF. Or press Import my traveller in the LiveLink panel (get the add-on on Shipwright).</p>
-    <div class="toolbar"><button class="btn primary" type="button" id="travGlb">Export for Blender (.glb)</button>${APP ? '<button class="btn ghost" type="button" id="travSample">Save traveller files for the developer</button>' : ''}</div>`;
+  info.innerHTML = `<h3>Pose ${esc(name)} in Blender</h3><p class="dim">Your traveller as the game builds them from your save, with the skeleton, ready to pose. In Blender: File, Import, glTF. Or press Import my traveller in the LiveLink add-on's panel, pose them, and make a picture of the pose on the Traveller page.</p>
+    <div class="toolbar"><button class="btn primary" type="button" id="travGlb">Export for Blender (.glb)</button><button class="btn addon-btn" type="button">Get the Blender add-on</button><button class="btn" type="button" id="travPic">Make a picture</button>${APP ? '<button class="btn ghost" type="button" id="travSample">Save traveller files for the developer</button>' : ''}</div>`;
   wrap.appendChild(info);
   $('#travGlb', info).onclick = (e) => travellerExport(e.currentTarget);
+  $('#travPic', info).onclick = () => go('traveller');
   const smp = $('#travSample', info); if (smp) smp.onclick = async () => {
     // the materials and textures this traveller wears, for working on the real colours and textures
     const cc = g(ps(), 'CharacterCustomisationData'); const e0 = Array.isArray(cc) ? cc[0] : null;
@@ -1984,6 +1997,196 @@ function travellerCard(el) {
     await loadModel(it); miniCover(card, it, 240);
   }).catch(() => {});
 }
+
+// ------------------------------------------------------------------ Traveller page (owner, 2026-11-10)
+// A card made from your posed picture (Blender's "Save the pose as a picture" puts it in Exports): a background
+// (starfield, colours, a screenshot or any image), a ship or corvette, portal glyphs and your name, laid out by
+// dragging on the picture and saved as a PNG.
+const TC_SIZES = { portrait: [1080, 1350, 'Portrait'], square: [1080, 1080, 'Square'], wide: [1920, 1080, 'Wide'] };
+const TC_DEFAULT = () => ({ size: 'portrait', bg: 'stars', c1: '#07131a', c2: '#1d4f5e', pose: '', ship: '', place: 'here', name: travellerName(), title: '', caption: '', credit: true,
+  layers: { trav: { x: .5, y: .55, s: .7 }, ship: { x: .76, y: .3, s: .3 }, glyphs: { x: .5, y: .93, s: .7 }, text: { x: .07, y: .07, s: 1 } } });
+const TC = { state: null, img: { trav: null, bg: null, ship: null }, sel: null, hits: [], pics: [], shipKey: null };
+function tcLoad() {
+  if (TC.state) return TC.state;
+  let st = TC_DEFAULT();
+  try { const o = JSON.parse(localStorage.getItem('hse-trav-card') || 'null'); if (o && typeof o === 'object') st = { ...st, ...o, layers: { ...st.layers, ...(o.layers || {}) } }; } catch (_) {}
+  if (!st.name) st.name = travellerName();
+  if (st.bg === 'shot' || st.bg === 'file') st.bg = 'stars';   // pictures aren't kept between visits
+  return (TC.state = st);
+}
+function tcSave() { try { localStorage.setItem('hse-trav-card', JSON.stringify(TC.state)); } catch (_) {} }
+const tcImage = (src) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
+async function tcBlobImage(blob) { if (!blob) return null; try { return await createImageBitmap(blob); } catch (_) { return tcImage(URL.createObjectURL(blob)); } }
+// a picture with a transparent background, cut to what's drawn in it (the pose picture has room around the traveller)
+function tcTrim(img) {
+  const w = img.width, h = img.height, c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d'); x.drawImage(img, 0, 0); let d; try { d = x.getImageData(0, 0, w, h).data; } catch (_) { return img; }
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y += 2) for (let i = 0; i < w; i += 2) if (d[(y * w + i) * 4 + 3] > 12) { if (i < x0) x0 = i; if (i > x1) x1 = i; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < 0 || (x0 === 0 && y0 === 0 && x1 >= w - 2 && y1 >= h - 2)) return img;
+  const o = document.createElement('canvas'); o.width = x1 - x0 + 3; o.height = y1 - y0 + 3; o.getContext('2d').drawImage(c, -x0 + 1, -y0 + 1); return o;
+}
+function tcPlaces() {
+  const out = [];
+  const here = Place.fromUA(g(ps(), 'UniverseAddress')); if (here) out.push({ id: 'here', name: 'Where you are now', p: here });
+  for (const k of knownPlaces()) out.push({ id: 'k|' + k.name + '|' + Place.portal(k.p) + '|' + k.p.gi, name: k.name + ' (' + k.kind.toLowerCase() + ')', p: k.p });
+  for (const f of FAVS.list || []) { const p = f.portal && Place.fromPortal(f.portal, f.gi || 0); if (p) out.push({ id: 'f|' + f.id, name: f.name + ' (favourite)', p }); }
+  return out;
+}
+async function tcShipImage(it) {
+  const url = await customCover(it.key); if (url) return tcImage(url);
+  if (it.kind === 'corvette') { await loadRender(it); coverFromMemory(it); if (it.renderImg) return tcTrim(it.renderImg); }
+  await loadModel(it); coverFromMemory(it);
+  if (it.model && GL3D.ok()) { const im = GL3D.render(it.model, 900, STILL_ANGLE(it), [228, 236, 242]); if (im) { const c = document.createElement('canvas'); c.width = c.height = 900; c.getContext('2d').drawImage(im, 0, 0); return tcTrim(c); } }
+  return null;
+}
+async function tcDraw(cv, preview) {
+  const st = tcLoad(), [W, H] = TC_SIZES[st.size] || TC_SIZES.portrait; cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d'), U = Math.min(W, H), hits = [];
+  await document.fonts.ready.catch(() => {});
+  // background
+  if ((st.bg === 'shot' || st.bg === 'file') && TC.img.bg) { const im = TC.img.bg, k = Math.max(W / im.width, H / im.height); ctx.drawImage(im, (W - im.width * k) / 2, (H - im.height * k) / 2, im.width * k, im.height * k); }
+  else if (st.bg === 'colour') { ctx.fillStyle = st.c1; ctx.fillRect(0, 0, W, H); }
+  else {
+    const gr = ctx.createLinearGradient(0, 0, W * .4, H); gr.addColorStop(0, st.c1); gr.addColorStop(1, st.c2); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+    if (st.bg === 'stars') {
+      let seed = 11; const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
+      for (let i = 0; i < W * H / 4200; i++) { ctx.fillStyle = `rgba(225,245,255,${.12 + rnd() * .55})`; ctx.beginPath(); ctx.arc(rnd() * W, rnd() * H, rnd() * 1.6 + .3, 0, 7); ctx.fill(); }
+      const glow = ctx.createRadialGradient(W * .7, H * .3, 0, W * .7, H * .3, U * .8); glow.addColorStop(0, 'rgba(54,214,195,.16)'); glow.addColorStop(1, 'rgba(54,214,195,0)'); ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+    }
+  }
+  const L = st.layers;
+  const place = (id, im, l) => { const h = l.s * H, w = im.width / im.height * h, x = l.x * W - w / 2, y = l.y * H - h / 2; hits.push({ id, x, y, w, h }); return [x, y, w, h]; };
+  if (st.ship && TC.img.ship) { const [x, y, w, h] = place('ship', TC.img.ship, L.ship); ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = U * .03; ctx.drawImage(TC.img.ship, x, y, w, h); ctx.restore(); }
+  if (TC.img.trav) {
+    const [x, y, w, h] = place('trav', TC.img.trav, L.trav);
+    const sh = ctx.createRadialGradient(x + w / 2, y + h * .98, 0, x + w / 2, y + h * .98, w * .55); sh.addColorStop(0, 'rgba(0,0,0,.35)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.save(); ctx.translate(0, 0); ctx.scale(1, .22); ctx.fillStyle = sh; ctx.restore();
+    ctx.drawImage(TC.img.trav, x, y, w, h);
+  } else if (preview) {
+    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = `400 ${Math.round(U * .028)}px "Jost", sans-serif`; ctx.textAlign = 'center';
+    ctx.fillText('Your posed traveller goes here', W / 2, H * .5); ctx.font = `400 ${Math.round(U * .02)}px "Jost", sans-serif`;
+    ctx.fillText('In Blender: LiveLink panel, Save the pose as a picture', W / 2, H * .5 + U * .04); ctx.textAlign = 'left';
+  }
+  const F = '"Jost", "Segoe UI", sans-serif', M = 'ui-monospace, Consolas, monospace';
+  const track = (t, x, y, sp) => { let cx = x; for (const ch of t) { ctx.fillText(ch, cx, y); cx += ctx.measureText(ch).width + sp; } return cx - x; };
+  // glyphs
+  const pl = st.place && tcPlaces().find((q) => q.id === st.place);
+  if (pl) {
+    const total = L.glyphs.s * U, gap = total / 12 * .12, gs = (total - gap * 11) / 12, x0 = L.glyphs.x * W - total / 2, y0 = L.glyphs.y * H - gs / 2, code = Place.portal(pl.p);
+    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.roundRect(x0 - gs * .3, y0 - gs * .3, total + gs * .6, gs * 1.95, gs * .35); ctx.fill();
+    const tmp = document.createElement('canvas'); tmp.width = tmp.height = Math.max(8, Math.round(gs * 2)); const tc = tmp.getContext('2d');
+    for (let i = 0; i < 12; i++) {
+      const im = await glyphImage(code[i]); if (!im) continue;
+      tc.clearRect(0, 0, tmp.width, tmp.height); tc.globalCompositeOperation = 'source-over'; tc.drawImage(im, 0, 0, tmp.width, tmp.height); tc.globalCompositeOperation = 'source-in'; tc.fillStyle = '#fff'; tc.fillRect(0, 0, tmp.width, tmp.height);
+      ctx.save(); ctx.shadowColor = 'rgba(54,214,195,.9)'; ctx.shadowBlur = gs * .25; ctx.drawImage(tmp, x0 + i * (gs + gap), y0, gs, gs); ctx.restore();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.font = `500 ${Math.round(gs * .38)}px ${M}`; const tw = ctx.measureText(code).width + 11 * gs * .1;
+    track(code, L.glyphs.x * W - tw / 2, y0 + gs * 1.48, gs * .1);
+    hits.push({ id: 'glyphs', x: x0 - gs * .3, y: y0 - gs * .3, w: total + gs * .6, h: gs * 1.95 });
+  }
+  // name, title, caption
+  if (st.name || st.title || st.caption) {
+    const k = L.text.s * U / 1080, x = L.text.x * W; let y = L.text.y * H, wmax = 0; const top = y;
+    ctx.textBaseline = 'top';
+    if (st.title) { ctx.fillStyle = 'rgba(160,232,238,.95)'; ctx.font = `500 ${Math.round(24 * k)}px ${F}`; wmax = Math.max(wmax, track(st.title.toUpperCase(), x, y, 5 * k)); y += 40 * k; }
+    if (st.name) { ctx.fillStyle = '#fff'; ctx.font = `300 ${Math.round(92 * k)}px ${F}`; ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 18 * k; ctx.fillText(st.name, x - 4 * k, y); ctx.restore(); wmax = Math.max(wmax, ctx.measureText(st.name).width); y += 104 * k; }
+    if (st.caption) { ctx.fillStyle = 'rgba(232,242,246,.85)'; ctx.font = `400 ${Math.round(30 * k)}px ${F}`; for (const line of st.caption.split('\n').slice(0, 4)) { ctx.fillText(line, x, y); wmax = Math.max(wmax, ctx.measureText(line).width); y += 40 * k; } }
+    ctx.textBaseline = 'alphabetic';
+    hits.push({ id: 'text', x: x - 10 * k, y: top - 10 * k, w: wmax + 20 * k, h: y - top + 20 * k });
+  }
+  if (st.credit) { ctx.fillStyle = 'rgba(255,255,255,.38)'; ctx.font = `400 ${Math.round(U * .018)}px ${F}`; const t = 'Harmonious Save Editor'; ctx.textBaseline = 'top'; ctx.fillText(t, W - U * .04 - ctx.measureText(t).width, U * .035); ctx.textBaseline = 'alphabetic'; }
+  if (preview && TC.sel) { const hb = hits.find((h) => h.id === TC.sel); if (hb) { ctx.save(); ctx.strokeStyle = 'rgba(54,214,195,.95)'; ctx.lineWidth = Math.max(2, U * .003); ctx.setLineDash([U * .012, U * .008]); ctx.strokeRect(hb.x, hb.y, hb.w, hb.h); ctx.restore(); } }
+  TC.hits = hits;
+  return cv;
+}
+async function tcLoadPose(name) {
+  const st = tcLoad();
+  if (!name) { TC.img.trav = null; return; }
+  const im = await tcImage('/api/exports/file?name=' + encodeURIComponent(name) + '&t=' + encodeURIComponent(APP.token));
+  TC.img.trav = im ? tcTrim(im) : null; st.pose = name;
+}
+async function tcPictures() { if (!APP) return []; try { return (await (await api('/api/exports/pictures')).json()).pictures || []; } catch (_) { return []; } }
+async function tcExport(how) {
+  const cv = await tcDraw(document.createElement('canvas'), false), blob = await new Promise((r) => cv.toBlob(r, 'image/png')), st = tcLoad();
+  const name = safeFile((st.name || 'Traveller') + ' card ' + new Date().toISOString().slice(0, 16).replace('T', ' ').replace(':', '')) + '.png';
+  if (how === 'copy') { try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); toast('Picture copied. Paste it into Discord or anywhere.'); return; } catch (_) { toast("Couldn't copy the picture, so it was saved instead."); } }
+  downloadBlob(name, blob);
+}
+PAGES.traveller = (el) => {
+  const st = tcLoad();
+  el.innerHTML = `<div class="page-head"><div><h1>Traveller</h1><p>Make a picture of your traveller: your pose from Blender, a background, your ship and your portal glyphs. Drag things on the picture to move them, scroll over one to make it bigger or smaller.</p></div></div>
+    <div class="tc-wrap"><div class="tc-stage"><canvas id="tcCanvas" aria-label="Your traveller picture"></canvas></div><div class="panel tc-side" id="tcSide"></div></div>`;
+  const cv = $('#tcCanvas', el), side = $('#tcSide', el);
+  let busy = false, again = false;
+  const redraw = async () => { if (busy) { again = true; return; } busy = true; await tcDraw(cv, true); busy = false; if (again) { again = false; redraw(); } };
+  const change = (fn) => { fn(); tcSave(); redraw(); };
+  const items = coverItems();
+  const places = tcPlaces();
+  const sideHtml = () => `
+    <div class="tc-row"><span class="k">Size</span><div class="seg">${Object.entries(TC_SIZES).map(([k, [w, h, l]]) => `<button type="button" data-size="${k}" aria-pressed="${st.size === k}" title="${w} × ${h}">${l}</button>`).join('')}</div></div>
+    <div class="tc-row"><span class="k">Your traveller</span>
+      ${TC.pics.length ? `<select id="tcPose">${TC.pics.map((q) => `<option value="${esc(q.name)}"${q.name === st.pose ? ' selected' : ''}>${esc(q.name.replace(/\.png$/i, ''))}</option>`).join('')}<option value="">No traveller</option></select>` : `<p class="dim small-print" data-keep>No pose pictures yet. Pose your traveller in Blender and press Save the pose as a picture in the LiveLink panel; it shows here.</p>`}
+      <div class="tc-acts"><button class="link" type="button" id="tcRefresh">Look again</button><label class="link">Use an image file<input type="file" accept="image/png,image/*" id="tcPoseFile" hidden></label>${APP ? '<button class="link addon-btn" type="button">Get the Blender add-on</button>' : ''}</div></div>
+    <div class="tc-row"><span class="k">Background</span><select id="tcBg">${[['stars', 'Starfield'], ['gradient', 'Two colours'], ['colour', 'One colour'], ...(APP ? [['shot', 'One of your screenshots…']] : []), ['file', 'An image file…']].map(([k, l]) => `<option value="${k}"${st.bg === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
+      ${st.bg === 'shot' || st.bg === 'file' ? '' : `<div class="tc-cols"><label>Colour <input type="color" id="tcC1" value="${esc(st.c1)}"></label>${st.bg === 'colour' ? '' : `<label>and <input type="color" id="tcC2" value="${esc(st.c2)}"></label>`}</div>`}</div>
+    <div class="tc-row"><span class="k">Ship</span><select id="tcShip"><option value="">No ship</option>${items.filter((x) => x.kind !== 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)} (${esc(x.type.toLowerCase())})</option>`).join('')}<optgroup label="Multi-tools">${items.filter((x) => x.kind === 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</optgroup></select></div>
+    <div class="tc-row"><span class="k">Portal glyphs</span><select id="tcPlace"><option value="">No glyphs</option>${places.map((q) => `<option value="${esc(q.id)}"${q.id === st.place ? ' selected' : ''}>${esc(q.name)}</option>`).join('')}</select></div>
+    <div class="tc-row"><span class="k">Words</span><label class="field"><span>Name</span><input id="tcName" value="${esc(st.name)}" maxlength="40"></label><label class="field"><span>Title above it</span><input id="tcTitle" value="${esc(st.title)}" maxlength="60" placeholder="Traveller of the Atlas"></label><label class="field"><span>Caption below</span><textarea id="tcCaption" rows="2" maxlength="200" placeholder="A line or two">${esc(st.caption)}</textarea></label></div>
+    <label class="check"><input type="checkbox" id="tcCredit"${st.credit ? ' checked' : ''}> Small "Harmonious Save Editor" in the corner</label>
+    <div class="tc-acts main"><button class="btn primary" type="button" id="tcSaveBtn">Save picture</button><button class="btn" type="button" id="tcCopy">Copy picture</button><button class="btn ghost" type="button" id="tcReset">Reset layout</button></div>`;
+  const wire = () => {
+    side.innerHTML = sideHtml();
+    side.querySelectorAll('[data-size]').forEach((b) => b.onclick = () => change(() => { st.size = b.dataset.size; side.querySelectorAll('[data-size]').forEach((x) => x.setAttribute('aria-pressed', x === b)); }));
+    const ps_ = $('#tcPose', side); if (ps_) ps_.onchange = async () => { await tcLoadPose(ps_.value); st.pose = ps_.value; tcSave(); redraw(); };
+    $('#tcRefresh', side).onclick = async () => { TC.pics = await tcPictures(); if (TC.pics[0] && TC.pics[0].name !== st.pose) await tcLoadPose(TC.pics[0].name); tcSave(); wire(); redraw(); };
+    $('#tcPoseFile', side).onchange = async (e) => { const f = e.target.files[0]; if (!f) return; const im = await tcBlobImage(f); TC.img.trav = im ? tcTrim(im) : null; redraw(); };
+    $('#tcBg', side).onchange = async (e) => {
+      const v = e.target.value;
+      if (v === 'shot') { const b = await pickScreenshot(); if (b) TC.img.bg = await tcBlobImage(b); else { e.target.value = st.bg; return; } }
+      if (v === 'file') { const f = await new Promise((res) => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = () => res(inp.files[0] || null); addEventListener('focus', () => setTimeout(() => res(inp.files[0] || null), 400), { once: true }); inp.click(); }); if (f) TC.img.bg = await tcBlobImage(f); else { e.target.value = st.bg; return; } }
+      st.bg = v; tcSave(); wire(); redraw();
+    };
+    const c1 = $('#tcC1', side); if (c1) c1.oninput = () => change(() => { st.c1 = c1.value; });
+    const c2 = $('#tcC2', side); if (c2) c2.oninput = () => change(() => { st.c2 = c2.value; });
+    $('#tcShip', side).onchange = async (e) => { st.ship = e.target.value; tcSave(); TC.img.ship = null; TC.shipKey = st.ship; const it = items.find((x) => x.key === st.ship); if (it) { const im = await tcShipImage(it); if (TC.shipKey === st.ship) TC.img.ship = im; if (!im) toast('That one has no picture yet. Give it one in the Garage, or render the corvette.'); } redraw(); };
+    $('#tcPlace', side).onchange = (e) => change(() => { st.place = e.target.value; });
+    for (const [id, k] of [['tcName', 'name'], ['tcTitle', 'title'], ['tcCaption', 'caption']]) $('#' + id, side).oninput = (e) => change(() => { st[k] = e.target.value; });
+    $('#tcCredit', side).onchange = (e) => change(() => { st.credit = e.target.checked; });
+    $('#tcSaveBtn', side).onclick = () => tcExport('save');
+    $('#tcCopy', side).onclick = () => tcExport('copy');
+    $('#tcReset', side).onclick = () => change(() => { st.layers = TC_DEFAULT().layers; });
+  };
+  // drag to move, scroll to resize
+  const at = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * cv.width, (e.clientY - r.top) / r.height * cv.height]; };
+  const hitAt = ([x, y]) => [...TC.hits].reverse().find((h) => x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h);
+  let drag = null;
+  cv.onpointerdown = (e) => { const p = at(e), h = hitAt(p); TC.sel = h ? h.id : null; if (h) { const l = st.layers[h.id]; drag = { id: h.id, p, x: l.x, y: l.y }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} } redraw(); };
+  cv.onpointermove = (e) => { const p = at(e); if (!drag) { cv.style.cursor = hitAt(p) ? 'move' : ''; return; } const l = st.layers[drag.id]; l.x = Math.max(0, Math.min(1, drag.x + (p[0] - drag.p[0]) / cv.width)); l.y = Math.max(0, Math.min(1, drag.y + (p[1] - drag.p[1]) / cv.height)); redraw(); };
+  cv.onpointerup = () => { if (drag) { drag = null; tcSave(); } };
+  cv.addEventListener('wheel', (e) => { const h = hitAt(at(e)); if (!h) return; e.preventDefault(); const l = st.layers[h.id]; l.s = Math.max(.05, Math.min(3, l.s * (e.deltaY < 0 ? 1.06 : 1 / 1.06))); TC.sel = h.id; tcSave(); redraw(); }, { passive: false });
+  wire(); redraw();
+  (async () => {
+    if (APP && !FAVS.list) { try { await favLoad(); } catch (_) {} }
+    TC.pics = await tcPictures();
+    const want = TC.pics.find((q) => q.name === st.pose) ? st.pose : (TC.pics[0] || {}).name || '';
+    if (want && (!TC.img.trav || want !== st.pose)) await tcLoadPose(want);
+    if (st.ship && !TC.img.ship) { const it = items.find((x) => x.key === st.ship); if (it) TC.img.ship = await tcShipImage(it); }
+    if (!el.isConnected) return; wire(); redraw();
+  })();
+};
+// the LiveLink add-on, from anywhere: the save list, About, Exosuit, Traveller and Shipwright (owner, 2026-11-10:
+// posing your character, you wouldn't look for it on Shipwright)
+async function getLiveAddon() {
+  if (!APP) return;
+  try {
+    const r = await api('/api/live/addon'); const blob = await r.blob();
+    await api('/api/export?reveal=1&name=harmonious_live_link.py', { method: 'POST', body: blob });
+  } catch (e) { toast("Couldn't save the add-on: " + e.message, true); return; }
+  dialog('Install the Blender add-on', `<p>Saved <span class="mono">harmonious_live_link.py</span> in <b>Documents\\Harmonious Save Editor\\Exports</b> (the folder just opened).</p><ol class="steps"><li>In Blender, open <b>Edit › Preferences › Add-ons</b>.</li><li>Choose <b>Install from Disk</b> (in the menu at the top right) and pick <span class="mono">harmonious_live_link.py</span>. Installing it again replaces the old one.</li><li>Tick <b>Harmonious LiveLink</b>. Its panel is in the 3D view sidebar (press N), under <b>LiveLink</b>.</li><li>Your traveller: open a save here, then press <b>Import my traveller</b> in that panel to pose them. Builds: turn LiveLink on for a corvette (Shipwright) or base (Bases), then every Ctrl+S in Blender sends the build.</li></ol>`, [['Close', false]]);
+}
+document.addEventListener('click', (e) => { if (e.target.closest('.addon-btn')) { e.preventDefault(); getLiveAddon(); } });
+if (!window.NMS_APP) document.querySelectorAll('.app-only').forEach((x) => x.remove());
 
 // A page's own buttons (Add a ship, Render corvettes…) sit in one row just above what they act on, on the left; on pages
 // with covers the Cover Flow / Grid switch shares the row on the right (owner, 2026-11-01). Same place on every page.
@@ -4961,7 +5164,7 @@ async function shareCard(how, p, s) {
 
 // ------------------------------------------------------------------ Dock Yard (ship library)
 // brand-new sections wear a New badge in the menu until they've been opened once
-const NEW_SECTIONS = { library: 'hse-dockyard-seen', shipwright: 'hse-shipwright-seen', bases: 'hse-bases-seen', companions: 'hse-companions-seen', knowledge: 'hse-knowledge-seen', standing: 'hse-standing-seen', difficulty: 'hse-difficulty-seen', rewards: 'hse-rewards-seen', cargo: 'hse-cargo-seen' };
+const NEW_SECTIONS = { library: 'hse-dockyard-seen', shipwright: 'hse-shipwright-seen', bases: 'hse-bases-seen', companions: 'hse-companions-seen', knowledge: 'hse-knowledge-seen', standing: 'hse-standing-seen', difficulty: 'hse-difficulty-seen', rewards: 'hse-rewards-seen', cargo: 'hse-cargo-seen', traveller: 'hse-traveller-seen' };
 const seenSection = (id) => { try { return localStorage.getItem(NEW_SECTIONS[id]) === '1'; } catch (_) { return true; } };
 function markSeen(id) { try { localStorage.setItem(NEW_SECTIONS[id], '1'); } catch (_) {} const pill = document.querySelector(`nav [data-s="${id}"] .new-pill`); if (pill) pill.remove(); }
 const dockyardSeen = () => seenSection('library');
@@ -6095,8 +6298,7 @@ function livePanelHtml(t) {
 }
 function wireLivePanel(side, t) {
   $('#liveWrite', side).onchange = (e) => { LIVE.write = e.target.checked; };
-  $('#liveAddon', side).onclick = () => { const a = document.createElement('a'); a.href = '/api/live/addon?t=' + encodeURIComponent(window.NMS_APP.token); a.download = 'harmonious_live_link.py'; a.click();
-    dialog('Install the Blender add-on', '<ol class="steps"><li>In Blender, open <b>Edit › Preferences › Add-ons</b>.</li><li>Choose <b>Install from Disk</b> (in the menu at the top right) and pick <span class="mono">harmonious_live_link.py</span> from your Downloads.</li><li>Tick <b>Harmonious LiveLink</b>. Its panel is in the 3D view sidebar (press N), under <b>LiveLink</b>.</li><li>Here, turn LiveLink on for the corvette (Shipwright) or base (Bases) to update. Then every Ctrl+S in Blender sends the build.</li></ol>', [['Close', false]]); };
+  $('#liveAddon', side).onclick = () => getLiveAddon();
   $('#liveToggle', side).onclick = () => { if (liveIsOn(t)) { liveStop(); render(); } else { liveStart(t); render(); liveOnDialog(t); } };
   const lo = $('#liveOpen', side); if (lo) lo.onclick = () => liveOpenBlender((liveFileOf(t) || {}).file);
   const lp = $('#livePick', side); if (lp) lp.onclick = async () => { const f = await livePickFile(t); if (f) { render(); liveOpenBlender(f); } };

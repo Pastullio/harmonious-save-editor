@@ -371,6 +371,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   <h2>Your traveller</h2>
   <p>At the top of the page is your traveller, built from your save the way the game builds them: the head, torso, armour, gloves, legs, boots, backpack, cape and cloth you wear. It needs the game on your PC (the editor finds it).</p>
   <ul>
+    <li><span class="ui">Get the Blender add-on</span> saves the LiveLink add-on and shows how to install it. <span class="ui">Make a picture</span> opens the <a href="#traveller">Traveller</a> page.</li>
     <li><span class="ui">Export for Blender (.glb)</span> saves your traveller with their skeleton to <b>Documents\Harmonious Save Editor\Exports</b>. In Blender, use File, Import, glTF 2.0 and pose the bones.</li>
     <li>Easier: in Blender's LiveLink panel, open <b>Your traveller</b> and press <span class="ui">Import my traveller</span>. It brings in the traveller from the save open in the editor and switches to Pose mode. The bones stay hidden until you need one: click a part of the body (a calf, a hand, a finger) and the bone that moves it shows, selected; press <span class="ui">R</span> to turn it. It turns where it joins the body. <span class="ui">Shift</span>+click adds another part, a click on empty space hides them again, and <span class="ui">Show every stick</span> in the panel shows them all. <span class="ui">Keep the body's proportions</span> (on by default) means bones only turn, so moving or scaling can't stretch an arm or a leg; the root bone still moves the whole traveller. Turn it off to move and scale bones freely. <span class="ui">Ctrl+Tab</span> goes back to Object mode, where the whole traveller moves as one. The game's helper joints (cameras, effects, attach points) are in a hidden bone collection called <b>Helpers</b>.</li>
     <li><b>Poses</b>: in the LiveLink panel under Your traveller, pick a ready-made pose (standing, hands on hips, waving, pointing, salute, arms raised, thinking, sitting on a seat, sitting on the ground, kneeling, T-pose) and press <span class="ui">Pose</span>; change any bone after. <span class="ui">Start pose</span> puts every bone back. <span class="ui">Save my pose</span> keeps your own in <b>Documents\Harmonious Save Editor\Poses</b> as a small file that fits any traveller, so you can share poses and use other people's: put their files in that folder (the folder button opens it) and they show in the list.</li>
@@ -378,6 +379,25 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
     <li><span class="ui">Save the pose as a picture</span> renders your pose to a PNG with a transparent background in the same Exports folder. If your scene has no camera, one is added looking at your traveller; move it to frame the shot you want and press the button again.</li>
   </ul>
   <div class="note"><b>Textures</b>The model comes with the game's own textures: colour, surface detail (normal maps) and which parts are metal or rough, one material per part of the outfit. They show in Blender's Material Preview and Rendered views. Each part is painted in the colours and markings you picked in the game, read from your save.</div>
+</section>
+
+<section class="page" id="traveller" data-group="carry" data-title="Traveller" data-c="#9083ff">
+  <h1>Traveller</h1>
+  <p class="lede">Make a picture of your traveller to share: your pose from Blender on a background, with your ship, your portal glyphs and your name.</p>
+  <figure><img src="shots/traveller.webp" alt="The Traveller page: a posed traveller on a starfield with a name, a title and portal glyphs, and the options beside it" loading="lazy"><figcaption>Drag anything on the picture to move it; scroll over it to make it bigger or smaller.</figcaption></figure>
+  <ol class="steps">
+    <li>Get the Blender add-on (<span class="ui">Blender add-on</span> on the save list, in About, on Exosuit or on this page) and install it in Blender.</li>
+    <li>In Blender's LiveLink panel, press <span class="ui">Import my traveller</span>, pick a pose or make your own, and press <span class="ui">Save the pose as a picture</span>.</li>
+    <li>Come back here: the newest pose picture is already on the card (<span class="ui">Look again</span> picks up one you just made). You can also use any image file.</li>
+  </ol>
+  <ul>
+    <li><b>Size</b>: portrait (1080 × 1350, for Instagram and Discord), square or wide (1920 × 1080).</li>
+    <li><b>Background</b>: a starfield, two colours, one colour, one of your No Man's Sky screenshots or any image.</li>
+    <li><b>Ship</b>: any starship, corvette or multi-tool with a picture: the one you gave it, the corvette's Blender render, or its model.</li>
+    <li><b>Portal glyphs</b>: where you are now, any of your bases and places, or a favourite place.</li>
+    <li><b>Words</b>: your name, a title above it and a caption below.</li>
+    <li><span class="ui">Save picture</span> puts a PNG in <b>Documents\Harmonious Save Editor\Exports</b>; <span class="ui">Copy picture</span> puts it on the clipboard to paste into Discord. The page remembers your layout.</li>
+  </ul>
 </section>
 
 <section class="page" id="multitools" data-group="carry" data-title="Multi-tools" data-c="#a37bff">

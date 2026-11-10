@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.10.1930",
+  "version": "2026.11.10.1954",
   "date": "2026-11-10",
-  "size": 13459456,
-  "sha256": "1b940e51d38bef0f5967ed24268b16c2f8f22761dbe105d8449a5a73bc8df26a",
-  "notes": "Blender: ready-made poses for your traveller (standing, hands on hips, waving, pointing, salute, arms raised, thinking, sitting on a seat, sitting on the ground, kneeling, T-pose); pick one and press Pose\nBlender: Save my pose keeps your own poses in Documents\\Harmonious Save Editor\\Poses; they fit any traveller, so you can share them\nPlease install the LiveLink add-on again (version 1.5.0)",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.1930/HarmoniousSaveEditor.exe",
+  "size": 13582848,
+  "sha256": "68e6cae49033624cc8c09db46855f4205a7c64257b1e4cfd44097d18f5c34524",
+  "notes": "New Traveller page: make a picture of your posed traveller with a background (starfield, colours, your screenshots or any image), your ship, portal glyphs and your name; drag things to move them, scroll to resize, then save or copy it\nThe Blender add-on can now be had from the save list, About, Exosuit and the Traveller page (not just Shipwright); it's saved to your Exports folder",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.1954/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

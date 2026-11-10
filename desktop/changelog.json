@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.10.1954",
+  "date": "2026-11-10",
+  "notes": [
+   "New Traveller page: make a picture of your posed traveller with a background (starfield, colours, your screenshots or any image), your ship, portal glyphs and your name; drag things to move them, scroll to resize, then save or copy it",
+   "The Blender add-on can now be had from the save list, About, Exosuit and the Traveller page (not just Shipwright); it's saved to your Exports folder"
+  ]
+ },
+ {
   "version": "2026.11.10.1930",
   "date": "2026-11-10",
   "notes": [
