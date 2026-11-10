@@ -1,5 +1,14 @@
 [
  {
+  "version": "2026.11.10.1930",
+  "date": "2026-11-10",
+  "notes": [
+   "Blender: ready-made poses for your traveller (standing, hands on hips, waving, pointing, salute, arms raised, thinking, sitting on a seat, sitting on the ground, kneeling, T-pose); pick one and press Pose",
+   "Blender: Save my pose keeps your own poses in Documents\\Harmonious Save Editor\\Poses; they fit any traveller, so you can share them",
+   "Please install the LiveLink add-on again (version 1.5.0)"
+  ]
+ },
+ {
   "version": "2026.11.10.1855",
   "date": "2026-11-10",
   "notes": [

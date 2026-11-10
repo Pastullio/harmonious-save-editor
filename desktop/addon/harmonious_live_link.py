@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 4, 1),
+    "version": (1, 5, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -799,6 +799,293 @@ class HARMONIOUS_OT_show_bones(bpy.types.Operator):
         return {"FINISHED"}
 
 
+# ---------------------------------------------------------------- poses (owner, 2026-11-10: "select sitting pose 1
+# and the character sits"). A ready-made pose says where each limb points, in the traveller's own frame (forward,
+# outward from the body's middle on that side, up), so one pose fits every traveller and both sides mirror. Each
+# bone is turned, parents first, so the line to its next joint points that way; then the body is lowered so the
+# joints that touch the ground do. Saved poses are the bones' own turns, in small JSON files anyone can share.
+
+# the joint each bone points at (X is l or r)
+POSE_AIM = {
+    "spine_01": "spine_02", "spine_02": "spine_Top", "spine_Top": "neck_01_01", "neck_01_01": "neck_01_02", "neck_01_02": "head_Top",
+    "X_arm_Clavicle": "X_arm_Shoulder", "X_arm_Shoulder": "X_arm_Elbow", "X_arm_Elbow": "X_arm_Wrist", "X_arm_Wrist": "X_hand_03_01",
+    "X_leg_Hip": "X_leg_Knee", "X_leg_Knee": "X_leg_Ankle", "X_leg_Ankle": "X_leg_Ball",
+}
+POSE_ORDER = ["spine_01", "spine_02", "spine_Top", "neck_01_01", "neck_01_02", "X_arm_Clavicle", "X_arm_Shoulder", "X_arm_Elbow",
+              "X_arm_Wrist", "X_leg_Hip", "X_leg_Knee", "X_leg_Ankle"]
+FEET = ("l_leg_Ball", "r_leg_Ball", "l_leg_Toe", "r_leg_Toe", "l_leg_Ankle", "r_leg_Ankle")
+
+# name: (description, {bone: (forward, outward, up)}, ground contacts {joint: height above the floor} or None)
+# "X_" applies to both sides, "l_"/"r_" to one; directions needn't be unit length.
+POSES = [
+    ("Standing", "Relaxed, arms by the sides", {
+        "X_arm_Shoulder": (0.05, 0.18, -1), "X_arm_Elbow": (0.2, 0.06, -1), "X_arm_Wrist": (0.1, 0, -1),
+        "X_leg_Hip": (0, 0.06, -1), "X_leg_Knee": (-0.02, 0.02, -1), "X_leg_Ankle": (1, 0, -0.6)}, "feet"),
+    ("Hands on hips", "Legs apart, elbows out", {
+        "spine_01": (-0.03, 0, 1), "X_arm_Shoulder": (-0.25, 1, -1.1), "X_arm_Elbow": (0.45, -1, -0.55), "X_arm_Wrist": (0.4, -1, -0.4),
+        "X_leg_Hip": (0, 0.3, -1), "X_leg_Knee": (0, 0.05, -1), "X_leg_Ankle": (1, 0.1, -0.6)}, "feet"),
+    ("Waving", "Right hand up in a wave", {
+        "X_arm_Shoulder": (0.05, 0.18, -1), "X_arm_Elbow": (0.2, 0.06, -1),
+        "r_arm_Shoulder": (0.15, 1, 0.25), "r_arm_Elbow": (0.15, 0.25, 1), "r_arm_Wrist": (0, 0.35, 1),
+        "X_leg_Hip": (0, 0.08, -1), "X_leg_Knee": (0, 0.02, -1), "X_leg_Ankle": (1, 0, -0.6), "neck_01_02": (0.1, 0.15, 1)}, "feet"),
+    ("Pointing", "Right arm pointing ahead", {
+        "spine_02": (0.05, 0, 1), "X_arm_Shoulder": (0.05, 0.18, -1), "X_arm_Elbow": (0.2, 0.06, -1),
+        "r_arm_Shoulder": (1, 0.25, 0.2), "r_arm_Elbow": (1, 0.1, 0.18), "r_arm_Wrist": (1, 0, 0.1),
+        "l_leg_Hip": (0.25, 0.08, -1), "r_leg_Hip": (-0.15, 0.08, -1), "X_leg_Knee": (0, 0.02, -1), "X_leg_Ankle": (1, 0, -0.6)}, "feet"),
+    ("Salute", "Right hand to the brow", {
+        "X_arm_Shoulder": (0.05, 0.18, -1), "X_arm_Elbow": (0.2, 0.06, -1),
+        "r_arm_Shoulder": (0.45, 1, 0.1), "r_arm_Elbow": (0.35, -0.75, 0.9), "r_arm_Wrist": (0.2, -1, 0.4),
+        "X_leg_Hip": (0, 0.04, -1), "X_leg_Knee": (0, 0, -1), "X_leg_Ankle": (1, 0, -0.6)}, "feet"),
+    ("Arms raised", "Both arms up, celebrating", {
+        "spine_02": (-0.08, 0, 1), "neck_01_02": (-0.25, 0, 1),
+        "X_arm_Shoulder": (0.1, 0.55, 1), "X_arm_Elbow": (0.05, 0.25, 1), "X_arm_Wrist": (0, 0.1, 1),
+        "X_leg_Hip": (0, 0.15, -1), "X_leg_Knee": (0, 0.05, -1), "X_leg_Ankle": (1, 0, -0.6)}, "feet"),
+    ("Thinking", "Hand to the chin", {
+        "X_arm_Shoulder": (0.25, 0.12, -1), "X_arm_Elbow": (0.6, -1, 0.05), "X_arm_Wrist": (0.3, -1, 0),
+        "r_arm_Shoulder": (0.5, 0.12, -1), "r_arm_Elbow": (0.4, -0.45, 1), "r_arm_Wrist": (0.4, -0.3, 1),
+        "neck_01_02": (0.25, 0.1, 1), "X_leg_Hip": (0, 0.06, -1), "X_leg_Knee": (0, 0.02, -1), "X_leg_Ankle": (1, 0, -0.6)}, "feet"),
+    ("Sitting on a seat", "Knees bent, hands on the knees (add a seat)", {
+        "spine_01": (0.05, 0, 1), "X_arm_Shoulder": (0.45, 0.2, -1), "X_arm_Elbow": (1, 0.05, -0.45), "X_arm_Wrist": (1, 0, -0.5),
+        "X_leg_Hip": (1, 0.12, 0), "X_leg_Knee": (0.05, 0, -1), "X_leg_Ankle": (1, 0, -0.5)}, "feet"),
+    ("Sitting on the ground", "Knees up, arms resting on them", {
+        "spine_01": (0.2, 0, 1), "spine_02": (0.15, 0, 1), "neck_01_02": (0.05, 0, 1),
+        "X_arm_Shoulder": (0.45, 0.35, -1), "X_arm_Elbow": (1, 0.05, 0.05), "X_arm_Wrist": (1, -0.2, -0.3),
+        "X_leg_Hip": (1, 0.35, 0.65), "X_leg_Knee": (0.6, 0, -1), "X_leg_Ankle": (1, 0, -0.4)}, {"l_leg_Hip": 0.12, "r_leg_Hip": 0.12}),
+    ("Kneeling", "On one knee", {
+        "spine_01": (0.08, 0, 1), "X_arm_Shoulder": (0.05, 0.18, -1), "X_arm_Elbow": (0.2, 0.06, -1),
+        "l_arm_Shoulder": (0.55, 0.15, -1), "l_arm_Elbow": (1, -0.15, -0.1),
+        "l_leg_Hip": (1, 0.12, -0.05), "l_leg_Knee": (0.05, 0, -1), "l_leg_Ankle": (1, 0, -0.5),
+        "r_leg_Hip": (0.15, 0.08, -1), "r_leg_Knee": (-1, 0, -0.08), "r_leg_Ankle": (-0.35, 0, -1)}, {"r_leg_Knee": 0.06, "l_leg_Ball": 0.026}),
+    ("T-pose", "Arms straight out to the sides", {
+        "X_arm_Shoulder": (0, 1, 0), "X_arm_Elbow": (0, 1, 0), "X_arm_Wrist": (0, 1, 0),
+        "X_leg_Hip": (0, 0.05, -1), "X_leg_Knee": (0, 0, -1), "X_leg_Ankle": (1, 0, -0.6)}, "feet"),
+]
+
+
+def poses_dir():
+    exp = LINK.get("exports")
+    base = os.path.dirname(exp) if exp else os.path.join(os.path.expanduser("~"), "Documents", "Harmonious Save Editor")
+    return os.path.join(base, "Poses")
+
+
+def saved_poses():
+    d = poses_dir()
+    try:
+        return sorted(f[:-5] for f in os.listdir(d) if f.lower().endswith(".json"))
+    except OSError:
+        return []
+
+
+_POSE_ITEMS = []
+
+
+def pose_items(self, context):
+    """Ready-made poses, then the ones saved in the Poses folder (Blender needs the list kept alive)."""
+    global _POSE_ITEMS
+    items = [("ready:" + n, n, d) for n, d, _t, _c in POSES]
+    for n in saved_poses():
+        items.append(("saved:" + n, n + " (saved)", "Your saved pose " + n))
+    _POSE_ITEMS = items
+    return items
+
+
+def body_frame(arm):
+    """The traveller's forward, left and up directions in world space, from the rest skeleton."""
+    import mathutils
+    W = arm.matrix_world
+    b = arm.data.bones
+    left = (W @ b["l_leg_Hip"].head_local) - (W @ b["r_leg_Hip"].head_local)
+    up = mathutils.Vector((0, 0, 1))
+    left = (left - up * left.dot(up)).normalized()
+    fwd = up.cross(left).normalized()   # left-handed check below
+    toe = (W @ b["l_leg_Toe"].head_local) - (W @ b["l_leg_Ankle"].head_local)
+    if toe.dot(fwd) < 0:
+        fwd = -fwd
+    return fwd, left, up
+
+
+def clear_pose(arm):
+    for pb in arm.pose.bones:
+        pb.location = (0, 0, 0)
+        pb.rotation_quaternion = (1, 0, 0, 0)
+        pb.rotation_euler = (0, 0, 0)
+        pb.scale = (1, 1, 1)
+    bpy.context.view_layer.update()
+
+
+def apply_ready_pose(arm, name):
+    import mathutils
+    spec = next((p for p in POSES if p[0] == name), None)
+    if spec is None:
+        return False
+    _n, _d, aims, contacts = spec
+    clear_pose(arm)
+    fwd, left, up = body_frame(arm)
+    W, Wi = arm.matrix_world, arm.matrix_world.inverted()
+    bones = arm.pose.bones
+
+    def target(bone):
+        side = bone[0] if bone[:2] in ("l_", "r_") else ""
+        generic = "X_" + bone[2:] if side else bone
+        t = aims.get(bone) or aims.get(generic)
+        if t is None:
+            return None
+        out = left if side != "r" else -left
+        return (fwd * t[0] + out * t[1] + up * t[2]).normalized()
+
+    for key in POSE_ORDER:
+        for bone in ([key.replace("X_", s + "_", 1) for s in ("l", "r")] if key.startswith("X_") else [key]):
+            pb, aim = bones.get(bone), POSE_AIM.get(key, "").replace("X_", bone[:2], 1)
+            t = target(bone)
+            if pb is None or t is None or bones.get(aim) is None:
+                continue
+            m = W @ pb.matrix
+            head = m.to_translation()
+            v = (W @ bones[aim].head) - head
+            if v.length < 1e-6:
+                continue
+            rot = v.normalized().rotation_difference(t).to_matrix().to_4x4()
+            new = mathutils.Matrix.Translation(head) @ rot @ mathutils.Matrix.Translation(-head) @ m
+            pb.matrix = Wi @ new
+            bpy.context.view_layer.update()
+    if contacts:
+        rest = {n: (W @ arm.data.bones[n].head_local).z for n in FEET if arm.data.bones.get(n)}
+        want = {n: rest[n] for n in rest} if contacts == "feet" else contacts
+        drop = min((W @ bones[n].head).z - h for n, h in want.items() if bones.get(n) is not None)
+        root = bones.get("ROOT")
+        if root is not None and abs(drop) > 1e-4:
+            m = W @ root.matrix
+            root.matrix = Wi @ (mathutils.Matrix.Translation((0, 0, -drop)) @ m)
+            bpy.context.view_layer.update()
+    for pb in bones:   # bones only turn (the body keeps its proportions)
+        if not free_bone(pb):
+            pb.location = (0, 0, 0)
+        pb.scale = (1, 1, 1)
+    return True
+
+
+def pose_data(arm):
+    out = {"harmonious_pose": 1, "bones": {}}
+    for pb in arm.pose.bones:
+        q = pb.matrix_basis.to_quaternion()
+        if abs(q.w - 1) > 1e-6 or (free_bone(pb) and pb.location.length > 1e-6):
+            e = {"rotation": [round(x, 6) for x in q]}
+            if free_bone(pb):
+                e["location"] = [round(x, 6) for x in pb.location]
+            out["bones"][pb.name] = e
+    return out
+
+
+def apply_pose_data(arm, data):
+    clear_pose(arm)
+    n = 0
+    for name, e in (data.get("bones") or {}).items():
+        pb = arm.pose.bones.get(name)
+        if pb is None:
+            continue
+        pb.rotation_mode = "QUATERNION"
+        pb.rotation_quaternion = e.get("rotation", (1, 0, 0, 0))
+        if "location" in e and free_bone(pb):
+            pb.location = e["location"]
+        n += 1
+    bpy.context.view_layer.update()
+    return n
+
+
+def pose_traveller(context, key):
+    arm = find_traveller()
+    if arm is None:
+        return "Import your traveller first"
+    for pb in arm.pose.bones:
+        pb.rotation_mode = "QUATERNION"
+    kind, _, name = key.partition(":")
+    if kind == "ready":
+        if not apply_ready_pose(arm, name):
+            return "There's no pose called " + name
+    else:
+        try:
+            with open(os.path.join(poses_dir(), name + ".json"), encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, ValueError) as error:
+            return "Couldn't read the pose %s: %s" % (name, error)
+        if not apply_pose_data(arm, data):
+            return "The pose %s has no bones this traveller has" % name
+    return ""
+
+
+class HARMONIOUS_OT_pose(bpy.types.Operator):
+    bl_idname = "harmonious.pose"
+    bl_label = "Pose"
+    bl_description = "Put the traveller in the pose picked above (you can change any bone after)"
+    bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context):
+        return find_traveller() is not None
+
+    def execute(self, context):
+        key = context.scene.harmonious_pose
+        err = pose_traveller(context, key)
+        if err:
+            self.report({"ERROR"}, err)
+            return {"CANCELLED"}
+        set_status("Posed: " + key.partition(":")[2])
+        return {"FINISHED"}
+
+
+class HARMONIOUS_OT_pose_reset(bpy.types.Operator):
+    bl_idname = "harmonious.pose_reset"
+    bl_label = "Start pose"
+    bl_description = "Put every bone back where the traveller was imported"
+    bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context):
+        return find_traveller() is not None
+
+    def execute(self, context):
+        clear_pose(find_traveller())
+        return {"FINISHED"}
+
+
+class HARMONIOUS_OT_pose_save(bpy.types.Operator):
+    bl_idname = "harmonious.pose_save"
+    bl_label = "Save my pose"
+    bl_description = "Keep this pose in the Poses folder to use again or share; it fits any traveller"
+    name: bpy.props.StringProperty(name="Name", default="My pose")
+
+    @classmethod
+    def poll(cls, context):
+        return find_traveller() is not None
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
+    def execute(self, context):
+        name = "".join(c for c in self.name.strip() if c not in '<>:"/\\|?*').strip() or "My pose"
+        d = poses_dir()
+        os.makedirs(d, exist_ok=True)
+        p = os.path.join(d, name + ".json")
+        with open(p, "w", encoding="utf-8") as f:
+            json.dump(pose_data(find_traveller()), f, indent=1)
+        context.scene.harmonious_pose = "saved:" + name
+        set_status("Saved the pose to " + p)
+        self.report({"INFO"}, "Saved " + p)
+        return {"FINISHED"}
+
+
+class HARMONIOUS_OT_poses_folder(bpy.types.Operator):
+    bl_idname = "harmonious.poses_folder"
+    bl_label = "Open the poses folder"
+    bl_description = "Your saved poses; put pose files others share here to use them"
+
+    def execute(self, context):
+        d = poses_dir()
+        os.makedirs(d, exist_ok=True)
+        bpy.ops.wm.path_open(filepath=d)
+        return {"FINISHED"}
+
+
 class HARMONIOUS_OT_picture(bpy.types.Operator):
     bl_idname = "harmonious.pose_picture"
     bl_label = "Save the pose as a picture"
@@ -864,6 +1151,15 @@ class HARMONIOUS_PT_traveller(bpy.types.Panel):
             tip.scale_y = 0.8
             for line in wrap("In Pose mode, click a part of the body: its bone shows. R turns it, Shift+click adds another part, a click on empty space hides them.", 40):
                 tip.label(text=line)
+            box = layout.box()
+            box.label(text="Poses", icon="ARMATURE_DATA")
+            box.prop(context.scene, "harmonious_pose", text="")
+            row = box.row(align=True)
+            row.operator(HARMONIOUS_OT_pose.bl_idname, icon="POSE_HLT")
+            row.operator(HARMONIOUS_OT_pose_reset.bl_idname, text="Start pose", icon="LOOP_BACK")
+            row = box.row(align=True)
+            row.operator(HARMONIOUS_OT_pose_save.bl_idname, icon="FILE_TICK")
+            row.operator(HARMONIOUS_OT_poses_folder.bl_idname, text="", icon="FILE_FOLDER")
             layout.prop(arm, "harmonious_keep_shape")
             shown = not any(is_hidden(arm, b) for b in body_bones(arm))
             layout.operator(HARMONIOUS_OT_show_bones.bl_idname, text="Hide the sticks" if shown else "Show every stick", icon="HIDE_OFF" if not shown else "HIDE_ON")
@@ -907,7 +1203,8 @@ def wrap(text, width):
 
 _KEYMAPS = []
 
-CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_OT_pick_part, HARMONIOUS_OT_show_bones, HARMONIOUS_OT_picture,
+CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_OT_pick_part, HARMONIOUS_OT_show_bones, HARMONIOUS_OT_pose, HARMONIOUS_OT_pose_reset,
+           HARMONIOUS_OT_pose_save, HARMONIOUS_OT_poses_folder, HARMONIOUS_OT_picture,
            HARMONIOUS_PT_live, HARMONIOUS_PT_traveller, HARMONIOUS_PT_support)
 
 
@@ -918,6 +1215,8 @@ def register():
         name="Send on save", default=True,
         description="Send the build to Harmonious Save Editor every time this file is saved")
     bpy.types.Scene.harmonious_target_slot = bpy.props.IntProperty(name="Corvette slot", default=-1)
+    bpy.types.Scene.harmonious_pose = bpy.props.EnumProperty(name="Pose", items=pose_items,
+        description="A ready-made pose, or one saved in your Poses folder")
     bpy.types.Object.harmonious_keep_shape = bpy.props.BoolProperty(
         name="Keep the body's proportions", default=True, update=keep_shape_changed,
         description="Bones only turn, so arms and legs never stretch. Turn off to move and scale bones freely")
@@ -955,6 +1254,7 @@ def unregister():
     del bpy.types.Scene.harmonious_target_slot
     del bpy.types.Scene.harmonious_target_name
     del bpy.types.Object.harmonious_keep_shape
+    del bpy.types.Scene.harmonious_pose
     for cls in reversed(CLASSES):
         bpy.utils.unregister_class(cls)
 

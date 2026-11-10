@@ -122,18 +122,39 @@ h.show_bone(arm, hit)
 print('HEADPICK', hit, arm.data.bones.active.name, round((aw @ arm.data.bones.active.head_local).z, 3))
 h.show_bone(arm, got)
 print('SHOWNAFTER', sum(1 for b in h.body_bones(arm) if not h.is_hidden(arm, b)), arm.data.bones.active.name if arm.data.bones.active else '')
+# ready-made poses: each one moves the body, feet stay on the floor, and a saved pose comes back the same
+names = [k for k, _n, _d in h.pose_items(None, bpy.context) if k.startswith('ready:')]
+moved, floored = 0, 0
+rest_ball = (aw @ arm.data.bones['l_leg_Ball'].head_local).z
+for k in names:
+    bpy.context.scene.harmonious_pose = k
+    assert bpy.ops.harmonious.pose() == {'FINISHED'}
+    if any(abs(pb.matrix_basis.to_quaternion().w - 1) > 1e-3 for pb in arm.pose.bones): moved += 1
+    spec = next(x for x in h.POSES if 'ready:' + x[0] == k)
+    if spec[3] == 'feet':
+        lo = min((aw @ arm.pose.bones[n].head).z - (aw @ arm.data.bones[n].head_local).z for n in h.FEET)
+        if abs(lo) < 0.005: floored += 1
+    else: floored += 1
+wrist = (aw @ arm.pose.bones['r_arm_Wrist'].head).copy()
+bpy.ops.harmonious.pose_save('EXEC_DEFAULT', name='Test pose')
+bpy.ops.harmonious.pose_reset()
+back = h.pose_traveller(bpy.context, 'saved:Test pose')
+print('POSES', len(names), moved, floored, back == '' and (aw @ arm.pose.bones['r_arm_Wrist'].head - wrist).length < 1e-3, os.path.exists(os.path.join(h.poses_dir(), 'Test pose.json')))
 print('PICTURE', bpy.ops.harmonious.pose_picture())
 print('STATUS', h.STATE['status'])
 h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
     try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 600000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
-    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|HEADPICK|PICK|SHOWN|Traceback|  File|\w+Error)/.test(l)).join('\n'));
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|HEADPICK|POSES|PICK|SHOWN|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
     ok('turning a bone moves the body', +line('MOVED') > 100);
     ok('bones keep the body\'s proportions (only the root moves), and that can be turned off', line('KEEP') === 'True True True');
+    const [np, nm, nf, same, file] = line('POSES').split(' ');
+    ok('ready-made poses: every one moves the body and keeps the feet on the floor', +np >= 10 && nm === np && nf === np);
+    ok('…and a saved pose goes to the Poses folder and comes back the same', same === 'True' && file === 'True');
     ok('Blender shows the game\'s textures', +line('TEXTURED') > 20);
     ok('the sticks are hidden until a part is clicked', line('SHOWN') === '0');
     const [gap, mirror] = line('GAP').split(' ').map(Number);

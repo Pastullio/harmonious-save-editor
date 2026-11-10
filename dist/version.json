@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.10.1855",
+  "version": "2026.11.10.1930",
   "date": "2026-11-10",
-  "size": 13445120,
-  "sha256": "572a28c5d31d607542ee421dc4707ab3791839cf10543e2bc31baeae763096f0",
-  "notes": "Blender: clicking your traveller's head now picks the neck, so the head turns where it joins the body instead of round the top of the helmet\nPlease install the LiveLink add-on again (version 1.4.1)",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.1855/HarmoniousSaveEditor.exe",
+  "size": 13459456,
+  "sha256": "1b940e51d38bef0f5967ed24268b16c2f8f22761dbe105d8449a5a73bc8df26a",
+  "notes": "Blender: ready-made poses for your traveller (standing, hands on hips, waving, pointing, salute, arms raised, thinking, sitting on a seat, sitting on the ground, kneeling, T-pose); pick one and press Pose\nBlender: Save my pose keeps your own poses in Documents\\Harmonious Save Editor\\Poses; they fit any traveller, so you can share them\nPlease install the LiveLink add-on again (version 1.5.0)",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.10.1930/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
