@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.11.1732",
+  "version": "2026.11.11.1802",
   "date": "2026-11-11",
-  "size": 13699072,
-  "sha256": "babd9b2a0c3b4abbbc3c41ff00cca616fb9d3ef5a0de7f91810adad5c9b7ad7b",
-  "notes": "Please install the LiveLink add-on again (version 1.11.0): the Picture box lists your lights with Power and Colour; clicking one leaves Pose mode and selects it, so G moves it and R turns it",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.11.1732/HarmoniousSaveEditor.exe",
+  "size": 13625856,
+  "sha256": "41930b25c73b47b66909c7221d3e9d66a657c88068b55ed72747c7f2864e4a39",
+  "notes": "Please install the LiveLink add-on again (version 1.12.0): the new round LiveLink logo at the top, and coloured icons: neon pink for building corvettes and bases, neon blue for posing your traveller",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.11.1802/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

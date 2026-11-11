@@ -194,6 +194,7 @@ for c in panels:
         drawn.append('ERR ' + c.bl_label + ': ' + repr(e))
 m0 = bpy.context.mode; bpy.ops.harmonious.pose_mode(); m1 = bpy.context.mode; bpy.ops.harmonious.pose_mode(); m2 = bpy.context.mode
 print('MODES', m0, m1, m2)
+print('ICONS', len(h.ICONS), 'icon_value' in h.ic('build'), 'icon_value' in h.ic('pose'), 'icon_value' in h.ic('logo'))
 print('PANELS', '|'.join(drawn), '|parents:' + ','.join(c.bl_label for c in panels if getattr(c, 'bl_parent_id', None)))
 # Body parts: pick several, each turns at its own joint; picking one again lets go of it
 have = [q[0] for q in h.BODY_PARTS if h.part_bones(arm, q)[0]]
@@ -226,7 +227,7 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
     try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 600000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
-    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|Traceback|  File|\w+Error)/.test(l)).join('\n'));
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
@@ -255,8 +256,10 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     ok('…Light it puts the Studio lights there instead, and the glow turns off', lt[5] === '3' && lt[6] === '0' && lt[7] === 'STUDIO');
     const sl = line('SELLIGHT').split(' ');
     ok('a light picked in the panel leaves Pose mode and is selected, ready for G and R (' + sl.join(' ') + ')', sl[0] === 'POSE' && sl[1] === 'OBJECT' && sl[2] === 'True' && +sl[3] >= 3);
+    const ics = line('ICONS').split(' ');
+    ok('the round logo and the coloured icons load as Blender previews (' + ics.join(' ') + ')', +ics[0] >= 14 && ics.slice(1).every((x) => x === 'True'));
     const pn = line('PANELS').replace(' |parents:', '|parents:');
-    ok('the add-on\'s sections are panels of their own that draw: ' + pn, ['LiveLink', 'Builds', 'Your traveller', 'Poses', 'Body parts', 'Multi-tool', 'Picture and 3D', 'Support the creator'].every((l) => pn.split('|').includes(l)) && !/ERR/.test(pn) && /\|parents:$/.test(pn));
+    ok('the add-on\'s sections are panels of their own that draw: ' + pn, ['LiveLink', 'Builds: corvettes and bases', 'Your traveller', 'Poses', 'Body parts', 'Multi-tool', 'Picture and 3D', 'Support the creator'].every((l) => pn.split('|').includes(l)) && !/ERR/.test(pn) && /\|parents:$/.test(pn));
     const md = line('MODES').split(' ');
     ok('Pose the traveller / Done posing switch between Pose and Object mode (' + md.join(' ') + ')', md[1] !== md[0] && md[2] === md[0] && md.includes('POSE') && md.includes('OBJECT'));
     const parts = line('PARTS');
