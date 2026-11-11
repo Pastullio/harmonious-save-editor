@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.11.1527",
+  "version": "2026.11.11.1540",
   "date": "2026-11-11",
-  "size": 13682176,
-  "sha256": "e659e0bbd4ed7bf4e065a8fb0cf7324c10140e282004cfba3a0661310f95a4b1",
-  "notes": "Please install the LiveLink add-on again (version 1.9.0): each part of LiveLink is now its own panel you can open and close (Builds, Your traveller, Poses, Body parts, Multi-tool, Picture and 3D), and Your traveller has Pose the traveller / Done posing, so Base Builder's tools come back when you finish posing\nTraveller page: a new layout with boxes you open and close: Size (with Custom width and height), Traveller, Ship, Multi-tool, Background, Text and Portal glyphs\nTraveller page: put a multi-tool on the picture, import your own image for the traveller or ship, remove an image's background, and choose which layer sits in front\nTraveller page: drag with the middle mouse button to turn a 3D pose, ship or multi-tool (Shift and the middle button moves it, as in Blender)\nTraveller page: new space backgrounds (nebula, ringed planet, shooting stars, galaxy), plain colours with presets, fonts for your name, and a logo\nTraveller page: pictures carry a small watermark in the corner; patrons can take it off by signing in with Patreon",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.11.1527/HarmoniousSaveEditor.exe",
+  "size": 13696512,
+  "sha256": "db0feeca8f1a24177fa77544f05887abc4433a0b0bd406f28b5bca11e7c218a5",
+  "notes": "Please install the LiveLink add-on again (version 1.10.0): the Picture and 3D panel has Quality (Quick, or Best with Cycles for real light, soft shadows and reflections), ready-made Lighting (Studio, Hero, Sunset, Space, or keep your own lights) and Lenses and screens glow\nTraveller page: Lighting for 3D (Studio, Hero, Sunset, Space) in the Background box, and glowing lenses and screens from Blender glow on the picture too",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.11.1540/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

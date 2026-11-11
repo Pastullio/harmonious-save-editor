@@ -144,6 +144,20 @@ bpy.context.scene.harmonious_pose = 'ready:Waving'; bpy.ops.harmonious.pose()
 print('SENDPOSE', bpy.ops.harmonious.send_pose(), bpy.context.mode)
 print('PICTURE', bpy.ops.harmonious.pose_picture())
 print('STATUS', h.STATE['status'])
+# Best quality (Cycles) with a ready-made light setup and glowing lenses, at a tiny size
+sc = bpy.context.scene
+sc.render.resolution_x, sc.render.resolution_y = 40, 50
+sc.harmonious_quality = 'BEST'; sc.harmonious_lighting = 'HERO'; sc.harmonious_glow = True
+before = set(os.listdir(h.LINK.get('exports') or '.'))
+r = bpy.ops.harmonious.pose_picture()
+coll = bpy.data.collections.get('Harmonious lights')
+newpng = [f for f in set(os.listdir(h.LINK.get('exports') or '.')) - before if f.endswith('.png')]
+glowing = sum(1 for o in h.traveller_meshes(arm) for m in o.data.materials if m and m.use_nodes and any(x.type == 'BSDF_PRINCIPLED' and (x.inputs.get('Emission Strength') is not None and x.inputs['Emission Strength'].default_value > 0) for x in m.node_tree.nodes))
+sc.harmonious_lighting = 'STUDIO'; bpy.ops.harmonious.light(); n2 = len(bpy.data.collections['Harmonious lights'].objects)
+sc.harmonious_glow = False
+glow_off = sum(1 for o in h.traveller_meshes(arm) for m in o.data.materials if m and m.use_nodes and any(x.type == 'BSDF_PRINCIPLED' and (x.inputs.get('Emission Strength') is not None and x.inputs['Emission Strength'].default_value > 0) for x in m.node_tree.nodes))
+print('LIGHTS', 'FINISHED' in r, sc.render.engine, len(coll.objects) if coll else 0, len(newpng), glowing, n2, glow_off, sc.get('harmonious_lit'))
+sc.harmonious_quality = 'QUICK'; sc.harmonious_glow = True
 # every panel draws (a stand-in layout records the calls), each one its own panel in the LiveLink tab
 class FakeLayout:
     def __init__(self): self.calls = []
@@ -207,7 +221,7 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
     try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 600000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
-    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|Traceback|  File|\w+Error)/.test(l)).join('\n'));
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
@@ -219,6 +233,7 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     const g3 = fs.readdirSync(path.join(home, 'Documents', 'Harmonious Save Editor', 'Exports')).find((f) => / 3D pose .*\.glb$/.test(f));
     const gj3 = (() => { try { const bb = fs.readFileSync(path.join(home, 'Documents', 'Harmonious Save Editor', 'Exports', g3)); return JSON.parse(bb.subarray(20, 20 + bb.readUInt32LE(12)).toString()); } catch { return {}; } })();
     ok('Send the pose to the editor puts a textured 3D pose in Exports, the pose baked in', /FINISHED/.test(line('SENDPOSE')) && /POSE/.test(line('SENDPOSE')) && g3 && (gj3.images || []).length > 10 && !(gj3.skins || []).length);
+    ok('…with the lenses and screens glowing (emissive)', (gj3.materials || []).some((m) => m.emissiveFactor && m.emissiveFactor.some((v) => v > 0)));
     ok('Blender shows the game\'s textures', +line('TEXTURED') > 20);
     ok('the sticks are hidden until a part is clicked', line('SHOWN') === '0');
     const [gap, mirror] = line('GAP').split(' ').map(Number);
@@ -230,6 +245,9 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     const [hpick, hact, hz] = line('HEADPICK').split(' ');
     ok('clicking the head turns it at the neck', hpick === 'head_Top' && hact === 'neck_01_02' && +hz < 1.75);
     ok('…and shows just that stick', /^1 /.test(line('SHOWNAFTER')) && line('SHOWNAFTER').endsWith(got));
+    const lt = line('LIGHTS').split(' ');
+    ok('Best quality renders with Cycles, the Hero lights placed round the traveller and the lenses glowing (' + lt.join(' ') + ')', lt[0] === 'True' && lt[1] === 'CYCLES' && lt[2] === '3' && lt[3] === '1' && +lt[4] > 3);
+    ok('…Light it puts the Studio lights there instead, and the glow turns off', lt[5] === '3' && lt[6] === '0' && lt[7] === 'STUDIO');
     const pn = line('PANELS').replace(' |parents:', '|parents:');
     ok('the add-on\'s sections are panels of their own that draw: ' + pn, ['LiveLink', 'Builds', 'Your traveller', 'Poses', 'Body parts', 'Multi-tool', 'Picture and 3D', 'Support the creator'].every((l) => pn.split('|').includes(l)) && !/ERR/.test(pn) && /\|parents:$/.test(pn));
     const md = line('MODES').split(' ');

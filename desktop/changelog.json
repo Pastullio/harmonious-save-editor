@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.11.1540",
+  "date": "2026-11-11",
+  "notes": [
+   "Please install the LiveLink add-on again (version 1.10.0): the Picture and 3D panel has Quality (Quick, or Best with Cycles for real light, soft shadows and reflections), ready-made Lighting (Studio, Hero, Sunset, Space, or keep your own lights) and Lenses and screens glow",
+   "Traveller page: Lighting for 3D (Studio, Hero, Sunset, Space) in the Background box, and glowing lenses and screens from Blender glow on the picture too"
+  ]
+ },
+ {
   "version": "2026.11.11.1527",
   "date": "2026-11-11",
   "notes": [

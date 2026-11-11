@@ -2491,16 +2491,25 @@ const GLTEX = (() => {
       vec3 a = vec3(q.x * cy + q.z * sy, q.y, -q.x * sy + q.z * cy); return vec3(a.x, a.y * cp - a.z * sp, a.y * sp + a.z * cp); }
     void main() { vec3 b = turn((p - c) / r); vn = turn(n); vuv = uv; vp = b; gl_Position = vec4(b.x * .92, b.y * .92, -b.z * .45, 1.0); }`;
   const FS = `#version 300 es
-    precision highp float; in vec3 vn; in vec2 vuv; in vec3 vp; uniform sampler2D tex; uniform vec4 base; uniform float hasTex, cutoff; out vec4 o;
+    precision highp float; in vec3 vn; in vec2 vuv; in vec3 vp; uniform sampler2D tex, etex; uniform vec4 base; uniform float hasTex, cutoff, hasE;
+    uniform vec3 kdir, kcol, fdir, fcol, rcol, amb, emis; out vec4 o;
     void main() {
       vec4 t = hasTex > .5 ? texture(tex, vuv) : vec4(1.0); vec4 a = t * base; if (a.a < cutoff) discard;
       vec3 alb = pow(a.rgb, vec3(2.2)), N = normalize(vn); if (!gl_FrontFacing) N = -N;
-      vec3 key = normalize(vec3(-.5, .65, .6)), fill = normalize(vec3(.7, .1, .5));
+      vec3 key = normalize(kdir), fill = normalize(fdir);
       float d = max(dot(N, key), 0.0), f = max(dot(N, fill), 0.0), rim = pow(1.0 - max(N.z, 0.0), 3.0);
       vec3 h = normalize(key + vec3(0, 0, 1)); float sp = pow(max(dot(N, h), 0.0), 40.0) * .25;
-      vec3 col = alb * (.18 + 1.15 * d + .35 * f) + vec3(.6, .85, 1.0) * rim * .35 + sp;
+      vec3 e = emis * (hasE > .5 ? pow(texture(etex, vuv).rgb, vec3(2.2)) : vec3(1.0));
+      vec3 col = alb * (amb + kcol * d + fcol * f) + rcol * rim + kcol * sp * .22 + e;
       o = vec4(pow(col, vec3(1.0 / 2.2)), 1.0);
     }`;
+  // light setups for the Traveller page (owner, 2026-11-11), matching the add-on's: view space, x right, y up, z to you
+  const LIGHTS = {
+    studio: { kdir: [-.5, .65, .6], kcol: [1.15, 1.1, 1.05], fdir: [.7, .1, .5], fcol: [.32, .35, .4], rcol: [.21, .3, .35], amb: [.18, .18, .19] },
+    hero: { kdir: [-.8, -.15, .45], kcol: [.95, .88, .8], fdir: [1, 0, 0], fcol: [0, 0, 0], rcol: [.45, .75, .9], amb: [.07, .07, .09] },
+    sunset: { kdir: [-.9, .25, .35], kcol: [1.45, .8, .42], fdir: [.6, .2, .5], fcol: [.14, .19, .34], rcol: [.5, .3, .2], amb: [.1, .12, .18] },
+    space: { kdir: [-.85, .35, .4], kcol: [1.35, 1.32, 1.28], fdir: [1, 0, 0], fcol: [0, 0, 0], rcol: [.14, .6, .56], amb: [.05, .05, .07] },
+  };
   function init() {
     if (gl || failed) return !!gl;
     cv = document.createElement('canvas');
@@ -2547,7 +2556,10 @@ const GLTEX = (() => {
         const idx = pr.indices != null ? Uint32Array.from(acc(pr.indices)) : Uint32Array.from({ length: nv }, (_, k) => k);
         const mat = (doc.materials || [])[pr.material] || {}, pbr = mat.pbrMetallicRoughness || {}, bt = pbr.baseColorTexture;
         const tex = bt && doc.textures && doc.textures[bt.index] ? images[doc.textures[bt.index].source] : null;
-        prims.push({ pos, nrm: Nn ? nrm : null, uv: UV, idx, base: pbr.baseColorFactor || [1, 1, 1, 1], tex, cutoff: mat.alphaMode === 'MASK' ? (mat.alphaCutoff ?? .5) : mat.alphaMode === 'BLEND' ? .35 : 0 });
+        // glowing parts (Blender's "Lenses and screens glow" exports them as emissive)
+        const ek = ((mat.extensions || {}).KHR_materials_emissive_strength || {}).emissiveStrength || 1, ef = (mat.emissiveFactor || [0, 0, 0]).map((v) => Math.min(4, v * ek));
+        const et = mat.emissiveTexture && doc.textures && doc.textures[mat.emissiveTexture.index] ? images[doc.textures[mat.emissiveTexture.index].source] : null;
+        prims.push({ pos, nrm: Nn ? nrm : null, uv: UV, idx, base: pbr.baseColorFactor || [1, 1, 1, 1], tex, emis: ef, etexImg: ef.some((v) => v > 0) ? et : null, cutoff: mat.alphaMode === 'MASK' ? (mat.alphaCutoff ?? .5) : mat.alphaMode === 'BLEND' ? .35 : 0 });
       }
       for (const k of nd.children || []) walk(k, m);
     };
@@ -2566,26 +2578,30 @@ const GLTEX = (() => {
       for (const [name, data, n] of [['p', p.pos, 3], ['n', p.nrm, 3], ['uv', p.uv, 2]]) { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); const loc = gl.getAttribLocation(prog, name); if (loc >= 0) { gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, n, gl.FLOAT, false, 0, 0); } }
       const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, p.idx, gl.STATIC_DRAW);
       gl.bindVertexArray(null);
+      if (p.etexImg) { p.getex = p.etexImg === p.tex ? null : gl.createTexture(); if (p.getex) { gl.bindTexture(gl.TEXTURE_2D, p.getex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, p.etexImg); gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT); } }
       if (p.tex) { p.gtex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, p.gtex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, p.tex); gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT); }
     }
   }
   // a transparent square picture of the model, turned by yaw and tilted by pitch (radians)
-  function render(m, size, yaw, pitch) {
+  function render(m, size, yaw, pitch, light) {
     if (!init()) return null;
     if (cv.width !== size) { cv.width = cv.height = size; }
     gl.viewport(0, 0, size, size); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE); gl.useProgram(prog); upload(m);
     const U = (n) => gl.getUniformLocation(prog, n);
-    gl.uniform3f(U('c'), m.c[0], m.c[1], m.c[2]); gl.uniform1f(U('r'), m.r); gl.uniform1f(U('yaw'), yaw); gl.uniform1f(U('pitch'), pitch); gl.uniform1i(U('tex'), 0);
+    gl.uniform3f(U('c'), m.c[0], m.c[1], m.c[2]); gl.uniform1f(U('r'), m.r); gl.uniform1f(U('yaw'), yaw); gl.uniform1f(U('pitch'), pitch); gl.uniform1i(U('tex'), 0); gl.uniform1i(U('etex'), 1);
+    const L = LIGHTS[light] || LIGHTS.studio; for (const k of ['kdir', 'kcol', 'fdir', 'fcol', 'rcol', 'amb']) gl.uniform3f(U(k), ...L[k]);
     for (const p of m.prims) {
       gl.uniform4f(U('base'), ...p.base); gl.uniform1f(U('hasTex'), p.gtex ? 1 : 0); gl.uniform1f(U('cutoff'), p.cutoff);
+      gl.uniform3f(U('emis'), ...(p.emis || [0, 0, 0])); const et = p.etexImg ? (p.getex || p.gtex) : null; gl.uniform1f(U('hasE'), et ? 1 : 0);
+      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, et || null);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, p.gtex || null);
       gl.bindVertexArray(p.vao); gl.drawElements(gl.TRIANGLES, p.idx.length, gl.UNSIGNED_INT, 0);
     }
     gl.bindVertexArray(null);
     return cv;
   }
-  return { parse, render, ok: () => init() };
+  return { parse, render, ok: () => init(), LIGHTS };
 })();
 
 // ------------------------------------------------------------------ Traveller page (owner, 2026-11-10)
@@ -2717,11 +2733,11 @@ async function tcToolModel(it) {
 }
 // a 3D layer drawn at its angle, kept until the angle or size changes
 function tc3d(kind, size) {
-  const st = tcLoad(), l = st.layers[kind], key = [l.yaw || 0, l.pitch || 0, size].join('|');
+  const st = tcLoad(), l = st.layers[kind], key = [l.yaw || 0, l.pitch || 0, size, st.light || 'studio'].join('|');
   const hit = TC.cache[kind]; if (hit && hit.key === key) return hit.cv;
   const rad = Math.PI / 180, yaw = (l.yaw || 0) * rad, pitch = (l.pitch || 0) * rad;
   const glb = kind === 'trav' ? TC.m3d : kind === 'tool' ? TC.toolGlb : TC.shipGlb, model = kind === 'tool' ? TC.toolModel : TC.shipModel;
-  const im = glb ? GLTEX.render(glb, size, yaw, pitch) : model ? GL3D.render(model, size, yaw, [228, 236, 242], pitch) : null;
+  const im = glb ? GLTEX.render(glb, size, yaw, pitch, st.light || 'studio') : model ? GL3D.render(model, size, yaw, [228, 236, 242], pitch) : null;
   if (!im) return null;
   const cv = document.createElement('canvas'); cv.width = cv.height = size; cv.getContext('2d').drawImage(im, 0, 0);
   TC.cache[kind] = { key, cv }; return cv;
@@ -2960,6 +2976,7 @@ PAGES.traveller = (el) => {
     const bgIn = `<div class="seg"><button type="button" data-bgk="space" aria-pressed="${bgKind === 'space'}">Space</button><button type="button" data-bgk="colour" aria-pressed="${bgKind === 'colour'}">Plain colour</button><button type="button" data-bgk="image" aria-pressed="${bgKind === 'image'}">Image</button></div>
       ${bgKind === 'space' ? `<div class="tc-spaces">${TC_SPACE.map(([k, l]) => `<button type="button" class="tc-space${st.bg === k ? ' on' : ''}" data-space="${k}" title="${l}"><canvas width="96" height="64" data-sp="${k}"></canvas><span>${l}</span></button>`).join('')}</div><div class="tc-cols"><label>Sky <input type="color" id="tcC1" value="${esc(st.c1)}"></label><label>and <input type="color" id="tcC2" value="${esc(st.c2)}"></label></div>` : ''}
       ${bgKind === 'colour' ? `<div class="tc-swatches">${TC_SWATCHES.map((c) => `<button type="button" class="tc-sw${(st.solid || '').toLowerCase() === c ? ' on' : ''}" data-sw="${c}" style="background:${c}" title="${c}"></button>`).join('')}<label class="tc-wheel" title="Any colour"><input type="color" id="tcSolid" value="${esc(st.solid || '#07131a')}"></label></div>` : ''}
+      <label class="field"><span>Lighting for 3D</span><select id="tcLight">${[['studio', 'Studio'], ['hero', 'Hero'], ['sunset', 'Sunset'], ['space', 'Space']].map(([k, l]) => `<option value="${k}"${(st.light || 'studio') === k ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
       ${bgKind === 'image' ? `<div class="tc-objacts"><button class="btn small" type="button" id="tcBgFile">Import image</button>${APP ? '<button class="btn small" type="button" id="tcBgShot">One of your screenshots</button>' : ''}</div>${st.bg === 'image' && TC.img.bg ? '' : '<p class="dim small-print" data-keep>Pick an image for the background.</p>'}` : ''}`;
     const textIn = `<label class="field"><span>Name</span><input id="tcName" value="${esc(st.name)}" maxlength="40"></label>
       <label class="field"><span>Font</span><select id="tcFont">${TC_FONTS.map(([k, l, fam, wt]) => `<option value="${k}"${st.font === k ? ' selected' : ''} style="font-family:${esc(fam)};font-weight:${wt}">${l}</option>`).join('')}</select></label>
@@ -3054,6 +3071,7 @@ PAGES.traveller = (el) => {
     $('#tcPlace', side).onchange = (e) => { st.place = e.target.value; tcSave(); wire(); redraw(); };
     for (const [id, k] of [['tcName', 'name'], ['tcTitle', 'title'], ['tcCaption', 'caption']]) $('#' + id, side).oninput = (e) => change(() => { st[k] = e.target.value; });
     $('#tcFont', side).onchange = (e) => change(() => { st.font = e.target.value; });
+    $('#tcLight', side).onchange = (e) => change(() => { st.light = e.target.value; });
     const wmc = $('#tcWm', side);
     if (wmc) wmc.onchange = async () => {
       if (!wmc.checked && !tcPatron()) { wmc.checked = true; await tcPatronLoad(); if (tcPatron()) { st.watermark = false; tcSave(); wire(); redraw(); return; } tcPatronDialog(() => { st.watermark = false; tcSave(); if (el.isConnected) { wire(); redraw(); } }); return; }

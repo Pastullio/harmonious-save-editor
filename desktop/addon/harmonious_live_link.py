@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 9, 0),
+    "version": (1, 10, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -19,6 +19,7 @@ bl_info = {
 
 import base64
 import json
+import math
 import os
 import tempfile
 import sys
@@ -1218,6 +1219,7 @@ def posed_glb(context, arm):
     meshes = traveller_meshes(arm) + [o for o in held_tools(arm) if o.type == "MESH"]
     if not meshes:
         raise RuntimeError("The traveller has no mesh")
+    set_glow(arm, context.scene.harmonious_glow)   # glowing lenses and screens go along (as emissive)
     view = context.view_layer
     mode, active = context.mode, view.objects.active
     picked = [o for o in view.objects if o.select_get()]
@@ -1413,6 +1415,186 @@ class HARMONIOUS_OT_send_pose(bpy.types.Operator):
         return {"FINISHED"}
 
 
+# ---------------------------------------------------------------- lighting and render quality (owner, 2026-11-11)
+# Ready-made lights round the traveller, placed from where the camera looks (key from the camera's left, rim behind),
+# so they fit whichever way the shot is framed. They live in their own collection and are replaced each time.
+LIGHTINGS = (
+    ("STUDIO", "Studio", "A key light, a soft fill and a cool rim light behind for a glowing edge"),
+    ("HERO", "Hero", "Low and dramatic: strong rim lights on both sides, a dark front"),
+    ("SUNSET", "Sunset", "Warm low sun from the side, cool blue shadows"),
+    ("SPACE", "Space", "One hard light like a distant star, with a coloured rim"),
+    ("KEEP", "Keep my lights", "Use the lights already in the scene"),
+)
+# (kind, where: camera-relative right, front, up; size, power at 3 m, colour); "world": ambient colour and strength
+LIGHT_RIGS = {
+    "STUDIO": {"world": ((0.05, 0.06, 0.08), 0.5), "lights": (
+        ("AREA", (-0.8, 1.0, 0.7), 1.6, 900, (1.0, 0.96, 0.9)),
+        ("AREA", (1.0, 0.7, 0.2), 2.4, 280, (0.8, 0.88, 1.0)),
+        ("AREA", (0.3, -1.2, 0.9), 1.0, 1300, (0.65, 0.9, 1.0)))},
+    "HERO": {"world": ((0.02, 0.02, 0.03), 0.3), "lights": (
+        ("AREA", (-0.6, 0.6, -0.15), 1.0, 500, (1.0, 0.92, 0.85)),
+        ("AREA", (-1.1, -1.0, 0.6), 0.6, 1600, (0.55, 0.85, 1.0)),
+        ("AREA", (1.1, -1.0, 0.6), 0.6, 1600, (0.55, 0.85, 1.0)))},
+    "SUNSET": {"world": ((0.18, 0.24, 0.42), 0.7), "lights": (
+        ("SUN", (-1.0, 0.45, 0.2), 3.0, 7.0, (1.0, 0.55, 0.28)),
+        ("AREA", (0.9, -0.9, 0.7), 1.0, 700, (1.0, 0.62, 0.4)))},
+    "SPACE": {"world": ((0.01, 0.015, 0.03), 0.4), "lights": (
+        ("SUN", (-1.0, 0.35, 0.35), 0.5, 7.0, (1.0, 0.98, 0.95)),
+        ("AREA", (1.0, -1.0, 0.4), 0.8, 1800, (0.2, 0.85, 0.8)))},
+}
+GLOW_RE = r"lens|screen|scanline|display|visor|glow|light|panning|refiner_on|statbar|ui(dull|misc)|fx"
+
+
+def traveller_box(arm):
+    """Centre and height of the traveller (its meshes as posed)."""
+    import mathutils
+    pts = [o.matrix_world @ mathutils.Vector(c) for o in traveller_meshes(arm) for c in o.bound_box]
+    if not pts:
+        return arm.matrix_world.translation.copy(), 1.8
+    lo = mathutils.Vector([min(p[i] for p in pts) for i in range(3)])
+    hi = mathutils.Vector([max(p[i] for p in pts) for i in range(3)])
+    return (lo + hi) / 2, max(hi.z - lo.z, 0.5)
+
+
+def light_traveller(scene, arm, rig):
+    """Put the ready-made lights round the traveller (and the world's ambient colour); KEEP leaves the scene alone."""
+    import mathutils
+    if rig not in LIGHT_RIGS:
+        return 0
+    coll = bpy.data.collections.get("Harmonious lights")
+    if coll is None:
+        coll = bpy.data.collections.new("Harmonious lights")
+        scene.collection.children.link(coll)
+    for o in list(coll.objects):
+        data = o.data
+        bpy.data.objects.remove(o, do_unlink=True)
+        if data is not None and data.users == 0:
+            bpy.data.lights.remove(data)
+    # the lights that frame_camera adds when there's no light at all would add to these
+    for o in list(scene.objects):
+        if o.type == "LIGHT" and o.name.startswith("Traveller light"):
+            bpy.data.objects.remove(o, do_unlink=True)
+    centre, height = traveller_box(arm)
+    up = mathutils.Vector((0, 0, 1))
+    cam = scene.camera
+    front = (cam.matrix_world.translation - centre) if cam is not None else mathutils.Vector((0, -1, 0))
+    front.z = 0
+    front = front.normalized() if front.length > 1e-6 else mathutils.Vector((0, -1, 0))
+    right = front.cross(up).normalized()
+    dist = height * 1.7
+    k = (dist / 3.0) ** 2   # light power was set for 3 m away
+    spec = LIGHT_RIGS[rig]
+    for i, (kind, (r, f, u), size, power, colour) in enumerate(spec["lights"]):
+        data = bpy.data.lights.new("Harmonious %s %d" % (rig.lower(), i + 1), kind)
+        data.color = colour
+        if kind == "SUN":
+            data.energy = power
+            data.angle = math.radians(size)
+        else:
+            data.energy = power * k
+            data.size = size * height / 1.8
+        o = bpy.data.objects.new(data.name, data)
+        coll.objects.link(o)
+        o.location = centre + (right * r + front * f + up * u) * dist
+        o.rotation_euler = (centre - o.location).to_track_quat("-Z", "Y").to_euler()
+    world = scene.world or bpy.data.worlds.new("Harmonious world")
+    scene.world = world
+    world.use_nodes = True
+    bg = world.node_tree.nodes.get("Background")
+    if bg is not None:
+        bg.inputs[0].default_value = (*spec["world"][0], 1.0)
+        bg.inputs[1].default_value = spec["world"][1]
+    scene["harmonious_lit"] = rig
+    return len(spec["lights"])
+
+
+def set_glow(arm, on, strength=4.0):
+    """The game's lenses, screens and visor light up (they glow in Cycles and light what's near them)."""
+    import re
+    n = 0
+    for o in traveller_meshes(arm):
+        for m in o.data.materials:
+            if m is None or not m.use_nodes or not re.search(GLOW_RE, m.name, re.I):
+                continue
+            bsdf = next((x for x in m.node_tree.nodes if x.type == "BSDF_PRINCIPLED"), None)
+            if bsdf is None:
+                continue
+            ec = bsdf.inputs.get("Emission Color") or bsdf.inputs.get("Emission")
+            es = bsdf.inputs.get("Emission Strength")
+            if ec is None:
+                continue
+            for l in list(ec.links):
+                m.node_tree.links.remove(l)
+            if on:
+                src = bsdf.inputs["Base Color"].links[0].from_socket if bsdf.inputs["Base Color"].links else None
+                if src is not None:
+                    m.node_tree.links.new(src, ec)
+                else:
+                    ec.default_value = bsdf.inputs["Base Color"].default_value
+                if es is not None:
+                    es.default_value = strength
+                n += 1
+            else:
+                ec.default_value = (0, 0, 0, 1)
+                if es is not None:
+                    es.default_value = 0.0
+    return n
+
+
+def set_quality(scene, best):
+    """Best: Cycles with a denoiser, on the graphics card when Blender has one set up. Quick: EEVEE."""
+    r = scene.render
+    if best:
+        r.engine = "CYCLES"
+        scene.cycles.samples = 96
+        scene.cycles.use_denoising = True
+        try:
+            prefs = bpy.context.preferences.addons["cycles"].preferences
+            prefs.refresh_devices() if hasattr(prefs, "refresh_devices") else prefs.get_devices()
+            if prefs.compute_device_type != "NONE" and any(d.use and d.type != "CPU" for d in prefs.devices):
+                scene.cycles.device = "GPU"
+            else:
+                scene.cycles.device = "CPU"
+        except Exception:
+            scene.cycles.device = "CPU"
+        return
+    for engine in ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE"):
+        try:
+            r.engine = engine
+            return
+        except TypeError:
+            continue
+
+
+class HARMONIOUS_OT_light(bpy.types.Operator):
+    bl_idname = "harmonious.light"
+    bl_label = "Light it"
+    bl_description = "Put the chosen lights round your traveller now (look in Rendered view: Z, Rendered)"
+    bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context):
+        return find_traveller() is not None
+
+    def execute(self, context):
+        scene = context.scene
+        arm = find_traveller()
+        if scene.camera is None:
+            meshes = traveller_meshes(arm)
+            if meshes:
+                frame_camera(scene, max(meshes, key=lambda o: len(o.data.vertices)))
+        n = light_traveller(scene, arm, scene.harmonious_lighting)
+        set_glow(arm, scene.harmonious_glow)
+        self.report({"INFO"}, "%d lights placed" % n if n else "Your own lights are kept")
+        return {"FINISHED"}
+
+
+def glow_changed(self, context):
+    arm = find_traveller()
+    if arm is not None:
+        set_glow(arm, self.harmonious_glow)
+
+
 class HARMONIOUS_OT_picture(bpy.types.Operator):
     bl_idname = "harmonious.pose_picture"
     bl_label = "Save the pose as a picture"
@@ -1429,13 +1611,12 @@ class HARMONIOUS_OT_picture(bpy.types.Operator):
                 self.report({"ERROR"}, "Import your traveller first, or add a camera")
                 return {"CANCELLED"}
             frame_camera(scene, max(meshes, key=lambda o: len(o.data.vertices)))
+        if arm is not None:
+            if scene.harmonious_lighting != "KEEP" and scene.get("harmonious_lit") != scene.harmonious_lighting:
+                light_traveller(scene, arm, scene.harmonious_lighting)
+            set_glow(arm, scene.harmonious_glow)
+        set_quality(scene, scene.harmonious_quality == "BEST")
         r = scene.render
-        for engine in ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE"):
-            try:
-                r.engine = engine
-                break
-            except TypeError:
-                continue
         r.film_transparent = True
         r.image_settings.file_format = "PNG"
         r.image_settings.color_mode = "RGBA"
@@ -1603,7 +1784,19 @@ class HARMONIOUS_PT_share(LiveLinkPanel, bpy.types.Panel):
         send = layout.row()
         send.enabled = LINK["state"] != "none"
         send.operator(HARMONIOUS_OT_send_pose.bl_idname, icon="EXPORT")
-        layout.operator(HARMONIOUS_OT_picture.bl_idname, icon="RENDER_STILL")
+        box = layout.box()
+        box.label(text="Picture", icon="IMAGE_DATA")
+        box.prop(context.scene, "harmonious_quality", expand=True)
+        row = box.row(align=True)
+        row.prop(context.scene, "harmonious_lighting", text="")
+        row.operator(HARMONIOUS_OT_light.bl_idname, text="", icon="LIGHT_AREA")
+        box.prop(context.scene, "harmonious_glow")
+        if context.scene.harmonious_quality == "BEST":
+            tip = box.column(align=True)
+            tip.scale_y = 0.8
+            for line in wrap("Best uses Cycles: real light and shadows, slower (up to a few minutes on a weaker PC).", 40):
+                tip.label(text=line)
+        box.operator(HARMONIOUS_OT_picture.bl_idname, icon="RENDER_STILL")
 
 
 class HARMONIOUS_PT_support(LiveLinkPanel, bpy.types.Panel):
@@ -1643,7 +1836,7 @@ _KEYMAPS = []
 
 CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_OT_pick_part, HARMONIOUS_OT_show_bones, HARMONIOUS_OT_pose, HARMONIOUS_OT_pose_reset,
            HARMONIOUS_OT_pose_save, HARMONIOUS_OT_poses_folder, HARMONIOUS_OT_hold_tool, HARMONIOUS_OT_drop_tool, HARMONIOUS_OT_send_pose, HARMONIOUS_OT_picture,
-           HARMONIOUS_OT_body_part, HARMONIOUS_OT_body_parts_clear, HARMONIOUS_OT_pose_mode,
+           HARMONIOUS_OT_body_part, HARMONIOUS_OT_body_parts_clear, HARMONIOUS_OT_pose_mode, HARMONIOUS_OT_light,
            HARMONIOUS_PT_live, HARMONIOUS_PT_build, HARMONIOUS_PT_traveller, HARMONIOUS_PT_poses, HARMONIOUS_PT_parts,
            HARMONIOUS_PT_tool, HARMONIOUS_PT_share, HARMONIOUS_PT_support)
 
@@ -1657,6 +1850,14 @@ def register():
     bpy.types.Scene.harmonious_target_slot = bpy.props.IntProperty(name="Corvette slot", default=-1)
     bpy.types.Scene.harmonious_tool = bpy.props.EnumProperty(name="Multi-tool", items=tool_items,
         description="One of the multi-tools in the save open in the editor")
+    bpy.types.Scene.harmonious_quality = bpy.props.EnumProperty(name="Quality", default="QUICK", items=(
+        ("QUICK", "Quick", "EEVEE: a picture in seconds"),
+        ("BEST", "Best (Cycles)", "Cycles: real bouncing light, soft shadows and reflections; slower")),
+        description="How the picture is rendered")
+    bpy.types.Scene.harmonious_lighting = bpy.props.EnumProperty(name="Lighting", items=LIGHTINGS, default="STUDIO",
+        description="Lights placed round your traveller when the picture is saved (or now, with the light button)")
+    bpy.types.Scene.harmonious_glow = bpy.props.BoolProperty(name="Lenses and screens glow", default=True, update=glow_changed,
+        description="The game's lenses, screens and visor give off light (in Cycles they light what's near them)")
     bpy.types.Scene.harmonious_pose = bpy.props.EnumProperty(name="Pose", items=pose_items,
         description="A ready-made pose, or one saved in your Poses folder")
     bpy.types.Object.harmonious_keep_shape = bpy.props.BoolProperty(
@@ -1697,6 +1898,9 @@ def unregister():
     del bpy.types.Scene.harmonious_target_name
     del bpy.types.Object.harmonious_keep_shape
     del bpy.types.Scene.harmonious_pose
+    del bpy.types.Scene.harmonious_quality
+    del bpy.types.Scene.harmonious_lighting
+    del bpy.types.Scene.harmonious_glow
     del bpy.types.Scene.harmonious_tool
     for cls in reversed(CLASSES):
         bpy.utils.unregister_class(cls)
