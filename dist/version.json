@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.11.1540",
+  "version": "2026.11.11.1732",
   "date": "2026-11-11",
-  "size": 13696512,
-  "sha256": "db0feeca8f1a24177fa77544f05887abc4433a0b0bd406f28b5bca11e7c218a5",
-  "notes": "Please install the LiveLink add-on again (version 1.10.0): the Picture and 3D panel has Quality (Quick, or Best with Cycles for real light, soft shadows and reflections), ready-made Lighting (Studio, Hero, Sunset, Space, or keep your own lights) and Lenses and screens glow\nTraveller page: Lighting for 3D (Studio, Hero, Sunset, Space) in the Background box, and glowing lenses and screens from Blender glow on the picture too",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.11.1540/HarmoniousSaveEditor.exe",
+  "size": 13699072,
+  "sha256": "babd9b2a0c3b4abbbc3c41ff00cca616fb9d3ef5a0de7f91810adad5c9b7ad7b",
+  "notes": "Please install the LiveLink add-on again (version 1.11.0): the Picture box lists your lights with Power and Colour; clicking one leaves Pose mode and selects it, so G moves it and R turns it",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.11.1732/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

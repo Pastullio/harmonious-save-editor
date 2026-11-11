@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 10, 0),
+    "version": (1, 11, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -1589,6 +1589,35 @@ class HARMONIOUS_OT_light(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class HARMONIOUS_OT_select_light(bpy.types.Operator):
+    bl_idname = "harmonious.select_light"
+    bl_label = "Select this light"
+    bl_description = "Leave Pose mode and select this light, so G moves it and R turns it"
+    bl_options = {"REGISTER", "UNDO"}
+    name: bpy.props.StringProperty()
+
+    def execute(self, context):
+        o = bpy.data.objects.get(self.name)
+        if o is None:
+            return {"CANCELLED"}
+        if context.mode != "OBJECT":
+            bpy.ops.object.mode_set(mode="OBJECT")
+        for x in context.selected_objects:
+            x.select_set(False)
+        o.hide_set(False)
+        o.select_set(True)
+        context.view_layer.objects.active = o
+        self.report({"INFO"}, "%s selected: G moves it, R turns it (over the 3D view)" % o.name)
+        return {"FINISHED"}
+
+
+def scene_lights(scene):
+    """The Harmonious lights first, then any others in the scene."""
+    coll = bpy.data.collections.get("Harmonious lights")
+    ours = [o for o in coll.objects if o.type == "LIGHT"] if coll is not None else []
+    return ours + [o for o in scene.objects if o.type == "LIGHT" and o not in ours]
+
+
 def glow_changed(self, context):
     arm = find_traveller()
     if arm is not None:
@@ -1791,6 +1820,22 @@ class HARMONIOUS_PT_share(LiveLinkPanel, bpy.types.Panel):
         row.prop(context.scene, "harmonious_lighting", text="")
         row.operator(HARMONIOUS_OT_light.bl_idname, text="", icon="LIGHT_AREA")
         box.prop(context.scene, "harmonious_glow")
+        lights = scene_lights(context.scene)
+        if lights:
+            lb = box.box()
+            lb.label(text="Lights (click one to move it with G, turn it with R)", icon="LIGHT")
+            for o in lights:
+                col = lb.column(align=True)
+                row = col.row(align=True)
+                row.operator(HARMONIOUS_OT_select_light.bl_idname, text=o.name, icon="RESTRICT_SELECT_OFF", depress=o.select_get() and context.mode == "OBJECT").name = o.name
+                row = col.row(align=True)
+                row.prop(o.data, "energy", text="Power")
+                row.prop(o.data, "color", text="")
+            if context.scene.harmonious_lighting != "KEEP":
+                tip = lb.column(align=True)
+                tip.scale_y = 0.8
+                for line in wrap("After changing them, set Lighting to Keep my lights so they stay as you left them.", 40):
+                    tip.label(text=line)
         if context.scene.harmonious_quality == "BEST":
             tip = box.column(align=True)
             tip.scale_y = 0.8
@@ -1836,7 +1881,7 @@ _KEYMAPS = []
 
 CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_OT_pick_part, HARMONIOUS_OT_show_bones, HARMONIOUS_OT_pose, HARMONIOUS_OT_pose_reset,
            HARMONIOUS_OT_pose_save, HARMONIOUS_OT_poses_folder, HARMONIOUS_OT_hold_tool, HARMONIOUS_OT_drop_tool, HARMONIOUS_OT_send_pose, HARMONIOUS_OT_picture,
-           HARMONIOUS_OT_body_part, HARMONIOUS_OT_body_parts_clear, HARMONIOUS_OT_pose_mode, HARMONIOUS_OT_light,
+           HARMONIOUS_OT_body_part, HARMONIOUS_OT_body_parts_clear, HARMONIOUS_OT_pose_mode, HARMONIOUS_OT_light, HARMONIOUS_OT_select_light,
            HARMONIOUS_PT_live, HARMONIOUS_PT_build, HARMONIOUS_PT_traveller, HARMONIOUS_PT_poses, HARMONIOUS_PT_parts,
            HARMONIOUS_PT_tool, HARMONIOUS_PT_share, HARMONIOUS_PT_support)
 

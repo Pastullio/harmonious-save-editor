@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.11.1732",
+  "date": "2026-11-11",
+  "notes": [
+   "Please install the LiveLink add-on again (version 1.11.0): the Picture box lists your lights with Power and Colour; clicking one leaves Pose mode and selects it, so G moves it and R turns it"
+  ]
+ },
+ {
   "version": "2026.11.11.1540",
   "date": "2026-11-11",
   "notes": [
