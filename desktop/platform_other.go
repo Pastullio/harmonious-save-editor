@@ -105,3 +105,14 @@ func pickFolder(title string) (string, error) {
 func nativeWindow(url string) bool { return false }
 func focusNativeWindow() bool      { return false }
 func allowFocusSteal()             {}
+
+// openBrowser opens a web page in the default browser (HSE_OPEN_LOG: tests write the address there instead)
+func openBrowser(url string) error {
+	if f := os.Getenv("HSE_OPEN_LOG"); f != "" {
+		return os.WriteFile(f, []byte(url), 0o644)
+	}
+	if runtime.GOOS == "darwin" {
+		return exec.Command("open", url).Start()
+	}
+	return exec.Command("xdg-open", url).Start()
+}

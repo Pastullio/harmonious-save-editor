@@ -1,5 +1,17 @@
 [
  {
+  "version": "2026.11.11.1527",
+  "date": "2026-11-11",
+  "notes": [
+   "Please install the LiveLink add-on again (version 1.9.0): each part of LiveLink is now its own panel you can open and close (Builds, Your traveller, Poses, Body parts, Multi-tool, Picture and 3D), and Your traveller has Pose the traveller / Done posing, so Base Builder's tools come back when you finish posing",
+   "Traveller page: a new layout with boxes you open and close: Size (with Custom width and height), Traveller, Ship, Multi-tool, Background, Text and Portal glyphs",
+   "Traveller page: put a multi-tool on the picture, import your own image for the traveller or ship, remove an image's background, and choose which layer sits in front",
+   "Traveller page: drag with the middle mouse button to turn a 3D pose, ship or multi-tool (Shift and the middle button moves it, as in Blender)",
+   "Traveller page: new space backgrounds (nebula, ringed planet, shooting stars, galaxy), plain colours with presets, fonts for your name, and a logo",
+   "Traveller page: pictures carry a small watermark in the corner; patrons can take it off by signing in with Patreon"
+  ]
+ },
+ {
   "version": "2026.11.11.1412",
   "date": "2026-11-11",
   "notes": [

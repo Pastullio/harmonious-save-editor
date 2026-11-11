@@ -1,0 +1,7 @@
+# Harmonious Save Editor's Patreon check (see README.md). Netlify: base directory service/patreon.
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"

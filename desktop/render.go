@@ -34,12 +34,13 @@ type renderSettings struct {
 	Charon      string   `json:"charon"` // folder that contains the charon_forge package
 	Size        int      `json:"size"`
 	Samples     int      `json:"samples"`
-	Shots       string   `json:"shots"`                 // optional folder of screenshots to pick covers from
-	ItemDB      string   `json:"itemdb,omitempty"`      // NMSSaveEditor.jar for item names and icons
-	Game        string   `json:"game,omitempty"`        // No Man's Sky folder, when Steam can't find it
-	Ships       string   `json:"ships,omitempty"`       // ship library folder, when not the default in Documents
-	ShipFolders []string `json:"shipFolders,omitempty"` // folders the owner already keeps ships in (read only)
-	AutoRender  *bool    `json:"autoRender,omitempty"`  // render corvettes without a cover on their own (default on)
+	Shots       string   `json:"shots"`                    // optional folder of screenshots to pick covers from
+	ItemDB      string   `json:"itemdb,omitempty"`         // NMSSaveEditor.jar for item names and icons
+	Game        string   `json:"game,omitempty"`           // No Man's Sky folder, when Steam can't find it
+	Ships       string   `json:"ships,omitempty"`          // ship library folder, when not the default in Documents
+	ShipFolders []string `json:"shipFolders,omitempty"`    // folders the owner already keeps ships in (read only)
+	AutoRender  *bool    `json:"autoRender,omitempty"`     // render corvettes without a cover on their own (default on)
+	Patreon     string   `json:"patreonService,omitempty"` // where the Patreon check runs, when not the default
 }
 
 type renderJob struct {

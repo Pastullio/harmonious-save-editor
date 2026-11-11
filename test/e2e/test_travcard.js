@@ -52,6 +52,16 @@ im.save(${JSON.stringify(file)})`]);
   ok('the card starts portrait 1080 × 1350 with the name from the save', await p.evaluate(() => { const c = $('#tcCanvas'); return c.width === 1080 && c.height === 1350 && TC.state.name === travellerName(); }));
   ok('…and the glyphs of where you are now', await p.evaluate(() => TC.state.place === 'here' && TC.hits.some((h) => h.id === 'glyphs')));
   ok('the page has the add-on button', !!(await p.$('#tcSide .addon-btn')));
+  // the options sit in boxes that open and close: Size and Traveller open at first
+  const boxes = await p.$$eval('#tcSide details.tc-box', (d) => d.map((x) => x.dataset.box + (x.open ? '+' : '')));
+  ok('the options are in boxes: Size, Traveller, Ship, Multi-tool, Background, Text, Portal glyphs', boxes.join() === 'size+,trav+,ship,tool,bg,text,glyphs');
+  await p.click('details[data-box="ship"] > summary'); await p.waitForTimeout(100);
+  ok('…a box opens with a click and is remembered', await p.evaluate(() => $('details[data-box="ship"]').open && TC.state.open.ship));
+  await p.click('details[data-box="ship"] > summary'); await p.waitForTimeout(100);
+  const openAll = () => p.evaluate(() => { for (const d of document.querySelectorAll('#tcSide details.tc-box')) if (!d.open) d.querySelector('summary').click(); });
+  await openAll(); await p.waitForTimeout(100);
+  ok('there is no Look again (new poses arrive by themselves)', !(await p.$('#tcRefresh')) && !/Look again/.test(await p.textContent('#tcSide')));
+  ok('the corner credit is gone and the watermark sits bottom right', await p.evaluate(() => { const c = $('#tcCanvas'), x = c.getContext('2d'), d = x.getImageData(c.width - 260, c.height - 60, 230, 40).data, t = x.getImageData(c.width - 300, 20, 280, 40).data; const bright = (a) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (a[i] > 140 && a[i + 1] > 140 && a[i + 2] > 140) n++; return n; }; return bright(d) > 30 && bright(t) < 8; }));
   // pick the other picture
   await p.selectOption('#tcPose', 'Pastullio pose 2026-11-10 120000.png'); await p.waitForTimeout(300);
   const px = await p.evaluate(() => { const h = TC.hits.find((x) => x.id === 'trav'), c = $('#tcCanvas'), d = c.getContext('2d').getImageData(Math.round(h.x + h.w / 2), Math.round(h.y + h.h * .5), 1, 1).data; return [...d]; });
@@ -70,14 +80,30 @@ im.save(${JSON.stringify(file)})`]);
   await p.fill('#tcTitle', 'Traveller of the Atlas'); await p.fill('#tcCaption', 'Hello from Euclid'); await p.waitForTimeout(200);
   await p.click('[data-size="wide"]'); await p.waitForTimeout(300);
   ok('Wide makes it 1920 × 1080', await p.evaluate(() => { const c = $('#tcCanvas'); return c.width === 1920 && c.height === 1080; }));
-  await p.selectOption('#tcBg', 'colour'); await p.waitForTimeout(200);
-  await p.evaluate(() => { const c = $('#tcC1'); c.value = '#402060'; c.dispatchEvent(new Event('input')); }); await p.waitForTimeout(300);
+  await p.click('[data-size="custom"]'); await p.waitForTimeout(200);
+  await p.fill('#tcW', '1200'); await p.$eval('#tcW', (x) => x.dispatchEvent(new Event('change'))); await p.fill('#tcH', '700'); await p.$eval('#tcH', (x) => x.dispatchEvent(new Event('change'))); await p.waitForTimeout(300);
+  ok('Custom takes a width and height', await p.evaluate(() => { const c = $('#tcCanvas'); return c.width === 1200 && c.height === 700; }));
+  await p.click('[data-size="wide"]'); await p.waitForTimeout(300);
+  await p.click('[data-bgk="colour"]'); await p.waitForTimeout(200);
+  ok('Plain colour has presets and a colour wheel', (await p.$$('.tc-sw')).length >= 8 && !!(await p.$('.tc-wheel input[type=color]')));
+  await p.evaluate(() => { const c = $('#tcSolid'); c.value = '#402060'; c.dispatchEvent(new Event('input')); }); await p.waitForTimeout(300);
   const corner = await p.evaluate(() => [...$('#tcCanvas').getContext('2d').getImageData(5, 5, 1, 1).data]);
   ok('one colour paints the background', corner[0] === 0x40 && corner[1] === 0x20 && corner[2] === 0x60);
-  await p.selectOption('#tcBg', 'stars'); await p.waitForTimeout(200);
+  await p.click('.tc-sw[data-sw="#1d4f5e"]'); await p.waitForTimeout(300);
+  ok('…a preset too', await p.evaluate(() => { const d = $('#tcCanvas').getContext('2d').getImageData(5, 5, 1, 1).data; return d[0] === 0x1d && d[1] === 0x4f && d[2] === 0x5e; }));
+  await p.click('[data-bgk="space"]'); await p.waitForTimeout(200);
+  ok('Space offers a starfield and four more scenes, each with a little picture', (await p.$$('.tc-space canvas')).length === 5);
+  const sky = () => p.evaluate(() => { const c = $('#tcCanvas'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let s = 0; for (let i = 0; i < d.length; i += 4 * 97) s += d[i] + d[i + 1] * 3 + d[i + 2] * 7; return s; });
+  const skies = {}; for (const k of ['stars', 'nebula', 'planet', 'meteors', 'galaxy']) { await p.click(`[data-space="${k}"]`); await p.waitForTimeout(250); skies[k] = await sky(); await p.screenshot({ path: SP + `/shots/traveller-bg-${k}.png` }); }
+  ok('…and each looks different', new Set(Object.values(skies)).size === 5);
+  await p.click('[data-space="stars"]'); await p.waitForTimeout(200);
+  await p.selectOption('#tcFont', 'georgia'); await p.waitForTimeout(200);
+  ok('the name can have another font', await p.evaluate(() => TC.state.font === 'georgia'));
+  await p.selectOption('#tcFont', 'jost');
   // a ship
   const opt = await p.$$eval('#tcShip option', (o) => o.map((x) => x.value).filter(Boolean));
-  ok('the ship list has your ships and multi-tools', opt.length >= 3);
+  const topt = await p.$$eval('#tcTool option', (o) => o.map((x) => x.value).filter(Boolean));
+  ok('the ship list has your ships, and Multi-tool your multi-tools', opt.length >= 2 && topt.length >= 1 && !opt.some((k) => topt.includes(k)));
   await p.screenshot({ path: SP + '/shots/traveller-card.png' });
   // a pose saved in Blender while the page is open lands on the card by itself
   mk(path.join(exp, 'Pastullio pose 2026-11-10 150000.png'), '(60, 200, 90, 255)');
@@ -104,8 +130,17 @@ im.save(${JSON.stringify(file)})`]);
     const hb = await p.$eval('#tcCanvas', (c) => { const r = c.getBoundingClientRect(), h = TC.hits.find((x) => x.id === 'trav'), k = r.width / c.width; return { x: r.left + (h.x + h.w / 2) * k, y: r.top + (h.y + h.h / 2) * k }; });
     await p.keyboard.down('Shift'); await p.mouse.move(hb.x, hb.y); await p.mouse.down(); await p.mouse.move(hb.x - 60, hb.y + 30, { steps: 4 }); await p.mouse.up(); await p.keyboard.up('Shift'); await p.waitForTimeout(300);
     ok('Shift-dragging turns and tilts it instead of moving it', await p.evaluate(() => TC.state.layers.trav.yaw !== 90 && TC.state.layers.trav.pitch !== 0 && Math.abs(TC.state.layers.trav.x - .5) < .001));
-    await p.click('[data-front="trav"]'); ok('Face the front puts it back', await p.evaluate(() => TC.state.layers.trav.yaw === 0 && TC.state.layers.trav.pitch === 0));
+    await p.click('[data-front="trav"]'); ok('Reset turns it to face the front', await p.evaluate(() => TC.state.layers.trav.yaw === 0 && TC.state.layers.trav.pitch === 0));
+    const hb2 = await p.$eval('#tcCanvas', (c) => { const r = c.getBoundingClientRect(), h = TC.hits.find((x) => x.id === 'trav'), k = r.width / c.width; return { x: r.left + (h.x + h.w / 2) * k, y: r.top + (h.y + h.h / 2) * k }; });
+    const x0 = await p.evaluate(() => TC.state.layers.trav.x);
+    await p.mouse.move(hb2.x, hb2.y); await p.mouse.down({ button: 'middle' }); await p.mouse.move(hb2.x + 70, hb2.y - 20, { steps: 4 }); await p.mouse.up({ button: 'middle' }); await p.waitForTimeout(300);
+    ok('dragging with the middle button turns it, as in Blender', await p.evaluate((x0) => TC.state.layers.trav.yaw !== 0 && Math.abs(TC.state.layers.trav.x - x0) < .001, x0));
+    await p.keyboard.down('Shift'); await p.mouse.move(hb2.x, hb2.y); await p.mouse.down({ button: 'middle' }); await p.mouse.move(hb2.x + 80, hb2.y, { steps: 4 }); await p.mouse.up({ button: 'middle' }); await p.keyboard.up('Shift'); await p.waitForTimeout(300);
+    ok('…and Shift with the middle button moves it', await p.evaluate((x0) => TC.state.layers.trav.x > x0 + .02, x0));
+    await p.evaluate(() => { TC.state.layers.trav.x = .5; TC.state.layers.trav.yaw = 0; TC.state.layers.trav.pitch = 0; tcSave(); });
     await p.screenshot({ path: SP + '/shots/traveller-card-3d.png' });
+    await p.evaluate(() => { for (const d of document.querySelectorAll('#tcSide details.tc-box')) if (d.open !== ['trav', 'bg'].includes(d.dataset.box)) d.querySelector('summary').click(); document.querySelectorAll('main, .main, #main, html').forEach((x) => x.scrollTop = 0); });
+    await p.waitForTimeout(400); await p.screenshot({ path: SP + '/shots/traveller-guide.png' }); await openAll(); await p.waitForTimeout(200);
   }
   // a ship with a model turns too
   const withModel = await p.evaluate(async () => { const it = coverItems().find((x) => x.kind === 'ship' && x.scene); if (!it) return null; const sel = $('#tcShip'); sel.value = it.key; sel.dispatchEvent(new Event('change')); return it.key; });
@@ -128,11 +163,40 @@ im.save(${JSON.stringify(file)})`]);
       } else console.log('(custom pictures not reachable from the test)');
     } else console.log('(no ship model in the test files)');
   }
-  if (await p.$('#tcFront')) {
+  if (await p.$('[data-place="ship"]')) {
     const order = () => p.evaluate(() => TC.hits.map((h) => h.id).join(','));
-    const o1 = await order(); await p.click('#tcFront'); await p.waitForTimeout(300); const o2 = await order();
-    ok('the ship can go in front of the traveller', o1.indexOf('ship') < o1.indexOf('trav') && o2.indexOf('ship') > o2.indexOf('trav'));
+    const o1 = await order(); await p.selectOption('[data-place="ship"]', 'front'); await p.waitForTimeout(300); const o2 = await order();
+    ok('Placement puts the ship in front of the traveller', o1.indexOf('ship') < o1.indexOf('trav') && o2.indexOf('ship') > o2.indexOf('trav') && /in front/.test(await p.textContent('details[data-box="ship"] .field > span')));
+    await p.selectOption('[data-place="ship"]', 'back'); await p.waitForTimeout(300);
+    ok('…and behind everything again', (await order()).startsWith('ship'));
   }
+  // the multi-tool, as the game's model
+  if (BANKS && topt.length) {
+    await p.selectOption('#tcTool', topt[0]); await p.waitForFunction(() => TC.toolGlb || TC.toolModel, null, { timeout: 30000 }).catch(() => {});
+    ok('a multi-tool goes on the picture as its model, to turn', await p.evaluate(() => TC.hits.some((h) => h.id === 'tool') && !!(TC.toolGlb || TC.toolModel)) && !!(await p.$('.tc-turn[data-turn="tool"]')));
+    ok('…with no Import image (only the traveller and ship have that)', !(await p.$('[data-imp="tool"]')) && !!(await p.$('[data-imp="ship"]')) && !!(await p.$('[data-imp="trav"]')));
+    await p.click('[data-del="tool"]'); await p.waitForTimeout(200);
+    ok('…and Delete takes it off', await p.evaluate(() => !TC.state.tool && !TC.hits.some((h) => h.id === 'tool')));
+  }
+  // a logo and an imported picture, with Remove background
+  const imgFile = path.join(T, 'logo.png');
+  execFileSync('python3', ['-c', `from PIL import Image, ImageDraw
+im = Image.new('RGB', (300, 200), (250, 250, 250)); d = ImageDraw.Draw(im); d.ellipse((90, 40, 210, 160), fill=(200, 30, 60)); im.save(${JSON.stringify(imgFile)})`]);
+  const pickFile = async (sel) => { const [fc] = await Promise.all([p.waitForEvent('filechooser'), p.click(sel)]); await fc.setFiles(imgFile); await p.waitForTimeout(500); };
+  await pickFile('[data-imp="logo"]');
+  ok('Text has a Logo you import', await p.evaluate(() => !!TC.img.logo && TC.hits.some((h) => h.id === 'logo')));
+  const logoCorner = () => p.evaluate(() => { const h = TC.hits.find((x) => x.id === 'logo'), d = $('#tcCanvas').getContext('2d').getImageData(Math.round(h.x + 2), Math.round(h.y + 2), 1, 1).data; return [...d]; });
+  const lc1 = await logoCorner(); await p.check('[data-cut="logo"]'); await p.waitForTimeout(400); const lc2 = await logoCorner();
+  ok('Remove background takes the plain background off it', lc1[0] > 240 && lc1[1] > 240 && !(lc2[0] > 240 && lc2[1] > 240 && lc2[2] > 240) && await p.evaluate(() => { const h = TC.hits.find((x) => x.id === 'logo'); return h.w / h.h < 1.2; }));
+  await p.click('[data-del="logo"]'); await p.waitForTimeout(200);
+  ok('…and the logo can be deleted', await p.evaluate(() => !TC.img.logo && !TC.hits.some((h) => h.id === 'logo')));
+  await pickFile('[data-imp="ship"]');
+  ok('Ship takes an imported image too', await p.evaluate(() => !!TC.imp.ship && TC.hits.some((h) => h.id === 'ship') && $('#tcShip').value === '@imp') && !!(await p.$('[data-cut="ship"]')));
+  await p.click('[data-del="ship"]'); await p.waitForTimeout(200);
+  // the watermark: only patrons take it off; others are asked to sign in with Patreon
+  await p.uncheck('#tcWm').catch(() => {}); await p.waitForSelector('#dlg[open]', { timeout: 3000 }).catch(() => {});
+  ok('unticking Watermark asks to sign in with Patreon (not a patron)', /Sign in with Patreon/.test(await p.textContent('#dlg').catch(() => '')) && await p.evaluate(() => $('#tcWm').checked));
+  await p.click('#dlgX').catch(() => {});
   // a corvette with its own picture can still show each angle Blender rendered (renders stood in for here)
   const corv = await p.evaluate(async () => {
     const it = coverItems().find((x) => x.kind === 'corvette'); if (!it) return null;
@@ -168,8 +232,6 @@ im.save(${JSON.stringify(file)})`]);
     await p.click('[data-show="pic"]'); await p.waitForTimeout(400);
     ok('…Your picture goes back to it', await p.evaluate(() => TC.img.ship === TC.shipPic && !$('#tcView')));
   } else console.log('(no corvette in the test save)');
-  // In front of your traveller sits on one line at the left
-  if (await p.$('#tcFront')) ok('"In front of your traveller" is on one line at the left', await p.evaluate(() => { const l = $('#tcFront').closest('label'), r = l.getBoundingClientRect(), row = l.parentElement.getBoundingClientRect(); return r.height < 30 && r.left - row.left < 20; }));
   // removing things: select, then Remove or Delete
   await p.evaluate(() => { TC.sel = 'glyphs'; }); await p.selectOption('#tcPlace', { index: 1 }).catch(() => {}); await p.waitForTimeout(300);
   const gl = await p.$eval('#tcCanvas', (c) => { const r = c.getBoundingClientRect(), h = TC.hits.find((x) => x.id === 'glyphs'), k = r.width / c.width; return h ? { x: r.left + (h.x + h.w / 2) * k, y: r.top + (h.y + h.h / 2) * k } : null; });
@@ -189,7 +251,7 @@ im.save(${JSON.stringify(file)})`]);
   await p.selectOption('#tcShip', ''); await p.waitForTimeout(200);
   await p.selectOption('#tcPose', 'Pastullio pose 2026-11-10 120000.png'); await p.waitForTimeout(300);
   // it remembers the layout
-  await p.click('nav button[data-s="exosuit"]'); await p.click('nav button[data-s="traveller"]'); await p.waitForSelector('#tcCanvas'); await p.waitForTimeout(500);
+  await p.click('nav button[data-s="exosuit"]'); await p.click('nav button[data-s="traveller"]'); await p.waitForSelector('#tcCanvas'); await p.waitForTimeout(500); await openAll();
   ok('it remembers the layout and words', await p.evaluate(() => TC.state.size === 'wide' && TC.state.title === 'Traveller of the Atlas' && JSON.parse(localStorage.getItem('hse-trav-card')).caption === 'Hello from Euclid'));
   // save
   await p.click('#tcSaveBtn');

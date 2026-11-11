@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 8, 0),
+    "version": (1, 9, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -414,7 +414,7 @@ def draw_logo(context, layout):
         return
     region = getattr(context, "region", None)
     width = region.width if region is not None else 300
-    unit = 20 * context.preferences.system.ui_scale
+    unit = 20 * (context.preferences.system.ui_scale or 1.0)
     scale = max(1.5, (width - 24) / len(icons) / unit)
     row = layout.row(align=True)
     row.alignment = "CENTER"
@@ -428,6 +428,7 @@ class HARMONIOUS_PT_live(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "LiveLink"
+    bl_order = 0
 
     def draw(self, context):
         layout = self.layout
@@ -447,6 +448,28 @@ class HARMONIOUS_PT_live(bpy.types.Panel):
             link.label(text="Turn it on in Shipwright or on Bases")
         else:
             link.label(text="Harmonious Save Editor isn't running", icon="ERROR")
+
+
+# Each part of LiveLink is a panel of its own in the sidebar's LiveLink tab, opened and closed on its own header
+# (owner, 2026-11-11, like Base Builder Extended's panels).
+class LiveLinkPanel:
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "LiveLink"
+    header_icon = "NONE"
+
+    def draw_header(self, context):
+        self.layout.label(icon=self.header_icon)
+
+
+class HARMONIOUS_PT_build(LiveLinkPanel, bpy.types.Panel):
+    bl_label = "Builds"
+    bl_idname = "HARMONIOUS_PT_build"
+    bl_order = 1
+    header_icon = "MOD_BUILD"
+
+    def draw(self, context):
+        layout = self.layout
         scene = context.scene
         base = base_info(scene)
         if base is not None:
@@ -1428,13 +1451,42 @@ class HARMONIOUS_OT_picture(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class HARMONIOUS_PT_traveller(bpy.types.Panel):
+class HARMONIOUS_OT_pose_mode(bpy.types.Operator):
+    bl_idname = "harmonious.pose_mode"
+    bl_label = "Pose the traveller"
+    bl_description = "Pose mode on the traveller, or back to Object mode, where other add-ons (Base Builder, Charon Forge) show their tools again"
+    bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context):
+        return find_traveller() is not None
+
+    def execute(self, context):
+        arm = find_traveller()
+        if context.mode == "POSE":
+            bpy.ops.object.mode_set(mode="OBJECT")
+            return {"FINISHED"}
+        if context.mode != "OBJECT":
+            bpy.ops.object.mode_set(mode="OBJECT")
+        for o in context.selected_objects:
+            o.select_set(False)
+        arm.hide_set(False)
+        arm.select_set(True)
+        context.view_layer.objects.active = arm
+        bpy.ops.object.mode_set(mode="POSE")
+        return {"FINISHED"}
+
+
+def has_traveller():
+    arm = find_traveller()
+    return arm is not None and bool(arm.get("harmonious_traveller"))
+
+
+class HARMONIOUS_PT_traveller(LiveLinkPanel, bpy.types.Panel):
     bl_label = "Your traveller"
     bl_idname = "HARMONIOUS_PT_traveller"
-    bl_parent_id = "HARMONIOUS_PT_live"
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-    bl_category = "LiveLink"
+    bl_order = 2
+    header_icon = "ARMATURE_DATA"
 
     def draw(self, context):
         layout = self.layout
@@ -1443,55 +1495,61 @@ class HARMONIOUS_PT_traveller(bpy.types.Panel):
         if LINK["state"] == "none":
             col.label(text="Open Harmonious Save Editor and a save")
         elif LINK.get("traveller"):
-            col.label(text="In the editor: " + LINK["traveller"], icon="ARMATURE_DATA")
+            col.label(text="In the editor: " + LINK["traveller"], icon="USER")
         else:
             col.label(text="Open a save in the editor")
         row = layout.row()
         row.enabled = bool(LINK.get("traveller"))
         row.operator(HARMONIOUS_OT_traveller.bl_idname, icon="IMPORT")
+        if not has_traveller():
+            return
         arm = find_traveller()
-        if arm is not None and arm.get("harmonious_traveller"):
-            tip = layout.column(align=True)
-            tip.scale_y = 0.8
-            for line in wrap("In Pose mode, click a part of the body: its bone shows. R turns it, Shift+click adds another part, a click on empty space hides them.", 40):
-                tip.label(text=line)
-            box = layout.box()
-            box.label(text="Poses", icon="ARMATURE_DATA")
-            box.prop(context.scene, "harmonious_pose", text="")
-            row = box.row(align=True)
-            row.operator(HARMONIOUS_OT_pose.bl_idname, icon="POSE_HLT")
-            row.operator(HARMONIOUS_OT_pose_reset.bl_idname, text="Start pose", icon="LOOP_BACK")
-            row = box.row(align=True)
-            row.operator(HARMONIOUS_OT_pose_save.bl_idname, icon="FILE_TICK")
-            row.operator(HARMONIOUS_OT_poses_folder.bl_idname, text="", icon="FILE_FOLDER")
-            box = layout.box()
-            box.label(text="Multi-tool", icon="TOOL_SETTINGS")
-            box.prop(context.scene, "harmonious_tool", text="")
-            row = box.row(align=True)
-            row.operator(HARMONIOUS_OT_hold_tool.bl_idname, icon="HAND")
-            row.operator(HARMONIOUS_OT_drop_tool.bl_idname, icon="X")
-            layout.prop(arm, "harmonious_keep_shape")
-            shown = not any(is_hidden(arm, b) for b in body_bones(arm))
-            layout.operator(HARMONIOUS_OT_show_bones.bl_idname, text="Hide the sticks" if shown else "Show every stick", icon="HIDE_OFF" if not shown else "HIDE_ON")
-        layout.operator(HARMONIOUS_OT_picture.bl_idname, icon="RENDER_STILL")
-        send = layout.row()
-        send.enabled = LINK["state"] != "none"
-        send.operator(HARMONIOUS_OT_send_pose.bl_idname, icon="EXPORT")
+        posing = context.mode == "POSE"
+        box = layout.box()
+        box.operator(HARMONIOUS_OT_pose_mode.bl_idname, text="Done posing" if posing else "Pose the traveller", icon="OBJECT_DATAMODE" if posing else "POSE_HLT", depress=posing)
+        tip = box.column(align=True)
+        tip.scale_y = 0.8
+        text = ("Click a part of the body: its bone shows. R turns it, Shift+click adds another part, a click on empty space hides them. "
+                "Done posing goes back to Object mode, where other add-ons show their tools again.") if posing else \
+               "Other add-ons, like Base Builder, hide their tools while you pose; they come back when you're done."
+        for line in wrap(text, 40):
+            tip.label(text=line)
+        layout.prop(arm, "harmonious_keep_shape")
+        shown = not any(is_hidden(arm, b) for b in body_bones(arm))
+        layout.operator(HARMONIOUS_OT_show_bones.bl_idname, text="Hide the sticks" if shown else "Show every stick", icon="HIDE_OFF" if not shown else "HIDE_ON")
 
 
-class HARMONIOUS_PT_parts(bpy.types.Panel):
-    bl_label = "Body parts"
-    bl_idname = "HARMONIOUS_PT_parts"
-    bl_parent_id = "HARMONIOUS_PT_traveller"
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-    bl_category = "LiveLink"
-    bl_options = {"DEFAULT_CLOSED"}
+class HARMONIOUS_PT_poses(LiveLinkPanel, bpy.types.Panel):
+    bl_label = "Poses"
+    bl_idname = "HARMONIOUS_PT_poses"
+    bl_order = 3
+    header_icon = "POSE_HLT"
 
     @classmethod
     def poll(cls, context):
-        arm = find_traveller()
-        return arm is not None and bool(arm.get("harmonious_traveller"))
+        return has_traveller()
+
+    def draw(self, context):
+        layout = self.layout
+        layout.prop(context.scene, "harmonious_pose", text="")
+        row = layout.row(align=True)
+        row.operator(HARMONIOUS_OT_pose.bl_idname, icon="POSE_HLT")
+        row.operator(HARMONIOUS_OT_pose_reset.bl_idname, text="Start pose", icon="LOOP_BACK")
+        row = layout.row(align=True)
+        row.operator(HARMONIOUS_OT_pose_save.bl_idname, icon="FILE_TICK")
+        row.operator(HARMONIOUS_OT_poses_folder.bl_idname, text="", icon="FILE_FOLDER")
+
+
+class HARMONIOUS_PT_parts(LiveLinkPanel, bpy.types.Panel):
+    bl_label = "Body parts"
+    bl_idname = "HARMONIOUS_PT_parts"
+    bl_order = 4
+    bl_options = {"DEFAULT_CLOSED"}
+    header_icon = "BONE_DATA"
+
+    @classmethod
+    def poll(cls, context):
+        return has_traveller()
 
     def draw(self, context):
         layout = self.layout
@@ -1508,13 +1566,51 @@ class HARMONIOUS_PT_parts(bpy.types.Panel):
         layout.operator(HARMONIOUS_OT_body_parts_clear.bl_idname, icon="X")
 
 
-class HARMONIOUS_PT_support(bpy.types.Panel):
+class HARMONIOUS_PT_tool(LiveLinkPanel, bpy.types.Panel):
+    bl_label = "Multi-tool"
+    bl_idname = "HARMONIOUS_PT_tool"
+    bl_order = 5
+    header_icon = "TOOL_SETTINGS"
+
+    @classmethod
+    def poll(cls, context):
+        return has_traveller()
+
+    def draw(self, context):
+        layout = self.layout
+        layout.prop(context.scene, "harmonious_tool", text="")
+        row = layout.row(align=True)
+        row.operator(HARMONIOUS_OT_hold_tool.bl_idname, icon="HAND")
+        row.operator(HARMONIOUS_OT_drop_tool.bl_idname, icon="X")
+
+
+class HARMONIOUS_PT_share(LiveLinkPanel, bpy.types.Panel):
+    bl_label = "Picture and 3D"
+    bl_idname = "HARMONIOUS_PT_share"
+    bl_order = 6
+    header_icon = "RENDER_STILL"
+
+    @classmethod
+    def poll(cls, context):
+        return has_traveller()
+
+    def draw(self, context):
+        layout = self.layout
+        tip = layout.column(align=True)
+        tip.scale_y = 0.8
+        for line in wrap("Both go to the editor's Traveller page: the 3D pose turns there, the picture stays as you framed it.", 40):
+            tip.label(text=line)
+        send = layout.row()
+        send.enabled = LINK["state"] != "none"
+        send.operator(HARMONIOUS_OT_send_pose.bl_idname, icon="EXPORT")
+        layout.operator(HARMONIOUS_OT_picture.bl_idname, icon="RENDER_STILL")
+
+
+class HARMONIOUS_PT_support(LiveLinkPanel, bpy.types.Panel):
     bl_label = "Support the creator"
     bl_idname = "HARMONIOUS_PT_support"
-    bl_parent_id = "HARMONIOUS_PT_live"
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "UI"
-    bl_category = "LiveLink"
+    bl_order = 7
+    header_icon = "FUND"
     bl_options = {"DEFAULT_CLOSED"}  # one line until opened (owner, 2026-11-06: open was too in-your-face)
 
     def draw(self, context):
@@ -1547,8 +1643,9 @@ _KEYMAPS = []
 
 CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_OT_pick_part, HARMONIOUS_OT_show_bones, HARMONIOUS_OT_pose, HARMONIOUS_OT_pose_reset,
            HARMONIOUS_OT_pose_save, HARMONIOUS_OT_poses_folder, HARMONIOUS_OT_hold_tool, HARMONIOUS_OT_drop_tool, HARMONIOUS_OT_send_pose, HARMONIOUS_OT_picture,
-           HARMONIOUS_OT_body_part, HARMONIOUS_OT_body_parts_clear,
-           HARMONIOUS_PT_live, HARMONIOUS_PT_traveller, HARMONIOUS_PT_parts, HARMONIOUS_PT_support)
+           HARMONIOUS_OT_body_part, HARMONIOUS_OT_body_parts_clear, HARMONIOUS_OT_pose_mode,
+           HARMONIOUS_PT_live, HARMONIOUS_PT_build, HARMONIOUS_PT_traveller, HARMONIOUS_PT_poses, HARMONIOUS_PT_parts,
+           HARMONIOUS_PT_tool, HARMONIOUS_PT_share, HARMONIOUS_PT_support)
 
 
 def register():

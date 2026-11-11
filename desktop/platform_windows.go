@@ -172,3 +172,12 @@ func fatal(msg string) {
 	box.Call(0, uintptr(unsafe.Pointer(m)), uintptr(unsafe.Pointer(t)), 0x10) // MB_ICONERROR
 	os.Exit(1)
 }
+
+// openBrowser opens a web page in the default browser (HSE_OPEN_LOG: tests write the address there instead)
+func openBrowser(url string) error {
+	if f := os.Getenv("HSE_OPEN_LOG"); f != "" {
+		return os.WriteFile(f, []byte(url), 0o644)
+	}
+	openExternal(url)
+	return nil
+}

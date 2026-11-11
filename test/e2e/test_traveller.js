@@ -144,6 +144,38 @@ bpy.context.scene.harmonious_pose = 'ready:Waving'; bpy.ops.harmonious.pose()
 print('SENDPOSE', bpy.ops.harmonious.send_pose(), bpy.context.mode)
 print('PICTURE', bpy.ops.harmonious.pose_picture())
 print('STATUS', h.STATE['status'])
+# every panel draws (a stand-in layout records the calls), each one its own panel in the LiveLink tab
+class FakeLayout:
+    def __init__(self): self.calls = []
+    def __getattr__(self, name):
+        def f(*a, **k):
+            self.calls.append((name, a, k))
+            return FakeLayout() if name in ('row', 'column', 'box', 'grid_flow', 'split') else _Props()
+        return f
+class _Props:
+    def __setattr__(self, k, v): pass
+import types
+def stand_in(c, lay):
+    class P:
+        def __getattr__(self, n):
+            v = getattr(c, n)
+            return types.MethodType(v, self) if isinstance(v, types.FunctionType) else v
+    o = P(); o.layout = lay; return o
+panels = [c for c in h.CLASSES if issubclass(c, bpy.types.Panel)]
+drawn = []
+for c in panels:
+    if hasattr(c, 'poll') and not c.poll(bpy.context): continue
+    lay = FakeLayout()
+    try:
+        inst = stand_in(c, lay)
+        c.draw(inst, bpy.context)
+        if hasattr(c, 'draw_header'): c.draw_header(inst, bpy.context)
+        drawn.append(c.bl_label)
+    except Exception as e:
+        drawn.append('ERR ' + c.bl_label + ': ' + repr(e))
+m0 = bpy.context.mode; bpy.ops.harmonious.pose_mode(); m1 = bpy.context.mode; bpy.ops.harmonious.pose_mode(); m2 = bpy.context.mode
+print('MODES', m0, m1, m2)
+print('PANELS', '|'.join(drawn), '|parents:' + ','.join(c.bl_label for c in panels if getattr(c, 'bl_parent_id', None)))
 # Body parts: pick several, each turns at its own joint; picking one again lets go of it
 have = [q[0] for q in h.BODY_PARTS if h.part_bones(arm, q)[0]]
 bpy.ops.harmonious.body_parts_clear(); bpy.ops.harmonious.body_part(part='front'); bpy.ops.harmonious.body_part(part='backpack')
@@ -175,7 +207,7 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
     try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 600000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
-    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|Traceback|  File|\w+Error)/.test(l)).join('\n'));
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
@@ -198,6 +230,10 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     const [hpick, hact, hz] = line('HEADPICK').split(' ');
     ok('clicking the head turns it at the neck', hpick === 'head_Top' && hact === 'neck_01_02' && +hz < 1.75);
     ok('…and shows just that stick', /^1 /.test(line('SHOWNAFTER')) && line('SHOWNAFTER').endsWith(got));
+    const pn = line('PANELS').replace(' |parents:', '|parents:');
+    ok('the add-on\'s sections are panels of their own that draw: ' + pn, ['LiveLink', 'Builds', 'Your traveller', 'Poses', 'Body parts', 'Multi-tool', 'Picture and 3D', 'Support the creator'].every((l) => pn.split('|').includes(l)) && !/ERR/.test(pn) && /\|parents:$/.test(pn));
+    const md = line('MODES').split(' ');
+    ok('Pose the traveller / Done posing switch between Pose and Object mode (' + md.join(' ') + ')', md[1] !== md[0] && md[2] === md[0] && md.includes('POSE') && md.includes('OBJECT'));
     const parts = line('PARTS');
     ok('Body parts lists the traveller\'s parts (' + parts.split(' ')[0] + ')', ['head', 'torso', 'r_arm', 'l_leg', 'backpack', 'front', 'whole'].every((k) => parts.split(' ')[0].split(',').includes(k)));
     ok('…several can be picked at once, each turning at its own joint, and picking one again lets go of it only', / True 4 INDIVIDUAL_ORIGINS \[True, False\] 0$/.test(parts) || / True 4 INDIVIDUAL_ORIGINS \[False, True\] 0$/.test(parts), parts);

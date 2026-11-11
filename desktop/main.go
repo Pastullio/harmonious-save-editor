@@ -92,6 +92,7 @@ func main() {
 	}
 	addr := ln.Addr().String()
 	if _, p, err := net.SplitHostPort(addr); err == nil {
+		appPort = p
 		startLive(p)
 	}
 	url := "http://" + addr + "/"
@@ -121,6 +122,9 @@ func main() {
 	mux.HandleFunc("/api/exports/file", handleExportFile)
 	mux.HandleFunc("/api/live/pose", handleLivePose)
 	mux.HandleFunc("/api/live/tool", handleLiveTool)
+	mux.HandleFunc("/api/patron", handlePatron)
+	mux.HandleFunc("/api/patron/signin", handlePatronSignin)
+	mux.HandleFunc("/patron", handlePatronReturn)
 	mux.HandleFunc("/api/read", handleRead)
 	mux.HandleFunc("/api/write", handleWrite)
 	mux.HandleFunc("/api/game-running", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, map[string]bool{"running": gameRunning()}) })

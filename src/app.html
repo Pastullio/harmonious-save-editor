@@ -392,23 +392,47 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .tune-order .to-name { flex: 1; }
 .tune-order .to-acts { display: flex; gap: 4px; }
 .tc-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
-.tc-stagecol { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.tc-selbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 12px; border-radius: 10px; background: var(--well); font-size: 14px; }
+.tc-stagecol { display: flex; flex-direction: column; gap: 8px; min-width: 0; position: sticky; top: 12px; }
+.tc-selbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 12px; border-radius: 10px; background: var(--well); font-size: 14px; flex-wrap: wrap; }
+.tc-selacts { display: flex; align-items: center; gap: 14px; }
+.tc-selbar[hidden] { display: none; }
+.tc-boxin .seg { display: flex; flex-wrap: nowrap; } .tc-boxin .seg button { flex: 1; padding-left: 4px; padding-right: 4px; letter-spacing: .08em; white-space: nowrap; }
+.tc-boxin > .link, .tc-boxin > .addon-btn { align-self: flex-start; }
 .tc-stage canvas:focus { outline: none; }
-.tc-show { margin-top: 6px; }
+.tc-show { margin-top: 2px; }
 .tc-stage { background: var(--well); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: flex; justify-content: center; }
 .tc-stage canvas { max-width: 100%; max-height: calc(100vh - 210px); height: auto; border-radius: 8px; touch-action: none; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
-.tc-side { display: flex; flex-direction: column; gap: 14px; }
-.tc-row { display: flex; flex-direction: column; gap: 6px; }
-.tc-row > .k { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
-.tc-row select, .tc-row input:not([type=color]):not([type=checkbox]):not([type=range]), .tc-row textarea { width: 100%; }
-.tc-row .check { display: flex; align-items: center; gap: 8px; justify-content: flex-start; width: auto; }
-.tc-note { margin: 6px 0 4px; font-size: 13px; color: var(--dim); }
+.tc-side { display: flex; flex-direction: column; gap: 10px; }
+.tc-box { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.tc-box > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 11px 14px; font-size: 12.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink); user-select: none; }
+.tc-box > summary::-webkit-details-marker { display: none; }
+.tc-box > summary::before { content: ''; width: 7px; height: 7px; border-right: 1.6px solid var(--dim); border-bottom: 1.6px solid var(--dim); transform: rotate(-45deg); transition: transform .15s; margin-right: 2px; }
+.tc-box[open] > summary::before { transform: rotate(45deg); }
+.tc-box > summary:hover { background: var(--hover); }
+.tc-box[open] > summary { border-bottom: 1px solid var(--line); }
+.tc-boxin { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; }
+.tc-boxin select, .tc-boxin input:not([type=color]):not([type=checkbox]):not([type=range]), .tc-boxin textarea { width: 100%; }
+.tc-boxin .check { display: flex; align-items: center; gap: 8px; justify-content: flex-start; width: auto; }
+.tc-boxin .field > span .dim { text-transform: none; letter-spacing: 0; }
+.tc-objacts { display: flex; flex-wrap: wrap; gap: 6px; }
+.tc-sub { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+.tc-sub .k2 { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+.tc-note { margin: 0; font-size: 13px; color: var(--dim); }
 .tc-note:empty { display: none; }
-.tc-row .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tc-wh { display: flex; align-items: end; gap: 8px; } .tc-wh .field { flex: 1; } .tc-wh .x { padding-bottom: 8px; color: var(--dim); }
+.tc-spaces { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.tc-space { display: flex; flex-direction: column; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 9px; background: none; cursor: pointer; color: var(--ink); font: inherit; font-size: 12px; }
+.tc-space canvas { width: 100%; aspect-ratio: 3 / 2; border-radius: 6px; display: block; }
+.tc-space.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.tc-swatches { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tc-sw { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line-2); cursor: pointer; padding: 0; }
+.tc-sw.on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+.tc-wheel { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; position: relative; background: conic-gradient(red, #ff0, lime, cyan, blue, #f0f, red); border: 1px solid var(--line-2); cursor: pointer; }
+.tc-wheel input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
 .tc-cols { display: flex; gap: 12px; align-items: center; } .tc-cols label { display: flex; gap: 6px; align-items: center; }
 .tc-cols input[type=color] { width: 40px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; }
-.tc-acts { display: flex; flex-wrap: wrap; gap: 4px 14px; } .tc-acts.main { gap: 8px; }
+.tc-acts { display: flex; flex-wrap: wrap; gap: 4px 14px; } .tc-acts.main { gap: 8px; align-items: center; padding: 4px 2px; }
+.tc-acts.main .tc-wm { flex-basis: 100%; }
 @media (max-width: 980px) { .tc-wrap { grid-template-columns: 1fr; } }
 .trav-top { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 16px; align-items: start; margin-bottom: 16px; }
 .trav-info h3 { margin-top: 0; }
@@ -2128,20 +2152,43 @@ const GLTEX = (() => {
 // (starfield, colours, a screenshot or any image), a ship or corvette, portal glyphs and your name, laid out by
 // dragging on the picture and saved as a PNG.
 const TC_SIZES = { portrait: [1080, 1350, 'Portrait'], square: [1080, 1080, 'Square'], wide: [1920, 1080, 'Wide'] };
-const TC_DEFAULT = () => ({ size: 'portrait', bg: 'stars', c1: '#07131a', c2: '#1d4f5e', pose: '', ship: '', place: 'here', name: travellerName(), title: '', caption: '', credit: true,
-  layers: { trav: { x: .5, y: .55, s: .7, yaw: 0, pitch: 0 }, ship: { x: .76, y: .3, s: .3, yaw: -55, pitch: 20 }, glyphs: { x: .5, y: .93, s: .7 }, text: { x: .07, y: .07, s: 1 } } });
-const TC = { state: null, img: { trav: null, bg: null, ship: null }, m3d: null, shipModel: null, shipGlb: null, shipPic: null, shipItem: null, shipViews: [], cache: {}, sel: null, hits: [], pics: [], shipKey: null };
+// layers from the back to the front; Placement moves one in this list
+const TC_ORDER = ['ship', 'trav', 'tool', 'logo', 'glyphs', 'text'];
+const TC_NAMES = { trav: 'Your traveller', ship: 'Ship', tool: 'Multi-tool', logo: 'Logo', glyphs: 'Portal glyphs', text: 'Words' };
+// fonts every Windows PC has (and Jost, bundled), so nothing is downloaded
+const TC_FONTS = [['jost', 'Jost', '"Jost", "Segoe UI", sans-serif', 300, 0], ['jostwide', 'Jost, wide', '"Jost", "Segoe UI", sans-serif', 400, .12], ['segoe', 'Segoe UI', '"Segoe UI", system-ui, sans-serif', 600, 0],
+  ['georgia', 'Georgia', 'Georgia, "Times New Roman", serif', 400, 0], ['palatino', 'Palatino', '"Palatino Linotype", Palatino, "Book Antiqua", serif', 400, .02], ['impact', 'Impact', 'Impact, "Arial Black", sans-serif', 400, .02],
+  ['trebuchet', 'Trebuchet', '"Trebuchet MS", "Segoe UI", sans-serif', 400, 0], ['mono', 'Consolas', 'Consolas, ui-monospace, monospace', 400, 0]];
+const TC_SPACE = [['stars', 'Starfield'], ['nebula', 'Nebula'], ['planet', 'Ringed planet'], ['meteors', 'Shooting stars'], ['galaxy', 'Galaxy']];
+const TC_SWATCHES = ['#07131a', '#0d1b2a', '#1d4f5e', '#14324a', '#2a1b3d', '#3b0d2a', '#10271c', '#3a2a1c', '#000000', '#2b2f33', '#e6f0f5', '#ffffff'];
+const TC_DEFAULT = () => ({ v: 2, size: 'portrait', cw: 1600, ch: 900, bg: 'stars', c1: '#07131a', c2: '#1d4f5e', solid: '#07131a', pose: '', ship: '', tool: '', place: 'here', name: travellerName(), title: '', caption: '', font: 'jost',
+  watermark: true, open: { size: true, trav: true }, order: TC_ORDER.slice(), cut: {},
+  layers: { trav: { x: .5, y: .55, s: .7, yaw: 0, pitch: 0 }, ship: { x: .76, y: .3, s: .3, yaw: -55, pitch: 20 }, tool: { x: .3, y: .62, s: .22, yaw: 35, pitch: 10 }, glyphs: { x: .5, y: .93, s: .7 }, text: { x: .07, y: .07, s: 1 }, logo: { x: .88, y: .1, s: .12 } } });
+const TC = { state: null, img: { trav: null, bg: null, ship: null, logo: null }, imp: { trav: null, ship: null }, m3d: null, shipModel: null, shipGlb: null, shipPic: null, shipItem: null, shipViews: [], toolGlb: null, toolModel: null, toolKey: null,
+  cache: {}, sel: null, hits: [], pics: [], shipKey: null, patron: null };
 function tcLoad() {
   if (TC.state) return TC.state;
   let st = TC_DEFAULT();
-  try { const o = JSON.parse(localStorage.getItem('hse-trav-card') || 'null'); if (o && typeof o === 'object') st = { ...st, ...o, layers: { ...st.layers, ...(o.layers || {}) } }; } catch (_) {}
+  try {
+    const o = JSON.parse(localStorage.getItem('hse-trav-card') || 'null');
+    if (o && typeof o === 'object') {
+      if (!o.v) {   // the first version of the page: ship in front was a tick box, the corner credit is now the watermark
+        o.order = o.shipFront ? ['trav', 'ship', 'tool', 'logo', 'glyphs', 'text'] : TC_ORDER.slice();
+        if (o.bg === 'gradient') o.bg = 'stars';
+        delete o.shipFront; delete o.credit; o.v = 2;
+      }
+      st = { ...st, ...o, layers: { ...st.layers, ...(o.layers || {}) }, open: { ...st.open, ...(o.open || {}) }, cut: { ...(o.cut || {}) } };
+    }
+  } catch (_) {}
+  st.order = [...st.order.filter((k) => TC_ORDER.includes(k)), ...TC_ORDER.filter((k) => !st.order.includes(k))];
   if (st.name == null) st.name = travellerName();
-  if (st.bg === 'shot' || st.bg === 'file') st.bg = 'stars';   // pictures aren't kept between visits
+  if (st.bg === 'shot' || st.bg === 'file' || st.bg === 'image') st.bg = 'stars';   // pictures aren't kept between visits
   return (TC.state = st);
 }
 function tcSave() { try { localStorage.setItem('hse-trav-card', JSON.stringify(TC.state)); } catch (_) {} }
 const tcImage = (src) => new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
 async function tcBlobImage(blob) { if (!blob) return null; try { return await createImageBitmap(blob); } catch (_) { return tcImage(URL.createObjectURL(blob)); } }
+function tcSize(st) { if (st.size === 'custom') return [Math.max(200, Math.min(4096, Math.round(st.cw) || 1600)), Math.max(200, Math.min(4096, Math.round(st.ch) || 900))]; return (TC_SIZES[st.size] || TC_SIZES.portrait).slice(0, 2); }
 // a picture with a transparent background, cut to what's drawn in it (the pose picture has room around the traveller)
 function tcTrim(img) {
   const w = img.width, h = img.height, c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -2151,6 +2198,36 @@ function tcTrim(img) {
   if (x1 < 0 || (x0 === 0 && y0 === 0 && x1 >= w - 2 && y1 >= h - 2)) return img;
   const o = document.createElement('canvas'); o.width = x1 - x0 + 3; o.height = y1 - y0 + 3; o.getContext('2d').drawImage(c, -x0 + 1, -y0 + 1); return o;
 }
+// Remove background: the colour round the picture's edge is filled away from the edges inwards (so the same colour
+// inside the subject stays), with a soft rim; the result is cut to what's left
+const TC_CUT = new WeakMap();
+function tcCutBg(img) {
+  if (!img) return img;
+  if (TC_CUT.has(img)) return TC_CUT.get(img);
+  const k = Math.min(1, 1600 / Math.max(img.width, img.height)), w = Math.max(1, Math.round(img.width * k)), h = Math.max(1, Math.round(img.height * k));
+  const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); x.drawImage(img, 0, 0, w, h);
+  let id; try { id = x.getImageData(0, 0, w, h); } catch (_) { TC_CUT.set(img, img); return img; }
+  const d = id.data, px = (i) => [d[i * 4], d[i * 4 + 1], d[i * 4 + 2]];
+  // the edge colour: the middle value of the border pixels, each channel on its own
+  const edge = [];
+  for (let i = 0; i < w; i += 2) edge.push(px(i), px((h - 1) * w + i));
+  for (let j = 0; j < h; j += 2) edge.push(px(j * w), px(j * w + w - 1));
+  const mid = [0, 1, 2].map((ch) => edge.map((p) => p[ch]).sort((a, b) => a - b)[edge.length >> 1]);
+  const dist = (i) => Math.hypot(d[i * 4] - mid[0], d[i * 4 + 1] - mid[1], d[i * 4 + 2] - mid[2]);
+  const T = 48, SOFT = 90, seen = new Uint8Array(w * h), stack = [];
+  const push = (i) => { if (!seen[i] && d[i * 4 + 3] > 0 && dist(i) < T) { seen[i] = 1; stack.push(i); } };
+  for (let i = 0; i < w; i++) { push(i); push((h - 1) * w + i); }
+  for (let j = 0; j < h; j++) { push(j * w); push(j * w + w - 1); }
+  while (stack.length) { const i = stack.pop(), cx = i % w, cy = (i - cx) / w; if (cx > 0) push(i - 1); if (cx < w - 1) push(i + 1); if (cy > 0) push(i - w); if (cy < h - 1) push(i + w); }
+  for (let i = 0; i < w * h; i++) {
+    if (seen[i]) { d[i * 4 + 3] = 0; continue; }
+    const cx = i % w, cy = (i - cx) / w;
+    const near = (cx > 0 && seen[i - 1]) || (cx < w - 1 && seen[i + 1]) || (cy > 0 && seen[i - w]) || (cy < h - 1 && seen[i + w]);
+    if (near) { const t = Math.max(0, Math.min(1, (dist(i) - T) / (SOFT - T))); d[i * 4 + 3] = Math.round(d[i * 4 + 3] * t); }
+  }
+  x.putImageData(id, 0, 0);
+  const out = tcTrim(c); TC_CUT.set(img, out); return out;
+}
 function tcPlaces() {
   const out = [];
   const here = Place.fromUA(g(ps(), 'UniverseAddress')); if (here) out.push({ id: 'here', name: 'Where you are now', p: here });
@@ -2158,19 +2235,21 @@ function tcPlaces() {
   for (const f of FAVS.list || []) { const p = f.portal && Place.fromPortal(f.portal, f.gi || 0); if (p) out.push({ id: 'f|' + f.id, name: f.name + ' (favourite)', p }); }
   return out;
 }
+// the game's model of a ship or multi-tool with its textures, in its own colours when it was painted
+async function tcModelGlb(it) {
+  if (!it.scene || it.kind === 'corvette' || !APP || !S.lib || !S.lib.game) return null;
+  try {
+    const picks = { ...(it.picks || {}), ...(await partsOf(it.key)) }, look = it.kind === 'ship' ? shipLook(it.i) : null;
+    const r = await api('/api/model/glb?scene=' + encodeURIComponent(it.scene) + '&seed=' + encodeURIComponent(it.seed || '') + '&picks=' + encodeURIComponent(JSON.stringify(picks)) + (look ? '&look=' + encodeURIComponent(JSON.stringify(look)) : ''));
+    return await GLTEX.parse(await r.arrayBuffer());
+  } catch (_) { return null; }
+}
 // a ship's picture: the one you gave it, a corvette's renders (each angle Blender made), else its model, to turn
 async function tcShipImage(it) {
   TC.shipModel = null; TC.shipGlb = null; TC.shipPic = null; TC.shipViews = []; TC.shipItem = it; TC.shipKey = it.key; TC.cache.ship = null;
   const url = await customCover(it.key);
   if (url) TC.shipPic = await tcImage(url);
-  // starships and multi-tools: the real model with the game's textures, in the ship's own colours when it was painted
-  if (it.scene && it.kind !== 'corvette' && APP && S.lib && S.lib.game) {
-    try {
-      const picks = { ...(it.picks || {}), ...(await partsOf(it.key)) }, look = it.kind === 'ship' ? shipLook(it.i) : null;
-      const r = await api('/api/model/glb?scene=' + encodeURIComponent(it.scene) + '&seed=' + encodeURIComponent(it.seed || '') + '&picks=' + encodeURIComponent(JSON.stringify(picks)) + (look ? '&look=' + encodeURIComponent(JSON.stringify(look)) : ''));
-      TC.shipGlb = await GLTEX.parse(await r.arrayBuffer());
-    } catch (_) { TC.shipGlb = null; }
-  }
+  TC.shipGlb = await tcModelGlb(it);
   // corvettes: every angle Blender rendered, so a corvette with its own picture can still be turned between them
   if (it.kind === 'corvette') {
     await loadRender(it); coverFromMemory(it);
@@ -2187,85 +2266,170 @@ async function tcShipImage(it) {
   if (it.model && GL3D.ok()) { TC.shipModel = it.model; return null; }
   return null;
 }
+async function tcToolModel(it) {
+  TC.toolGlb = null; TC.toolModel = null; TC.toolKey = it.key; TC.cache.tool = null;
+  const glb = await tcModelGlb(it);
+  if (TC.toolKey !== it.key) return;
+  if (glb) { TC.toolGlb = glb; return; }
+  await loadModel(it); coverFromMemory(it);
+  if (TC.toolKey === it.key && it.model && GL3D.ok()) TC.toolModel = it.model;
+}
 // a 3D layer drawn at its angle, kept until the angle or size changes
 function tc3d(kind, size) {
   const st = tcLoad(), l = st.layers[kind], key = [l.yaw || 0, l.pitch || 0, size].join('|');
   const hit = TC.cache[kind]; if (hit && hit.key === key) return hit.cv;
-  const rad = Math.PI / 180;
-  const im = kind === 'trav' ? GLTEX.render(TC.m3d, size, (l.yaw || 0) * rad, (l.pitch || 0) * rad) : TC.shipGlb ? GLTEX.render(TC.shipGlb, size, (l.yaw || 0) * rad, (l.pitch || 0) * rad) : GL3D.render(TC.shipModel, size, (l.yaw || 0) * rad, [228, 236, 242], (l.pitch || 0) * rad);
+  const rad = Math.PI / 180, yaw = (l.yaw || 0) * rad, pitch = (l.pitch || 0) * rad;
+  const glb = kind === 'trav' ? TC.m3d : kind === 'tool' ? TC.toolGlb : TC.shipGlb, model = kind === 'tool' ? TC.toolModel : TC.shipModel;
+  const im = glb ? GLTEX.render(glb, size, yaw, pitch) : model ? GL3D.render(model, size, yaw, [228, 236, 242], pitch) : null;
   if (!im) return null;
   const cv = document.createElement('canvas'); cv.width = cv.height = size; cv.getContext('2d').drawImage(im, 0, 0);
   TC.cache[kind] = { key, cv }; return cv;
 }
+// is this layer drawn from a 3D model right now (turnable), or from a picture (whose background can be removed)?
+function tcIs3d(id) {
+  const st = tcLoad();
+  if (id === 'trav') return !TC.imp.trav && !!TC.m3d;
+  if (id === 'ship') return !!st.ship && !TC.imp.ship && !TC.img.ship && !!(TC.shipGlb || TC.shipModel);
+  if (id === 'tool') return !!st.tool && !!(TC.toolGlb || TC.toolModel);
+  return false;
+}
+function tc2d(id) {
+  const st = tcLoad();
+  if (id === 'trav') return TC.imp.trav || (!TC.m3d && TC.img.trav) || null;
+  if (id === 'ship') return st.ship || TC.imp.ship ? TC.imp.ship || TC.img.ship || null : null;
+  if (id === 'logo') return TC.img.logo;
+  return null;
+}
+// the space backgrounds, drawn the same every time (a fixed seed)
+function tcSpace(ctx, W, H, kind, c1, c2) {
+  const U = Math.min(W, H);
+  let seed = 11; const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
+  const gr = ctx.createLinearGradient(0, 0, W * .4, H); gr.addColorStop(0, c1); gr.addColorStop(1, c2); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+  const glowAt = (x, y, r, col) => { const g2 = ctx.createRadialGradient(x, y, 0, x, y, r); g2.addColorStop(0, col); g2.addColorStop(1, col.replace(/[\d.]+\)$/, '0)')); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H); };
+  if (kind === 'nebula') {
+    ctx.save(); ctx.globalCompositeOperation = 'screen';
+    const cols = ['rgba(190,60,200,1)', 'rgba(54,214,195,1)', 'rgba(110,90,255,1)', 'rgba(240,90,140,1)'];
+    // a band of cloud across the picture: many soft puffs along a wavy line, bigger and fainter outwards
+    for (let i = 0; i < 70; i++) {
+      const t = rnd(), x = W * (-.1 + t * 1.2), y = H * (.25 + .5 * t + Math.sin(t * 7) * .12) + (rnd() - .5) * U * .35;
+      glowAt(x, y, U * (.06 + rnd() * .22), cols[(i + (t * 3 | 0)) % cols.length].replace(/[\d.]+\)$/, (.05 + rnd() * .1).toFixed(2) + ')'));
+    }
+    ctx.restore();
+  }
+  const stars = (n, big) => { for (let i = 0; i < n; i++) { ctx.fillStyle = `rgba(225,245,255,${.12 + rnd() * .6})`; ctx.beginPath(); ctx.arc(rnd() * W, rnd() * H, rnd() * (big ? 2.2 : 1.6) + .3, 0, 7); ctx.fill(); } };
+  stars(W * H / 4200);
+  if (kind === 'stars') glowAt(W * .7, H * .3, U * .8, 'rgba(54,214,195,.16)');
+  if (kind === 'nebula') stars(W * H / 30000, true);
+  if (kind === 'planet') {
+    glowAt(W * .8, H * .2, U * .5, 'rgba(255,214,170,.12)');
+    const px = W * .2, py = H * .82, pr = U * .42;
+    ctx.save(); ctx.translate(px, py); ctx.rotate(-.35);
+    const ring = (front) => { ctx.save(); ctx.beginPath(); ctx.ellipse(0, 0, pr * 1.75, pr * .38, 0, front ? 0 : Math.PI, front ? Math.PI : Math.PI * 2); ctx.lineWidth = pr * .16; ctx.strokeStyle = 'rgba(214,200,180,.35)'; ctx.stroke(); ctx.lineWidth = pr * .05; ctx.strokeStyle = 'rgba(240,230,215,.45)'; ctx.stroke(); ctx.restore(); };
+    ring(false);
+    const body = ctx.createRadialGradient(-pr * .35, -pr * .4, pr * .1, 0, 0, pr); body.addColorStop(0, '#5fb7c9'); body.addColorStop(.55, '#1f5d78'); body.addColorStop(1, '#071a26');
+    ctx.fillStyle = body; ctx.beginPath(); ctx.arc(0, 0, pr, 0, 7); ctx.fill();
+    ctx.save(); ctx.clip(); ctx.globalAlpha = .18; for (let i = 0; i < 9; i++) { ctx.fillStyle = i % 2 ? '#bfe9ee' : '#0b3346'; ctx.fillRect(-pr, -pr + i * pr * .23 + rnd() * pr * .05, pr * 2, pr * (.05 + rnd() * .07)); } ctx.restore();
+    ring(true); ctx.restore();
+    glowAt(W * .2, H * .82, U * .5, 'rgba(95,183,201,.12)');
+  }
+  if (kind === 'meteors') {
+    for (let i = 0; i < 7; i++) {
+      const x = W * (.1 + rnd() * .85), y = H * (.05 + rnd() * .55), len = U * (.15 + rnd() * .25), a = Math.PI * .8 + rnd() * .15;
+      const x2 = x + Math.cos(a) * len, y2 = y + Math.sin(a) * len, lg = ctx.createLinearGradient(x, y, x2, y2);
+      lg.addColorStop(0, 'rgba(255,255,255,.95)'); lg.addColorStop(.2, 'rgba(160,232,238,.55)'); lg.addColorStop(1, 'rgba(160,232,238,0)');
+      ctx.strokeStyle = lg; ctx.lineWidth = U * (.002 + rnd() * .003); ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x2, y2); ctx.stroke();
+      glowAt(x, y, U * .02, 'rgba(255,255,255,.5)');
+    }
+  }
+  if (kind === 'galaxy') {
+    const gx = W * .62, gy = H * .4, R = U * .6, dot = Math.max(2, U / 380);
+    glowAt(gx, gy, R * .75, 'rgba(150,120,255,.16)');
+    ctx.save(); ctx.translate(gx, gy); ctx.rotate(-.35); ctx.scale(1, .42); ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 9000; i++) {
+      const arm = i % 2, t = Math.pow(rnd(), .7), r = R * t, th = arm * Math.PI + t * 6.4 + (rnd() - .5) * .9 * (1.15 - t) * (1 - t * .4);
+      const warm = t < .25 || rnd() < .15;
+      ctx.fillStyle = `rgba(${warm ? '255,226,196' : rnd() < .5 ? '170,190,255' : '200,160,255'},${(.12 + rnd() * .35) * (1 - t * .5)})`;
+      const d = dot * (rnd() < .04 ? 2.2 : 1); ctx.fillRect(Math.cos(th) * r, Math.sin(th) * r, d, d);
+    }
+    ctx.restore();
+    glowAt(gx, gy, R * .2, 'rgba(255,236,214,.4)'); glowAt(gx, gy, R * .06, 'rgba(255,250,240,.6)');
+  }
+}
 async function tcDraw(cv, preview) {
-  const st = tcLoad(), [W, H] = TC_SIZES[st.size] || TC_SIZES.portrait; cv.width = W; cv.height = H;
+  const st = tcLoad(), [W, H] = tcSize(st); cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d'), U = Math.min(W, H), hits = [];
   await document.fonts.ready.catch(() => {});
   // background
-  if ((st.bg === 'shot' || st.bg === 'file') && TC.img.bg) { const im = TC.img.bg, k = Math.max(W / im.width, H / im.height); ctx.drawImage(im, (W - im.width * k) / 2, (H - im.height * k) / 2, im.width * k, im.height * k); }
-  else if (st.bg === 'colour') { ctx.fillStyle = st.c1; ctx.fillRect(0, 0, W, H); }
-  else {
-    const gr = ctx.createLinearGradient(0, 0, W * .4, H); gr.addColorStop(0, st.c1); gr.addColorStop(1, st.c2); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
-    if (st.bg === 'stars') {
-      let seed = 11; const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
-      for (let i = 0; i < W * H / 4200; i++) { ctx.fillStyle = `rgba(225,245,255,${.12 + rnd() * .55})`; ctx.beginPath(); ctx.arc(rnd() * W, rnd() * H, rnd() * 1.6 + .3, 0, 7); ctx.fill(); }
-      const glow = ctx.createRadialGradient(W * .7, H * .3, 0, W * .7, H * .3, U * .8); glow.addColorStop(0, 'rgba(54,214,195,.16)'); glow.addColorStop(1, 'rgba(54,214,195,0)'); ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
-    }
-  }
+  if (st.bg === 'image' && TC.img.bg) { const im = TC.img.bg, k = Math.max(W / im.width, H / im.height); ctx.drawImage(im, (W - im.width * k) / 2, (H - im.height * k) / 2, im.width * k, im.height * k); }
+  else if (st.bg === 'colour') { ctx.fillStyle = st.solid || '#07131a'; ctx.fillRect(0, 0, W, H); }
+  else tcSpace(ctx, W, H, TC_SPACE.some(([k]) => k === st.bg) ? st.bg : 'stars', st.c1, st.c2);
   const L = st.layers;
   const place = (id, im, l) => { const h = l.s * H, w = im.width / im.height * h, x = l.x * W - w / 2, y = l.y * H - h / 2; hits.push({ id, x, y, w, h }); return [x, y, w, h]; };
   const size3d = (l) => Math.max(256, Math.min(1600, Math.round(l.s * H * 1.15)));
-  const shipImg = st.ship && (TC.img.ship || ((TC.shipGlb || TC.shipModel) && tc3d('ship', size3d(L.ship))));
-  const drawShip = () => { if (st.ship && shipImg) { const [x, y, w, h] = place('ship', shipImg, L.ship); ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = U * .03; ctx.drawImage(shipImg, x, y, w, h); ctx.restore(); } };
-  if (!st.shipFront) drawShip();
-  const travImg = TC.m3d ? tc3d('trav', size3d(L.trav)) : TC.img.trav;
-  if (travImg) {
-    const [x, y, w, h] = place('trav', travImg, L.trav);
-    const sh = ctx.createRadialGradient(x + w / 2, y + h * .98, 0, x + w / 2, y + h * .98, w * .55); sh.addColorStop(0, 'rgba(0,0,0,.35)'); sh.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.save(); ctx.translate(0, 0); ctx.scale(1, .22); ctx.fillStyle = sh; ctx.restore();
-    ctx.drawImage(travImg, x, y, w, h);
-  } else if (preview) {
-    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = `400 ${Math.round(U * .028)}px "Jost", sans-serif`; ctx.textAlign = 'center';
-    ctx.fillText('Your posed traveller goes here', W / 2, H * .5); ctx.font = `400 ${Math.round(U * .02)}px "Jost", sans-serif`;
-    ctx.fillText('In Blender: LiveLink panel, Save the pose as a picture', W / 2, H * .5 + U * .04); ctx.textAlign = 'left';
-  }
-  if (st.shipFront) drawShip();
+  const imgOf = (id) => {
+    if (tcIs3d(id)) return tc3d(id, size3d(L[id]));
+    const im = tc2d(id); return im && st.cut[id] ? tcCutBg(im) : im;
+  };
   const F = '"Jost", "Segoe UI", sans-serif', M = 'ui-monospace, Consolas, monospace';
   const track = (t, x, y, sp) => { let cx = x; for (const ch of t) { ctx.fillText(ch, cx, y); cx += ctx.measureText(ch).width + sp; } return cx - x; };
-  // glyphs
-  const pl = st.place && tcPlaces().find((q) => q.id === st.place);
-  if (pl) {
-    const total = L.glyphs.s * U, gap = total / 12 * .12, gs = (total - gap * 11) / 12, x0 = L.glyphs.x * W - total / 2, y0 = L.glyphs.y * H - gs / 2, code = Place.portal(pl.p);
-    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.roundRect(x0 - gs * .3, y0 - gs * .3, total + gs * .6, gs * 1.95, gs * .35); ctx.fill();
-    const tmp = document.createElement('canvas'); tmp.width = tmp.height = Math.max(8, Math.round(gs * 2)); const tc = tmp.getContext('2d');
-    for (let i = 0; i < 12; i++) {
-      const im = await glyphImage(code[i]); if (!im) continue;
-      tc.clearRect(0, 0, tmp.width, tmp.height); tc.globalCompositeOperation = 'source-over'; tc.drawImage(im, 0, 0, tmp.width, tmp.height); tc.globalCompositeOperation = 'source-in'; tc.fillStyle = '#fff'; tc.fillRect(0, 0, tmp.width, tmp.height);
-      ctx.save(); ctx.shadowColor = 'rgba(54,214,195,.9)'; ctx.shadowBlur = gs * .25; ctx.drawImage(tmp, x0 + i * (gs + gap), y0, gs, gs); ctx.restore();
-    }
-    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.font = `500 ${Math.round(gs * .38)}px ${M}`; const tw = ctx.measureText(code).width + 11 * gs * .1;
-    track(code, L.glyphs.x * W - tw / 2, y0 + gs * 1.48, gs * .1);
-    hits.push({ id: 'glyphs', x: x0 - gs * .3, y: y0 - gs * .3, w: total + gs * .6, h: gs * 1.95 });
+  const draw = {
+    ship: () => { const im = imgOf('ship'); if (!im) return; const [x, y, w, h] = place('ship', im, L.ship); ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = U * .03; ctx.drawImage(im, x, y, w, h); ctx.restore(); },
+    tool: () => { const im = imgOf('tool'); if (!im) return; const [x, y, w, h] = place('tool', im, L.tool); ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.4)'; ctx.shadowBlur = U * .02; ctx.drawImage(im, x, y, w, h); ctx.restore(); },
+    logo: () => { const im = imgOf('logo'); if (!im) return; const [x, y, w, h] = place('logo', im, L.logo); ctx.drawImage(im, x, y, w, h); },
+    trav: () => {
+      const im = imgOf('trav');
+      if (im) { const [x, y, w, h] = place('trav', im, L.trav); ctx.drawImage(im, x, y, w, h); }
+      else if (preview) {
+        ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = `400 ${Math.round(U * .028)}px "Jost", sans-serif`; ctx.textAlign = 'center';
+        ctx.fillText('Your posed traveller goes here', W / 2, H * .5); ctx.font = `400 ${Math.round(U * .02)}px "Jost", sans-serif`;
+        ctx.fillText('In Blender: LiveLink panel, Send the pose to the editor', W / 2, H * .5 + U * .04); ctx.textAlign = 'left';
+      }
+    },
+    glyphs: async () => {
+      const pl = st.place && tcPlaces().find((q) => q.id === st.place); if (!pl) return;
+      const total = L.glyphs.s * U, gap = total / 12 * .12, gs = (total - gap * 11) / 12, x0 = L.glyphs.x * W - total / 2, y0 = L.glyphs.y * H - gs / 2, code = Place.portal(pl.p);
+      ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.roundRect(x0 - gs * .3, y0 - gs * .3, total + gs * .6, gs * 1.95, gs * .35); ctx.fill();
+      const tmp = document.createElement('canvas'); tmp.width = tmp.height = Math.max(8, Math.round(gs * 2)); const tc = tmp.getContext('2d');
+      for (let i = 0; i < 12; i++) {
+        const im = await glyphImage(code[i]); if (!im) continue;
+        tc.clearRect(0, 0, tmp.width, tmp.height); tc.globalCompositeOperation = 'source-over'; tc.drawImage(im, 0, 0, tmp.width, tmp.height); tc.globalCompositeOperation = 'source-in'; tc.fillStyle = '#fff'; tc.fillRect(0, 0, tmp.width, tmp.height);
+        ctx.save(); ctx.shadowColor = 'rgba(54,214,195,.9)'; ctx.shadowBlur = gs * .25; ctx.drawImage(tmp, x0 + i * (gs + gap), y0, gs, gs); ctx.restore();
+      }
+      ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.font = `500 ${Math.round(gs * .38)}px ${M}`; const tw = ctx.measureText(code).width + 11 * gs * .1;
+      track(code, L.glyphs.x * W - tw / 2, y0 + gs * 1.48, gs * .1);
+      hits.push({ id: 'glyphs', x: x0 - gs * .3, y: y0 - gs * .3, w: total + gs * .6, h: gs * 1.95 });
+    },
+    text: () => {
+      if (!(st.name || st.title || st.caption)) return;
+      const [, , fam, wt, sp] = TC_FONTS.find(([k]) => k === st.font) || TC_FONTS[0];
+      const k = L.text.s * U / 1080, x = L.text.x * W; let y = L.text.y * H, wmax = 0; const top = y;
+      ctx.textBaseline = 'top';
+      if (st.title) { ctx.fillStyle = 'rgba(160,232,238,.95)'; ctx.font = `500 ${Math.round(24 * k)}px ${F}`; wmax = Math.max(wmax, track(st.title.toUpperCase(), x, y, 5 * k)); y += 40 * k; }
+      if (st.name) {
+        ctx.fillStyle = '#fff'; ctx.font = `${wt} ${Math.round(92 * k)}px ${fam}`; ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 18 * k;
+        const w = sp ? track(st.name.toUpperCase(), x - 4 * k, y, sp * 92 * k) : (ctx.fillText(st.name, x - 4 * k, y), ctx.measureText(st.name).width);
+        ctx.restore(); wmax = Math.max(wmax, w); y += 104 * k;
+      }
+      if (st.caption) { ctx.fillStyle = 'rgba(232,242,246,.85)'; ctx.font = `400 ${Math.round(30 * k)}px ${F}`; for (const line of st.caption.split('\n').slice(0, 4)) { ctx.fillText(line, x, y); wmax = Math.max(wmax, ctx.measureText(line).width); y += 40 * k; } }
+      ctx.textBaseline = 'alphabetic';
+      hits.push({ id: 'text', x: x - 10 * k, y: top - 10 * k, w: wmax + 20 * k, h: y - top + 20 * k });
+    },
+  };
+  for (const id of st.order) await draw[id]();
+  // the watermark, bottom right, on top of everything; patrons can take it off
+  if (st.watermark || !tcPatron()) {
+    const t = 'Harmonious Save Editor', fs = Math.round(U * .024);
+    ctx.save(); ctx.font = `500 ${fs}px ${F}`; ctx.textBaseline = 'alphabetic'; ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = fs * .4; ctx.fillStyle = 'rgba(255,255,255,.62)';
+    track(t.toUpperCase(), W - U * .035 - (ctx.measureText(t.toUpperCase()).width + t.length * fs * .12), H - U * .035, fs * .12); ctx.restore();
   }
-  // name, title, caption
-  if (st.name || st.title || st.caption) {
-    const k = L.text.s * U / 1080, x = L.text.x * W; let y = L.text.y * H, wmax = 0; const top = y;
-    ctx.textBaseline = 'top';
-    if (st.title) { ctx.fillStyle = 'rgba(160,232,238,.95)'; ctx.font = `500 ${Math.round(24 * k)}px ${F}`; wmax = Math.max(wmax, track(st.title.toUpperCase(), x, y, 5 * k)); y += 40 * k; }
-    if (st.name) { ctx.fillStyle = '#fff'; ctx.font = `300 ${Math.round(92 * k)}px ${F}`; ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 18 * k; ctx.fillText(st.name, x - 4 * k, y); ctx.restore(); wmax = Math.max(wmax, ctx.measureText(st.name).width); y += 104 * k; }
-    if (st.caption) { ctx.fillStyle = 'rgba(232,242,246,.85)'; ctx.font = `400 ${Math.round(30 * k)}px ${F}`; for (const line of st.caption.split('\n').slice(0, 4)) { ctx.fillText(line, x, y); wmax = Math.max(wmax, ctx.measureText(line).width); y += 40 * k; } }
-    ctx.textBaseline = 'alphabetic';
-    hits.push({ id: 'text', x: x - 10 * k, y: top - 10 * k, w: wmax + 20 * k, h: y - top + 20 * k });
-  }
-  if (st.credit) { ctx.fillStyle = 'rgba(255,255,255,.38)'; ctx.font = `400 ${Math.round(U * .018)}px ${F}`; const t = 'Harmonious Save Editor'; ctx.textBaseline = 'top'; ctx.fillText(t, W - U * .04 - ctx.measureText(t).width, U * .035); ctx.textBaseline = 'alphabetic'; }
   if (preview && TC.sel) { const hb = hits.find((h) => h.id === TC.sel); if (hb) { ctx.save(); ctx.strokeStyle = 'rgba(54,214,195,.95)'; ctx.lineWidth = Math.max(2, U * .003); ctx.setLineDash([U * .012, U * .008]); ctx.strokeRect(hb.x, hb.y, hb.w, hb.h); ctx.restore(); } }
   TC.hits = hits;
   return cv;
 }
 async function tcLoadPose(name) {
   const st = tcLoad();
-  TC.m3d = null; TC.cache.trav = null;
-  if (!name) { TC.img.trav = null; return; }
+  TC.m3d = null; TC.cache.trav = null; TC.imp.trav = null;
+  if (!name) { TC.img.trav = null; st.pose = ''; return; }
   const url = '/api/exports/file?name=' + encodeURIComponent(name) + '&t=' + encodeURIComponent(APP.token);
   if (/\.glb$/i.test(name)) {   // a 3D pose from Blender: turned and tilted on the card
     try { const r = await fetch(url); if (!r.ok) throw new Error(await r.text()); TC.m3d = await GLTEX.parse(await r.arrayBuffer()); TC.img.trav = null; }
@@ -2280,18 +2444,51 @@ async function tcExport(how) {
   if (how === 'copy') { try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]); toast('Picture copied. Paste it into Discord or anywhere.'); return; } catch (_) { toast("Couldn't copy the picture, so it was saved instead."); } }
   downloadBlob(name, blob);
 }
+const tcPickFile = () => new Promise((res) => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = () => res(inp.files[0] || null); addEventListener('focus', () => setTimeout(() => res(inp.files[0] || null), 400), { once: true }); inp.click(); });
+// Patrons (owner, 2026-11-11): signing in with Patreon lets them take the watermark off. The app keeps the signed
+// pass Patreon's check gives (`/api/patron`); the browser version always has the watermark.
+function tcPatron() { return !!(TC.patron && TC.patron.patron); }
+async function tcPatronLoad() { if (!APP) return null; try { TC.patron = await (await api('/api/patron')).json(); } catch (_) { TC.patron = null; } return TC.patron; }
+async function tcPatronDialog(after) {
+  const p = TC.patron || {};
+  const signIn = async () => {
+    try { const r = await (await api('/api/patron/signin', { method: 'POST' })).json(); if (!r.ok) throw new Error(r.error || 'Sign-in is not set up yet'); }
+    catch (e) { toast("Couldn't start signing in: " + e.message, true); return; }
+    toast('Patreon opened in your browser. Sign in there, then come back here.');
+    const t0 = Date.now(), poll = setInterval(async () => { await tcPatronLoad(); if (tcPatron() || Date.now() - t0 > 300000) { clearInterval(poll); if (tcPatron()) { toast('Thank you for supporting the editor, ' + (TC.patron.name || 'traveller') + '!'); after && after(); } } }, 2000);
+  };
+  const body = p.reason ? `<p>${esc(p.reason)}</p>` : '<p>Taking the watermark off is a thank-you for patrons. Sign in with Patreon and the editor checks that you support it; it remembers you for a month, then checks again.</p>';
+  const r = await dialog('Remove the watermark', body + '<p class="dim">Not a patron yet? Joining helps keep the editor free for everyone.</p>', [['Close', false], ['Join on Patreon', 'join'], ['Sign in with Patreon', 'signin']]);
+  if (r === 'join') window.open('https://www.patreon.com/pastullio', '_blank', 'noopener');
+  if (r === 'signin') signIn();
+}
 PAGES.traveller = (el) => {
   const st = tcLoad();
-  el.innerHTML = `<div class="page-head"><div><h1>Traveller</h1><p>Make a picture of your traveller: your pose from Blender, a background, your ship and your portal glyphs. Drag things on the picture to move them, scroll over one to make it bigger or smaller, and drag a 3D pose or ship with Shift held (or the right mouse button) to turn it. Click one and press Delete to take it off.</p></div></div>
-    <div class="tc-wrap"><div class="tc-stagecol"><div class="tc-stage"><canvas id="tcCanvas" aria-label="Your traveller picture" tabindex="0"></canvas></div><div class="tc-selbar" id="tcSel" hidden></div></div><div class="panel tc-side" id="tcSide"></div></div>`;
+  el.innerHTML = `<div class="page-head"><div><h1>Traveller</h1><p>Make a picture of your traveller: your pose from Blender, a background, your ship, multi-tool and portal glyphs. Drag things on the picture to move them and scroll over one to make it bigger or smaller. Drag with the middle mouse button to turn a 3D pose, ship or multi-tool (Shift and the middle button moves it, as in Blender). Click one and press Delete to take it off.</p></div></div>
+    <div class="tc-wrap"><div class="tc-stagecol"><div class="tc-stage"><canvas id="tcCanvas" aria-label="Your traveller picture" tabindex="0"></canvas></div><div class="tc-selbar" id="tcSel" hidden></div></div><div class="tc-side" id="tcSide"></div></div>`;
   const cv = $('#tcCanvas', el), side = $('#tcSide', el);
-  let busy = false, again = false;
-  const LAYER_NAMES = { trav: 'Your traveller', ship: 'Ship', glyphs: 'Portal glyphs', text: 'Words' };
-  const selBar = () => { const b = $('#tcSel', el); if (!b) return; if (!TC.sel || !TC.hits.some((h) => h.id === TC.sel)) { b.hidden = true; return; } b.hidden = false; b.innerHTML = `<span><b>${LAYER_NAMES[TC.sel]}</b> selected</span><button class="btn small ghost" type="button" id="tcRemove">Remove from the picture</button>`; $('#tcRemove', b).onclick = () => removeLayer(TC.sel); };
+  let busy = false, again = false, bgTab = null;
+  const BOX_OF = { trav: 'trav', ship: 'ship', tool: 'tool', logo: 'text', text: 'text', glyphs: 'glyphs' };
+  const selBar = () => {
+    const b = $('#tcSel', el); if (!b) return;
+    if (!TC.sel || !TC.hits.some((h) => h.id === TC.sel)) { b.hidden = true; return; }
+    b.hidden = false;
+    b.innerHTML = `<span><b>${TC_NAMES[TC.sel]}</b> selected</span><span class="tc-selacts">${tcIs3d(TC.sel) ? `<button class="link" type="button" data-sb="front">Face the front</button>` : ''}<button class="link" type="button" data-sb="up" title="Bring it forward one layer">Forward</button><button class="link" type="button" data-sb="down" title="Send it back one layer">Back</button><button class="btn small ghost" type="button" id="tcRemove">Remove from the picture</button></span>`;
+    $('#tcRemove', b).onclick = () => removeLayer(TC.sel);
+    b.querySelectorAll('[data-sb]').forEach((x) => x.onclick = () => { const id = TC.sel, a = x.dataset.sb; if (a === 'front') { st.layers[id].yaw = 0; st.layers[id].pitch = 0; } else move(id, a === 'up' ? 'forward' : 'backward'); tcSave(); wire(); redraw(); });
+  };
   const redraw = async () => { if (busy) { again = true; return; } busy = true; await tcDraw(cv, true); busy = false; selBar(); if (again) { again = false; redraw(); } };
+  const move = (id, how) => {
+    const o = st.order.filter((k) => k !== id), i = st.order.indexOf(id);
+    if (how === 'front') o.push(id); else if (how === 'back') o.unshift(id);
+    else o.splice(Math.max(0, Math.min(o.length, how === 'forward' ? i + 1 : i - 1)), 0, id);
+    st.order = o;
+  };
   const removeLayer = (id) => {
-    if (id === 'trav') { st.pose = ''; TC.img.trav = null; TC.m3d = null; TC.cache.trav = null; }
-    if (id === 'ship') { st.ship = ''; TC.img.ship = null; TC.shipModel = null; TC.shipGlb = null; TC.shipPic = null; TC.shipViews = []; }
+    if (id === 'trav') { st.pose = ''; TC.img.trav = null; TC.imp.trav = null; TC.m3d = null; TC.cache.trav = null; }
+    if (id === 'ship') { st.ship = ''; TC.img.ship = null; TC.imp.ship = null; TC.shipModel = null; TC.shipGlb = null; TC.shipPic = null; TC.shipViews = []; TC.shipItem = null; }
+    if (id === 'tool') { st.tool = ''; TC.toolGlb = null; TC.toolModel = null; TC.toolKey = null; }
+    if (id === 'logo') TC.img.logo = null;
     if (id === 'glyphs') st.place = '';
     if (id === 'text') { st.name = ''; st.title = ''; st.caption = ''; }
     TC.sel = null; tcSave(); wire(); redraw();
@@ -2300,23 +2497,63 @@ PAGES.traveller = (el) => {
   const change = (fn) => { fn(); tcSave(); redraw(); };
   const items = coverItems();
   const places = tcPlaces();
-  const sideHtml = () => `
-    <div class="tc-row"><span class="k">Size</span><div class="seg">${Object.entries(TC_SIZES).map(([k, [w, h, l]]) => `<button type="button" data-size="${k}" aria-pressed="${st.size === k}" title="${w} × ${h}">${l}</button>`).join('')}</div></div>
-    <div class="tc-row"><span class="k">Your traveller</span>
-      ${TC.pics.length ? `<select id="tcPose">${TC.pics.map((q) => `<option value="${esc(q.name)}"${q.name === st.pose ? ' selected' : ''}>${esc(q.name.replace(/\.(png|glb)$/i, ''))}${/\.glb$/i.test(q.name) ? ' (3D)' : ''}</option>`).join('')}<option value="">No traveller</option></select>` : `<p class="dim small-print" data-keep>No poses yet. Pose your traveller in Blender, then in the LiveLink panel press Send the pose to the editor (3D, to turn here) or Save the pose as a picture; it shows here.</p>`}
-      ${TC.m3d ? turnHtml('trav') : ''}<div class="tc-acts"><button class="link" type="button" id="tcRefresh">Look again</button><label class="link">Use an image file<input type="file" accept="image/png,image/*" id="tcPoseFile" hidden></label>${APP ? '<button class="link addon-btn" type="button">Get LiveLink</button>' : ''}</div></div>
-    <div class="tc-row"><span class="k">Background</span><select id="tcBg">${[['stars', 'Starfield'], ['gradient', 'Two colours'], ['colour', 'One colour'], ...(APP ? [['shot', 'One of your screenshots…']] : []), ['file', 'An image file…']].map(([k, l]) => `<option value="${k}"${st.bg === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
-      ${st.bg === 'shot' || st.bg === 'file' ? '' : `<div class="tc-cols"><label>Colour <input type="color" id="tcC1" value="${esc(st.c1)}"></label>${st.bg === 'colour' ? '' : `<label>and <input type="color" id="tcC2" value="${esc(st.c2)}"></label>`}</div>`}</div>
-    <div class="tc-row"><span class="k">Ship</span><select id="tcShip"><option value="">No ship</option>${items.filter((x) => x.kind !== 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)} (${esc(x.type.toLowerCase())})</option>`).join('')}<optgroup label="Multi-tools">${items.filter((x) => x.kind === 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</optgroup></select>${st.ship && TC.shipPic && (TC.shipGlb || TC.shipViews.length) ? `<div class="seg tc-show"><button type="button" data-show="3d" aria-pressed="${!st.shipUsePic}">${TC.shipGlb ? '3D model' : 'Renders'}</button><button type="button" data-show="pic" aria-pressed="${!!st.shipUsePic}">Your picture</button></div>` : ''}${st.ship && (TC.shipGlb || TC.shipModel) && !TC.img.ship ? turnHtml('ship') : ''}${st.ship ? `<label class="check"><input type="checkbox" id="tcFront"${st.shipFront ? ' checked' : ''}> In front of your traveller</label>` : ''}${st.ship && TC.shipViews.length > 1 && !(TC.shipPic && st.shipUsePic) ? `<label class="field"><span>Angle</span><select id="tcView">${TC.shipViews.map(([v, l]) => `<option value="${v}"${v === (st.shipView || TC.shipViews[0][0]) ? ' selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}${APP && st.ship && TC.shipItem && TC.shipItem.kind === 'corvette' && TC.shipViews.length < COVER_VIEWS.length && !(TC.shipPic && st.shipUsePic) ? `<p class="tc-note" id="tcRenderNote" data-keep>${TC.rendering === st.ship ? 'Blender is drawing the front, side, back and top. It can take a few minutes; the angles show here when they are ready.' : ''}</p><button class="btn small" type="button" id="tcRenderViews"${TC.rendering === st.ship ? ' disabled' : ''} title="Blender renders the corvette from the front, side, back and top (needs Blender and Charon Forge)">Render the angles</button>` : ''}</div>
-    <div class="tc-row"><span class="k">Portal glyphs</span><select id="tcPlace"><option value="">No glyphs</option>${places.map((q) => `<option value="${esc(q.id)}"${q.id === st.place ? ' selected' : ''}>${esc(q.name)}</option>`).join('')}</select></div>
-    <div class="tc-row"><span class="k">Words</span><label class="field"><span>Name</span><input id="tcName" value="${esc(st.name)}" maxlength="40"></label><label class="field"><span>Title above it</span><input id="tcTitle" value="${esc(st.title)}" maxlength="60" placeholder="Traveller of the Atlas"></label><label class="field"><span>Caption below</span><textarea id="tcCaption" rows="2" maxlength="200" placeholder="A line or two">${esc(st.caption)}</textarea></label></div>
-    <label class="check"><input type="checkbox" id="tcCredit"${st.credit ? ' checked' : ''}> Small "Harmonious Save Editor" in the corner</label>
-    <div class="tc-acts main"><button class="btn primary" type="button" id="tcSaveBtn">Save picture</button><button class="btn" type="button" id="tcCopy">Copy picture</button><button class="btn ghost" type="button" id="tcReset">Reset layout</button></div>`;
-  const turnHtml = (k) => { const l = st.layers[k]; return `<div class="tc-turn" data-turn="${k}"><label><span>Turn</span><input type="range" min="-180" max="180" step="1" data-ax="yaw" value="${l.yaw || 0}"></label><label><span>Tilt</span><input type="range" min="-60" max="60" step="1" data-ax="pitch" value="${l.pitch || 0}"></label><button class="link" type="button" data-front="${k}">Face the front</button></div>`; };
+  const box = (k, title, inner) => `<details class="tc-box" data-box="${k}"${st.open[k] ? ' open' : ''}><summary>${title}</summary><div class="tc-boxin">${inner}</div></details>`;
+  const turnHtml = (k) => { const l = st.layers[k]; return `<div class="tc-turn" data-turn="${k}"><label><span>Turn</span><input type="range" min="-180" max="180" step="1" data-ax="yaw" value="${l.yaw || 0}"></label><label><span>Tilt</span><input type="range" min="-60" max="60" step="1" data-ax="pitch" value="${l.pitch || 0}"></label></div>`; };
+  const placeHtml = (k) => { const n = st.order.length, at = n - st.order.indexOf(k); return `<label class="field"><span>Placement <span class="dim">(${at === 1 ? 'in front' : at === n ? 'at the back' : 'layer ' + at + ' of ' + n})</span></span><select data-place="${k}"><option value="">Move it…</option><option value="front">In front of everything</option><option value="forward">Forward one layer</option><option value="backward">Back one layer</option><option value="back">Behind everything</option></select></label>`; };
+  const cutHtml = (k) => tc2d(k) && !tcIs3d(k) && (k !== 'trav' || TC.imp.trav) ? `<label class="check"><input type="checkbox" data-cut="${k}"${st.cut[k] ? ' checked' : ''}> Remove background</label>` : '';
+  const objActs = (k, opts) => `<div class="tc-objacts">${tcIs3d(k) ? `<button class="btn small" type="button" data-front="${k}" title="Turn it back to face the front">Reset</button>` : ''}${opts.imp ? `<button class="btn small" type="button" data-imp="${k}">Import image</button>` : ''}${opts.has ? `<button class="btn small ghost danger" type="button" data-del="${k}">Delete</button>` : ''}</div>`;
+  const sideHtml = () => {
+    const [W, H] = tcSize(st), ships = items.filter((x) => x.kind !== 'tool'), tools = items.filter((x) => x.kind === 'tool');
+    const isCorv = st.ship && TC.shipItem && TC.shipItem.kind === 'corvette';
+    const travIn = `${TC.pics.length ? `<select id="tcPose">${TC.pics.map((q) => `<option value="${esc(q.name)}"${q.name === st.pose && !TC.imp.trav ? ' selected' : ''}>${esc(q.name.replace(/\.(png|glb)$/i, ''))}${/\.glb$/i.test(q.name) ? ' (3D)' : ''}</option>`).join('')}${TC.imp.trav ? '<option value="@imp" selected>Your image</option>' : ''}<option value=""${!st.pose && !TC.imp.trav ? ' selected' : ''}>No traveller</option></select>` : `${TC.imp.trav ? '<p class="small-print" data-keep>Your image</p>' : ''}<p class="dim small-print" data-keep>No poses yet. Pose your traveller in Blender, then in LiveLink press Send the pose to the editor (3D, to turn here) or Save the pose as a picture; it shows here by itself.</p>`}
+      ${tcIs3d('trav') ? turnHtml('trav') : ''}${placeHtml('trav')}${cutHtml('trav')}${objActs('trav', { imp: true, has: !!(TC.imp.trav || TC.m3d || TC.img.trav) })}${APP ? '<button class="link addon-btn" type="button">Get LiveLink</button>' : ''}`;
+    const shipIn = `<select id="tcShip"><option value="">No ship</option>${TC.imp.ship ? '<option value="@imp" selected>Your image</option>' : ''}${ships.map((x) => `<option value="${esc(x.key)}"${x.key === st.ship && !TC.imp.ship ? ' selected' : ''}>${esc(x.name)} (${esc(x.type.toLowerCase())})</option>`).join('')}</select>
+      ${st.ship && !TC.imp.ship && TC.shipPic && (TC.shipGlb || TC.shipViews.length) ? `<div class="seg tc-show"><button type="button" data-show="3d" aria-pressed="${!st.shipUsePic}">${TC.shipGlb ? '3D model' : 'Renders'}</button><button type="button" data-show="pic" aria-pressed="${!!st.shipUsePic}">Your picture</button></div>` : ''}
+      ${tcIs3d('ship') ? turnHtml('ship') : ''}
+      ${isCorv && !TC.imp.ship && TC.shipViews.length > 1 && !(TC.shipPic && st.shipUsePic) ? `<label class="field"><span>Angle</span><select id="tcView">${TC.shipViews.map(([v, l]) => `<option value="${v}"${v === (st.shipView || TC.shipViews[0][0]) ? ' selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
+      ${APP && isCorv && !TC.imp.ship && TC.shipViews.length < COVER_VIEWS.length && !(TC.shipPic && st.shipUsePic) ? `<p class="tc-note" id="tcRenderNote" data-keep>${TC.rendering === st.ship ? 'Blender is drawing the front, side, back and top. It can take a few minutes; the angles show here when they are ready.' : ''}</p><button class="btn small" type="button" id="tcRenderViews"${TC.rendering === st.ship ? ' disabled' : ''} title="Blender renders the corvette from the front, side, back and top (needs Blender and Charon Forge)">Render the angles</button>` : ''}
+      ${st.ship || TC.imp.ship ? placeHtml('ship') + cutHtml('ship') : ''}${objActs('ship', { imp: true, has: !!(st.ship || TC.imp.ship) })}`;
+    const toolIn = `<select id="tcTool"><option value="">No multi-tool</option>${tools.map((x) => `<option value="${esc(x.key)}"${x.key === st.tool ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
+      ${st.tool && !tcIs3d('tool') ? '<p class="dim small-print" data-keep>Its model needs the game files (the item library); without them it can\'t be drawn.</p>' : ''}${tcIs3d('tool') ? turnHtml('tool') : ''}${st.tool ? placeHtml('tool') : ''}${objActs('tool', { has: !!st.tool })}`;
+    const bgKind = bgTab || (st.bg === 'colour' ? 'colour' : st.bg === 'image' ? 'image' : 'space');
+    const bgIn = `<div class="seg"><button type="button" data-bgk="space" aria-pressed="${bgKind === 'space'}">Space</button><button type="button" data-bgk="colour" aria-pressed="${bgKind === 'colour'}">Plain colour</button><button type="button" data-bgk="image" aria-pressed="${bgKind === 'image'}">Image</button></div>
+      ${bgKind === 'space' ? `<div class="tc-spaces">${TC_SPACE.map(([k, l]) => `<button type="button" class="tc-space${st.bg === k ? ' on' : ''}" data-space="${k}" title="${l}"><canvas width="96" height="64" data-sp="${k}"></canvas><span>${l}</span></button>`).join('')}</div><div class="tc-cols"><label>Sky <input type="color" id="tcC1" value="${esc(st.c1)}"></label><label>and <input type="color" id="tcC2" value="${esc(st.c2)}"></label></div>` : ''}
+      ${bgKind === 'colour' ? `<div class="tc-swatches">${TC_SWATCHES.map((c) => `<button type="button" class="tc-sw${(st.solid || '').toLowerCase() === c ? ' on' : ''}" data-sw="${c}" style="background:${c}" title="${c}"></button>`).join('')}<label class="tc-wheel" title="Any colour"><input type="color" id="tcSolid" value="${esc(st.solid || '#07131a')}"></label></div>` : ''}
+      ${bgKind === 'image' ? `<div class="tc-objacts"><button class="btn small" type="button" id="tcBgFile">Import image</button>${APP ? '<button class="btn small" type="button" id="tcBgShot">One of your screenshots</button>' : ''}</div>${st.bg === 'image' && TC.img.bg ? '' : '<p class="dim small-print" data-keep>Pick an image for the background.</p>'}` : ''}`;
+    const textIn = `<label class="field"><span>Name</span><input id="tcName" value="${esc(st.name)}" maxlength="40"></label>
+      <label class="field"><span>Font</span><select id="tcFont">${TC_FONTS.map(([k, l, fam, wt]) => `<option value="${k}"${st.font === k ? ' selected' : ''} style="font-family:${esc(fam)};font-weight:${wt}">${l}</option>`).join('')}</select></label>
+      <label class="field"><span>Title above it</span><input id="tcTitle" value="${esc(st.title)}" maxlength="60" placeholder="Traveller of the Atlas"></label>
+      <label class="field"><span>Caption</span><textarea id="tcCaption" rows="2" maxlength="200" placeholder="A line or two">${esc(st.caption)}</textarea></label>
+      <div class="tc-sub"><span class="k2">Logo</span>${TC.img.logo ? placeHtml('logo') + cutHtml('logo') : ''}<div class="tc-objacts"><button class="btn small" type="button" data-imp="logo">${TC.img.logo ? 'Change logo' : 'Import image'}</button>${TC.img.logo ? '<button class="btn small ghost danger" type="button" data-del="logo">Delete</button>' : ''}</div></div>`;
+    const glyphIn = `<select id="tcPlace"><option value="">No glyphs</option>${places.map((q) => `<option value="${esc(q.id)}"${q.id === st.place ? ' selected' : ''}>${esc(q.name)}</option>`).join('')}</select>${st.place ? placeHtml('glyphs') : ''}`;
+    const sizeIn = `<div class="seg">${Object.entries(TC_SIZES).map(([k, [w, h, l]]) => `<button type="button" data-size="${k}" aria-pressed="${st.size === k}" title="${w} × ${h}">${l}</button>`).join('')}<button type="button" data-size="custom" aria-pressed="${st.size === 'custom'}">Custom</button></div>
+      ${st.size === 'custom' ? `<div class="tc-wh"><label class="field"><span>Width</span><input type="number" id="tcW" min="200" max="4096" step="10" value="${W}"></label><span class="x">×</span><label class="field"><span>Height</span><input type="number" id="tcH" min="200" max="4096" step="10" value="${H}"></label></div>` : `<p class="dim small-print" data-keep>${W} × ${H} pixels</p>`}`;
+    const wm = APP ? `<label class="check tc-wm"><input type="checkbox" id="tcWm"${st.watermark || !tcPatron() ? ' checked' : ''}> Watermark${tcPatron() ? '' : ' <span class="dim">(patrons can remove it)</span>'}</label>` : '';
+    return box('size', 'Size', sizeIn) + box('trav', 'Traveller', travIn) + box('ship', 'Ship', shipIn) + box('tool', 'Multi-tool', toolIn) + box('bg', 'Background', bgIn) + box('text', 'Text', textIn) + box('glyphs', 'Portal glyphs', glyphIn)
+      + `<div class="tc-acts main">${wm}<button class="btn primary" type="button" id="tcSaveBtn">Save picture</button><button class="btn" type="button" id="tcCopy">Copy picture</button><button class="btn ghost" type="button" id="tcReset" title="Put everything back where it started">Reset layout</button></div>`;
+  };
+  const setShip = async (key) => {
+    st.ship = key; TC.imp.ship = null; TC.img.ship = null; TC.shipKey = key; tcSave();
+    const it = items.find((x) => x.key === key);
+    if (it) { const im = await tcShipImage(it); if (TC.shipKey === key) TC.img.ship = im; if (!im && !TC.shipModel && !TC.shipGlb) toast('That one has no picture yet. Give it one in the Garage, or render the corvette.'); }
+    else { TC.shipModel = null; TC.shipGlb = null; TC.shipPic = null; TC.shipViews = []; TC.shipItem = null; }
+  };
   const wire = () => {
     side.innerHTML = sideHtml();
+    side.querySelectorAll('details.tc-box').forEach((d) => d.addEventListener('toggle', () => { st.open[d.dataset.box] = d.open; tcSave(); }));
     side.querySelectorAll('.tc-turn input').forEach((inp) => inp.oninput = () => { const k = inp.closest('.tc-turn').dataset.turn; st.layers[k][inp.dataset.ax] = +inp.value; TC.sel = k; tcSave(); redraw(); });
     side.querySelectorAll('[data-front]').forEach((b) => b.onclick = () => { const l = st.layers[b.dataset.front]; l.yaw = 0; l.pitch = 0; tcSave(); wire(); redraw(); });
+    side.querySelectorAll('[data-place]').forEach((s) => s.onchange = () => { if (!s.value) return; move(s.dataset.place, s.value); TC.sel = s.dataset.place; tcSave(); wire(); redraw(); });
+    side.querySelectorAll('[data-cut]').forEach((c) => c.onchange = () => change(() => { st.cut[c.dataset.cut] = c.checked; }));
+    side.querySelectorAll('[data-del]').forEach((b) => b.onclick = () => removeLayer(b.dataset.del));
+    side.querySelectorAll('[data-imp]').forEach((b) => b.onclick = async () => {
+      const k = b.dataset.imp, f = await tcPickFile(); if (!f) return;
+      const im = await tcBlobImage(f); if (!im) { toast("Couldn't read that image.", true); return; }
+      if (k === 'logo') TC.img.logo = im;
+      if (k === 'trav') { TC.imp.trav = im; TC.cache.trav = null; }
+      if (k === 'ship') { TC.imp.ship = im; TC.cache.ship = null; }
+      TC.sel = k; st.open[BOX_OF[k]] = true; wire(); redraw();
+    });
     side.querySelectorAll('[data-show]').forEach((b) => b.onclick = () => {
       st.shipUsePic = b.dataset.show === 'pic';
       const view = TC.shipViews.find(([v]) => v === st.shipView) || TC.shipViews[0];
@@ -2329,12 +2566,13 @@ PAGES.traveller = (el) => {
       if (!setup || !setup.ready) { toast("Renders need Blender and Charon Forge. Set them up in the Garage's Cover settings.", true); return; }
       TC.rendering = key; wire();
       const note = (t) => { const n = $('#tcRenderNote'); if (n) n.textContent = t; };
+      const busyNote = 'Blender is drawing the front, side, back and top. It can take a few minutes; the angles show here when they are ready.';
       try {
         const p = await buildPayload(it);
         // the cover for the build as it is now first (the one shown may be from an earlier build), then the other angles
         if (!(await renderImg(p.key))) { note('Blender is drawing the cover…'); await renderCorvette(it, false, (s2) => note(s2 === 'queued' ? 'Waiting for Blender…' : 'Blender is drawing the cover…')); }
-        note('Blender is drawing the front, side, back and top. It can take a few minutes; the angles show here when they are ready.');
-        await renderCorvette(it, false, (s2) => note(s2 === 'queued' ? 'Waiting for Blender…' : 'Blender is drawing the front, side, back and top. It can take a few minutes; the angles show here when they are ready.'), true);
+        note(busyNote);
+        await renderCorvette(it, false, (s2) => note(s2 === 'queued' ? 'Waiting for Blender…' : busyNote), true);
         for (const k of [...renderImgs.keys()]) if (k.startsWith(p.key + '|')) renderImgs.delete(k);
         TC.rendering = null;
         if (TC.shipKey !== key) return;
@@ -2345,57 +2583,98 @@ PAGES.traveller = (el) => {
       } catch (e) { TC.rendering = null; toast('Could not render it: ' + e.message, true); }
       wire(); redraw();
     };
-    const fr = $('#tcFront', side); if (fr) fr.onchange = () => change(() => { st.shipFront = fr.checked; });
     const vw = $('#tcView', side); if (vw) vw.onchange = () => { st.shipView = vw.value; const v = TC.shipViews.find(([x]) => x === vw.value); if (v) TC.img.ship = v[2]; tcSave(); redraw(); };
-    side.querySelectorAll('[data-size]').forEach((b) => b.onclick = () => change(() => { st.size = b.dataset.size; side.querySelectorAll('[data-size]').forEach((x) => x.setAttribute('aria-pressed', x === b)); }));
-    const ps_ = $('#tcPose', side); if (ps_) ps_.onchange = async () => { await tcLoadPose(ps_.value); st.pose = ps_.value; tcSave(); wire(); redraw(); };
-    $('#tcRefresh', side).onclick = async () => { TC.pics = await tcPictures(); if (TC.pics[0] && TC.pics[0].name !== st.pose) await tcLoadPose(TC.pics[0].name); tcSave(); wire(); redraw(); };
-    $('#tcPoseFile', side).onchange = async (e) => { const f = e.target.files[0]; if (!f) return; TC.m3d = null; const im = await tcBlobImage(f); TC.img.trav = im ? tcTrim(im) : null; wire(); redraw(); };
-    $('#tcBg', side).onchange = async (e) => {
-      const v = e.target.value;
-      if (v === 'shot') { const b = await pickScreenshot(); if (b) TC.img.bg = await tcBlobImage(b); else { e.target.value = st.bg; return; } }
-      if (v === 'file') { const f = await new Promise((res) => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = () => res(inp.files[0] || null); addEventListener('focus', () => setTimeout(() => res(inp.files[0] || null), 400), { once: true }); inp.click(); }); if (f) TC.img.bg = await tcBlobImage(f); else { e.target.value = st.bg; return; } }
-      st.bg = v; tcSave(); wire(); redraw();
+    side.querySelectorAll('[data-size]').forEach((b) => b.onclick = () => { st.size = b.dataset.size; tcSave(); wire(); redraw(); });
+    const wIn = $('#tcW', side), hIn = $('#tcH', side);
+    if (wIn) wIn.onchange = () => change(() => { st.cw = +wIn.value; });
+    if (hIn) hIn.onchange = () => change(() => { st.ch = +hIn.value; });
+    const ps_ = $('#tcPose', side); if (ps_) ps_.onchange = async () => { if (ps_.value === '@imp') return; await tcLoadPose(ps_.value); tcSave(); wire(); redraw(); };
+    side.querySelectorAll('[data-bgk]').forEach((b) => b.onclick = () => {
+      bgTab = b.dataset.bgk;
+      if (bgTab === 'space') st.bg = TC_SPACE.some(([x]) => x === st.lastSpace) ? st.lastSpace : 'stars';
+      else if (bgTab === 'colour') st.bg = 'colour';
+      else if (TC.img.bg) st.bg = 'image';
+      tcSave(); wire(); redraw();
+    });
+    const bf = $('#tcBgFile', side); if (bf) bf.onclick = async () => { const f = await tcPickFile(); if (!f) return; TC.img.bg = await tcBlobImage(f); if (TC.img.bg) st.bg = 'image'; tcSave(); wire(); redraw(); };
+    const bs = $('#tcBgShot', side); if (bs) bs.onclick = async () => { const b = await pickScreenshot(); if (!b) return; TC.img.bg = await tcBlobImage(b); if (TC.img.bg) st.bg = 'image'; tcSave(); wire(); redraw(); };
+    side.querySelectorAll('[data-space]').forEach((b) => b.onclick = () => change(() => { st.bg = b.dataset.space; st.lastSpace = st.bg; side.querySelectorAll('.tc-space').forEach((x) => x.classList.toggle('on', x === b)); }));
+    side.querySelectorAll('canvas[data-sp]').forEach((c) => { const x = c.getContext('2d'); tcSpace(x, c.width, c.height, c.dataset.sp, st.c1, st.c2); });
+    side.querySelectorAll('[data-sw]').forEach((b) => b.onclick = () => { st.solid = b.dataset.sw; tcSave(); wire(); redraw(); });
+    const so = $('#tcSolid', side); if (so) { so.oninput = () => change(() => { st.solid = so.value; }); so.onchange = () => wire(); }
+    const c1 = $('#tcC1', side); if (c1) { c1.oninput = () => change(() => { st.c1 = c1.value; }); c1.onchange = () => wire(); }
+    const c2 = $('#tcC2', side); if (c2) { c2.oninput = () => change(() => { st.c2 = c2.value; }); c2.onchange = () => wire(); }
+    $('#tcShip', side).onchange = async (e) => { if (e.target.value === '@imp') return; await setShip(e.target.value); wire(); redraw(); };
+    $('#tcTool', side).onchange = async (e) => {
+      st.tool = e.target.value; tcSave(); TC.toolGlb = null; TC.toolModel = null; TC.cache.tool = null;
+      const it = items.find((x) => x.key === st.tool); if (it) await tcToolModel(it);
+      wire(); redraw();
     };
-    const c1 = $('#tcC1', side); if (c1) c1.oninput = () => change(() => { st.c1 = c1.value; });
-    const c2 = $('#tcC2', side); if (c2) c2.oninput = () => change(() => { st.c2 = c2.value; });
-    $('#tcShip', side).onchange = async (e) => { st.ship = e.target.value; tcSave(); TC.img.ship = null; TC.shipKey = st.ship; const it = items.find((x) => x.key === st.ship); if (it) { const im = await tcShipImage(it); if (TC.shipKey === st.ship) TC.img.ship = im; if (!im && !TC.shipModel && !TC.shipGlb) toast('That one has no picture yet. Give it one in the Garage, or render the corvette.'); } else { TC.shipModel = null; TC.shipGlb = null; TC.shipPic = null; TC.shipViews = []; } wire(); redraw(); };
-    $('#tcPlace', side).onchange = (e) => change(() => { st.place = e.target.value; });
+    $('#tcPlace', side).onchange = (e) => { st.place = e.target.value; tcSave(); wire(); redraw(); };
     for (const [id, k] of [['tcName', 'name'], ['tcTitle', 'title'], ['tcCaption', 'caption']]) $('#' + id, side).oninput = (e) => change(() => { st[k] = e.target.value; });
-    $('#tcCredit', side).onchange = (e) => change(() => { st.credit = e.target.checked; });
+    $('#tcFont', side).onchange = (e) => change(() => { st.font = e.target.value; });
+    const wmc = $('#tcWm', side);
+    if (wmc) wmc.onchange = async () => {
+      if (!wmc.checked && !tcPatron()) { wmc.checked = true; await tcPatronLoad(); if (tcPatron()) { st.watermark = false; tcSave(); wire(); redraw(); return; } tcPatronDialog(() => { st.watermark = false; tcSave(); if (el.isConnected) { wire(); redraw(); } }); return; }
+      change(() => { st.watermark = wmc.checked; });
+    };
     $('#tcSaveBtn', side).onclick = () => tcExport('save');
     $('#tcCopy', side).onclick = () => tcExport('copy');
-    $('#tcReset', side).onclick = () => change(() => { st.layers = TC_DEFAULT().layers; });
+    $('#tcReset', side).onclick = () => { st.layers = TC_DEFAULT().layers; st.order = TC_ORDER.slice(); tcSave(); wire(); redraw(); };
   };
-  // drag to move, scroll to resize
+  // on the picture: left drag moves, the wheel resizes; the middle button turns a 3D layer and Shift with it moves
+  // (Blender's orbit and pan); Shift + left or the right button turn too
   const at = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * cv.width, (e.clientY - r.top) / r.height * cv.height]; };
-  const hitAt = ([x, y]) => [...TC.hits].reverse().find((h) => x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h);
+  const hitAt = ([x, y]) => { const o = st.order; return [...TC.hits].sort((a, b) => o.indexOf(b.id) - o.indexOf(a.id)).find((h) => x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h); };
   let drag = null;
-  const is3d = (id) => (id === 'trav' && TC.m3d) || (id === 'ship' && (TC.shipGlb || TC.shipModel) && !TC.img.ship);
-  cv.onpointerdown = (e) => { cv.focus({ preventScroll: true }); const p = at(e), h = hitAt(p); TC.sel = h ? h.id : null; if (h) { const l = st.layers[h.id]; drag = { id: h.id, p, x: l.x, y: l.y, turn: (e.shiftKey || e.button === 2) && is3d(h.id), yaw: l.yaw || 0, pitch: l.pitch || 0 }; try { cv.setPointerCapture(e.pointerId); } catch (_) {} } redraw(); };
-  cv.oncontextmenu = (e) => { const h = hitAt(at(e)); if (h && is3d(h.id)) e.preventDefault(); };
-  cv.onpointermove = (e) => { const p = at(e); if (!drag) { const h = hitAt(p); cv.style.cursor = h ? (e.shiftKey && is3d(h.id) ? 'grab' : 'move') : ''; return; } const l = st.layers[drag.id];
-    if (drag.turn) { const r = cv.getBoundingClientRect(), k = cv.width / r.width; l.yaw = Math.round(((drag.yaw + (p[0] - drag.p[0]) / k * .6) + 540) % 360 - 180); l.pitch = Math.max(-60, Math.min(60, Math.round(drag.pitch + (p[1] - drag.p[1]) / k * .4))); side.querySelectorAll(`.tc-turn[data-turn="${drag.id}"] input`).forEach((inp) => { inp.value = l[inp.dataset.ax]; }); redraw(); return; } l.x = Math.max(0, Math.min(1, drag.x + (p[0] - drag.p[0]) / cv.width)); l.y = Math.max(0, Math.min(1, drag.y + (p[1] - drag.p[1]) / cv.height)); redraw(); };
+  cv.addEventListener('mousedown', (e) => { if (e.button === 1) e.preventDefault(); });   // no autoscroll with the middle button
+  cv.onpointerdown = (e) => {
+    cv.focus({ preventScroll: true });
+    const p = at(e), h = hitAt(p); TC.sel = h ? h.id : null;
+    if (h) {
+      const l = st.layers[h.id];
+      const turn = tcIs3d(h.id) && ((e.button === 1 && !e.shiftKey) || e.button === 2 || (e.button === 0 && e.shiftKey));
+      if (e.button === 1) e.preventDefault();
+      drag = { id: h.id, p, x: l.x, y: l.y, turn, yaw: l.yaw || 0, pitch: l.pitch || 0 };
+      try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+      const bx = BOX_OF[h.id]; if (bx && !st.open[bx]) { st.open[bx] = true; wire(); }
+    }
+    redraw();
+  };
+  cv.oncontextmenu = (e) => { const h = hitAt(at(e)); if (h && tcIs3d(h.id)) e.preventDefault(); };
+  cv.onpointermove = (e) => {
+    const p = at(e);
+    if (!drag) { const h = hitAt(p); cv.style.cursor = h ? (e.shiftKey && tcIs3d(h.id) ? 'grab' : 'move') : ''; return; }
+    const l = st.layers[drag.id];
+    if (drag.turn) {
+      const r = cv.getBoundingClientRect(), k = cv.width / r.width;
+      l.yaw = Math.round(((drag.yaw + (p[0] - drag.p[0]) / k * .6) + 540) % 360 - 180); l.pitch = Math.max(-60, Math.min(60, Math.round(drag.pitch + (p[1] - drag.p[1]) / k * .4)));
+      side.querySelectorAll(`.tc-turn[data-turn="${drag.id}"] input`).forEach((inp) => { inp.value = l[inp.dataset.ax]; }); redraw(); return;
+    }
+    l.x = Math.max(0, Math.min(1, drag.x + (p[0] - drag.p[0]) / cv.width)); l.y = Math.max(0, Math.min(1, drag.y + (p[1] - drag.p[1]) / cv.height)); redraw();
+  };
   cv.onpointerup = () => { if (drag) { drag = null; tcSave(); } };
   cv.addEventListener('wheel', (e) => { const h = hitAt(at(e)); if (!h) return; e.preventDefault(); const l = st.layers[h.id]; l.s = Math.max(.05, Math.min(3, l.s * (e.deltaY < 0 ? 1.06 : 1 / 1.06))); TC.sel = h.id; tcSave(); redraw(); }, { passive: false });
   wire(); redraw();
   (async () => {
     if (APP && !FAVS.list) { try { await favLoad(); } catch (_) {} }
+    await tcPatronLoad();
     TC.pics = await tcPictures();
     // a pose picture newer than the last one seen goes on the card; otherwise the one picked last time stays
     const newest = TC.pics[0], fresh = newest && newest.mtime > (st.seen || 0);
     if (newest) st.seen = Math.max(st.seen || 0, newest.mtime);
     const want = fresh ? newest.name : TC.pics.find((q) => q.name === st.pose) ? st.pose : (newest || {}).name || '';
-    if (want && (!TC.img.trav || want !== st.pose)) await tcLoadPose(want);
-    if (st.ship && !TC.img.ship) { const it = items.find((x) => x.key === st.ship); if (it) TC.img.ship = await tcShipImage(it); }
+    if (want && !TC.imp.trav && (!(TC.img.trav || TC.m3d) || want !== st.pose)) await tcLoadPose(want);
+    if (st.ship && !TC.img.ship && !TC.shipGlb && !TC.shipModel) { const it = items.find((x) => x.key === st.ship); if (it) TC.img.ship = await tcShipImage(it); }
+    if (st.tool && !TC.toolGlb && !TC.toolModel) { const it = items.find((x) => x.key === st.tool); if (it) await tcToolModel(it); }
     if (!el.isConnected) return; tcSave(); wire(); redraw();
-    // Blender's "Save the pose as a picture" lands here by itself while the page is open
+    // Blender's "Save the pose as a picture" and "Send the pose to the editor" land here by themselves while the page is open
     const watch = setInterval(async () => {
       if (!el.isConnected) { clearInterval(watch); return; }
       const pics = await tcPictures(), n = pics[0];
       if (!n || n.mtime <= (st.seen || 0)) return;
       st.seen = n.mtime; TC.pics = pics; await tcLoadPose(n.name); tcSave();
-      if (!el.isConnected) return; wire(); redraw(); toast('New pose from Blender: ' + n.name.replace(/\.png$/i, ''));
+      if (!el.isConnected) return; wire(); redraw(); toast('New pose from Blender: ' + n.name.replace(/\.(png|glb)$/i, ''));
     }, 3000);
   })();
 };
