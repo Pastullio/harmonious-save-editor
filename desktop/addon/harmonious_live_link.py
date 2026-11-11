@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 7, 0),
+    "version": (1, 8, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -781,6 +781,108 @@ def pick_ray(context, arm, origin, direction):
     return None
 
 
+# Body parts to pose (owner, 2026-11-11): each is the joint(s) it turns at and every stick that belongs to it, by the
+# game's joint names. A part shows only when the traveller has it (its joints move part of the body).
+BODY_PARTS = (
+    ("head", "Head", ("neck_01_01",), r"neck_.*|head_.*"),
+    ("torso", "Torso", ("spine_01",), r"spine_.*"),
+    ("r_arm", "Right arm", ("r_arm_Clavicle",), r"r_arm_(Clavicle|Shoulder|Elbow)"),
+    ("l_arm", "Left arm", ("l_arm_Clavicle",), r"l_arm_(Clavicle|Shoulder|Elbow)"),
+    ("r_hand", "Right hand", ("r_arm_Wrist",), r"r_arm_Wrist|r_hand_.*"),
+    ("l_hand", "Left hand", ("l_arm_Wrist",), r"l_arm_Wrist|l_hand_.*"),
+    ("r_leg", "Right leg", ("r_leg_Hip",), r"r_leg_.*"),
+    ("l_leg", "Left leg", ("l_leg_Hip",), r"l_leg_.*"),
+    ("backpack", "Backpack", ("backpack_root_Aux",), r"backpack_root_Aux|RetroWing.*"),
+    ("drone", "Backpack's camera arm", ("cam_arm1_Aux",), r"cam_arm\d_Aux"),
+    ("collar", "Collar", ("Fourth_NeckJNT",), r"Fourth_.*"),
+    ("front", "Chest piece and cape front", ("Bp_CF_0_jnt", "Bp_LF_0_jnt", "Bp_RF_0_jnt"), r"Bp_[CLR]F_\d_jnt"),
+    ("back", "Cape back", ("Bp_CB_0_jnt", "Bp_LB_0_jnt", "Bp_RB_0_jnt"), r"Bp_[CLR]B_\d_jnt"),
+    ("whole", "Whole traveller", ("ROOT",), r"ROOT"),
+)
+
+
+def part_bones(arm, part):
+    """(the joints a part turns at, every stick of it) on this traveller; empty when it doesn't have the part."""
+    import re
+    _, _, roots, pattern = part
+    body = {b.name: b for b in body_bones(arm)}
+    tail = lambda n: n.rsplit(":", 1)[-1]
+    have = [b for n, b in body.items() if tail(n) in roots]
+    if part[0] == "whole":
+        have = [arm.data.bones[n] for n in body if tail(n) == "ROOT"] or [b for b in arm.data.bones if b.parent is None]
+        return have, have
+    return have, [b for n, b in body.items() if re.fullmatch(pattern, tail(n))]
+
+
+def part_on(arm, part):
+    roots, _ = part_bones(arm, part)
+    return bool(roots) and all(is_selected(arm, b) and not is_hidden(arm, b) for b in roots)
+
+
+class HARMONIOUS_OT_body_part(bpy.types.Operator):
+    bl_idname = "harmonious.body_part"
+    bl_label = "Body part"
+    bl_description = "Select this part to turn it (R). Pick as many parts as you like; click again to let go of it"
+    bl_options = {"REGISTER", "UNDO"}
+    part: bpy.props.StringProperty()
+
+    @classmethod
+    def poll(cls, context):
+        return find_traveller() is not None
+
+    def execute(self, context):
+        arm = find_traveller()
+        part = next((p for p in BODY_PARTS if p[0] == self.part), None)
+        if part is None:
+            return {"CANCELLED"}
+        if context.mode != "POSE":
+            if context.mode != "OBJECT":
+                bpy.ops.object.mode_set(mode="OBJECT")
+            for o in context.selected_objects:
+                o.select_set(False)
+            arm.select_set(True)
+            context.view_layer.objects.active = arm
+            bpy.ops.object.mode_set(mode="POSE")
+        roots, sticks = part_bones(arm, part)
+        if part_on(arm, part):
+            keep = set()
+            for other in BODY_PARTS:
+                if other is not part and part_on(arm, other):
+                    keep.update(b.name for b in part_bones(arm, other)[1])
+            for b in roots:
+                set_selected(arm, b, False)
+            for b in sticks:
+                if b.name not in keep and not is_selected(arm, b):
+                    set_hidden(arm, b, True)
+        else:
+            for b in sticks:
+                set_hidden(arm, b, False)
+            for b in roots:
+                set_selected(arm, b, True)
+            if roots:
+                arm.data.bones.active = roots[0]
+            # each part turns round its own joint, also when several are picked
+            context.scene.tool_settings.transform_pivot_point = "INDIVIDUAL_ORIGINS"
+        redraw()
+        return {"FINISHED"}
+
+
+class HARMONIOUS_OT_body_parts_clear(bpy.types.Operator):
+    bl_idname = "harmonious.body_parts_clear"
+    bl_label = "Let go of all"
+    bl_description = "Deselect every part and hide the sticks"
+    bl_options = {"REGISTER", "UNDO"}
+
+    @classmethod
+    def poll(cls, context):
+        return find_traveller() is not None
+
+    def execute(self, context):
+        show_bone(find_traveller(), None)
+        redraw()
+        return {"FINISHED"}
+
+
 class HARMONIOUS_OT_show_bones(bpy.types.Operator):
     bl_idname = "harmonious.show_bones"
     bl_label = "Show every stick"
@@ -1377,6 +1479,35 @@ class HARMONIOUS_PT_traveller(bpy.types.Panel):
         send.operator(HARMONIOUS_OT_send_pose.bl_idname, icon="EXPORT")
 
 
+class HARMONIOUS_PT_parts(bpy.types.Panel):
+    bl_label = "Body parts"
+    bl_idname = "HARMONIOUS_PT_parts"
+    bl_parent_id = "HARMONIOUS_PT_traveller"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = "UI"
+    bl_category = "LiveLink"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    @classmethod
+    def poll(cls, context):
+        arm = find_traveller()
+        return arm is not None and bool(arm.get("harmonious_traveller"))
+
+    def draw(self, context):
+        layout = self.layout
+        arm = find_traveller()
+        tip = layout.column(align=True)
+        tip.scale_y = 0.8
+        for line in wrap("Pick one part or several, then R turns them, each at its own joint.", 40):
+            tip.label(text=line)
+        grid = layout.grid_flow(row_major=True, columns=2, even_columns=True, align=True)
+        for part in BODY_PARTS:
+            if not part_bones(arm, part)[0]:
+                continue
+            grid.operator(HARMONIOUS_OT_body_part.bl_idname, text=part[1], depress=part_on(arm, part)).part = part[0]
+        layout.operator(HARMONIOUS_OT_body_parts_clear.bl_idname, icon="X")
+
+
 class HARMONIOUS_PT_support(bpy.types.Panel):
     bl_label = "Support the creator"
     bl_idname = "HARMONIOUS_PT_support"
@@ -1416,7 +1547,8 @@ _KEYMAPS = []
 
 CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_OT_pick_part, HARMONIOUS_OT_show_bones, HARMONIOUS_OT_pose, HARMONIOUS_OT_pose_reset,
            HARMONIOUS_OT_pose_save, HARMONIOUS_OT_poses_folder, HARMONIOUS_OT_hold_tool, HARMONIOUS_OT_drop_tool, HARMONIOUS_OT_send_pose, HARMONIOUS_OT_picture,
-           HARMONIOUS_PT_live, HARMONIOUS_PT_traveller, HARMONIOUS_PT_support)
+           HARMONIOUS_OT_body_part, HARMONIOUS_OT_body_parts_clear,
+           HARMONIOUS_PT_live, HARMONIOUS_PT_traveller, HARMONIOUS_PT_parts, HARMONIOUS_PT_support)
 
 
 def register():

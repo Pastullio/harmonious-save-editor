@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.11.1412",
+  "date": "2026-11-11",
+  "notes": [
+   "Please install the LiveLink add-on again (version 1.8.0): Your traveller has a new Body parts section (closed until you open it) where you pick the head, torso, arms, hands, legs, backpack, chest piece and cape, or the whole traveller; pick several at once and R turns each at its own joint",
+   "Traveller page: Render the angles now shows what Blender is doing, renders the corvette's cover for its current build first when it's missing, and shows the front when the angles are ready (before, the new angles didn't appear until you picked the ship again)"
+  ]
+ },
+ {
   "version": "2026.11.10.2157",
   "date": "2026-11-10",
   "notes": [

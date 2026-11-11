@@ -150,6 +150,21 @@ im.save(${JSON.stringify(file)})`]);
     ok('…Renders has every angle', await p.evaluate(() => $('#tcView') && $('#tcView').options.length >= 4));
     await p.selectOption('#tcView', 'side'); await p.waitForTimeout(400);
     ok('…and picking one draws it', await p.evaluate(() => { const h = TC.hits.find((x) => x.id === 'ship'), d = $('#tcCanvas').getContext('2d').getImageData(Math.round(h.x + h.w / 2), Math.round(h.y + h.h / 2), 1, 1).data; return d[2] > 200 && d[0] < 60; }));
+    // Render the angles: the cover for the build as it is now, then the other angles, then Front is shown
+    const rv = await p.evaluate(async () => {
+      TC.shipViews = TC.shipViews.slice(0, 1); window.renderImg = async (h, v = 'hero') => (TC.calls.done && v !== 'hero') || v === 'hero' ? (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.fillStyle = v === 'front' ? '#00ff00' : '#ff0000'; x.fillRect(8, 8, 48, 48); return c; })() : null;
+      TC.calls = []; window.renderSetup = async () => ({ ready: true });
+      window.renderCorvette = async (it, force, onState, views) => { TC.calls.push(views ? 'views' : 'cover'); onState && onState('running'); await new Promise((r) => setTimeout(r, 300)); if (views) TC.calls.done = true; return true; };
+      const st = tcLoad(); st.shipUsePic = false; tcSave(); $('#tcShip').dispatchEvent(new Event('change')); await new Promise((r) => setTimeout(r, 800));
+      return !!$('#tcRenderViews');
+    });
+    ok('Render the angles shows while angles are missing', rv);
+    if (rv) {
+      await p.click('#tcRenderViews'); await p.waitForTimeout(150);
+      ok('…says Blender is drawing them', /Blender is drawing/.test(await p.evaluate(() => ($('#tcRenderNote') || {}).textContent || '')));
+      await p.waitForFunction(() => TC.calls.done && !TC.rendering, null, { timeout: 5000 }).catch(() => {}); await p.waitForTimeout(600);
+      ok('…then shows the front, with the Angle list', await p.evaluate(() => tcLoad().shipView === 'front' && $('#tcView') && $('#tcView').value === 'front' && TC.calls.join() === 'views'));
+    }
     await p.click('[data-show="pic"]'); await p.waitForTimeout(400);
     ok('…Your picture goes back to it', await p.evaluate(() => TC.img.ship === TC.shipPic && !$('#tcView')));
   } else console.log('(no corvette in the test save)');

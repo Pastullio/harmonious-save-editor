@@ -144,6 +144,17 @@ bpy.context.scene.harmonious_pose = 'ready:Waving'; bpy.ops.harmonious.pose()
 print('SENDPOSE', bpy.ops.harmonious.send_pose(), bpy.context.mode)
 print('PICTURE', bpy.ops.harmonious.pose_picture())
 print('STATUS', h.STATE['status'])
+# Body parts: pick several, each turns at its own joint; picking one again lets go of it
+have = [q[0] for q in h.BODY_PARTS if h.part_bones(arm, q)[0]]
+bpy.ops.harmonious.body_parts_clear(); bpy.ops.harmonious.body_part(part='front'); bpy.ops.harmonious.body_part(part='backpack')
+both = h.part_on(arm, h.BODY_PARTS[[q[0] for q in h.BODY_PARTS].index('front')]) and h.part_on(arm, h.BODY_PARTS[[q[0] for q in h.BODY_PARTS].index('backpack')])
+nsel = sum(1 for b in arm.data.bones if h.is_selected(arm, b))
+pivot = bpy.context.scene.tool_settings.transform_pivot_point
+bpy.ops.harmonious.body_part(part='front')
+after = [h.part_on(arm, q) for q in h.BODY_PARTS if q[0] in ('front', 'backpack')]
+bpy.ops.harmonious.body_parts_clear()
+left = sum(1 for b in arm.data.bones if h.is_selected(arm, b))
+print('PARTS', ','.join(have), both, nsel, pivot, after, left)
 # a multi-tool in the right hand, following the hand from pose to pose
 hold = 'none'
 if h.LINK.get('tools'):
@@ -164,7 +175,7 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
     try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 600000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
-    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|Traceback|  File|\w+Error)/.test(l)).join('\n'));
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
@@ -187,6 +198,9 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     const [hpick, hact, hz] = line('HEADPICK').split(' ');
     ok('clicking the head turns it at the neck', hpick === 'head_Top' && hact === 'neck_01_02' && +hz < 1.75);
     ok('…and shows just that stick', /^1 /.test(line('SHOWNAFTER')) && line('SHOWNAFTER').endsWith(got));
+    const parts = line('PARTS');
+    ok('Body parts lists the traveller\'s parts (' + parts.split(' ')[0] + ')', ['head', 'torso', 'r_arm', 'l_leg', 'backpack', 'front', 'whole'].every((k) => parts.split(' ')[0].split(',').includes(k)));
+    ok('…several can be picked at once, each turning at its own joint, and picking one again lets go of it only', / True 4 INDIVIDUAL_ORIGINS \[True, False\] 0$/.test(parts) || / True 4 INDIVIDUAL_ORIGINS \[False, True\] 0$/.test(parts), parts);
     const hold = line('HOLD').split(' ');
     if (hold[0] === 'none') console.log('(no multi-tools in the test save)');
     else ok('Hold it puts the multi-tool in the right hand, it follows the hand, and Put it away removes it', hold[0] === 'True' && +hold[1] > 0 && +hold[2] < 0.6 && Math.abs(+hold[3] - +hold[2]) < 0.05 && hold[4] === '0');

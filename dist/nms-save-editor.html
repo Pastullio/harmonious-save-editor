@@ -410,6 +410,8 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .tc-row > .k { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
 .tc-row select, .tc-row input:not([type=color]):not([type=checkbox]):not([type=range]), .tc-row textarea { width: 100%; }
 .tc-row .check { display: flex; align-items: center; gap: 8px; justify-content: flex-start; width: auto; }
+.tc-note { margin: 6px 0 4px; font-size: 13px; color: var(--dim); }
+.tc-note:empty { display: none; }
 .tc-row .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .tc-cols { display: flex; gap: 12px; align-items: center; } .tc-cols label { display: flex; gap: 6px; align-items: center; }
 .tc-cols input[type=color] { width: 40px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; }
@@ -2599,7 +2601,7 @@ function tcPlaces() {
 }
 // a ship's picture: the one you gave it, a corvette's renders (each angle Blender made), else its model, to turn
 async function tcShipImage(it) {
-  TC.shipModel = null; TC.shipGlb = null; TC.shipPic = null; TC.shipViews = []; TC.shipItem = it; TC.cache.ship = null;
+  TC.shipModel = null; TC.shipGlb = null; TC.shipPic = null; TC.shipViews = []; TC.shipItem = it; TC.shipKey = it.key; TC.cache.ship = null;
   const url = await customCover(it.key);
   if (url) TC.shipPic = await tcImage(url);
   // starships and multi-tools: the real model with the game's textures, in the ship's own colours when it was painted
@@ -2746,7 +2748,7 @@ PAGES.traveller = (el) => {
       ${TC.m3d ? turnHtml('trav') : ''}<div class="tc-acts"><button class="link" type="button" id="tcRefresh">Look again</button><label class="link">Use an image file<input type="file" accept="image/png,image/*" id="tcPoseFile" hidden></label>${APP ? '<button class="link addon-btn" type="button">Get LiveLink</button>' : ''}</div></div>
     <div class="tc-row"><span class="k">Background</span><select id="tcBg">${[['stars', 'Starfield'], ['gradient', 'Two colours'], ['colour', 'One colour'], ...(APP ? [['shot', 'One of your screenshots…']] : []), ['file', 'An image file…']].map(([k, l]) => `<option value="${k}"${st.bg === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
       ${st.bg === 'shot' || st.bg === 'file' ? '' : `<div class="tc-cols"><label>Colour <input type="color" id="tcC1" value="${esc(st.c1)}"></label>${st.bg === 'colour' ? '' : `<label>and <input type="color" id="tcC2" value="${esc(st.c2)}"></label>`}</div>`}</div>
-    <div class="tc-row"><span class="k">Ship</span><select id="tcShip"><option value="">No ship</option>${items.filter((x) => x.kind !== 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)} (${esc(x.type.toLowerCase())})</option>`).join('')}<optgroup label="Multi-tools">${items.filter((x) => x.kind === 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</optgroup></select>${st.ship && TC.shipPic && (TC.shipGlb || TC.shipViews.length) ? `<div class="seg tc-show"><button type="button" data-show="3d" aria-pressed="${!st.shipUsePic}">${TC.shipGlb ? '3D model' : 'Renders'}</button><button type="button" data-show="pic" aria-pressed="${!!st.shipUsePic}">Your picture</button></div>` : ''}${st.ship && (TC.shipGlb || TC.shipModel) && !TC.img.ship ? turnHtml('ship') : ''}${st.ship ? `<label class="check"><input type="checkbox" id="tcFront"${st.shipFront ? ' checked' : ''}> In front of your traveller</label>` : ''}${st.ship && TC.shipViews.length > 1 && !(TC.shipPic && st.shipUsePic) ? `<label class="field"><span>Angle</span><select id="tcView">${TC.shipViews.map(([v, l]) => `<option value="${v}"${v === (st.shipView || TC.shipViews[0][0]) ? ' selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}${APP && st.ship && TC.shipItem && TC.shipItem.kind === 'corvette' && TC.shipViews.length < 2 && !(TC.shipPic && st.shipUsePic) ? `<button class="btn small" type="button" id="tcRenderViews" title="Blender renders the corvette from the front, side, back and top (needs Blender and Charon Forge)">Render the angles</button>` : ''}</div>
+    <div class="tc-row"><span class="k">Ship</span><select id="tcShip"><option value="">No ship</option>${items.filter((x) => x.kind !== 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)} (${esc(x.type.toLowerCase())})</option>`).join('')}<optgroup label="Multi-tools">${items.filter((x) => x.kind === 'tool').map((x) => `<option value="${esc(x.key)}"${x.key === st.ship ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</optgroup></select>${st.ship && TC.shipPic && (TC.shipGlb || TC.shipViews.length) ? `<div class="seg tc-show"><button type="button" data-show="3d" aria-pressed="${!st.shipUsePic}">${TC.shipGlb ? '3D model' : 'Renders'}</button><button type="button" data-show="pic" aria-pressed="${!!st.shipUsePic}">Your picture</button></div>` : ''}${st.ship && (TC.shipGlb || TC.shipModel) && !TC.img.ship ? turnHtml('ship') : ''}${st.ship ? `<label class="check"><input type="checkbox" id="tcFront"${st.shipFront ? ' checked' : ''}> In front of your traveller</label>` : ''}${st.ship && TC.shipViews.length > 1 && !(TC.shipPic && st.shipUsePic) ? `<label class="field"><span>Angle</span><select id="tcView">${TC.shipViews.map(([v, l]) => `<option value="${v}"${v === (st.shipView || TC.shipViews[0][0]) ? ' selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}${APP && st.ship && TC.shipItem && TC.shipItem.kind === 'corvette' && TC.shipViews.length < COVER_VIEWS.length && !(TC.shipPic && st.shipUsePic) ? `<p class="tc-note" id="tcRenderNote" data-keep>${TC.rendering === st.ship ? 'Blender is drawing the front, side, back and top. It can take a few minutes; the angles show here when they are ready.' : ''}</p><button class="btn small" type="button" id="tcRenderViews"${TC.rendering === st.ship ? ' disabled' : ''} title="Blender renders the corvette from the front, side, back and top (needs Blender and Charon Forge)">Render the angles</button>` : ''}</div>
     <div class="tc-row"><span class="k">Portal glyphs</span><select id="tcPlace"><option value="">No glyphs</option>${places.map((q) => `<option value="${esc(q.id)}"${q.id === st.place ? ' selected' : ''}>${esc(q.name)}</option>`).join('')}</select></div>
     <div class="tc-row"><span class="k">Words</span><label class="field"><span>Name</span><input id="tcName" value="${esc(st.name)}" maxlength="40"></label><label class="field"><span>Title above it</span><input id="tcTitle" value="${esc(st.title)}" maxlength="60" placeholder="Traveller of the Atlas"></label><label class="field"><span>Caption below</span><textarea id="tcCaption" rows="2" maxlength="200" placeholder="A line or two">${esc(st.caption)}</textarea></label></div>
     <label class="check"><input type="checkbox" id="tcCredit"${st.credit ? ' checked' : ''}> Small "Harmonious Save Editor" in the corner</label>
@@ -2763,13 +2765,25 @@ PAGES.traveller = (el) => {
     });
     const rv = $('#tcRenderViews', side);
     if (rv) rv.onclick = async () => {
-      const it = TC.shipItem; rv.disabled = true; rv.textContent = 'Rendering…';
+      const it = TC.shipItem, key = st.ship;
+      const setup = await renderSetup().catch(() => null);
+      if (!setup || !setup.ready) { toast("Renders need Blender and Charon Forge. Set them up in the Garage's Cover settings.", true); return; }
+      TC.rendering = key; wire();
+      const note = (t) => { const n = $('#tcRenderNote'); if (n) n.textContent = t; };
       try {
-        await renderCorvette(it, false, (s2) => { rv.textContent = s2 === 'queued' ? 'Waiting for Blender…' : 'Rendering…'; }, true);
-        const pk = (await buildPayload(it)).key; for (const k of [...renderImgs.keys()]) if (k.startsWith(pk + '|') || (it.renderKey && k.startsWith(it.renderKey + '|'))) renderImgs.delete(k);
-        const im = await tcShipImage(it); if (TC.shipKey === st.ship) TC.img.ship = im;
-        if (TC.shipViews.length < 2) toast("Blender didn't make the other angles. Check Cover settings in the Garage.", true);
-      } catch (e) { toast('Could not render it: ' + e.message, true); }
+        const p = await buildPayload(it);
+        // the cover for the build as it is now first (the one shown may be from an earlier build), then the other angles
+        if (!(await renderImg(p.key))) { note('Blender is drawing the cover…'); await renderCorvette(it, false, (s2) => note(s2 === 'queued' ? 'Waiting for Blender…' : 'Blender is drawing the cover…')); }
+        note('Blender is drawing the front, side, back and top. It can take a few minutes; the angles show here when they are ready.');
+        await renderCorvette(it, false, (s2) => note(s2 === 'queued' ? 'Waiting for Blender…' : 'Blender is drawing the front, side, back and top. It can take a few minutes; the angles show here when they are ready.'), true);
+        for (const k of [...renderImgs.keys()]) if (k.startsWith(p.key + '|')) renderImgs.delete(k);
+        TC.rendering = null;
+        if (TC.shipKey !== key) return;
+        st.shipUsePic = false; st.shipView = 'front'; tcSave();
+        TC.img.ship = await tcShipImage(it); TC.cache.ship = null;
+        if (TC.shipViews.length > 1) toast('The front, side, back and top are ready: pick one under Angle.');
+        else toast("Blender didn't make the other angles. Check Cover settings in the Garage.", true);
+      } catch (e) { TC.rendering = null; toast('Could not render it: ' + e.message, true); }
       wire(); redraw();
     };
     const fr = $('#tcFront', side); if (fr) fr.onchange = () => change(() => { st.shipFront = fr.checked; });
