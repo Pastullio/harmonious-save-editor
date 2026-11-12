@@ -450,12 +450,14 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .trav-top { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 16px; align-items: start; margin-bottom: 16px; }
 .trav-info h3 { margin-top: 0; }
 @media (max-width: 760px) { .trav-top { grid-template-columns: 1fr; } }
-.sw-side-acts { display: grid; gap: 8px; margin: 14px 0 26px; }
+.sw-side-acts { display: grid; gap: 8px; margin: 14px 0 0; }
 .sw-probs { margin-top: 12px; display: grid; gap: 6px; font-size: 13px; }
 .sw-main { display: grid; gap: 14px; min-width: 0; }
 .sw-main .panel { margin: 0; }
 .sw-bar { display: grid; gap: 12px; }
-.sw-top { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 14px; align-items: start; }
+.sw-top { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 14px; align-items: stretch; }
+.sw-pic { display: flex; }
+.sw-pic .pic-card { flex: 1; }
 .sw-topr { display: grid; gap: 14px; min-width: 0; }
 .sw-pic .pic-card { margin: 0; }
 @media (max-width: 1100px) { .sw-top { grid-template-columns: 1fr; } .sw-pic { max-width: 280px; } }
@@ -473,7 +475,7 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .sw-health .warn .sw-ic { background: #e08a3c; } .sw-health .warn .sw-ic::after { content: "!"; }
 .sw-health .bad .sw-ic { background: var(--danger); } .sw-health .bad .sw-ic::after { content: "×"; }
 .sw-parts-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.sw-parts-head h3 { margin: 0 auto 0 0; }
+.sw-parts-head { justify-content: space-between; }
 .sw-parts-head #swQ { width: 220px; }
 .sw-move { display: flex; gap: 6px; flex-wrap: wrap; }
 .sw-hint { font-size: 12.5px; margin: 10px 0; }
@@ -487,7 +489,12 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .sw-row .id { color: var(--dim); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sw-row .grp { font-size: 12px; color: var(--dim); }
 .sw-row:not(.g-other) .nm { font-weight: 500; color: var(--accent); }
-.sw-json summary { cursor: pointer; font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+.sw-json summary, .sw-parts > summary { cursor: pointer; font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+.sw-parts[open] > summary { margin-bottom: 12px; }
+.sw-count { letter-spacing: 0; text-transform: none; font-size: 12px; margin-left: 6px; }
+.sw-side:not(.panel) { display: grid; gap: 14px; }
+.sw-side > .panel { margin: 0; }
+.sw-livebox .live { margin: 0; padding: 0; border: 0; }
 .sw-json textarea { width: 100%; font-size: 12px; margin: 8px 0; }
 /* supercharged slots: a steady electric edge and a bolt badge; the arcs crackle only on hover or selection,
    and once when a slot is supercharged, so a fully charged grid stays calm (no yellow) */
@@ -943,7 +950,7 @@ dialog.wide { max-width: 1000px; }
 .qf-body .toolbar { margin: 0; }
 .qf-body .currencies { margin-bottom: 0; }
 .qf-body .cur { box-shadow: none; background: var(--well); }
-.tc.portrait { position: relative; }
+.tc.has-gear { position: relative; }
 .tc-gear { position: absolute; top: 8px; right: 8px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .25); background: rgba(6, 20, 26, .6); color: #fff; display: grid; place-items: center; cursor: pointer; padding: 0; backdrop-filter: blur(4px); transition: background .15s, transform .2s; }
 .tc-gear svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
 .tc-gear:hover, .tc-gear.on { background: rgba(6, 20, 26, .85); transform: rotate(30deg); }
@@ -1963,9 +1970,7 @@ function travellerCards(host, journey) {
   const saveName = str(g(common() || p, 'SaveName')) || 'Traveller';
   const me = { kind: 'portrait', key: 'traveller|' + saveName, name: disc.who || saveName, cls: '' };
   host.innerHTML = `
-    <div class="tc portrait"><div class="tc-art"></div><button class="tc-gear" type="button" id="meGear" title="Change the picture" aria-label="Change the traveller's picture" aria-expanded="false">${GEAR_SVG}</button>
-      <div class="tc-gearpop" id="meGearPop" hidden><span class="k">Traveller picture</span>${APP ? '<button class="btn small" type="button" id="meShot">Choose a screenshot</button>' : ''}<label class="btn small">Import image<input type="file" accept="image/*" id="meFile" hidden></label><button class="btn small ghost" type="button" id="meReset" hidden>Use the default picture</button></div>
-      <div class="tc-cap"><span class="k">Traveller</span><b>${esc(me.name)}</b></div></div>
+    <div class="tc portrait"><div class="tc-art"></div><div class="tc-cap"><span class="k">Traveller</span><b>${esc(me.name)}</b></div></div>
     ${ship ? `<button class="tc" id="tcShip"><div class="tc-art"></div><div class="tc-cap"><span class="k">Current ship</span><b>${esc(ship.name)}</b><span>${esc(ship.sub.replace(/, current ship$/, ''))}</span></div></button>` : ''}
     ${tool ? `<button class="tc" id="tcTool"><div class="tc-art"></div><div class="tc-cap"><span class="k">Multi-tool</span><b>${esc(tool.name)}</b><span>${esc(tool.sub.replace(/, equipped$/, ''))}</span></div></button>` : ''}
     <div class="tc loc"><span class="k">Location</span>
@@ -1973,19 +1978,17 @@ function travellerCards(host, journey) {
       <span class="k sm">Portal code</span>${glyphRow(loc.portal, 'portal-glyphs')}<span class="portal">${[...loc.portal].map((c) => `<i>${c}</i>`).join('')}</span>
       <span class="k sm">Galactic address</span><span class="mono">${loc.galactic}</span><button class="link loc-go" type="button" onclick="go('coords')">Coordinates and warp</button>` : '<span class="dim">Not in this save</span>'}</div>`;
   const art = host.querySelector('.portrait .tc-art'), hero = document.querySelector('.hero-art');
-  const showMe = () => customCover(me.key).then((url) => { const im = new Image(); im.alt = ''; im.src = url || (hero && hero.src) || ''; im.className = url ? '' : 'default'; art.replaceChildren(im); host.querySelector('#meReset').hidden = !url; });
+  let mine = false;
+  const showMe = () => customCover(me.key).then((url) => { mine = !!url; const im = new Image(); im.alt = ''; im.src = url || (hero && hero.src) || ''; im.className = url ? '' : 'default'; art.replaceChildren(im); });
   showMe();
   // the picture's options sit behind the gear (owner 2026-11-12)
-  const gear = host.querySelector('#meGear'), pop = host.querySelector('#meGearPop');
-  const openPop = (on) => { pop.hidden = !on; gear.setAttribute('aria-expanded', on); gear.classList.toggle('on', on); };
-  gear.onclick = (e) => { e.stopPropagation(); openPop(pop.hidden); };
-  const away = (e) => { if (!host.isConnected) { document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc1, true); return; } if (!pop.hidden && !pop.contains(e.target) && e.target !== gear && !gear.contains(e.target)) openPop(false); };
-  const esc1 = (e) => { if (e.key === 'Escape' && !pop.hidden) { openPop(false); gear.focus(); } };
-  document.addEventListener('pointerdown', away, true); document.addEventListener('keydown', esc1, true);
-  const setMe = async (blob) => { openPop(false); if (blob && await chooseCover(me, blob)) showMe(); };
-  host.querySelector('#meReset').onclick = async () => { openPop(false); await setCustomCover(me.key, null); showMe(); };
-  const ms = host.querySelector('#meShot'); if (ms) ms.onclick = async () => setMe(await pickScreenshot());
-  host.querySelector('#meFile').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; setMe(f); };
+  const setMe = async (blob) => { if (blob && await chooseCover(me, blob)) showMe(); };
+  const g0 = gearMenu(host.querySelector('.tc.portrait'), 'Traveller picture', [
+    ...(APP ? [['Choose a screenshot', async () => setMe(await pickScreenshot())]] : []),
+    ['Import image', (f) => setMe(f), '', { file: true }],
+    ['Use the default picture', async () => { await setCustomCover(me.key, null); showMe(); }, 'ghost', { hidden: () => !mine }],
+  ]);
+  g0.gear.id = 'meGear'; g0.pop.id = 'meGearPop';
   const toHangar = (it) => () => { S.hangar = { filter: 'all', key: it.key }; go('hangar'); };
   if (ship) miniCover(host.querySelector('#tcShip'), ship, 220, toHangar(ship));
   if (tool) miniCover(host.querySelector('#tcTool'), tool, 220, toHangar(tool));
@@ -4330,14 +4333,49 @@ async function pictureDialog(it) {
   if (!blob && how === 'file') blob = await new Promise((res) => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = () => res(inp.files[0] || null); addEventListener('focus', () => setTimeout(() => res(inp.files[0] || null), 400), { once: true }); inp.click(); });
   return blob ? chooseCover(it, blob) : false;
 }
+// A gear in a card's corner (owner 2026-11-12) that opens a small panel of options: items are [label, fn, kind]
+// (kind 'ghost' or 'danger'; fn may be null for a heading). Outside click or Esc closes it. Returns {pop, close}.
+function gearMenu(card, title, items) {
+  card.classList.add('has-gear');
+  const gear = document.createElement('button'); gear.type = 'button'; gear.className = 'tc-gear'; gear.title = title; gear.setAttribute('aria-label', title); gear.setAttribute('aria-expanded', 'false'); gear.innerHTML = GEAR_SVG;
+  const pop = document.createElement('div'); pop.className = 'tc-gearpop'; pop.hidden = true; pop.setAttribute('role', 'menu');
+  card.append(gear, pop);
+  const open = (on) => { pop.hidden = !on; gear.setAttribute('aria-expanded', on); gear.classList.toggle('on', on); };
+  const fill = () => {
+    pop.innerHTML = `<span class="k">${esc(title)}</span>`;
+    for (const [label, fn, kind, extra] of items) {
+      if (extra && extra.hidden && extra.hidden()) continue;
+      const b = extra && extra.file ? document.createElement('label') : document.createElement('button');
+      b.className = 'btn small' + (kind ? ' ' + kind : ''); b.textContent = label;
+      if (extra && extra.file) { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.hidden = true; inp.onchange = () => { const f = inp.files[0]; inp.value = ''; open(false); if (f) fn(f); }; b.appendChild(inp); }
+      else { b.type = 'button'; b.onclick = () => { open(false); fn(); }; }
+      pop.appendChild(b);
+    }
+  };
+  gear.onclick = (e) => { e.stopPropagation(); if (pop.hidden) fill(); open(pop.hidden); };
+  const away = (e) => { if (!card.isConnected) { document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', key, true); return; } if (!pop.hidden && !pop.contains(e.target) && !gear.contains(e.target)) open(false); };
+  const key = (e) => { if (e.key === 'Escape' && !pop.hidden) { open(false); gear.focus(); } };
+  document.addEventListener('pointerdown', away, true); document.addEventListener('keydown', key, true);
+  return { pop, gear, close: () => open(false) };
+}
+// the picture options of a card, behind its gear: a screenshot, an image file, or back to the generated cover
+function pictureGear(card, it, onChange, title) {
+  let has = false; customCover(it.key).then((u) => { has = !!u; });
+  const set = async (blob) => { if (blob && await chooseCover(it, blob)) { has = true; onChange(); } };
+  return gearMenu(card, title || 'Picture', [
+    ...(APP ? [['Choose a screenshot', async () => set(await pickScreenshot())]] : []),
+    ['Import image', (f) => set(f), '', { file: true }],
+    ['Use the generated cover', async () => { if (await setCustomCover(it.key, null)) { has = false; onChange(); } }, 'ghost', { hidden: () => !has }],
+  ]);
+}
 // a picture card for things without Cover Flow (freighter, exocraft): generated cover until a picture is added
 function pictureCard(host, it, caption) {
   const card = document.createElement('div'); card.className = 'tc pic-card';
-  card.innerHTML = `<div class="tc-art"></div><div class="tc-cap"><span class="k">${esc(caption)}</span><b>${esc(it.name)}</b><span class="tc-acts"><button class="link" type="button">Change picture</button>${APP && it.scene && S.lib && S.lib.game ? '<button class="link parts" type="button">Choose parts</button>' : ''}</span></div>`;
+  card.innerHTML = `<div class="tc-art"></div><div class="tc-cap"><span class="k">${esc(caption)}</span><b>${esc(it.name)}</b>${APP && it.scene && S.lib && S.lib.game ? '<span class="tc-acts"><button class="link parts" type="button">Choose parts</button></span>' : ''}</div>`;
   host.appendChild(card);
   const paint = () => miniCover(card, it, 240);
   paint();
-  card.querySelector('.link').onclick = async () => { if (await pictureDialog(it)) { it.custom = false; paint(); } };
+  pictureGear(card, it, () => { it.custom = false; paint(); }, 'Picture');
   const pl = card.querySelector('.link.parts'); if (pl) pl.onclick = () => partsDialog(it, paint);
   card.addEventListener('dragover', (e) => { e.preventDefault(); card.classList.add('drop-over'); });
   card.addEventListener('dragleave', () => card.classList.remove('drop-over'));
@@ -7177,13 +7215,13 @@ PAGES.shipwright = (el) => {
   if (!corvs.some((c) => c.i === W.slot)) W.slot = corvs[0].i;
   const probs = slotProblems();
   const wrap = document.createElement('div'); wrap.className = 'sw'; el.appendChild(wrap);
-  const side = document.createElement('aside'); side.className = 'sw-side panel';
-  side.innerHTML = `<h3>Corvettes</h3><div class="sw-list">${corvs.map(({ s, i }) => {
+  const side = document.createElement('aside'); side.className = 'sw-side';
+  side.innerHTML = `<div class="panel sw-corvs"><h3>Corvettes</h3><div class="sw-list">${corvs.map(({ s, i }) => {
     const h = corvetteHealth(i), worst = h.out.some((x) => x[0] === 'bad') ? 'bad' : h.out.some((x) => x[0] === 'warn') ? 'warn' : 'ok';
     return `<button type="button" class="sw-corv${i === W.slot ? ' on' : ''}${LIVE.last && LIVE.last.ok && LIVE.last.slot === i && Date.now() - LIVE.last.at < 8000 ? ' landed' : ''}" data-i="${i}"><span class="sw-dot ${worst}"></span><span><b>${esc(str(g(s, 'Name')) || 'Corvette')}</b><span class="dim">Slot ${i + 1} · ${plural(h.objs.length, 'part')}</span>${APP && liveFileOf(i) ? `<span class="sw-blend" title="${esc(liveFileOf(i).file)}">${esc(blendName(liveFileOf(i).file))}</span>` : ''}</span></button>`;
   }).join('')}</div>${probs.length ? `<div class="sw-probs">${probs.map((t) => `<p class="bad-hint">${esc(t)}</p>`).join('')}<button class="btn small" type="button" id="swFixSlots">Fix in Ship slots</button></div>` : ''}
-    <div class="sw-side-acts"><button class="btn primary" type="button" id="swAdd">Add corvette</button><button class="btn danger" type="button" id="swDel">Delete corvette</button></div>
-    ${APP ? livePanelHtml(W.slot) : ''}
+    <div class="sw-side-acts"><button class="btn primary" type="button" id="swAdd">Add corvette</button><button class="btn danger" type="button" id="swDel">Delete corvette</button></div></div>
+    ${APP ? `<div class="panel sw-livebox">${livePanelHtml(W.slot)}</div>` : ''}
 `;
   side.querySelector('h3').insertAdjacentHTML('beforeend', ' ' + hint('Add corvette puts a starter build in an empty slot for you to paste over. Finished corvettes from files go in through the Dock Yard.'));
   wrap.appendChild(side);
@@ -7199,7 +7237,8 @@ PAGES.shipwright = (el) => {
       <div class="sw-acts">
         <span class="sw-tune-wrap"><button class="btn primary sw-tune" type="button" data-a="tune"${base ? '' : ' disabled'}>Tune up</button><button class="btn icon-only sw-tune-set" type="button" id="swTuneSet" title="Tune-up order${isDefaultTune() ? '' : ' (your own)'}" aria-label="Tune-up order"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>${isDefaultTune() ? '' : '<span class="sw-tune-dot"></span>'}</button></span>
         <label class="check"><input type="checkbox" id="swAuto"${W.auto ? ' checked' : ''}> Tune up when pasting or loading</label>
-        <span class="sw-gap"></span>
+      </div>
+      <div class="sw-acts sw-files">
         <button class="btn" type="button" data-a="copy"${base ? '' : ' disabled'}>Copy all</button>
         <button class="btn" type="button" data-a="paste">Paste all</button>
         <label class="btn">Load file<input type="file" id="swFile" accept=".json,.txt,.nmsship,.nmsbase,.nmsprefab" hidden></label>
@@ -7207,10 +7246,10 @@ PAGES.shipwright = (el) => {
         <button class="btn" type="button" data-a="saveas"${base ? '' : ' disabled'}>Save as…</button>
       </div></div>
     <div class="panel sw-health"><h3>Build check</h3><ul>${H.out.map(([k, t, fix]) => `<li class="${k}"><span class="sw-ic"></span><span>${esc(t)}</span>${fix ? `<button class="btn small" type="button" data-a="${fix}">${fix === 'tune' ? 'Tune up' : 'Remove them'}</button>` : ''}</li>`).join('')}</ul></div></div></div>
-    ${base ? `<div class="panel sw-parts"><div class="sw-parts-head"><h3>Parts</h3><input class="input" id="swQ" type="search" placeholder="Search parts" value="${esc(W.q)}">
+    ${base ? `<details class="panel sw-parts"${W.parts === false ? '' : ' open'}><summary>Parts <span class="dim sw-count">${plural(H.objs.length, 'part')}</span></summary><div class="sw-parts-head"><input class="input" id="swQ" type="search" placeholder="Search parts" value="${esc(W.q)}">
       <span class="sw-move"><button class="btn small" type="button" data-m="top" title="Move to the top">Top</button><button class="btn small" type="button" data-m="up" title="Move up">Up</button><button class="btn small" type="button" data-m="down" title="Move down">Down</button><button class="btn small" type="button" data-m="bottom" title="Move to the bottom">Bottom</button><button class="btn small" type="button" data-m="copy1" title="Copy the selected parts">Copy</button><button class="btn small danger" type="button" data-m="del">Delete</button></span></div>
       <p class="dim sw-hint">Click a part to select it; Ctrl-click and Shift-click select several. The game reads parts from the top down: the first cockpit is the camera, the second the boarding cockpit, and the first landing bay is where you beam up.</p>
-      <div class="sw-rows" id="swRows"></div></div>
+      <div class="sw-rows" id="swRows"></div></details>
     <details class="panel sw-json"${W.json ? ' open' : ''}><summary>Build JSON</summary><p class="dim">The whole build as text, for Blender, the Base Building App or any JSON tool. Edit it here and press Apply; the build's link to this slot is kept.</p><textarea class="input mono" id="swJson" spellcheck="false" rows="18"></textarea><div class="toolbar"><button class="btn" type="button" data-a="apply">Apply</button></div></details>` : ''}`;
   // the corvette's picture, as on the Garage page: its render, its parts as a hologram, or a picture of the owner's
   { const it = coverItems().find((x) => x.kind === 'corvette' && x.i === i); if (it) pictureCard($('.sw-pic', main), it, 'Corvette'); }
@@ -7253,6 +7292,7 @@ PAGES.shipwright = (el) => {
   $m('#swAuto').onchange = (e) => { W.auto = e.target.checked; };
   $m('#swFile').onchange = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { await replaceBuild(await buildFromInput(await f.arrayBuffer(), f.name), 'from ' + f.name); } catch (err) { toast(err.message, true); } };
   if (!base) return;
+  const pd = $m('.sw-parts'); pd.ontoggle = () => { W.parts = pd.open; };
   const det = $m('.sw-json'); det.ontoggle = () => { W.json = det.open; if (det.open && !$m('#swJson').value) $m('#swJson').value = plainBuild(base); };
   if (det.open) $m('#swJson').value = plainBuild(base);
   // the parts list

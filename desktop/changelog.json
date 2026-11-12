@@ -1,5 +1,15 @@
 [
  {
+  "version": "2026.11.12.2140",
+  "date": "2026-11-12",
+  "notes": [
+   "Shipwright: LiveLink has its own box under the corvette list.",
+   "Shipwright: the corvette's picture is as tall as the cards beside it, and its picture options sit behind a gear in its corner (also on the Starships, Multi-tools, Freighter, Exocraft and Companions pictures).",
+   "Shipwright: Copy all sits with Paste all, Load file, Load from a .blend and Save as.",
+   "Shipwright: Parts opens and closes like Build JSON."
+  ]
+ },
+ {
   "version": "2026.11.12.2112",
   "date": "2026-11-12",
   "notes": [

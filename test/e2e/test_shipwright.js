@@ -20,6 +20,16 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.click('nav button[data-s="shipwright"]'); await p.waitForSelector('.sw-corv');
   ok('…and not after', !(await p.$('nav [data-s="shipwright"] .new-pill')));
   const corvs = await p.$$eval('.sw-corv b', (b) => b.map((x) => x.textContent)); console.log(corvs);
+  // the layout (owner 2026-11-12): LiveLink in its own box under Corvettes, the picture as tall as the two cards beside it,
+  // its picture options behind a gear, Copy all with the file buttons, and Parts opening and closing like Build JSON
+  ok('LiveLink sits in its own box, apart from Corvettes', await p.evaluate(() => { const c = document.querySelector('.sw-corvs'), l = document.querySelector('.sw-livebox'); return !!c && (!l || (!c.contains(l) && !!l.querySelector('#swLive'))); }));
+  ok('the corvette picture reaches down to the bottom of Build check', await p.evaluate(() => { const a = document.querySelector('.sw-pic .pic-card').getBoundingClientRect(), b = document.querySelector('.sw-health').getBoundingClientRect(); return Math.abs(a.bottom - b.bottom) < 2; }));
+  ok('…with no Change picture link, a gear instead', await p.evaluate(() => !/Change picture/.test(document.querySelector('.sw-pic').textContent) && !!document.querySelector('.sw-pic .tc-gear')));
+  ok('Copy all is on the row with Paste all, Load file and Save as', await p.evaluate(() => { const r = document.querySelector('.sw-files'); return ['Copy all', 'Paste all', 'Load file', 'Save as'].every((t) => r.textContent.includes(t)) && !document.querySelector('.sw-gap'); }));
+  ok('Parts opens and closes', await p.evaluate(() => { const d = document.querySelector('details.sw-parts'); return d && d.open && /PARTS|Parts/.test(d.querySelector('summary').textContent); }));
+  await p.click('details.sw-parts > summary'); await p.waitForTimeout(200);
+  ok('…and stays closed after picking another corvette', await p.evaluate(async () => { document.querySelectorAll('.sw-corv')[1].click(); await new Promise((r) => setTimeout(r, 300)); return !document.querySelector('details.sw-parts').open; }));
+  await p.evaluate(() => { S.wright.parts = true; document.querySelectorAll('.sw-corv')[0].click(); }); await p.waitForTimeout(300);
   ok('lists the save\'s corvettes', corvs.join() === 'Formula1c,Yautja Claw,Max,The Cutting Remark');
   const named = await p.evaluate(() => [partGroup('^B_GEN_1'), partGroup('^B_WNG_O_0'), partGroup('^B_WNG_A'), partGroup('^B_TUR_A'), partGroup('^B_SHL_C'), partGroup('^B_LND_B'), partGroup('^B_ALK_B'), partGroup('^B_HAB1_C'), partGroup('^B_COK_D'), partGroup('^U_MINIPORTAL'), partGroup('^B_ROOF_M'), (dbItem('^B_GEN_1') || {}).name].join());
   console.log(named);
