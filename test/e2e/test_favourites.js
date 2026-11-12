@@ -19,7 +19,9 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const saved = () => { try { return JSON.parse(fs.readFileSync(file, 'utf8')).places; } catch (_) { return []; } };
 
   // Coordinates: an empty list says how to add places
-  await p.evaluate(() => go('coords')); await p.waitForSelector('#favBox');
+  await p.evaluate(() => go('coords')); await p.waitForSelector('#favWrap');
+  ok('Favourite places opens and closes, closed while there are none', await p.evaluate(() => !document.querySelector('#favWrap').open && /Star places/.test(document.querySelector('#favWrap summary').textContent)));
+  await p.click('#favWrap > summary'); await p.waitForSelector('#favBox');
   await wait(400);
   ok('empty favourites explain the stars', /Star a place/.test(await p.textContent('#favBox')));
   // a destination, starred

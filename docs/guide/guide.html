@@ -313,7 +313,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   <ul class="feat">
     <li><b>Hologram</b>: without Blender, a corvette shows each part as a block at its real size, coloured by type (cockpit, engines and wings, weapons, shields, reactors, landing gear, bays, hull and decor).</li>
     <li><b>Renders</b>: <span class="ui">Render all corvettes</span> or <span class="ui">Render again</span>. The <b>View</b> choices switch between three-quarter, front, side, back and top. The editor remembers your choice for each build.</li>
-    <li><span class="ui">Cover settings</span> point the app at Blender and Charon Forge, and turn automatic renders on or off.</li>
+    <li><b>Settings</b> (the gear at the bottom of the sidebar) point the app at Blender and Charon Forge, and turn automatic renders on or off.</li>
   </ul>
   <h2>Choose parts</h2>
   <figure><img src="shots/parts.webp" alt="Choose parts dialog for a multi-tool, each option shown as a picture" loading="lazy"><figcaption>The game picks a ship's or multi-tool's parts from its seed. Choose parts lets you match the model to what you see in the game.</figcaption></figure>
@@ -333,13 +333,13 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
     <tr><td><b>Ship storage</b></td><td>Ships you keep on purpose: files you import and ships you save from your game.</td></tr>
     <tr><td><b>Favourites</b></td><td>Ships you star, from anywhere in the Dock Yard.</td></tr>
   </table>
-  <p>Under the tabs: <b>All ships</b>, <b>Linked folders</b> (folders where you already keep ship files; the app only reads them) and <span class="ui">Manage folders</span>. To link a folder, paste its path and press <span class="ui">Add path</span>, or use <span class="ui">Browse…</span> to pick it. <span class="ui">Add path</span> with an empty box opens the picker too.</p>
+  <p>Under the tabs, one row of buttons: <span class="ui">All ships</span>, <span class="ui">Linked folders</span> (folders where you already keep ship files; the app only reads them) and <span class="ui">Manage folders</span>, then <span class="ui">Import files</span>, <span class="ui">Add this save's ships</span> and <span class="ui">Render corvettes</span>. The type and tag filters sit beside the Cover Flow / Grid switch, and the number of ships shown is under the page title. To link a folder, paste its path and press <span class="ui">Add path</span>, or use <span class="ui">Browse…</span> to pick it. <span class="ui">Add path</span> with an empty box opens the picker too.</p>
   <h2>Doing things with a ship</h2>
   <p>A ship that's in the save you have open says <b>Loaded, slot 2</b> (or whichever slot) on its cover, and loaded ships come first, in slot order. Pick a ship and the bar above the covers shows what you can do:</p>
   <ul class="feat">
     <li><span class="ui">Edit ship</span> opens it on the Starships page, ready to change. Corvettes also have <span class="ui">Edit build</span>, which opens their parts in Shipwright.</li>
-    <li><span class="ui">Load ship into game…</span> for a ship that isn't in the save, then <span class="ui">Edit ship</span> once it's in.</li>
-    <li><span class="ui">Details</span> opens the ship's card (versions, tags, notes, export), and <span class="ui">Favourite</span> stars it.</li>
+    <li><span class="ui">Load ship into game…</span> for a ship that isn't in the save, then <span class="ui">Edit ship</span> once it's in. A corvette's build on its own offers <span class="ui">Copy corvette</span>, which puts the build on a corvette in your save.</li>
+    <li><span class="ui">Details</span> opens the ship's card (versions, tags, notes, export), and the star makes it a favourite (filled when it is one; click again to take it off).</li>
   </ul>
   <p>In the grid, a loaded ship's card says <b>Loaded, slot 2</b> with an <span class="ui">Edit ship</span> button; the others have <span class="ui">Load ship into game…</span>. Loading puts the ship in the save you have open; press <span class="ui">Save to game</span> to write it to your game. From Starships, <span class="ui">Versions in the Dock Yard</span> comes back to the ship's card here.</p>
   <h2>Hangar versions</h2>
@@ -662,12 +662,12 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
     <li>For corvettes: <a href="https://github.com/xX-Charon-Xx/charon_forge" target="_blank" rel="noopener">Charon Forge</a>, installed as a Blender extension.</li>
     <li>For bases: NMS Base Builder.</li>
   </ul>
-  <p>The editor finds them on your PC. If it doesn't, open <span class="ui">Cover settings</span> (on the Garage or the Dock Yard) and point it at Blender.</p>
+  <p>The editor finds them on your PC. If it doesn't, open <b>Settings</b> (the gear at the bottom of the sidebar) and point it at Blender.</p>
   <h2>Corvette renders</h2>
   <ul class="feat">
     <li><span class="ui">Render all corvettes</span> on the Garage, <span class="ui">Render corvettes</span> in the Dock Yard and on Starships, or <span class="ui">Render again</span> for one.</li>
     <li>Renders are kept on your PC by build, so a build is only rendered once.</li>
-    <li><b>Automatic renders</b> (Cover settings): a few seconds after a save opens, corvettes without a picture are rendered one at a time.</li>
+    <li><b>Automatic renders</b> (Settings): a few seconds after a save opens, corvettes without a picture are rendered one at a time.</li>
     <li><span class="ui">Render the other angles</span> adds front, side, back and top views, picked under the cover.</li>
   </ul>
   <h2>Load from a .blend</h2>

@@ -1,5 +1,16 @@
 [
  {
+  "version": "2026.11.12.2204",
+  "date": "2026-11-12",
+  "notes": [
+   "Every page: the page's description now sits to the right of its title.",
+   "Settings: a gear at the bottom of the sidebar opens the settings (Blender and Charon Forge for corvette covers), instead of Cover settings on the Garage and Dock Yard.",
+   "Shipwright: LiveLink sits under the corvette's picture, and Copy all, Paste all, Load file, Load from a .blend and Save as are on one line.",
+   "Coordinates: You are here is a slimmer bar with Start from here beside it, and Favourite places opens and closes.",
+   "Dock Yard: the view and action buttons are one row, the type and tag filters sit beside Cover Flow / Grid, the ship count is under the title, a corvette build offers Copy corvette, and favourites are a star (filled when it's a favourite)."
+  ]
+ },
+ {
   "version": "2026.11.12.2140",
   "date": "2026-11-12",
   "notes": [

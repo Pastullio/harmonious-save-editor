@@ -193,6 +193,11 @@ nav .count { font-family: var(--mono); font-size: 11px; color: var(--faint); }
 .page { padding: 26px 30px 64px; max-width: 1320px; }
 .page-head { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; justify-content: space-between; margin-bottom: 20px; }
 .page-head p { margin: 8px 0 0; color: var(--dim); }
+/* the page's description sits to the right of its title (owner 2026-11-12), in the smaller type */
+.page-head > div:first-child { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px 34px; flex: 1 1 520px; min-width: 0; }
+.page-head > div:first-child > h1 { flex: none; }
+.page-head > div:first-child > p { flex: 1 1 340px; max-width: 760px; margin: 5px 0 0; font-size: 13.5px; line-height: 1.5; }
+.page-head > div:first-child > p.head-sub { flex: 0 0 100%; max-width: none; margin: 2px 0 0; font-size: 13px; color: var(--dim); }
 .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
 /* overview */
@@ -463,9 +468,13 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .sw-main .panel { margin: 0; }
 .sw-bar { display: grid; gap: 12px; }
 .sw-top { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 14px; align-items: stretch; }
-.sw-pic { display: flex; }
-.sw-pic .pic-card { flex: 1; }
-.sw-topr { display: grid; gap: 14px; min-width: 0; }
+.sw-pic { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.sw-pic .pic-card { flex: none; }
+.sw-pic .sw-livebox { flex: 1; margin: 0; padding: 16px; }
+.sw-acts.sw-files { flex-wrap: nowrap; gap: 6px; }
+.sw-files .btn { flex: 1 1 auto; padding-inline: 10px; white-space: nowrap; }
+@media (max-width: 1080px) { .sw-acts.sw-files { flex-wrap: wrap; } }
+.sw-topr { display: grid; gap: 14px; min-width: 0; grid-template-rows: auto 1fr; }
 .sw-pic .pic-card { margin: 0; }
 @media (max-width: 1100px) { .sw-top { grid-template-columns: 1fr; } .sw-pic { max-width: 280px; } }
 .sw-title { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
@@ -571,8 +580,11 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .dy-state.in { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); font-weight: 500; }
 .dy-star.on { color: var(--accent); }
 .lib-in { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
-.dy-sub { display: flex; gap: 18px; flex-wrap: wrap; margin: 4px 0 16px; font-size: 13.5px; }
-.dy-sub .link[aria-current="true"] { font-weight: 600; text-decoration-thickness: 2px; }
+.dy-sub { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 4px 0 14px; }
+.dy-sub .btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.dy-sub-gap { flex: 1; }
+.dy-filters { justify-content: flex-start; align-items: center; gap: 8px; margin: 0 0 12px; }
+.dy-filters select { width: auto; }
 .dy-spot { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; padding: 18px 22px; margin-bottom: 18px; border-radius: var(--r-lg); color: #fff; background: radial-gradient(120% 140% at 0% 0%, #2a5bd8 0%, #1b2f7a 45%, #0b1430 100%); box-shadow: var(--shadow); position: relative; overflow: hidden; }
 .dy-spot::after { content: ""; position: absolute; inset: 0; background: radial-gradient(2px 2px at 20% 30%, rgba(255,255,255,.7), transparent), radial-gradient(1.5px 1.5px at 70% 60%, rgba(255,255,255,.6), transparent), radial-gradient(1.5px 1.5px at 85% 20%, rgba(255,255,255,.5), transparent), radial-gradient(1px 1px at 45% 80%, rgba(255,255,255,.5), transparent); pointer-events: none; }
 .dy-spot .dy-ico { background: rgba(255,255,255,.14); width: 52px; height: 52px; }
@@ -646,12 +658,25 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .glyphs.portal-glyphs { font-size: 19px; gap: 2px; margin-top: 4px; }
 .portal-glyphs .glyph { width: 21px; }
 .loc-go { justify-self: start; margin-top: 8px; }
-.here-row { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; }
-.here-globe { width: 84px; height: 84px; flex: none; margin: -10px -4px -10px -6px; display: grid; place-items: center; }
-.here-globe.wide { width: 150px; }
-.here-globe:empty::before { content: ''; width: 52px; height: 52px; border-radius: 50%; background: var(--well); }
-.here-planet { display: block; font-size: 13px; margin-top: 2px; }
+.panel.here-card { padding-top: 10px; padding-bottom: 10px; }
+.here-row { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; }
+.here-globe { width: 62px; height: 62px; flex: none; margin: -4px -4px -4px -6px; display: grid; place-items: center; }
+.here-globe.wide { width: 120px; overflow: hidden; }
+.here-globe.wide canvas { max-width: 100%; height: auto !important; }
+.here-globe:empty::before { content: ''; width: 44px; height: 44px; border-radius: 50%; background: var(--well); }
+.here-txt { display: grid; gap: 1px; min-width: 0; }
+.here-txt .label { font-size: 10.5px; }
+.here-planet { display: block; font-size: 13px; }
+.here-codes { display: grid; gap: 2px; font-size: 12.5px; }
 .here-row .btn { margin-left: auto; }
+.panel.fav-panel { padding-top: 0; padding-bottom: 0; }
+.fav-panel > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 14px 0; user-select: none; }
+.fav-panel > summary::-webkit-details-marker { display: none; }
+.fav-panel > summary::before { content: ''; width: 8px; height: 8px; border-right: 1.7px solid var(--dim); border-bottom: 1.7px solid var(--dim); transform: rotate(-45deg); transition: transform .15s; flex: none; }
+.fav-panel[open] > summary::before { transform: rotate(45deg); }
+.fav-sum { font-size: 13px; }
+.fav-panel #favBox { padding-bottom: 18px; }
+.fav-head { justify-content: flex-end; }
 .dest { display: grid; gap: 16px; }
 .dest-glyphs { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px; font-size: clamp(22px, 3.6vw, 40px); color: var(--ink); padding: 14px; border-radius: var(--r-lg); background: var(--well); min-height: 1.6em; align-items: end; justify-items: center; }
 .dest-glyphs .glyph { width: 100%; max-width: 1.1em; }
@@ -1232,6 +1257,7 @@ nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .
         <button class="icon-btn" id="navEditBtn" type="button" title="Customise the sidebar" aria-label="Customise the sidebar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9 M4 12h6 M4 18h9 M15.5 18.5l1-3.5 4.5-4.5 2.5 2.5-4.5 4.5z"/></svg></button>
         <button class="icon-btn theme-btn" type="button" title="Dark mode" aria-label="Dark mode"></button>
         <button class="icon-btn hidden" id="exitBtn" type="button" title="Exit (offers to save first)" aria-label="Exit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4H6.5A1.5 1.5 0 0 0 5 5.5v13A1.5 1.5 0 0 0 6.5 20H14 M10 12h10 M16.5 8.5 20 12l-3.5 3.5"/></svg></button>
+        <button class="icon-btn hidden" id="settingsBtn" type="button" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button>
         <button class="icon-btn about-btn" type="button" title="About" aria-label="About"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M12 11v5.5 M12 7.6v.1"/></svg></button>
       </div>
     </div>
@@ -4837,7 +4863,7 @@ PAGES.hangar = (el) => {
   S.hangar = S.hangar || { filter: 'all', key: null };
   let list = (groups.find((gr) => gr[0] === S.hangar.filter) || groups[0])[2];
   el.innerHTML = `<div class="page-head"><div><h1>Garage</h1><p>Scroll, drag or use the arrow keys. Click the centre cover to open its loadout. To change a cover, drop a picture on it or choose one of your screenshots below.</p></div></div><div id="cfHost"></div><div class="panel" id="hangarDetail"></div>`;
-  $('#cfHost', el).before(pageActs(APP ? [['Render all corvettes', 'renderAll', () => {}, ' '], ['Cover settings', 'renderCfg', () => {}, 'ghost']] : [], true));
+  $('#cfHost', el).before(pageActs(APP ? [['Render all corvettes', 'renderAll', () => {}, ' ']] : [], true));
   const chips = `<div class="cf-chips">${groups.map(([id, label, l]) => `<button class="chip" data-f="${id}" aria-pressed="${S.hangar.filter === id}">${label}<span class="n">${l.length}</span></button>`).join('')}</div>`;
   const start = Math.max(0, list.findIndex((x) => x.key === S.hangar.key));
   const big = Math.max(180, Math.min(340, Math.round((($('#main').clientWidth || 1000) - 80) / 3.6)));
@@ -5008,7 +5034,7 @@ async function autoRenderCorvettes() {
 }
 async function renderSettingsDialog() {
   let s; try { s = await renderSetup(); } catch (e) { toast(e.message, true); return; }
-  const ok = await dialog('Cover settings', `<p>Corvettes are rendered by your own Blender with Charon Forge's part models. Leave a box empty to find it automatically.</p>
+  const ok = await dialog('Settings', `<h3 class="label">Corvette covers</h3><p>Corvettes are rendered by your own Blender with Charon Forge's part models. Leave a box empty to find it automatically.</p>
     <label class="field"><span>Blender (blender.exe)${s.blender ? ', found: ' + esc(s.blender) : ', not found'}</span><input class="input mono" id="rsB" value="${esc(s.blenderSet || '')}" placeholder="C:\\Program Files\\Blender Foundation\\Blender 5.0\\blender.exe"></label>
     <label class="field" style="margin-top:10px"><span>Charon Forge folder${s.charon ? ', found: ' + esc(s.charon) : ', not found'}</span><input class="input mono" id="rsC" value="${esc(s.charonSet || '')}" placeholder="...\\Blender\\5.0\\extensions\\user_default"></label>
     <label class="field" style="margin-top:10px"><span>Screenshot folder (optional; Steam's No Man's Sky folder is used anyway)</span><input class="input mono" id="rsSh" value="${esc(s.shots || '')}" placeholder="D:\\Pictures\\No Man's Sky"></label>
@@ -8003,9 +8029,9 @@ function dockActions(host, x, slots, refresh) {
   host.innerHTML = `<div class="dy-act-info"><b>${esc(s.name || 'Ship')}</b><span class="dim">${esc([s.type, s.cls && s.cls + ' class', s.parts && plural(s.parts, 'part')].filter(Boolean).join(', '))}</span>
       ${note ? `<span class="dim">${esc(note)}</span>` : ''}</div>
     <div class="dy-act-btns">
-      ${slot != null ? `<button class="btn primary" type="button" data-da="edit">Edit ship</button>${corv ? '<button class="btn" type="button" data-da="build">Edit build</button>' : ''}` : canPut ? `<button class="btn primary" type="button" data-da="put">${s.buildOnly || s.shipOnly ? 'Put on a corvette…' : 'Load ship into game…'}</button>` : ''}
+      ${slot != null ? `<button class="btn primary" type="button" data-da="edit">Edit ship</button>${corv ? '<button class="btn" type="button" data-da="build">Edit build</button>' : ''}` : canPut ? `<button class="btn primary" type="button" data-da="put">${s.buildOnly || s.shipOnly ? 'Copy corvette' : 'Load ship into game…'}</button>` : ''}
       <button class="btn${slot == null && !canPut ? ' primary' : ''}" type="button" data-da="details">Details</button>
-      <button class="btn ghost dy-star${m.fav ? ' on' : ''}" type="button" data-da="fav" aria-pressed="${!!m.fav}">${m.fav ? '★ Favourite' : '☆ Favourite'}</button>
+      <button class="fav-star dy-star" type="button" data-da="fav" aria-pressed="${!!m.fav}" title="${m.fav ? 'A favourite (click to remove)' : 'Add to favourites'}" aria-label="Favourite">${STAR_SVG}</button>
     </div>`;
   host.querySelectorAll('[data-da]').forEach((b) => b.onclick = async () => {
     const a = b.dataset.da;
@@ -8044,17 +8070,20 @@ PAGES.library = (el) => {
   const isOn = (v) => (v === 'fav' ? L.fav : !L.fav && L.src === v);
   tabs.innerHTML = DY_TABS.map(([v, t, d]) => `<button type="button" role="tab" class="dy-tab" data-v="${v}" aria-selected="${isOn(v)}"><span class="dy-ico">${DY_ICONS[v]}</span><span class="dy-txt"><b>${t}</b><span class="dy-n" data-n="${v}">…</span><span class="dy-d">${d}</span></span></button>`).join('');
   el.appendChild(tabs);
+  // one row of buttons (owner 2026-11-12): the other views, then what you can do here
   const sub = document.createElement('div'); sub.className = 'dy-sub';
-  sub.innerHTML = `<button type="button" class="link" data-v="all"${isOn('all') ? ' aria-current="true"' : ''}>All ships</button><button type="button" class="link" data-v="linked"${isOn('linked') ? ' aria-current="true"' : ''}>Linked folders <span data-n="linked"></span></button><button type="button" class="link" id="libFolders">Manage folders</button>`;
+  sub.innerHTML = `<button type="button" class="btn small" data-v="all" aria-pressed="${isOn('all')}">All ships</button><button type="button" class="btn small" data-v="linked" aria-pressed="${isOn('linked')}">Linked folders <span data-n="linked"></span></button><button type="button" class="btn small" id="libFolders">Manage folders</button>
+    <span class="dy-sub-gap"></span><label class="btn small">Import files<input type="file" id="libImport" multiple accept=".json,.txt,.nmsship,.so" hidden></label>${S.save ? '<button class="btn small" id="libAddSave" type="button">Add this save\'s ships</button>' : ''}<button class="btn small" id="libRender" type="button">Render corvettes</button>`;
   el.appendChild(sub);
-  const bar = document.createElement('div'); bar.className = 'ship-bar';
-  bar.innerHTML = `<select class="input" id="libType"><option value="all">All types</option></select>
-    <select class="input" id="libTag"><option value="">All tags</option></select>
-    <span class="lib-acts"><label class="btn small">Import files<input type="file" id="libImport" multiple accept=".json,.txt,.nmsship,.so" hidden></label>${S.save ? '<button class="btn small" id="libAddSave" type="button">Add this save\'s ships</button>' : ''}<button class="btn small" id="libRender" type="button">Render corvettes</button><button class="btn small ghost" id="libRenderCfg" type="button" title="Blender and Charon Forge">Cover settings</button></span>`;
-  el.appendChild(bar);
-  const status = document.createElement('p'); status.className = 'dim lib-status'; status.textContent = 'Reading your ships…'; el.appendChild(status);
+  const bar = sub;
+  // the filters beside the Cover Flow / Grid switch
+  const filt = document.createElement('div'); filt.className = 'view-row dy-filters';
+  filt.innerHTML = `<select class="input" id="libType" aria-label="Type"><option value="all">All types</option></select><select class="input" id="libTag" aria-label="Tag"><option value="">All tags</option></select><span class="dy-sub-gap"></span>${viewSwitch()}`;
+  el.appendChild(filt);
+  // how many ships, under the title
+  const status = document.createElement('p'); status.className = 'dim lib-status head-sub'; status.textContent = 'Reading your ships…';
+  head.firstElementChild.appendChild(status);
   if (L.openKey) Object.assign(L, { src: 'garage', fav: false });
-  status.insertAdjacentHTML('afterend', `<div class="view-row">${viewSwitch()}</div>`);
   const grid = document.createElement('div'); grid.className = 'lib-grid'; el.appendChild(grid);
   const flowHost = document.createElement('div'); el.insertBefore(flowHost, grid);
   const acts = document.createElement('div'); acts.className = 'panel dy-acts'; el.insertBefore(acts, flowHost);
@@ -8080,8 +8109,8 @@ PAGES.library = (el) => {
     const counts = { library: 0, garage: 0, linked: 0, fav: 0, all: items.length }; items.forEach((x) => { counts[x.f.src]++; if ((I.meta[x.id] || {}).fav) counts.fav++; });
     el.querySelectorAll('[data-n]').forEach((n) => { const c = counts[n.dataset.n]; n.textContent = n.dataset.n === 'linked' ? `(${c})` : plural(c, 'ship'); });
     const types = [...new Set(items.map((x) => x.sum.type).filter(Boolean))].sort(), tags = [...new Set(items.flatMap((x) => (I.meta[x.id] && I.meta[x.id].tags) || []))].sort();
-    $('#libType', bar).innerHTML += types.map((t) => `<option${L.type === t ? ' selected' : ''}>${esc(t)}</option>`).join('');
-    $('#libTag', bar).innerHTML += tags.map((t) => `<option${L.tag === t ? ' selected' : ''}>${esc(t)}</option>`).join('');
+    $('#libType', filt).innerHTML += types.map((t) => `<option${L.type === t ? ' selected' : ''}>${esc(t)}</option>`).join('');
+    $('#libTag', filt).innerHTML += tags.map((t) => `<option${L.tag === t ? ' selected' : ''}>${esc(t)}</option>`).join('');
     const empty = {
       library: 'Nothing in Ship storage yet. Use Import files for .json, .txt, .nmsship or .so ships, or Add this save\'s ships.',
       garage: 'The Hangar fills itself: every ship in a save you open is copied here, once per version.',
@@ -8115,8 +8144,8 @@ PAGES.library = (el) => {
       if (more.firstChild) more.firstChild.onclick = () => { L.shown += 60; show(); };
     };
     $('#libQ', head).oninput = (e) => { L.q = e.target.value; L.shown = 60; show(); };
-    $('#libType', bar).onchange = (e) => { L.type = e.target.value; show(); };
-    $('#libTag', bar).onchange = (e) => { L.tag = e.target.value; show(); };
+    $('#libType', filt).onchange = (e) => { L.type = e.target.value; show(); };
+    $('#libTag', filt).onchange = (e) => { L.tag = e.target.value; show(); };
     show();
   })().catch((e) => { status.textContent = "Couldn't read the Dock Yard: " + e.message; });
   $('#libImport', bar).onchange = async (e) => {
@@ -8127,7 +8156,6 @@ PAGES.library = (el) => {
   const addSave = $('#libAddSave', bar);
   if (addSave) addSave.onclick = async () => { let n = 0; for (const { i } of ships()) { await saveShipToLibrary(i, true); n++; } toast(`${plural(n, 'ship')} added to Ship storage`); render(); };
   $('#libFolders', sub).onclick = () => libFoldersDialog();
-  $('#libRenderCfg', bar).onclick = renderSettingsDialog;
   // render every corvette shown here with Blender + Charon Forge (renders are cached by build, so repeats are instant)
   const rb = $('#libRender', bar);
   rb.onclick = async () => {
@@ -8214,7 +8242,7 @@ async function libDetail(x, refresh, vi = 0) {
   const canPut = !p.error && (s.whole || s.buildOnly || s.shipOnly);
   // actions sit under the picture in groups: using the ship, its picture, exporting, the file itself
   const groups = [
-    ['Use', [canPut && S.save && [s.buildOnly || s.shipOnly ? 'Put on a corvette…' : 'Load ship into game…', 'put', 'primary'], f.src !== 'library' && ['Copy to Ship storage', 'copy']]],
+    ['Use', [canPut && S.save && [s.buildOnly || s.shipOnly ? 'Copy corvette' : 'Load ship into game…', 'put', 'primary'], f.src !== 'library' && ['Copy to Ship storage', 'copy']]],
     ['Picture', [APP && !p.error && s.type === 'Corvette' && p.objects && ['Render with Blender', 'render'], APP && m.link && ['Get art from the link', 'meta']]],
     ['Export', [!p.error && p.ship && p.objects && ['.nmsship', 'nmsship'], !p.error && p.ship && ['.so', 'so']]],
     ['File', [['Show in folder', 'reveal'], f.src !== 'linked' && [V && V.length > 1 ? 'Delete this version' : 'Delete', 'delete', 'danger-text']]],
@@ -8942,13 +8970,11 @@ PAGES.shipwright = (el) => {
     return `<button type="button" class="sw-corv${i === W.slot ? ' on' : ''}${LIVE.last && LIVE.last.ok && LIVE.last.slot === i && Date.now() - LIVE.last.at < 8000 ? ' landed' : ''}" data-i="${i}"><span class="sw-dot ${worst}"></span><span><b>${esc(str(g(s, 'Name')) || 'Corvette')}</b><span class="dim">Slot ${i + 1} · ${plural(h.objs.length, 'part')}</span>${APP && liveFileOf(i) ? `<span class="sw-blend" title="${esc(liveFileOf(i).file)}">${esc(blendName(liveFileOf(i).file))}</span>` : ''}</span></button>`;
   }).join('')}</div>${probs.length ? `<div class="sw-probs">${probs.map((t) => `<p class="bad-hint">${esc(t)}</p>`).join('')}<button class="btn small" type="button" id="swFixSlots">Fix in Ship slots</button></div>` : ''}
     <div class="sw-side-acts"><button class="btn primary" type="button" id="swAdd">Add corvette</button><button class="btn danger" type="button" id="swDel">Delete corvette</button></div></div>
-    ${APP ? `<div class="panel sw-livebox">${livePanelHtml(W.slot)}</div>` : ''}
 `;
   side.querySelector('h3').insertAdjacentHTML('beforeend', ' ' + hint('Add corvette puts a starter build in an empty slot for you to paste over. Finished corvettes from files go in through the Dock Yard.'));
   wrap.appendChild(side);
   side.querySelectorAll('[data-i]').forEach((b) => b.onclick = () => { W.slot = +b.dataset.i; W.sel = new Set(); render(); });
   $('#swAdd', side).onclick = doAdd;
-  if (APP) wireLivePanel(side, W.slot);
   const fx = $('#swFixSlots', side); if (fx) fx.onclick = () => { (S.slots || (S.slots = {})).open = true; go('ships'); spotlight('#shipSlots'); };
   $('#swDel', side).onclick = () => deleteEntity(g(ps(), 'ShipOwnership')[W.slot], W.slot, 'ship');
   const main = document.createElement('div'); main.className = 'sw-main'; wrap.appendChild(main);
@@ -8960,11 +8986,11 @@ PAGES.shipwright = (el) => {
         <label class="check"><input type="checkbox" id="swAuto"${W.auto ? ' checked' : ''}> Tune up when pasting or loading</label>
       </div>
       <div class="sw-acts sw-files">
-        <button class="btn" type="button" data-a="copy"${base ? '' : ' disabled'}>Copy all</button>
-        <button class="btn" type="button" data-a="paste">Paste all</button>
-        <label class="btn">Load file<input type="file" id="swFile" accept=".json,.txt,.nmsship,.nmsbase,.nmsprefab" hidden></label>
-        ${APP ? '<button class="btn" type="button" data-a="blend" title="Reads a Blender file through your Blender (with Charon Forge when it is installed) and puts its build on a corvette">Load from a .blend…</button>' : ''}
-        <button class="btn" type="button" data-a="saveas"${base ? '' : ' disabled'}>Save as…</button>
+        <button class="btn small" type="button" data-a="copy"${base ? '' : ' disabled'}>Copy all</button>
+        <button class="btn small" type="button" data-a="paste">Paste all</button>
+        <label class="btn small">Load file<input type="file" id="swFile" accept=".json,.txt,.nmsship,.nmsbase,.nmsprefab" hidden></label>
+        ${APP ? '<button class="btn small" type="button" data-a="blend" title="Reads a Blender file through your Blender (with Charon Forge when it is installed) and puts its build on a corvette">Load from a .blend…</button>' : ''}
+        <button class="btn small" type="button" data-a="saveas"${base ? '' : ' disabled'}>Save as…</button>
       </div></div>
     <div class="panel sw-health"><h3>Build check</h3><ul>${H.out.map(([k, t, fix]) => `<li class="${k}"><span class="sw-ic"></span><span>${esc(t)}</span>${fix ? `<button class="btn small" type="button" data-a="${fix}">${fix === 'tune' ? 'Tune up' : 'Remove them'}</button>` : ''}</li>`).join('')}</ul></div></div></div>
     ${base ? `<details class="panel sw-parts"${W.parts === false ? '' : ' open'}><summary>Parts <span class="dim sw-count">${plural(H.objs.length, 'part')}</span></summary><div class="sw-parts-head"><input class="input" id="swQ" type="search" placeholder="Search parts" value="${esc(W.q)}">
@@ -8974,6 +9000,8 @@ PAGES.shipwright = (el) => {
     <details class="panel sw-json"${W.json ? ' open' : ''}><summary>Build JSON</summary><p class="dim">The whole build as text, for Blender, the Base Building App or any JSON tool. Edit it here and press Apply; the build's link to this slot is kept.</p><textarea class="input mono" id="swJson" spellcheck="false" rows="18"></textarea><div class="toolbar"><button class="btn" type="button" data-a="apply">Apply</button></div></details>` : ''}`;
   // the corvette's picture, as on the Garage page: its render, its parts as a hologram, or a picture of the owner's
   { const it = coverItems().find((x) => x.kind === 'corvette' && x.i === i); if (it) pictureCard($('.sw-pic', main), it, 'Corvette'); }
+  // LiveLink under the picture (owner 2026-11-12: it fills the space below the corvette's picture)
+  if (APP) { const lb = document.createElement('div'); lb.className = 'panel sw-livebox'; lb.innerHTML = livePanelHtml(W.slot); $('.sw-pic', main).appendChild(lb); wireLivePanel(lb, W.slot); }
   const $m = (q) => main.querySelector(q);
   $m('#swTuneSet').onclick = () => tuneOrderDialog(base ? g(base, 'Objects') : []);
   const commit = (objs, msg) => { set(base, 'Objects', objs); markDirty(); if (msg) toast(msg); W.sel = new Set(); render(); };
@@ -10348,11 +10376,13 @@ async function favImport(file) {
 }
 // a favourite's base spot, for "Arrive at a base" in its system
 const favSpots = (p) => (FAVS.list || []).filter((f) => f.spot && Place.sameSystem(Place.fromPortal(f.portal, f.gi), p)).map((f) => ({ name: f.name, kind: 'Favourite', planet: f.spot.planet, local: f.spot.local, face: f.spot.face, fav: true }));
+// Favourite places opens and closes (owner 2026-11-12); open when you have favourites, until you close it
+function favOpen() { try { const v = localStorage.getItem('hse-fav-open'); return v == null ? !!(FAVS.list && FAVS.list.length) : v === '1'; } catch (_) { return false; } }
 function favPanelHtml(C) {
   const all = FAVS.list || [], q = FAVS.q.trim().toLowerCase();
   const list = q ? all.filter((f) => (f.name + ' ' + f.kind + ' ' + (f.note || '') + ' ' + f.portal + ' ' + (GALAXIES[f.gi] || '')).toLowerCase().includes(q)) : all;
   const cur = C && C.digits.length === 12 ? C.digits + '|' + C.p.gi : '';
-  return `<div class="dest-head"><h3>Favourite places${all.length ? ` <span class="n">${all.length}</span>` : ''}</h3>
+  return `<div class="dest-head fav-head">
       ${all.length > 5 ? `<input class="input fav-q" id="favQ" type="search" placeholder="Find a place" value="${esc(FAVS.q)}" aria-label="Find a favourite place">` : ''}
       <label class="btn small" title="Add places from a favourite places file someone shared">Import<input type="file" id="favImp" accept=".json" hidden></label>${all.length ? '<button class="btn small" type="button" id="favExp" title="Save your favourite places to a file you can share">Export</button>' : ''}</div>
     ${!FAVS.list ? '<p class="dim">Loading…</p>' : !all.length ? `<p class="dim" style="margin:0">Star a place to keep it here: next to the destination below, beside the places and bases in a system, or on a base or settlement in Bases. Then pick it here and warp there from any save.</p>`
@@ -10379,11 +10409,11 @@ PAGES.coords = (el) => {
   const C = S.coords || (S.coords = { p: { ...here }, digits: Place.portal(here) });
   if (!FAVS.list) favLoad().then(() => { if (S.section === 'coords') render(); });
   el.innerHTML = `<div class="page-head"><div><h1>Coordinates</h1><p>Find a place by its portal glyphs or its galactic address, see what your save knows about it, and warp there.</p></div></div>
-    <div class="panel here-card"><h3>You are here</h3>
-      <div class="here-row"><span class="here-globe" id="hereGlobe"></span><div><span id="hereStar"></span><b id="hereName"></b><b>${esc(GALAXIES[here.gi] || 'Galaxy ' + (here.gi + 1))}</b><span class="dim"> · galaxy ${here.gi + 1} of 256</span><span class="here-planet dim" id="herePlanet"></span></div>
-      ${glyphRow(Place.portal(here), 'small')}<span class="mono">${Place.portal(here)}</span><span class="mono dim">${Place.galactic(here)}</span>
+    <div class="panel here-card">
+      <div class="here-row"><span class="here-globe" id="hereGlobe"></span><div class="here-txt"><span class="label">You are here</span><span><span id="hereStar"></span><b id="hereName"></b><b>${esc(GALAXIES[here.gi] || 'Galaxy ' + (here.gi + 1))}</b><span class="dim"> · galaxy ${here.gi + 1} of 256</span></span><span class="here-planet dim" id="herePlanet"></span></div>
+      ${glyphRow(Place.portal(here), 'small')}<span class="here-codes"><span class="mono">${Place.portal(here)}</span><span class="mono dim">${Place.galactic(here)}</span></span>
       <button class="btn small" id="hereUse">Start from here</button></div></div>
-    <div class="panel fav-panel" id="favBox">${favPanelHtml(C)}</div>
+    <details class="panel fav-panel" id="favWrap"${favOpen() ? ' open' : ''}><summary><span class="label">Favourite places</span><span class="dim fav-sum" id="favSum">${(FAVS.list || []).length ? plural(FAVS.list.length, 'place') : 'Star places to keep them here'}</span></summary><div id="favBox">${favPanelHtml(C)}</div></details>
     <div class="panel" id="destPanel"><div class="dest-head"><h3>Destination</h3><span class="dim" id="warpTopNote"></span><span id="destStar"></span><button class="btn primary warp-top" id="warpTop" type="button" disabled>Warp here</button></div>
       <div class="dest">
         <div class="dest-glyphs" id="destGlyphs" aria-label="Portal code as glyphs"></div>
@@ -10427,7 +10457,7 @@ PAGES.coords = (el) => {
     }
     const m = moonsOf(pl), biome = (bi && bi.biome) || '', seeds = g(ps(), 'PlanetSeeds'), sv = Array.isArray(seeds) ? seeds[pl - 1] : null;
     const name = sys && sys.planets[pl - 1], moons = m && !m.isMoon ? Math.min(2, m.moons) : 0;
-    box.replaceChildren(globeCanvas({ seed: str(Array.isArray(sv) ? sv[1] : sv) || Place.portal(here), biome, moons, label: `${name || 'Planet ' + pl}${biome ? ', ' + biome : ''}${moons ? ', with ' + plural(moons, 'moon') : ''}` }));
+    box.replaceChildren(globeCanvas({ size: 62, seed: str(Array.isArray(sv) ? sv[1] : sv) || Place.portal(here), biome, moons, label: `${name || 'Planet ' + pl}${biome ? ', ' + biome : ''}${moons ? ', with ' + plural(moons, 'moon') : ''}` }));
     if (txt) txt.textContent = `On ${name || 'planet ' + pl}${biome ? ' · ' + biome + (bi.infested ? ', infested' : '') : ''}${m && m.isMoon ? ' · a moon' : ''}${moons ? ' · ' + plural(moons, 'moon') : ''}`;
   };
   predictSystem(here).then((sys) => { const n = $$('#hereName'); if (n) { n.innerHTML = esc(sys.name) + (sys.nick.system ? ` <span class="dim gen-inline" title="Your nickname is shown only in this editor; this is the name in the game">(${esc(sys.gameName)})</span>` : sys.given.system ? ` <span class="dim gen-inline" title="${esc(`The game's own name, before it was ${namedBy(sys.given.system)}`)}">(${esc(sys.genName)})</span>` : '') + ', '; } hereStar(sys); drawHere(sys); }).catch(() => { hereStar(null); drawHere(null); });
@@ -10490,7 +10520,8 @@ PAGES.coords = (el) => {
   };
   const setDigits = (d, from, fav) => { C.digits = d.toUpperCase().replace(/[^0-9A-F]/g, '').slice(0, 12); C.fav = fav || null; $$('#destErr').hidden = true; show(from); drawFavs(); };
   const favBox = $$('#favBox');
-  const drawFavs = () => { favBox.innerHTML = favPanelHtml(C); wireFavPanel(favBox, C, (f) => { C.p = Place.fromPortal(f.portal, f.gi); setDigits(f.portal, null, f); $$('#destPanel').scrollIntoView({ behavior: 'smooth', block: 'start' }); }); };
+  const fw = $$('#favWrap'); if (fw) fw.addEventListener('toggle', () => { try { localStorage.setItem('hse-fav-open', fw.open ? '1' : '0'); } catch (_) {} });
+  const drawFavs = () => { const fs = $$('#favSum'); if (fs) fs.textContent = (FAVS.list || []).length ? plural(FAVS.list.length, 'place') : 'Star places to keep them here'; favBox.innerHTML = favPanelHtml(C); wireFavPanel(favBox, C, (f) => { C.p = Place.fromPortal(f.portal, f.gi); setDigits(f.portal, null, f); $$('#destPanel').scrollIntoView({ behavior: 'smooth', block: 'start' }); }); };
   drawFavs();
   $$('#keypad').onclick = (e) => { const b = e.target.closest('button[data-d]'); if (b && C.digits.length < 12) setDigits(C.digits + b.dataset.d); };
   $$('#gBack').onclick = () => setDigits(C.digits.slice(0, -1));
@@ -10719,6 +10750,8 @@ async function appInit() {
   $('#backupsBtn').classList.remove('hidden');
   $('#backupAllBtn').classList.remove('hidden');
   $('#exitBtn').classList.remove('hidden');
+  // Settings (owner 2026-11-12): the cover settings live here now instead of on the Garage and Dock Yard
+  $('#settingsBtn').classList.remove('hidden'); $('#settingsBtn').onclick = renderSettingsDialog;
   $('#exitBtn').onclick = () => { if (S.dirty || (S.acct && S.acct.dirty)) leaveDialog(); else exitApp(); };
   if (NATIVE) {   // the window's X: the editor's own question when something is unsaved, else straight out
     window.hseCloseRequest = () => { NATIVE.postMessage('close-ack'); $('#exitBtn').onclick(); };

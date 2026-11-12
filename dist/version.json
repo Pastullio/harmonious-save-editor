@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.12.2140",
+  "version": "2026.11.12.2204",
   "date": "2026-11-12",
-  "size": 14692864,
-  "sha256": "d7f2131695a73a94d9ee0fbeb9e545dafda112f743a4f306ef944153fd6e53ab",
-  "notes": "Shipwright: LiveLink has its own box under the corvette list.\nShipwright: the corvette's picture is as tall as the cards beside it, and its picture options sit behind a gear in its corner (also on the Starships, Multi-tools, Freighter, Exocraft and Companions pictures).\nShipwright: Copy all sits with Paste all, Load file, Load from a .blend and Save as.\nShipwright: Parts opens and closes like Build JSON.",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.12.2140/HarmoniousSaveEditor.exe",
+  "size": 14697984,
+  "sha256": "cdd9109c90ecf0e49f47cd35d6d2bb1fc20fa2559776ab083c719b7a1e5861c7",
+  "notes": "Every page: the page's description now sits to the right of its title.\nSettings: a gear at the bottom of the sidebar opens the settings (Blender and Charon Forge for corvette covers), instead of Cover settings on the Garage and Dock Yard.\nShipwright: LiveLink sits under the corvette's picture, and Copy all, Paste all, Load file, Load from a .blend and Save as are on one line.\nCoordinates: You are here is a slimmer bar with Start from here beside it, and Favourite places opens and closes.\nDock Yard: the view and action buttons are one row, the type and tag filters sit beside Cover Flow / Grid, the ship count is under the title, a corvette build offers Copy corvette, and favourites are a star (filled when it's a favourite).",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.12.2204/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

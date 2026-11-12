@@ -138,7 +138,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   }
   // Render corvettes without Blender set up opens the cover settings
   await p.click('.dy-tabs [data-v="library"]'); await p.waitForSelector('#libRender'); await p.click('#libRender'); await p.waitForSelector('#dlg[open]');
-  ok('Render corvettes asks for Blender when it is not set up', /Cover settings/.test(await p.textContent('#dlgTitle')));
+  ok('Render corvettes asks for Blender when it is not set up', /Settings/.test(await p.textContent('#dlgTitle')) && /Corvette covers/.test(await p.textContent('#dlg')));
   await p.click('#dlgActs .btn.ghost');
   // a build-only file onto corvette Max (slot 5, index 4)
   await p.click('.dy-sub [data-v="linked"]'); await p.waitForTimeout(800);
@@ -204,6 +204,17 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.evaluate(() => localStorage.setItem('hse-cover-view', 'flow')); await p.click('nav button[data-s="library"]'); await p.waitForTimeout(2500);
   const bar = await p.$eval('.dy-acts', (e) => e.innerText);
   ok('Cover Flow has an action bar for the picked ship', /Details/.test(bar) && /(Edit ship|Put in this save|Open a save)/.test(bar));
+  // the Dock Yard's layout (owner 2026-11-12): one row of buttons, the filters beside Cover Flow / Grid, the count under the
+  // title, no Cover settings here (it's in Settings), and the favourite is a star alone, filled when it is one
+  ok('views and actions are one row of buttons', await p.evaluate(() => { const r = document.querySelector('.dy-sub'); const bs = [...r.querySelectorAll('.btn')]; return ['All ships', 'Linked folders', 'Manage folders', 'Import files', 'Render corvettes'].every((t) => bs.some((b) => b.textContent.includes(t))) && !r.querySelector('.link') && new Set(bs.map((b) => Math.round(b.getBoundingClientRect().top))).size === 1; }));
+  ok('the type and tag filters sit beside Cover Flow and Grid', await p.evaluate(() => { const f = document.querySelector('.dy-filters'); return !!f.querySelector('#libType') && !!f.querySelector('#libTag') && !!f.querySelector('.view-switch'); }));
+  ok('how many ships, under the Dock Yard title', await p.evaluate(() => /\d+ ships? in /.test(document.querySelector('.page-head .lib-status').textContent)));
+  ok('no Cover settings on the page; Settings in the sidebar has them', await p.evaluate(() => !/Cover settings/.test(document.querySelector('#page').textContent) && !document.querySelector('#settingsBtn').classList.contains('hidden')));
+  const star = await p.$eval('.dy-acts .dy-star', (b) => ({ text: b.textContent.trim(), pressed: b.getAttribute('aria-pressed') }));
+  ok('the favourite is a star alone', star.text === '' && /true|false/.test(star.pressed));
+  await p.click('.dy-acts .dy-star'); await p.waitForTimeout(400);
+  ok('…filled when it is a favourite', (await p.$eval('.dy-acts .dy-star', (b) => b.getAttribute('aria-pressed'))) === String(star.pressed !== 'true'));
+  await p.click('.dy-acts .dy-star'); await p.waitForTimeout(300);
   await p.evaluate(() => localStorage.setItem('hse-cover-view', 'grid'));
   // a corvette added after the save was opened shows up in the Dock Yard (owner, 2026-11-03)
   const added = await p.evaluate(() => { const used = new Set(ships().map((x) => x.i)), slot = (g(ps(), 'ShipOwnership') || []).findIndex((_, i) => !used.has(i)); if (slot < 0) return -1; addCorvette(slot); set(g(ps(), 'ShipOwnership')[slot], 'Name', 'Brand New Corvette'); renderSide(); return slot; });
