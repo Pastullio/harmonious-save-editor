@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.12.2052",
+  "version": "2026.11.12.2112",
   "date": "2026-11-12",
-  "size": 14684672,
-  "sha256": "4b5b406d06f4c0912139207693ea64209bbe2f17093c499a34b509d15562bc81",
-  "notes": "LiveLink: natural joints now follow a person's range of movement. Elbows bend forwards and knees backwards and both can twist a little; the neck, back, shoulders, hips, wrists and ankles move freely within a natural range; fingers still bend like hinges. Turn Natural joints off to move any joint any way.\nTraveller page: a new loading mark (the Harmonious logo, its orbs circling the star) shows over the ship while Blender makes its 3D model or renders it.\nTraveller page: a note under the picture says the page is still experimental, with a link to Discord to report problems.\nPlease install the LiveLink add-on again (version 1.15.0).",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.12.2052/HarmoniousSaveEditor.exe",
+  "size": 14690304,
+  "sha256": "be6a800a7b1e154c305e71f1989d314e2bf976c800797adf3a5bf3be8e1c094b",
+  "notes": "Overview: Quick fixes now opens and closes with a click, and holds the repair, recharge and fill buttons together with your units, nanites and quicksilver.\nOverview: play time, starships, multi-tools, bases and the save version are now part of Journey.\nOverview: your traveller's picture options (choose a screenshot, import an image, go back to the default) sit behind the gear on the portrait.",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.12.2112/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

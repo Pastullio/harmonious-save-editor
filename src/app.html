@@ -69,7 +69,7 @@ h1, h2, h3 { font-family: var(--display); margin: 0; }
 h1 { font-size: 27px; font-weight: 300; line-height: 1.15; letter-spacing: .2em; text-transform: uppercase; }
 h2 { font-size: 20px; font-weight: 500; line-height: 1.25; }
 h3 { font-size: 15.5px; font-weight: 500; line-height: 1.3; }
-.label, .panel > h3, .open-card h3, .dest-head h3, .slot-issues h3 { font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+.label, .panel > h3, .qf-box > summary h3, .open-card h3, .dest-head h3, .slot-issues h3 { font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
 p { margin: 0 0 .8em; max-width: 68ch; }
 a { color: var(--accent); text-underline-offset: 3px; }
 .dim { color: var(--dim); }
@@ -928,9 +928,30 @@ dialog.wide { max-width: 1000px; }
 .hint:hover, .hint:focus-visible { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); outline: none; }
 .tip-pop { position: fixed; z-index: 3000; max-width: 300px; padding: 9px 12px; border-radius: 10px; background: var(--ink); color: var(--surface); font-size: 12.5px; line-height: 1.45; letter-spacing: 0; text-transform: none; box-shadow: 0 10px 28px rgba(0, 0, 0, .25); pointer-events: none; }
 .tip-pop[hidden] { display: none; }
-.qf-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; padding-top: 14px; padding-bottom: 14px; }
-.qf-bar h3 { margin: 0; }
-.qf-bar .toolbar { margin: 0; }
+.qf-box { padding: 0; }
+.qf-box > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 14px 20px; user-select: none; border-radius: var(--r-lg); }
+.qf-box > summary::-webkit-details-marker { display: none; }
+.qf-box > summary::before { content: ''; width: 8px; height: 8px; border-right: 1.7px solid var(--dim); border-bottom: 1.7px solid var(--dim); transform: rotate(-45deg); transition: transform .15s; flex: none; }
+.qf-box[open] > summary::before { transform: rotate(45deg); }
+.qf-box > summary:hover { background: var(--hover); }
+.qf-box > summary h3 { margin: 0; }
+.qf-sum { font-size: 13px; }
+.qf-box[open] .qf-sum { display: none; }
+.qf-body { padding: 4px 20px 18px; display: grid; gap: 14px; }
+.qf-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; }
+.qf-row p { margin: 0; }
+.qf-body .toolbar { margin: 0; }
+.qf-body .currencies { margin-bottom: 0; }
+.qf-body .cur { box-shadow: none; background: var(--well); }
+.tc.portrait { position: relative; }
+.tc-gear { position: absolute; top: 8px; right: 8px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .25); background: rgba(6, 20, 26, .6); color: #fff; display: grid; place-items: center; cursor: pointer; padding: 0; backdrop-filter: blur(4px); transition: background .15s, transform .2s; }
+.tc-gear svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
+.tc-gear:hover, .tc-gear.on { background: rgba(6, 20, 26, .85); transform: rotate(30deg); }
+.tc-gear:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tc-gearpop { position: absolute; top: 48px; right: 8px; z-index: 5; display: grid; gap: 8px; min-width: 200px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 12px 30px rgba(0, 0, 0, .35); }
+.tc-gearpop[hidden], .tc-gearpop [hidden] { display: none; }
+.tc-gearpop .k { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
+.tc-gearpop .btn { justify-content: center; text-align: center; }
 .live { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
 .panel > .live { margin-top: 0; padding-top: 0; border-top: 0; }
 .base-live .sw-side-acts { display: flex; flex-wrap: wrap; }
@@ -1898,25 +1919,28 @@ PAGES.overview = (el) => {
   el.innerHTML = `
     <div class="page-head"><div><h1>Overview</h1><p>Your traveller at a glance, currencies, and the save's name as it appears in the load menu.</p></div></div>
     <div class="trav" id="trav"></div>
-    <div class="panel qf-bar"><h3>Quick fixes ${hint('Applies to every inventory in this context: exosuit, ships, multi-tools, freighter, exocraft and storage.')}</h3>
-      <div class="toolbar"><button class="btn" id="repairAll">Repair all technology</button><button class="btn" id="rechargeAll">Recharge all technology</button><button class="btn" id="refillAll">Fill every stack</button></div></div>
+    <details class="panel qf-box" id="qfBox"${qfOpen() ? ' open' : ''}><summary><h3>Quick fixes</h3><span class="dim qf-sum">Repair, recharge and fill, units, nanites and quicksilver</span></summary>
+      <div class="qf-body">
+        <div class="qf-row"><p class="dim small-print" data-keep>These apply to every inventory: exosuit, ships, multi-tools, freighter, exocraft and storage.</p>
+          <div class="toolbar"><button class="btn" id="repairAll">Repair all technology</button><button class="btn" id="rechargeAll">Recharge all technology</button><button class="btn" id="refillAll">Fill every stack</button></div></div>
+        <div class="currencies">${cur.map(([label, key]) => `
+          <div class="cur"><div class="lbl">${label} ${hint('Up to 4,294,967,295')}</div>
+            <input class="input num" inputmode="numeric" data-cur="${key}" value="${num(g(p, key))}" aria-label="${label}">
+            <div class="quick"><button class="btn small" data-add="${key}" data-n="1000000">+1M</button><button class="btn small" data-add="${key}" data-n="100000000">+100M</button><button class="btn small" data-add="${key}" data-n="max">Max</button></div></div>`).join('')}
+        </div></div></details>
     <div class="facts journey" id="journey"></div>
-    <div class="currencies">${cur.map(([label, key]) => `
-      <div class="cur"><div class="lbl">${label} ${hint('Up to 4,294,967,295')}</div>
-        <input class="input num" inputmode="numeric" data-cur="${key}" value="${num(g(p, key))}" aria-label="${label}">
-        <div class="quick"><button class="btn small" data-add="${key}" data-n="1000000">+1M</button><button class="btn small" data-add="${key}" data-n="100000000">+100M</button><button class="btn small" data-add="${key}" data-n="max">Max</button></div></div>`).join('')}
-    </div>
     <div class="panel"><h3>Save name ${hint("Shown in the game's load screen")}</h3><div class="row">
       <label class="field"><input class="input" id="nameIn" maxlength="42" aria-label="Save name" value="${esc(str(g(cm || p, 'SaveName')))}"></label>
-    </div></div>
-    <div class="place-facts" id="facts"></div>`;
+    </div></div>`;
   const facts = [];
   const pt = num(g(cm || p, 'TotalPlayTime')); if (pt) facts.push([fmtPlay(pt).replace(' played', ''), 'Play time']);
   facts.push([ships().length, 'Starships'], [tools().length, 'Multi-tools'], [(g(p, 'PersistentPlayerBases') || []).length, 'Bases']);
   const ver = num(g(S.save.json, 'Version')); if (ver) facts.push([ver, 'Save version']);
   if (S.save.meta) facts.push([S.save.meta.info.length === 432 ? 'Worlds Part II' : S.save.meta.info.length === 384 ? 'Worlds Part I' : 'Waypoint era', 'Meta format']);
-  $('#facts', el).innerHTML = facts.map(([b, s]) => `<div><b>${esc(b)}</b><span>${s}</span></div>`).join('');
   travellerCards($('#trav', el), $('#journey', el));
+  // the save's own details sit with the journey (owner 2026-11-12: they hung loose under the page)
+  $('#journey', el).insertAdjacentHTML('beforeend', facts.map(([b, s]) => `<div><b>${esc(b)}</b><span>${s}</span></div>`).join(''));
+  $('#qfBox', el).addEventListener('toggle', (e) => { try { localStorage.setItem('hse-qf-open', e.target.open ? '1' : '0'); } catch (_) {} });
   el.querySelectorAll('[data-cur]').forEach((inp) => inp.onchange = () => { const v = clampU32(inp.value); inp.value = v; set(p, inp.dataset.cur, N(v)); });
   el.querySelectorAll('[data-add]').forEach((b) => b.onclick = () => {
     const inp = el.querySelector(`[data-cur="${b.dataset.add}"]`);
@@ -1929,6 +1953,9 @@ PAGES.overview = (el) => {
   $('#rechargeAll', el).onclick = () => { let n = 0; all().forEach((inv) => slotsOf(inv).forEach((s) => { if (typeOf(s) === 'Technology' && refill(s)) n++; })); toast(n + ' technologies recharged'); };
   $('#refillAll', el).onclick = () => { let n = 0; all().forEach((inv) => slotsOf(inv).forEach((s) => { if (typeOf(s) !== 'Technology' && refill(s)) n++; })); toast(n + ' stacks filled'); };
 };
+// Quick fixes opens and closes (owner 2026-11-12); closed until opened, then remembered
+function qfOpen() { try { return localStorage.getItem('hse-qf-open') === '1'; } catch (_) { return false; } }
+const GEAR_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>';
 function travellerCards(host, journey) {
   const p = ps(), items = coverItems(), disc = discoveryCounts(), st = globalStats();
   const ship = items.find((x) => x.kind !== 'tool' && x.current), tool = items.find((x) => x.kind === 'tool' && x.current);
@@ -1936,7 +1963,9 @@ function travellerCards(host, journey) {
   const saveName = str(g(common() || p, 'SaveName')) || 'Traveller';
   const me = { kind: 'portrait', key: 'traveller|' + saveName, name: disc.who || saveName, cls: '' };
   host.innerHTML = `
-    <div class="tc portrait"><div class="tc-art"></div><div class="tc-cap"><span class="k">Traveller</span><b>${esc(me.name)}</b><span class="tc-acts">${APP ? '<button class="link" id="meShot">Choose a screenshot</button>' : ''}<label class="link">Image file<input type="file" accept="image/*" id="meFile" hidden></label></span></div></div>
+    <div class="tc portrait"><div class="tc-art"></div><button class="tc-gear" type="button" id="meGear" title="Change the picture" aria-label="Change the traveller's picture" aria-expanded="false">${GEAR_SVG}</button>
+      <div class="tc-gearpop" id="meGearPop" hidden><span class="k">Traveller picture</span>${APP ? '<button class="btn small" type="button" id="meShot">Choose a screenshot</button>' : ''}<label class="btn small">Import image<input type="file" accept="image/*" id="meFile" hidden></label><button class="btn small ghost" type="button" id="meReset" hidden>Use the default picture</button></div>
+      <div class="tc-cap"><span class="k">Traveller</span><b>${esc(me.name)}</b></div></div>
     ${ship ? `<button class="tc" id="tcShip"><div class="tc-art"></div><div class="tc-cap"><span class="k">Current ship</span><b>${esc(ship.name)}</b><span>${esc(ship.sub.replace(/, current ship$/, ''))}</span></div></button>` : ''}
     ${tool ? `<button class="tc" id="tcTool"><div class="tc-art"></div><div class="tc-cap"><span class="k">Multi-tool</span><b>${esc(tool.name)}</b><span>${esc(tool.sub.replace(/, equipped$/, ''))}</span></div></button>` : ''}
     <div class="tc loc"><span class="k">Location</span>
@@ -1944,9 +1973,17 @@ function travellerCards(host, journey) {
       <span class="k sm">Portal code</span>${glyphRow(loc.portal, 'portal-glyphs')}<span class="portal">${[...loc.portal].map((c) => `<i>${c}</i>`).join('')}</span>
       <span class="k sm">Galactic address</span><span class="mono">${loc.galactic}</span><button class="link loc-go" type="button" onclick="go('coords')">Coordinates and warp</button>` : '<span class="dim">Not in this save</span>'}</div>`;
   const art = host.querySelector('.portrait .tc-art'), hero = document.querySelector('.hero-art');
-  const showMe = () => customCover(me.key).then((url) => { const im = new Image(); im.alt = ''; im.src = url || (hero && hero.src) || ''; im.className = url ? '' : 'default'; art.replaceChildren(im); });
+  const showMe = () => customCover(me.key).then((url) => { const im = new Image(); im.alt = ''; im.src = url || (hero && hero.src) || ''; im.className = url ? '' : 'default'; art.replaceChildren(im); host.querySelector('#meReset').hidden = !url; });
   showMe();
-  const setMe = async (blob) => { if (blob && await chooseCover(me, blob)) showMe(); };
+  // the picture's options sit behind the gear (owner 2026-11-12)
+  const gear = host.querySelector('#meGear'), pop = host.querySelector('#meGearPop');
+  const openPop = (on) => { pop.hidden = !on; gear.setAttribute('aria-expanded', on); gear.classList.toggle('on', on); };
+  gear.onclick = (e) => { e.stopPropagation(); openPop(pop.hidden); };
+  const away = (e) => { if (!host.isConnected) { document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc1, true); return; } if (!pop.hidden && !pop.contains(e.target) && e.target !== gear && !gear.contains(e.target)) openPop(false); };
+  const esc1 = (e) => { if (e.key === 'Escape' && !pop.hidden) { openPop(false); gear.focus(); } };
+  document.addEventListener('pointerdown', away, true); document.addEventListener('keydown', esc1, true);
+  const setMe = async (blob) => { openPop(false); if (blob && await chooseCover(me, blob)) showMe(); };
+  host.querySelector('#meReset').onclick = async () => { openPop(false); await setCustomCover(me.key, null); showMe(); };
   const ms = host.querySelector('#meShot'); if (ms) ms.onclick = async () => setMe(await pickScreenshot());
   host.querySelector('#meFile').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; setMe(f); };
   const toHangar = (it) => () => { S.hangar = { filter: 'all', key: it.key }; go('hangar'); };

@@ -1,5 +1,14 @@
 [
  {
+  "version": "2026.11.12.2112",
+  "date": "2026-11-12",
+  "notes": [
+   "Overview: Quick fixes now opens and closes with a click, and holds the repair, recharge and fill buttons together with your units, nanites and quicksilver.",
+   "Overview: play time, starships, multi-tools, bases and the save version are now part of Journey.",
+   "Overview: your traveller's picture options (choose a screenshot, import an image, go back to the default) sit behind the gear on the portrait."
+  ]
+ },
+ {
   "version": "2026.11.12.2052",
   "date": "2026-11-12",
   "notes": [

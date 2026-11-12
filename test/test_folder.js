@@ -37,6 +37,7 @@ const fx = process.argv[2];
   console.log('rows:', rows);
   await p.click('.slot-row:has-text("save3.hg")');
   await p.waitForSelector('#app:not(.hidden)');
+  await p.evaluate(() => { document.querySelector('#qfBox').open = true; });
   await p.fill('[data-cur="Specials"]', '424242'); await p.dispatchEvent('[data-cur="Specials"]', 'change');
   await p.fill('#nameIn', 'Path of the Harmonious'); await p.dispatchEvent('#nameIn', 'change');
   await p.click('#saveBtn');

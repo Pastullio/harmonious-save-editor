@@ -3,6 +3,7 @@ const { chromium } = require('/opt/npm-tools/node_modules/playwright');
 const path = require('path'), fs = require('fs');
 const C = require('../src/codec.js');
 const fx = process.argv[2], shots = process.argv[3];
+const uiChecks = []; const ok = (n, c) => uiChecks.push([n, !!c]);
 (async () => {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, acceptDownloads: true });
@@ -15,6 +16,17 @@ const fx = process.argv[2], shots = process.argv[3];
   console.log('save name:', name);
   await page.screenshot({ path: shots + '/02-overview.png' });
 
+  // Overview (owner 2026-11-12): Quick fixes is one box, closed until opened, with the currencies inside it; the save's
+  // details sit in Journey; the traveller's picture options are behind a gear
+  ok('Quick fixes starts closed, with the currencies inside it', await page.evaluate(() => { const q = document.querySelector('#qfBox'); return q && !q.open && !!q.querySelector('[data-cur="Units"]') && !!q.querySelector('#repairAll'); }));
+  await page.click('#qfBox > summary');
+  ok('…and opens with a click', await page.isVisible('[data-cur="Nanites"]') && await page.isVisible('#refillAll'));
+  ok('Journey also holds play time, ships, multi-tools, bases and the save version', await page.evaluate(() => ['Play time', 'Starships', 'Multi-tools', 'Bases', 'Save version'].every((t) => [...document.querySelectorAll('#journey span')].some((x) => x.textContent === t)) && !document.querySelector('#facts')));
+  ok('the traveller card has no loose picture links, only the gear', await page.evaluate(() => !document.querySelector('.tc.portrait .tc-cap .link') && !!document.querySelector('#meGear') && document.querySelector('#meGearPop').hidden));
+  await page.click('#meGear');
+  ok('the gear opens the picture options', await page.isVisible('#meGearPop') && /Import image/.test(await page.textContent('#meGearPop')));
+  await page.keyboard.press('Escape');
+  ok('…and Esc closes them', await page.evaluate(() => document.querySelector('#meGearPop').hidden));
   // edit currency
   await page.fill('[data-cur="Units"]', '123456789'); await page.dispatchEvent('[data-cur="Units"]', 'change');
   await page.click('[data-add="Nanites"][data-n="max"]');
@@ -68,6 +80,7 @@ const fx = process.argv[2], shots = process.argv[3];
     ['tech slots unlocked', ps.get('PMT').get('hl?').length === 60],
     ['meta sizes', save.meta.info.sizeDecompressed > 0],
     ['no page errors', errors.length === 0],
+    ...uiChecks,
   ];
   checks.forEach(([n, ok]) => console.log((ok ? 'PASS ' : 'FAIL ') + n));
   if (errors.length) console.log(errors);
