@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.12.1919",
+  "date": "2026-11-12",
+  "notes": [
+   "Traveller page: corvettes now turn in 3D like your traveller, with no Blender for you to open. Pick a corvette and the editor builds its 3D model in the background with your Blender and Charon Forge (a minute or two the first time; it's kept after that). Then turn it with the middle mouse button."
+  ]
+ },
+ {
   "version": "2026.11.12.1827",
   "date": "2026-11-12",
   "notes": [

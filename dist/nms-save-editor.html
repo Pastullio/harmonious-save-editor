@@ -2749,11 +2749,34 @@ async function tcCorvetteGlb(it) {
     return r.ok ? await GLTEX.parse(await r.arrayBuffer()) : null;
   } catch (_) { return null; }
 }
+// a corvette in 3D without opening Blender (owner 2026-11-12): the app runs Blender and Charon Forge hidden, as for
+// covers, and keeps the model next to the renders (`<build key>.glb`, /api/cover?model=1)
+async function corvetteGlbMade(it) {
+  if (!APP || !window.crypto || !crypto.subtle) return null;
+  try {
+    const p = await buildPayload(it); if (!p) return null;
+    const r = await fetch('/api/cover?model=1&key=' + p.key, { headers: { 'X-Token': APP.token } });
+    return r.ok ? await GLTEX.parse(await r.arrayBuffer()) : null;
+  } catch (_) { return null; }
+}
+async function makeCorvetteGlb(it, onState) {
+  const p = await buildPayload(it); if (!p) throw new Error('No build found for ' + it.name);
+  let st = await (await api('/api/render?model=1&key=' + p.key, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: p.text })).json();
+  while (st.state === 'queued' || st.state === 'running') {
+    onState && onState(st.state);
+    await new Promise((r) => setTimeout(r, 1500));
+    st = await (await api('/api/render-status?model=1&key=' + p.key)).json();
+  }
+  if (st.state !== 'done') throw new Error(st.error || 'The 3D model was not made');
+  const glb = await corvetteGlbMade(it);
+  if (!glb) throw new Error('The 3D model could not be read');
+  return glb;
+}
 async function tcShipImage(it) {
   TC.shipModel = null; TC.shipGlb = null; TC.shipPic = null; TC.shipViews = []; TC.shipItem = it; TC.shipKey = it.key; TC.cache.ship = null;
   const url = await customCover(it.key);
   if (url) TC.shipPic = await tcImage(url);
-  TC.shipGlb = it.kind === 'corvette' ? await tcCorvetteGlb(it) : await tcModelGlb(it);
+  TC.shipGlb = it.kind === 'corvette' ? (await corvetteGlbMade(it)) || await tcCorvetteGlb(it) : await tcModelGlb(it);
   // corvettes: every angle Blender rendered, so a corvette with its own picture can still be turned between them
   if (it.kind === 'corvette') {
     await loadRender(it); coverFromMemory(it);
@@ -2969,7 +2992,7 @@ PAGES.traveller = (el) => {
       ${st.ship && !TC.imp.ship && tcShipModes().length > 1 ? `<div class="seg tc-show">${tcShipModes().map((m) => `<button type="button" data-show="${m}" aria-pressed="${tcShipMode() === m}">${{ '3d': '3D model', renders: 'Renders', pic: 'Your picture' }[m]}</button>`).join('')}</div>` : ''}
       ${tcIs3d('ship') ? turnHtml('ship') : ''}
       ${isCorv && !TC.imp.ship && TC.shipViews.length > 1 && tcShipMode() === 'renders' ? `<label class="field"><span>Angle</span><select id="tcView">${TC.shipViews.map(([v, l]) => `<option value="${v}"${v === (st.shipView || TC.shipViews[0][0]) ? ' selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
-      ${isCorv && !TC.imp.ship && !TC.shipGlb ? `<p class="dim small-print" data-keep>To turn this corvette like your traveller, open its .blend in Blender and press Send the corvette in 3D (LiveLink, Builds).</p>` : ''}
+      ${isCorv && !TC.imp.ship && !TC.shipGlb ? `<p class="tc-note" id="tc3dNote" data-keep>${TC.making3d === st.ship ? 'Making it in 3D in the background (Blender works out of sight). It takes a minute or two; then it turns like your traveller.' : TC.no3d ? 'To turn a corvette, the editor needs Blender and Charon Forge on this PC (set them in the Garage\'s Cover settings). It runs them for you, out of sight.' : ''}</p>` : ''}
       ${APP && isCorv && !TC.imp.ship && TC.shipViews.length < COVER_VIEWS.length && tcShipMode() !== 'pic' && tcShipMode() !== '3d' ? `<p class="tc-note" id="tcRenderNote" data-keep>${TC.rendering === st.ship ? 'Blender is drawing the front, side, back and top. It can take a few minutes; the angles show here when they are ready.' : ''}</p><button class="btn small" type="button" id="tcRenderViews"${TC.rendering === st.ship ? ' disabled' : ''} title="Blender renders the corvette from the front, side, back and top (needs Blender and Charon Forge)">Render the angles</button>` : ''}
       ${st.ship || TC.imp.ship ? placeHtml('ship') + cutHtml('ship') : ''}${objActs('ship', { imp: true, has: !!(st.ship || TC.imp.ship) })}`;
     const toolIn = `<select id="tcTool"><option value="">No multi-tool</option>${tools.map((x) => `<option value="${esc(x.key)}"${x.key === st.tool ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
@@ -2996,8 +3019,25 @@ PAGES.traveller = (el) => {
   const setShip = async (key) => {
     st.ship = key; TC.imp.ship = null; TC.img.ship = null; TC.shipKey = key; tcSave();
     const it = items.find((x) => x.key === key);
-    if (it) { const im = await tcShipImage(it); if (TC.shipKey === key) TC.img.ship = im; if (!im && !TC.shipModel && !TC.shipGlb) toast('That one has no picture yet. Give it one in the Garage, or render the corvette.'); }
+    if (it) { const im = await tcShipImage(it); if (TC.shipKey === key) TC.img.ship = im; if (it.kind === 'corvette' && !TC.shipGlb) make3d(it); else if (!im && !TC.shipModel && !TC.shipGlb) toast('That one has no picture yet. Give it one in the Garage, or render the corvette.'); }
     else { TC.shipModel = null; TC.shipGlb = null; TC.shipPic = null; TC.shipViews = []; TC.shipItem = null; }
+  };
+  // a corvette without a 3D model gets one made in the background, then shows in 3D
+  const make3d = async (it) => {
+    if (!APP || TC.making3d === it.key) return;
+    const setup = await renderSetup().catch(() => null);
+    TC.no3d = !setup || !setup.ready;
+    if (TC.no3d) { if (el.isConnected) wire(); return; }
+    TC.making3d = it.key; if (el.isConnected) wire();
+    try {
+      const glb = await makeCorvetteGlb(it);
+      if (TC.shipKey === it.key) {
+        TC.shipGlb = glb; st.shipShow = '3d'; TC.img.ship = tcShipPicture(); TC.cache.ship = null; tcSave();
+        if (el.isConnected) toast(it.name + ' is ready in 3D: turn it with the middle mouse button.');
+      }
+    } catch (e) { if (el.isConnected) toast('Could not make ' + it.name + ' in 3D: ' + e.message, true); }
+    if (TC.making3d === it.key) TC.making3d = null;
+    if (el.isConnected) { wire(); redraw(); }
   };
   const wire = () => {
     side.innerHTML = sideHtml();
@@ -3132,6 +3172,7 @@ PAGES.traveller = (el) => {
     const want = fresh ? newest.name : TC.pics.find((q) => q.name === st.pose) ? st.pose : (newest || {}).name || '';
     if (want && !TC.imp.trav && (!(TC.img.trav || TC.m3d) || want !== st.pose)) await tcLoadPose(want);
     if (st.ship && !TC.img.ship && !TC.shipGlb && !TC.shipModel) { const it = items.find((x) => x.key === st.ship); if (it) TC.img.ship = await tcShipImage(it); }
+    { const it = st.ship && TC.shipItem && TC.shipItem.key === st.ship ? TC.shipItem : null; if (it && it.kind === 'corvette' && !TC.shipGlb && !TC.imp.ship) make3d(it); }
     if (st.tool && !TC.toolGlb && !TC.toolModel) { const it = items.find((x) => x.key === st.tool); if (it) await tcToolModel(it); }
     if (!el.isConnected) return; tcSave(); wire(); redraw();
     // Blender's "Save the pose as a picture" and "Send the pose to the editor" land here by themselves while the page is open

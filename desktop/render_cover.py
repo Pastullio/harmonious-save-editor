@@ -2,6 +2,7 @@
 #
 # Run by the desktop app as:
 #   blender -b --factory-startup --python render_cover.py -- <charon_forge_dir> <build.json> <out.png> [size] [samples] [azimuth] [elevation] [views]
+# An <out> ending in .glb saves the corvette as a 3D model instead (no render).
 # [views] renders more camera angles from the same loaded scene instead of the main cover: "front:0:8,side:90:6,…"
 # (name:azimuth:elevation), each written next to <out.png> as <out>-<name>.png.
 # <charon_forge_dir> is the folder that CONTAINS the charon_forge package (Blender's extensions\user_default).
@@ -62,6 +63,56 @@ meshes = [o for o in scene.objects if o.type == 'MESH' and not o.hide_render]
 if not meshes:
     log('nothing to render')
     os._exit(3)
+
+
+def export_model(path):
+    """The corvette as one textured .glb the editor turns like the traveller: every visible mesh made real
+    (Charon Forge places parts as instances), then Blender's glTF exporter."""
+    dg = bpy.context.evaluated_depsgraph_get()
+    coll = bpy.data.collections.new('_hse_model')
+    scene.collection.children.link(coll)
+    made = []
+    for inst in dg.object_instances:
+        ob = inst.object
+        if ob.type != 'MESH':
+            continue
+        src = inst.instance_object if inst.is_instance else ob
+        if src is not None and getattr(src.original, 'hide_render', False):
+            continue
+        try:
+            me = bpy.data.meshes.new_from_object(ob, preserve_all_data_layers=False, depsgraph=dg)
+        except Exception:
+            continue
+        if not me.polygons:
+            bpy.data.meshes.remove(me)
+            continue
+        o = bpy.data.objects.new('part', me)
+        o.matrix_world = inst.matrix_world.copy()
+        coll.objects.link(o)
+        made.append(o)
+    if not made:
+        log('nothing to export')
+        os._exit(3)
+    for o in bpy.context.view_layer.objects:
+        o.select_set(o in made)
+    bpy.context.view_layer.objects.active = made[0]
+    tmp = path + '.part.glb'
+    opts = dict(filepath=tmp, export_format='GLB', use_selection=True, export_apply=False, export_animations=False,
+                export_yup=True, export_image_format='JPEG', export_jpeg_quality=85)
+    try:
+        bpy.ops.export_scene.gltf(**opts)
+    except TypeError:
+        for k in ('export_jpeg_quality', 'export_image_format', 'export_animations'):
+            opts.pop(k, None)
+        bpy.ops.export_scene.gltf(**opts)
+    os.replace(tmp, path)
+    log('exported', len(made), 'parts to', path, 'in', round(time.time() - t0, 1), 's')
+    os._exit(0)
+
+
+if out.lower().endswith('.glb'):
+    export_model(out)
+
 corners = [o.matrix_world @ mathutils.Vector(c) for o in meshes for c in o.bound_box]
 lo = mathutils.Vector([min(c[i] for c in corners) for i in range(3)])
 hi = mathutils.Vector([max(c[i] for c in corners) for i in range(3)])

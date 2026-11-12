@@ -59,6 +59,30 @@ var (
 type renderReq struct {
 	key, jsonPath string
 	views         bool // the extra camera angles instead of the main cover (job key: <key>-views)
+	model         bool // the corvette as a 3D model, <key>.glb, for the Traveller page to turn (job key: <key>-3d)
+}
+
+// what a request makes: its job name and whether it's there already
+func jobName(key string, views, model bool) string {
+	if model {
+		return key + "-3d"
+	}
+	if views {
+		return key + "-views"
+	}
+	return key
+}
+
+func modelPath(key string) string { return filepath.Join(coversDir(), key+".glb") }
+
+func outputDone(key string, views, model bool) bool {
+	if model {
+		return fileExists(modelPath(key))
+	}
+	if views {
+		return viewsDone(key)
+	}
+	return fileExists(filepath.Join(coversDir(), key+".png"))
 }
 
 // the extra camera angles, rendered together in one Blender run after the main cover: name, azimuth, elevation
@@ -171,10 +195,7 @@ func runRender(req renderReq) {
 		setJob(req.key, "error", "Blender or Charon Forge wasn't found. Set their locations in the render settings.")
 		return
 	}
-	job := req.key
-	if req.views {
-		job += "-views"
-	}
+	job := jobName(req.key, req.views, req.model)
 	setJob(job, "running", "")
 	script := filepath.Join(appDir, "render_cover.py")
 	if err := os.WriteFile(script, renderScript, 0o644); err != nil {
@@ -185,6 +206,9 @@ func runRender(req renderReq) {
 	size, samples := settings.Size, settings.Samples
 	renderMu.Unlock()
 	out := filepath.Join(coversDir(), req.key+".png")
+	if req.model {
+		out = modelPath(req.key)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	args := []string{"-b", "--factory-startup", "--python", script, "--", charon, req.jsonPath, out, fmt.Sprint(size), fmt.Sprint(samples)}
@@ -203,12 +227,12 @@ func runRender(req renderReq) {
 	if lf != nil {
 		lf.Close()
 	}
-	made := fileExists(out)
-	if req.views {
-		made = viewsDone(req.key)
-	}
+	made := outputDone(req.key, req.views, req.model)
 	if err != nil || !made {
 		msg := "Blender stopped before the cover was made"
+		if req.model {
+			msg = "Blender stopped before the 3D model was made"
+		}
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			msg = "The render took longer than 10 minutes and was stopped"
 		}
@@ -274,20 +298,18 @@ func handleRender(w http.ResponseWriter, r *http.Request) {
 	key := r.URL.Query().Get("key")
 	force := r.URL.Query().Get("force") == "1"
 	views := r.URL.Query().Get("views") == "1"
+	model := r.URL.Query().Get("model") == "1"
 	if !keyRe.MatchString(key) {
 		http.Error(w, "bad key", http.StatusBadRequest)
 		return
 	}
-	job := key
-	if views {
-		job = key + "-views"
-	}
+	job := jobName(key, views, model)
 	body, err := io.ReadAll(io.LimitReader(r.Body, 64<<20))
 	if err != nil || !json.Valid(body) {
 		http.Error(w, "the build isn't valid JSON", http.StatusBadRequest)
 		return
 	}
-	if !force && ((!views && fileExists(filepath.Join(coversDir(), key+".png"))) || (views && viewsDone(key))) {
+	if !force && outputDone(key, views, model) {
 		setJob(job, "done", "")
 		writeJSON(w, map[string]string{"state": "done"})
 		return
@@ -308,7 +330,7 @@ func handleRender(w http.ResponseWriter, r *http.Request) {
 	f.Close()
 	setJob(job, "queued", "")
 	select {
-	case queue <- renderReq{key: key, jsonPath: f.Name(), views: views}:
+	case queue <- renderReq{key: key, jsonPath: f.Name(), views: views, model: model}:
 	default:
 		os.Remove(f.Name())
 		setJob(job, "error", "Too many renders waiting; try again in a moment")
@@ -326,15 +348,13 @@ func handleRenderStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	views := r.URL.Query().Get("views") == "1"
-	job := key
-	if views {
-		job = key + "-views"
-	}
+	model := r.URL.Query().Get("model") == "1"
+	job := jobName(key, views, model)
 	renderMu.Lock()
 	j, ok := jobs[job]
 	renderMu.Unlock()
 	if !ok {
-		if (!views && fileExists(filepath.Join(coversDir(), key+".png"))) || (views && viewsDone(key)) {
+		if outputDone(key, views, model) {
 			writeJSON(w, renderJob{State: "done"})
 		} else {
 			writeJSON(w, renderJob{State: "none"})
@@ -351,6 +371,16 @@ func handleCover(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p := filepath.Join(coversDir(), key+".png")
+	if r.URL.Query().Get("model") == "1" {   // the corvette in 3D (GET /api/cover?key=…&model=1)
+		if !fileExists(modelPath(key)) {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
+		w.Header().Set("Content-Type", "model/gltf-binary")
+		http.ServeFile(w, r, modelPath(key))
+		return
+	}
 	if v := r.URL.Query().Get("view"); v != "" && v != "hero" {
 		ok := false
 		for _, cv := range coverViews {
@@ -383,9 +413,10 @@ func handleCoverAlias(w http.ResponseWriter, r *http.Request) {
 	}
 	n := 0
 	names, _ := filepath.Glob(filepath.Join(coversDir(), from+"*.png"))
+	names = append(names, filepath.Join(coversDir(), from+".glb"))   // the 3D model too
 	for _, src := range names {
 		rest := strings.TrimPrefix(filepath.Base(src), from)
-		if rest != ".png" && !strings.HasPrefix(rest, "-") {
+		if rest != ".png" && rest != ".glb" && !strings.HasPrefix(rest, "-") {
 			continue
 		}
 		dst := filepath.Join(coversDir(), to+rest)

@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.12.1827",
+  "version": "2026.11.12.1919",
   "date": "2026-11-12",
-  "size": 14646784,
-  "sha256": "bc76b59cd9c82ddaafb688e605d09b1242af0cbd80fbe4295b760217e446a510",
-  "notes": "Traveller: fingers no longer stretch or warp when you move them one at a time; each piece of a finger now moves as one.\nTraveller page: move anything anywhere, even right off the picture. Bring back (in each box) or Bring everything into the picture (under Size) puts it back.\nTraveller page: thinner frame round the picture.\nPlease install the LiveLink add-on again (version 1.14.0).",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.12.1827/HarmoniousSaveEditor.exe",
+  "size": 14654976,
+  "sha256": "ee9e0c3f5d8114c6ee85d00c107d6cd52d617d0d54a493f1d0690002bc97c83f",
+  "notes": "Traveller page: corvettes now turn in 3D like your traveller, with no Blender for you to open. Pick a corvette and the editor builds its 3D model in the background with your Blender and Charon Forge (a minute or two the first time; it's kept after that). Then turn it with the middle mouse button.",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.12.1919/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
