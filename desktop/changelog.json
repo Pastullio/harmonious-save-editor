@@ -1,5 +1,15 @@
 [
  {
+  "version": "2026.11.12.1827",
+  "date": "2026-11-12",
+  "notes": [
+   "Traveller: fingers no longer stretch or warp when you move them one at a time; each piece of a finger now moves as one.",
+   "Traveller page: move anything anywhere, even right off the picture. Bring back (in each box) or Bring everything into the picture (under Size) puts it back.",
+   "Traveller page: thinner frame round the picture.",
+   "Please install the LiveLink add-on again (version 1.14.0)."
+  ]
+ },
+ {
   "version": "2026.11.12.1639",
   "date": "2026-11-12",
   "notes": [

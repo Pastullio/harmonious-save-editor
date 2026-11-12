@@ -400,8 +400,8 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .tc-boxin > .link, .tc-boxin > .addon-btn { align-self: flex-start; }
 .tc-stage canvas:focus { outline: none; }
 .tc-show { margin-top: 2px; }
-.tc-stage { background: var(--well); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: flex; justify-content: center; }
-.tc-stage canvas { max-width: 100%; max-height: calc(100vh - 210px); height: auto; border-radius: 8px; touch-action: none; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
+.tc-stage { background: var(--well); border: 1px solid var(--line); border-radius: 8px; padding: 2px; display: flex; justify-content: center; }
+.tc-stage canvas { max-width: 100%; max-height: calc(100vh - 186px); height: auto; border-radius: 6px; touch-action: none; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
 .tc-side { display: flex; flex-direction: column; gap: 10px; }
 .tc-box { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .tc-box > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 11px 14px; font-size: 12.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink); user-select: none; }
@@ -2499,6 +2499,8 @@ PAGES.traveller = (el) => {
     else o.splice(Math.max(0, Math.min(o.length, how === 'forward' ? i + 1 : i - 1)), 0, id);
     st.order = o;
   };
+  // back in the picture where it started, at its first size (its turn stays)
+  const bringBack = (id) => { const d = TC_DEFAULT().layers[id]; if (d) Object.assign(st.layers[id], { x: d.x, y: d.y, s: d.s }); };
   const removeLayer = (id) => {
     if (id === 'trav') { st.pose = ''; TC.img.trav = null; TC.imp.trav = null; TC.m3d = null; TC.cache.trav = null; }
     if (id === 'ship') { st.ship = ''; TC.img.ship = null; TC.imp.ship = null; TC.shipModel = null; TC.shipGlb = null; TC.shipPic = null; TC.shipViews = []; TC.shipItem = null; }
@@ -2516,7 +2518,7 @@ PAGES.traveller = (el) => {
   const turnHtml = (k) => { const l = st.layers[k]; return `<div class="tc-turn" data-turn="${k}"><label><span>Turn</span><input type="range" min="-180" max="180" step="1" data-ax="yaw" value="${l.yaw || 0}"></label><label><span>Tilt</span><input type="range" min="-60" max="60" step="1" data-ax="pitch" value="${l.pitch || 0}"></label></div>`; };
   const placeHtml = (k) => { const n = st.order.length, at = n - st.order.indexOf(k); return `<label class="field"><span>Placement <span class="dim">(${at === 1 ? 'in front' : at === n ? 'at the back' : 'layer ' + at + ' of ' + n})</span></span><select data-place="${k}"><option value="">Move it…</option><option value="front">In front of everything</option><option value="forward">Forward one layer</option><option value="backward">Back one layer</option><option value="back">Behind everything</option></select></label>`; };
   const cutHtml = (k) => tc2d(k) && !tcIs3d(k) && (k !== 'trav' || TC.imp.trav) ? `<label class="check"><input type="checkbox" data-cut="${k}"${st.cut[k] ? ' checked' : ''}> Remove background</label>` : '';
-  const objActs = (k, opts) => `<div class="tc-objacts">${tcIs3d(k) ? `<button class="btn small" type="button" data-front="${k}" title="Turn it back to face the front">Reset</button>` : ''}${opts.imp ? `<button class="btn small" type="button" data-imp="${k}">Import image</button>` : ''}${opts.has ? `<button class="btn small ghost danger" type="button" data-del="${k}">Delete</button>` : ''}</div>`;
+  const objActs = (k, opts) => `<div class="tc-objacts">${opts.has ? `<button class="btn small" type="button" data-back="${k}" title="Put it back in the middle of the picture at its first size">Bring back</button>` : ''}${tcIs3d(k) ? `<button class="btn small" type="button" data-front="${k}" title="Turn it back to face the front">Reset</button>` : ''}${opts.imp ? `<button class="btn small" type="button" data-imp="${k}">Import image</button>` : ''}${opts.has ? `<button class="btn small ghost danger" type="button" data-del="${k}">Delete</button>` : ''}</div>`;
   const sideHtml = () => {
     const [W, H] = tcSize(st), ships = items.filter((x) => x.kind !== 'tool'), tools = items.filter((x) => x.kind === 'tool');
     const isCorv = st.ship && TC.shipItem && TC.shipItem.kind === 'corvette';
@@ -2544,7 +2546,8 @@ PAGES.traveller = (el) => {
       <div class="tc-sub"><span class="k2">Logo</span>${TC.img.logo ? placeHtml('logo') + cutHtml('logo') : ''}<div class="tc-objacts"><button class="btn small" type="button" data-imp="logo">${TC.img.logo ? 'Change logo' : 'Import image'}</button>${TC.img.logo ? '<button class="btn small ghost danger" type="button" data-del="logo">Delete</button>' : ''}</div></div>`;
     const glyphIn = `<select id="tcPlace"><option value="">No glyphs</option>${places.map((q) => `<option value="${esc(q.id)}"${q.id === st.place ? ' selected' : ''}>${esc(q.name)}</option>`).join('')}</select>${st.place ? placeHtml('glyphs') : ''}`;
     const sizeIn = `<div class="seg">${Object.entries(TC_SIZES).map(([k, [w, h, l]]) => `<button type="button" data-size="${k}" aria-pressed="${st.size === k}" title="${w} × ${h}">${l}</button>`).join('')}<button type="button" data-size="custom" aria-pressed="${st.size === 'custom'}">Custom</button></div>
-      ${st.size === 'custom' ? `<div class="tc-wh"><label class="field"><span>Width</span><input type="number" id="tcW" min="200" max="4096" step="10" value="${W}"></label><span class="x">×</span><label class="field"><span>Height</span><input type="number" id="tcH" min="200" max="4096" step="10" value="${H}"></label></div>` : `<p class="dim small-print" data-keep>${W} × ${H} pixels</p>`}`;
+      ${st.size === 'custom' ? `<div class="tc-wh"><label class="field"><span>Width</span><input type="number" id="tcW" min="200" max="4096" step="10" value="${W}"></label><span class="x">×</span><label class="field"><span>Height</span><input type="number" id="tcH" min="200" max="4096" step="10" value="${H}"></label></div>` : `<p class="dim small-print" data-keep>${W} × ${H} pixels</p>`}
+      <button class="btn small" type="button" id="tcAllBack" title="Anything moved right off the picture comes back in">Bring everything into the picture</button>`;
     const wm = APP ? `<label class="check tc-wm"><input type="checkbox" id="tcWm"${st.watermark || !tcPatron() ? ' checked' : ''}> Watermark${tcPatron() ? '' : ' <span class="dim">(patrons can remove it)</span>'}</label>` : '';
     return box('size', 'Size', sizeIn) + box('trav', 'Traveller', travIn) + box('ship', 'Ship', shipIn) + box('tool', 'Multi-tool', toolIn) + box('bg', 'Background', bgIn) + box('text', 'Text', textIn) + box('glyphs', 'Portal glyphs', glyphIn)
       + `<div class="tc-acts main">${wm}<button class="btn primary" type="button" id="tcSaveBtn">Save picture</button><button class="btn" type="button" id="tcCopy">Copy picture</button><button class="btn ghost" type="button" id="tcReset" title="Put everything back where it started">Reset layout</button></div>`;
@@ -2563,6 +2566,11 @@ PAGES.traveller = (el) => {
     side.querySelectorAll('[data-place]').forEach((s) => s.onchange = () => { if (!s.value) return; move(s.dataset.place, s.value); TC.sel = s.dataset.place; tcSave(); wire(); redraw(); });
     side.querySelectorAll('[data-cut]').forEach((c) => c.onchange = () => change(() => { st.cut[c.dataset.cut] = c.checked; }));
     side.querySelectorAll('[data-del]').forEach((b) => b.onclick = () => removeLayer(b.dataset.del));
+    side.querySelectorAll('[data-back]').forEach((b) => b.onclick = () => { bringBack(b.dataset.back); TC.sel = b.dataset.back; tcSave(); redraw(); });
+    const allBack = $('#tcAllBack', side); if (allBack) allBack.onclick = () => {
+      const out = TC.hits.filter((h) => h.x + h.w < 1 || h.y + h.h < 1 || h.x > cv.width - 1 || h.y > cv.height - 1).map((h) => h.id);
+      out.forEach(bringBack); tcSave(); redraw(); toast(out.length ? 'Brought back: ' + out.map((k) => TC_NAMES[k]).join(', ') : 'Everything is in the picture already');
+    };
     side.querySelectorAll('[data-imp]').forEach((b) => b.onclick = async () => {
       const k = b.dataset.imp, f = await tcPickFile(); if (!f) return;
       const im = await tcBlobImage(f); if (!im) { toast("Couldn't read that image.", true); return; }
@@ -2667,8 +2675,8 @@ PAGES.traveller = (el) => {
       l.yaw = Math.round(((drag.yaw + (p[0] - drag.p[0]) / k * .6) + 540) % 360 - 180); l.pitch = Math.max(-60, Math.min(60, Math.round(drag.pitch + (p[1] - drag.p[1]) / k * .4)));
       side.querySelectorAll(`.tc-turn[data-turn="${drag.id}"] input`).forEach((inp) => { inp.value = l[inp.dataset.ax]; }); redraw(); return;
     }
-    // past the edges too (owner 2026-11-12: only the head in the picture), but never quite off it
-    l.x = Math.max(-.6, Math.min(1.6, drag.x + (p[0] - drag.p[0]) / cv.width)); l.y = Math.max(-.6, Math.min(1.6, drag.y + (p[1] - drag.p[1]) / cv.height)); redraw();
+    // anywhere, right off the picture too (owner 2026-11-12: complete freedom); Bring back puts it in again
+    l.x = drag.x + (p[0] - drag.p[0]) / cv.width; l.y = drag.y + (p[1] - drag.p[1]) / cv.height; redraw();
   };
   cv.onpointerup = () => { if (drag) { drag = null; tcSave(); } };
   cv.addEventListener('wheel', (e) => { const h = hitAt(at(e)); if (!h) return; e.preventDefault(); const l = st.layers[h.id]; l.s = Math.max(.05, Math.min(6, l.s * (e.deltaY < 0 ? 1.06 : 1 / 1.06))); TC.sel = h.id; tcSave(); redraw(); }, { passive: false });

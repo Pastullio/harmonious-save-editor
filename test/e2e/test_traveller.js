@@ -217,7 +217,30 @@ wrist = arm.matrix_world @ arm.pose.bones['r_arm_Wrist'].head
 f0 = (b0 - wrist).length; c1 = tips('r_hand_03b_03'); f1 = (c1 - wrist).length
 bpy.context.scene.harmonious_curl_r = 0.0
 arm.harmonious_natural = False; unlocked = all(sum(arm.pose.bones[n].lock_rotation) == 0 for n in hinges); arm.harmonious_natural = True
-print('FINGERS', len(split), len(hinges), locked_ok, one, round(f0, 3), round(f1, 3), unlocked)
+# no piece of a finger is shared by both fingers (it would stretch when one finger moves)
+import collections
+mixed = 0
+for m in h.traveller_meshes(arm):
+    gn = {g.index: g.name for g in m.vertex_groups}
+    fing = {}
+    for v in m.data.vertices:
+        for e in v.groups:
+            n = gn.get(e.group, '')
+            if e.weight > .001 and ('_hand_03_' in n or '_hand_03b_' in n): fing.setdefault(v.index, set()).add(n[:2] + ('b' if '_03b_' in n else 'a'))
+    adj = collections.defaultdict(list)
+    for ed in m.data.edges:
+        a, b = ed.vertices
+        if a in fing and b in fing: adj[a].append(b); adj[b].append(a)
+    seen = set()
+    for i in fing:
+        if i in seen: continue
+        st = [i]; seen.add(i); kinds = set()
+        while st:
+            x = st.pop(); kinds |= fing[x]
+            for y in adj[x]:
+                if y not in seen: seen.add(y); st.append(y)
+        if any(k[:2] + 'a' in kinds and k[:2] + 'b' in kinds for k in kinds): mixed += 1
+print('FINGERS', len(split), len(hinges), locked_ok, one, round(f0, 3), round(f1, 3), unlocked, mixed)
 # a corvette in 3D: every visible mesh of the file (not the traveller), instances made real, goes to the editor
 cube = bpy.data.objects.new('hull', bpy.data.meshes.new('hull')); bpy.context.scene.collection.objects.link(cube)
 import bmesh; bm = bmesh.new(); bmesh.ops.create_cube(bm, size=2.0); bm.to_mesh(cube.data); bm.free(); cube.location = (5, 0, 0)
@@ -308,6 +331,7 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     ok('…turning one finger leaves the other where it was', fg[3] === 'True');
     ok('…the hand slider curls the fingers in towards the palm (a fist)', +fg[5] < +fg[4] - .01);
     ok('…and Natural joints off frees them again', fg[6] === 'True');
+    ok('…and no piece of a finger is shared by both fingers, so they don\'t stretch (' + fg[7] + ' shared)', fg[7] === '0');
     const parts = line('PARTS');
     ok('Body parts lists the traveller\'s parts (' + parts.split(' ')[0] + ')', ['head', 'torso', 'r_arm', 'l_leg', 'backpack', 'front', 'whole'].every((k) => parts.split(' ')[0].split(',').includes(k)));
     ok('…several can be picked at once, each turning at its own joint, and picking one again lets go of it only', / True 4 INDIVIDUAL_ORIGINS \[True, False\] 0$/.test(parts) || / True 4 INDIVIDUAL_ORIGINS \[False, True\] 0$/.test(parts), parts);

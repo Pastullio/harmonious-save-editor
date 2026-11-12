@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 13, 0),
+    "version": (1, 14, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -670,6 +670,54 @@ def finger_axis(arm, meshes, side):
     return v
 
 
+def _finger_sides(meshes, names, head, L):
+    """Which finger each vertex of the 03 chain belongs to (True: the + side of L). Decided per piece of mesh, so a
+    finger segment is never cut in two (owner 2026-11-12: fingers stretched where a piece was split down the middle);
+    only a big piece that really spans both fingers (one joined glove) is split vertex by vertex."""
+    side = {}
+    for m in meshes:
+        idx = {m.vertex_groups[n].index for n in names if m.vertex_groups.get(n) is not None}
+        if not idx:
+            continue
+        mw = m.matrix_world
+        S = {}
+        for v in m.data.vertices:
+            w = sum(e.weight for e in v.groups if e.group in idx)
+            if w > 0.001:
+                S[v.index] = ((mw @ v.co) - head).dot(L)
+        if not S:
+            continue
+        adj = {i: [] for i in S}
+        for e in m.data.edges:
+            a, b = e.vertices
+            if a in S and b in S:
+                adj[a].append(b)
+                adj[b].append(a)
+        seen = set()
+        for i in S:
+            if i in seen:
+                continue
+            stack, comp = [i], []
+            seen.add(i)
+            while stack:
+                x = stack.pop()
+                comp.append(x)
+                for y in adj[x]:
+                    if y not in seen:
+                        seen.add(y)
+                        stack.append(y)
+            pos = sum(1 for x in comp if S[x] > 0)
+            # a small piece across both fingers is the knuckle's pin, on the hinge line: whole, it stays put either way
+            if len(comp) > 300 and min(pos, len(comp) - pos) > 0.35 * len(comp):
+                for x in comp:
+                    side[(m.name, x)] = S[x] > 0
+            else:
+                plus = sum(S[x] for x in comp) > 0
+                for x in comp:
+                    side[(m.name, x)] = plus
+    return side
+
+
 def split_fingers(context, arm, meshes):
     """Give each hand's second finger its own joints; returns how many hands were split."""
     import mathutils
@@ -687,12 +735,13 @@ def split_fingers(context, arm, meshes):
         thumb = arm.data.bones.get("%s_hand_05_01" % side)
         moves = []
         ok = True
+        sides = _finger_sides(meshes, names, W @ arm.data.bones[names[0]].head_local, L)
         for n in names:
             b = arm.data.bones[n]
             head = W @ b.head_local
             vs = _world_verts(arm, meshes, n)
-            plus = [x for x in vs if (x[3] - head).dot(L) > 0]
-            minus = [x for x in vs if (x[3] - head).dot(L) <= 0]
+            plus = [x for x in vs if sides.get((x[0].name, x[1]), (x[3] - head).dot(L) > 0)]
+            minus = [x for x in vs if not sides.get((x[0].name, x[1]), (x[3] - head).dot(L) > 0)]
             if len(plus) < 0.2 * len(vs) or len(minus) < 0.2 * len(vs):
                 ok = False
                 break

@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.12.1639",
+  "version": "2026.11.12.1827",
   "date": "2026-11-12",
-  "size": 14643200,
-  "sha256": "e92224e7d444bdf75321676cf935ae5298d23e76a75139d685a22b131c3febd3",
-  "notes": "Please install the LiveLink add-on again (version 1.13.0): each hand's two fingers now move one at a time, Natural joints (on by default) make fingers, elbows and knees bend the way real ones do at their own joint, and Body parts has Hands sliders from open to a fist\nLiveLink: Send the corvette in 3D (Builds panel) sends a corvette's model to the Traveller page, where it turns like your traveller\nTraveller page: new space backgrounds (Eclipse, Blue nebula, Violet clouds, Meteor storm, Ringed planets) beside the starfield\nTraveller page: things can go past the edges of the picture (only the head showing, say) and be made bigger\nTraveller page: 3D poses, ships and multi-tools are sharper, with the game's surface detail",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.12.1639/HarmoniousSaveEditor.exe",
+  "size": 14646784,
+  "sha256": "bc76b59cd9c82ddaafb688e605d09b1242af0cbd80fbe4295b760217e446a510",
+  "notes": "Traveller: fingers no longer stretch or warp when you move them one at a time; each piece of a finger now moves as one.\nTraveller page: move anything anywhere, even right off the picture. Bring back (in each box) or Bring everything into the picture (under Size) puts it back.\nTraveller page: thinner frame round the picture.\nPlease install the LiveLink add-on again (version 1.14.0).",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.12.1827/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

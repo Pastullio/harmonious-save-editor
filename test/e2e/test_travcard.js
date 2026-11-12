@@ -76,6 +76,15 @@ im.save(${JSON.stringify(file)})`]);
   const s0 = await p.evaluate(() => TC.state.layers.trav.s);
   await p.mouse.move(tb.x, tb.y); await p.mouse.wheel(0, -300); await p.waitForTimeout(200);
   ok('scrolling over the traveller makes it bigger', (await p.evaluate(() => TC.state.layers.trav.s)) > s0);
+  // complete freedom: right off the picture, and back again
+  const sv = await p.evaluate(() => ({ ...TC.state.layers.trav }));
+  const cw = await p.$eval('#tcCanvas', (c) => c.getBoundingClientRect().width);
+  await p.mouse.move(tb.x, tb.y); await p.mouse.down(); await p.mouse.move(tb.x + cw * 1.4, tb.y, { steps: 8 }); await p.mouse.up(); await p.waitForTimeout(200);
+  ok('the traveller can be dragged right off the picture', await p.evaluate(() => { const h = TC.hits.find((x) => x.id === 'trav'); return TC.state.layers.trav.x > 1.6 && h && h.x > $('#tcCanvas').width; }));
+  await p.click('#tcAllBack'); await p.waitForTimeout(200);
+  ok('…and Bring everything into the picture brings it back', await p.evaluate(() => { const l = TC.state.layers.trav; return l.x === .5 && l.y === .55; }));
+  await p.evaluate((v) => { Object.assign(TC.state.layers.trav, v); }, sv);
+  ok('the frame round the picture is thin', await p.$eval('.tc-stage', (e) => parseFloat(getComputedStyle(e).paddingLeft) <= 3 && parseFloat(getComputedStyle(e).borderLeftWidth) <= 1));
   // words, size, background
   await p.fill('#tcTitle', 'Traveller of the Atlas'); await p.fill('#tcCaption', 'Hello from Euclid'); await p.waitForTimeout(200);
   await p.click('[data-size="wide"]'); await p.waitForTimeout(300);
