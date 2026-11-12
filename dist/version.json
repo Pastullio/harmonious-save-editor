@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.12.1919",
+  "version": "2026.11.12.2020",
   "date": "2026-11-12",
-  "size": 14654976,
-  "sha256": "ee9e0c3f5d8114c6ee85d00c107d6cd52d617d0d54a493f1d0690002bc97c83f",
-  "notes": "Traveller page: corvettes now turn in 3D like your traveller, with no Blender for you to open. Pick a corvette and the editor builds its 3D model in the background with your Blender and Charon Forge (a minute or two the first time; it's kept after that). Then turn it with the middle mouse button.",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.12.1919/HarmoniousSaveEditor.exe",
+  "size": 14673920,
+  "sha256": "7027c8ff5eea1b42098a65b465ec2d9d2fcd31b4de499be1122335a594ac81e6",
+  "notes": "Traveller page: Render this angle. Turn your corvette's 3D model to the angle you like, press Render this angle, and Blender renders it from exactly that angle with all its textures and colours, in the same spot on the picture. Rendered angles stay in the Angle list.\nTraveller page: the corvette's 3D model is lighter and faster to turn, shows its real surface pictures, and no longer has white sheets where the game has see-through panels.",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.12.2020/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

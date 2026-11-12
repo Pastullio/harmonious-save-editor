@@ -40,11 +40,28 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const y0 = await p.evaluate(() => TC.state.layers.ship.yaw);
   await p.mouse.move(box.x, box.y); await p.mouse.down({ button: 'middle' }); await p.mouse.move(box.x + 90, box.y + 20, { steps: 6 }); await p.mouse.up({ button: 'middle' }); await p.waitForTimeout(300);
   ok('the middle button turns it', await p.evaluate((y0) => TC.state.layers.ship.yaw !== y0, y0));
+  // find the angle, then Render this angle: Blender renders it with its textures from that angle, in the same spot
+  await p.evaluate(() => { TC.state.layers.ship.yaw = 60; TC.state.layers.ship.pitch = 25; TC.cache.ship = null; });
+  ok('a 3D corvette offers Render this angle', await p.isVisible('#tcRenderAngle'));
+  await p.click('#tcRenderAngle');
+  await p.waitForFunction(() => tcShipMode() === 'renders' && TC.state.shipView === 'a60_25', null, { timeout: 600000, polling: 1000 }).catch(() => {});
+  ok('…which renders it and shows the picture in its place', await p.evaluate(() => tcShipMode() === 'renders' && TC.state.shipView === 'a60_25' && !!TC.img.ship));
+  ok('…kept with the covers', fs.readdirSync(path.join(cfg, 'HarmoniousSaveEditor', 'covers')).some((f) => /^[0-9a-f]+-a60_25\.png$/.test(f)));
+  // the render matches the preview's outline (Blender's camera from the same side and height)
+  const fit = await p.evaluate(() => {
+    const mask = (im) => { const c = document.createElement('canvas'); c.width = c.height = 200; const x = c.getContext('2d'); x.drawImage(im, 0, 0, 200, 200); const d = x.getImageData(0, 0, 200, 200).data, m = []; for (let i = 0; i < d.length; i += 4) m.push(d[i + 3] > 20); return m; };
+    const iou = (a, b) => { let i = 0, u = 0; a.forEach((v, k) => { if (v && b[k]) i++; if (v || b[k]) u++; }); return i / Math.max(1, u); };
+    const r = Math.PI / 180, pre = mask(GLTEX.render(TC.shipGlb, 512, 60 * r, 25 * r, 'studio')), ren = mask(TC.img.ship), mir = mask(GLTEX.render(TC.shipGlb, 512, -60 * r, 25 * r, 'studio'));
+    return [iou(pre, ren), iou(mir, ren)].map((v) => Math.round(v * 100) / 100);
+  });
+  ok('…seen from the same side as the 3D preview (outline overlap ' + fit[0] + ', the mirrored side ' + fit[1] + ')', fit[0] > .55 && fit[0] > fit[1]);
+  await p.$eval('#tcCanvas', (c) => c.toDataURL()).then((u) => fs.writeFileSync(path.join(SP, 'c3angle.png'), Buffer.from(u.split(',')[1], 'base64')));
+  ok('a 3D model button brings the turning back', await p.evaluate(() => tcShipModes().includes('3d')));
   // another visit: the model is there already, nothing is made again
   await p.click('nav button[data-s="exosuit"]'); await p.waitForTimeout(300); await p.evaluate(() => { TC.shipGlb = null; TC.img.ship = null; });
   await p.click('nav button[data-s="traveller"]'); await p.waitForSelector('#tcShip', { state: 'attached' });
-  await p.waitForFunction(() => TC.shipGlb && tcShipMode() === '3d', null, { timeout: 20000 }).catch(() => {});
-  ok('coming back, the kept model loads straight away', await p.evaluate(() => !!TC.shipGlb && !TC.making3d));
+  await p.waitForFunction(() => TC.shipGlb && TC.shipViews.length, null, { timeout: 20000 }).catch(() => {});
+  ok('coming back, the kept model loads straight away, and the rendered angle is still there', await p.evaluate(() => !!TC.shipGlb && !TC.making3d && TC.shipViews.some(([v]) => v === 'a60_25')));
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
   await b.close(); proc.kill();
   console.log(fails.length ? fails.length + ' FAILED' : 'ALL PASS'); process.exit(fails.length ? 1 : 0);

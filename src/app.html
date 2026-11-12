@@ -418,6 +418,7 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .tc-sub { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
 .tc-sub .k2 { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
 .tc-note { margin: 0; font-size: 13px; color: var(--dim); }
+.tc-renderangle { display: grid; gap: 6px; justify-items: start; }
 .tc-note:empty { display: none; }
 .tc-wh { display: flex; align-items: end; gap: 8px; } .tc-wh .field { flex: 1; } .tc-wh .x { padding-bottom: 8px; color: var(--dim); }
 .tc-spaces { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
@@ -2078,9 +2079,14 @@ const GLTEX = (() => {
     sunset: { kdir: [-.9, .25, .35], kcol: [1.45, .8, .42], fdir: [.6, .2, .5], fcol: [.14, .19, .34], rcol: [.5, .3, .2], amb: [.1, .12, .18] },
     space: { kdir: [-.85, .35, .4], kcol: [1.35, 1.32, 1.28], fdir: [1, 0, 0], fcol: [0, 0, 0], rcol: [.14, .6, .56], amb: [.05, .05, .07] },
   };
+  // the browser can drop the WebGL context (a big corvette model, the GPU busy elsewhere): then a new one is made and
+  // every model is uploaded again (`gen`), instead of drawing nothing from then on
+  let gen = 1;
   function init() {
+    if (gl && gl.isContextLost()) { gl = null; prog = null; gen++; }
     if (gl || failed) return !!gl;
     cv = document.createElement('canvas');
+    cv.addEventListener('webglcontextlost', (e) => { e.preventDefault(); gl = null; prog = null; gen++; });
     gl = cv.getContext('webgl2', { premultipliedAlpha: false, preserveDrawingBuffer: true, antialias: true });
     if (!gl) { failed = true; return false; }
     const sh = (type, src) => { const x = gl.createShader(type); gl.shaderSource(x, src); gl.compileShader(x); if (!gl.getShaderParameter(x, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(x)); return x; };
@@ -2108,6 +2114,8 @@ const GLTEX = (() => {
       for (let k = 0; k < a.count; k++) for (let c = 0; c < n; c++) { let x = rd(k * stride + c * sz); if (a.normalized) x /= a.componentType === 5121 ? 255 : a.componentType === 5123 ? 65535 : 1; out[k * n + c] = x; }
       return out;
     };
+    // a texture's picture: its source, or a WebP one through EXT_texture_webp (Blender writes those for .webp textures)
+    const srcOf = (t) => t.source ?? (t.extensions && ((t.extensions.EXT_texture_webp || {}).source ?? (t.extensions.EXT_texture_avif || {}).source));
     const images = await Promise.all((doc.images || []).map(async (im) => { const v = doc.bufferViews[im.bufferView]; if (!v) return null; try { return await createImageBitmap(new Blob([new Uint8Array(bin, v.byteOffset || 0, v.byteLength)], { type: im.mimeType || 'image/png' })); } catch (_) { return null; } }));
     const prims = [], lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
     const walk = (ni, parent) => {
@@ -2123,11 +2131,11 @@ const GLTEX = (() => {
         }
         const idx = pr.indices != null ? Uint32Array.from(acc(pr.indices)) : Uint32Array.from({ length: nv }, (_, k) => k);
         const mat = (doc.materials || [])[pr.material] || {}, pbr = mat.pbrMetallicRoughness || {}, bt = pbr.baseColorTexture;
-        const tex = bt && doc.textures && doc.textures[bt.index] ? images[doc.textures[bt.index].source] : null;
+        const tex = bt && doc.textures && doc.textures[bt.index] ? images[srcOf(doc.textures[bt.index])] : null;
         // glowing parts (Blender's "Lenses and screens glow" exports them as emissive)
         const ek = ((mat.extensions || {}).KHR_materials_emissive_strength || {}).emissiveStrength || 1, ef = (mat.emissiveFactor || [0, 0, 0]).map((v) => Math.min(4, v * ek));
-        const et = mat.emissiveTexture && doc.textures && doc.textures[mat.emissiveTexture.index] ? images[doc.textures[mat.emissiveTexture.index].source] : null;
-        const img = (ref) => ref && doc.textures && doc.textures[ref.index] ? images[doc.textures[ref.index].source] : null;
+        const et = mat.emissiveTexture && doc.textures && doc.textures[mat.emissiveTexture.index] ? images[srcOf(doc.textures[mat.emissiveTexture.index])] : null;
+        const img = (ref) => ref && doc.textures && doc.textures[ref.index] ? images[srcOf(doc.textures[ref.index])] : null;
         prims.push({ pos, nrm: Nn ? nrm : null, uv: UV, idx, base: pbr.baseColorFactor || [1, 1, 1, 1], tex, nimg: img(mat.normalTexture), mimg: img(pbr.metallicRoughnessTexture), emis: ef, etexImg: ef.some((v) => v > 0) ? et : null, cutoff: mat.alphaMode === 'MASK' ? (mat.alphaCutoff ?? .5) : mat.alphaMode === 'BLEND' ? .35 : 0 });
       }
       for (const k of nd.children || []) walk(k, m);
@@ -2140,7 +2148,7 @@ const GLTEX = (() => {
     return { prims, c, r: r || 1, size: hi.map((v, k) => v - lo[k]) };
   }
   function upload(m) {
-    if (m.up) return; m.up = true;
+    if (m.up === gen) return; m.up = gen;
     for (const p of m.prims) {
       if (!p.nrm) { p.nrm = new Float32Array(p.pos.length); for (let k = 0; k + 2 < p.idx.length; k += 3) { const [a, b, e] = [p.idx[k] * 3, p.idx[k + 1] * 3, p.idx[k + 2] * 3]; const u = [0, 1, 2].map((c) => p.pos[b + c] - p.pos[a + c]), v = [0, 1, 2].map((c) => p.pos[e + c] - p.pos[a + c]); const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]; for (const q of [a, b, e]) for (let c = 0; c < 3; c++) p.nrm[q + c] += n[c]; } }
       p.vao = gl.createVertexArray(); gl.bindVertexArray(p.vao);
@@ -2331,6 +2339,44 @@ async function makeCorvetteGlb(it, onState) {
   if (!glb) throw new Error('The 3D model could not be read');
   return glb;
 }
+// Render this angle (owner 2026-11-12: "the user moves it around and finds the perfect pose for the ship, then
+// clicks render and it puts all the textures and colour on it"): Blender renders the corvette, hidden, with Charon
+// Forge's materials from the angle the 3D layer is turned to. GLTEX is orthographic and looks along +Z of the glTF
+// (Y up); turned by yaw then pitch its viewer sits at (-sin y cos p, sin p, cos y cos p), which is Blender's
+// (-sin y cos p, -cos y cos p, sin p): render_cover's azimuth -yaw, elevation pitch.
+function tcAngleName(yaw, pitch) { return 'a' + Math.round(yaw) + '_' + Math.round(pitch); }
+function tcAngleLabel(name) { const m = /^a(-?\d+)_(-?\d+)$/.exec(name); return m ? `Your angle (turn ${m[1]}°, tilt ${m[2]}°)` : name; }
+async function renderShipAngle(it, yaw, pitch, onState) {
+  const p = await buildPayload(it); if (!p) throw new Error('No build found for ' + it.name);
+  const name = tcAngleName(yaw, pitch), q = `key=${p.key}&angle=${name}`;
+  let st = await (await api(`/api/render?${q}&azim=${-Math.round(yaw)}&elev=${Math.round(pitch)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: p.text })).json();
+  while (st.state === 'queued' || st.state === 'running') {
+    onState && onState(st.state);
+    await new Promise((r) => setTimeout(r, 1500));
+    st = await (await api('/api/render-status?' + q)).json();
+  }
+  if (st.state !== 'done') throw new Error(st.error || 'The render did not finish');
+  renderImgs.delete(p.key + '|' + name);
+  const img = await renderImg(p.key, name);
+  if (!img) throw new Error('The picture could not be read');
+  return { name, img };
+}
+// the render, laid where the 3D preview of the same angle sits in its square, so it lands exactly in its place
+function tcFitRender(img, name) {
+  const m = /^a(-?\d+)_(-?\d+)$/.exec(name), trimmed = tcTrim(img);
+  if (!m || !TC.shipGlb || !GLTEX.ok()) return trimmed;
+  const size = 1024, rad = Math.PI / 180, pv = GLTEX.render(TC.shipGlb, size, +m[1] * rad, +m[2] * rad, 'studio');
+  if (!pv) return trimmed;
+  const t = document.createElement('canvas'); t.width = t.height = size; const tx = t.getContext('2d'); tx.drawImage(pv, 0, 0);
+  const d = tx.getImageData(0, 0, size, size).data; let x0 = size, y0 = size, x1 = -1, y1 = -1;
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (d[(y * size + x) * 4 + 3] > 8) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < 0) return trimmed;
+  const bw = x1 - x0 + 1, bh = y1 - y0 + 1, k = Math.min(bw / trimmed.width, bh / trimmed.height), w = trimmed.width * k, h = trimmed.height * k;
+  // drawn at the render's own resolution: the square is as many pixels as the render needs at that size
+  const scale = Math.max(1, trimmed.width / w), out = document.createElement('canvas'); out.width = out.height = Math.round(size * scale);
+  out.getContext('2d').drawImage(trimmed, (x0 + (bw - w) / 2) * scale, (y0 + (bh - h) / 2) * scale, w * scale, h * scale);
+  return out;
+}
 async function tcShipImage(it) {
   TC.shipModel = null; TC.shipGlb = null; TC.shipPic = null; TC.shipViews = []; TC.shipItem = it; TC.shipKey = it.key; TC.cache.ship = null;
   const url = await customCover(it.key);
@@ -2340,6 +2386,8 @@ async function tcShipImage(it) {
   if (it.kind === 'corvette') {
     await loadRender(it); coverFromMemory(it);
     if (it.renderKey) for (const [v, label] of COVER_VIEWS) { const im = await renderImg(it.renderKey, v); if (im) TC.shipViews.push([v, label, tcTrim(im)]); }
+    // the angles you rendered from the 3D model, newest first
+    if (it.renderKey) for (const a of ((tcLoad().angles || {})[it.key] || [])) { const im = await renderImg(it.renderKey, a); if (im) TC.shipViews.push([a, tcAngleLabel(a), tcFitRender(im, a)]); }
     if (!TC.shipViews.length && it.renderImg) TC.shipViews.push(['hero', 'Cover', tcTrim(it.renderImg)]);
   } else if (!TC.shipGlb) {
     await loadModel(it); coverFromMemory(it);
@@ -2550,9 +2598,10 @@ PAGES.traveller = (el) => {
     const shipIn = `<select id="tcShip"><option value="">No ship</option>${TC.imp.ship ? '<option value="@imp" selected>Your image</option>' : ''}${ships.map((x) => `<option value="${esc(x.key)}"${x.key === st.ship && !TC.imp.ship ? ' selected' : ''}>${esc(x.name)} (${esc(x.type.toLowerCase())})</option>`).join('')}</select>
       ${st.ship && !TC.imp.ship && tcShipModes().length > 1 ? `<div class="seg tc-show">${tcShipModes().map((m) => `<button type="button" data-show="${m}" aria-pressed="${tcShipMode() === m}">${{ '3d': '3D model', renders: 'Renders', pic: 'Your picture' }[m]}</button>`).join('')}</div>` : ''}
       ${tcIs3d('ship') ? turnHtml('ship') : ''}
+      ${APP && isCorv && !TC.imp.ship && TC.shipGlb && tcShipMode() === '3d' ? `<div class="tc-renderangle"><button class="btn small primary" type="button" id="tcRenderAngle"${TC.angleBusy ? ' disabled' : ''} title="Blender renders the corvette from this angle with all its textures and colours">Render this angle</button><p class="tc-note" id="tcAngleNote" data-keep>${TC.angleBusy ? 'Blender is rendering it with its textures. It can take a minute or two; it takes this spot on the picture when it is done.' : 'Turn it to the angle you want, then render it with all its textures and colours.'}</p></div>` : ''}
       ${isCorv && !TC.imp.ship && TC.shipViews.length > 1 && tcShipMode() === 'renders' ? `<label class="field"><span>Angle</span><select id="tcView">${TC.shipViews.map(([v, l]) => `<option value="${v}"${v === (st.shipView || TC.shipViews[0][0]) ? ' selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
       ${isCorv && !TC.imp.ship && !TC.shipGlb ? `<p class="tc-note" id="tc3dNote" data-keep>${TC.making3d === st.ship ? 'Making it in 3D in the background (Blender works out of sight). It takes a minute or two; then it turns like your traveller.' : TC.no3d ? 'To turn a corvette, the editor needs Blender and Charon Forge on this PC (set them in the Garage\'s Cover settings). It runs them for you, out of sight.' : ''}</p>` : ''}
-      ${APP && isCorv && !TC.imp.ship && TC.shipViews.length < COVER_VIEWS.length && tcShipMode() !== 'pic' && tcShipMode() !== '3d' ? `<p class="tc-note" id="tcRenderNote" data-keep>${TC.rendering === st.ship ? 'Blender is drawing the front, side, back and top. It can take a few minutes; the angles show here when they are ready.' : ''}</p><button class="btn small" type="button" id="tcRenderViews"${TC.rendering === st.ship ? ' disabled' : ''} title="Blender renders the corvette from the front, side, back and top (needs Blender and Charon Forge)">Render the angles</button>` : ''}
+      ${APP && isCorv && !TC.imp.ship && TC.shipViews.filter(([v]) => !/^a-?\d/.test(v)).length < COVER_VIEWS.length && tcShipMode() !== 'pic' && tcShipMode() !== '3d' ? `<p class="tc-note" id="tcRenderNote" data-keep>${TC.rendering === st.ship ? 'Blender is drawing the front, side, back and top. It can take a few minutes; the angles show here when they are ready.' : ''}</p><button class="btn small" type="button" id="tcRenderViews"${TC.rendering === st.ship ? ' disabled' : ''} title="Blender renders the corvette from the front, side, back and top (needs Blender and Charon Forge)">Render the angles</button>` : ''}
       ${st.ship || TC.imp.ship ? placeHtml('ship') + cutHtml('ship') : ''}${objActs('ship', { imp: true, has: !!(st.ship || TC.imp.ship) })}`;
     const toolIn = `<select id="tcTool"><option value="">No multi-tool</option>${tools.map((x) => `<option value="${esc(x.key)}"${x.key === st.tool ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
       ${st.tool && !tcIs3d('tool') ? '<p class="dim small-print" data-keep>Its model needs the game files (the item library); without them it can\'t be drawn.</p>' : ''}${tcIs3d('tool') ? turnHtml('tool') : ''}${st.tool ? placeHtml('tool') : ''}${objActs('tool', { has: !!st.tool })}`;
@@ -2645,6 +2694,24 @@ PAGES.traveller = (el) => {
         else toast("Blender didn't make the other angles. Check Cover settings in the Garage.", true);
       } catch (e) { TC.rendering = null; toast('Could not render it: ' + e.message, true); }
       wire(); redraw();
+    };
+    const ra = $('#tcRenderAngle', side);
+    if (ra) ra.onclick = async () => {
+      const it = TC.shipItem, key = st.ship, l = st.layers.ship;
+      const setup = await renderSetup().catch(() => null);
+      if (!setup || !setup.ready) { toast("Rendering needs Blender and Charon Forge. Set them up in the Garage's Cover settings.", true); return; }
+      TC.angleBusy = true; wire();
+      const note = (t) => { const n = $('#tcAngleNote'); if (n) n.textContent = t; };
+      try {
+        const { name, img } = await renderShipAngle(it, l.yaw || 0, l.pitch || 0, (s2) => note(s2 === 'queued' ? 'Waiting for Blender…' : 'Blender is rendering it with its textures. It can take a minute or two; it takes this spot on the picture when it is done.'));
+        if (TC.shipKey === key) {
+          st.angles = st.angles || {}; st.angles[key] = [name, ...(st.angles[key] || []).filter((a) => a !== name)].slice(0, 8);
+          TC.shipViews = TC.shipViews.filter(([v]) => v !== name); TC.shipViews.push([name, tcAngleLabel(name), tcFitRender(img, name)]);
+          st.shipShow = 'renders'; st.shipView = name; TC.img.ship = tcShipPicture(); TC.cache.ship = null; tcSave();
+          toast('Rendered with its textures. Pick 3D model to turn it again.');
+        }
+      } catch (e) { toast('Could not render it: ' + e.message, true); }
+      TC.angleBusy = false; if (el.isConnected) { wire(); redraw(); }
     };
     const vw = $('#tcView', side); if (vw) vw.onchange = () => { st.shipView = vw.value; const v = TC.shipViews.find(([x]) => x === vw.value); if (v) TC.img.ship = v[2]; tcSave(); redraw(); };
     side.querySelectorAll('[data-size]').forEach((b) => b.onclick = () => { st.size = b.dataset.size; tcSave(); wire(); redraw(); });

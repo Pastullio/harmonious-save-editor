@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.12.2020",
+  "date": "2026-11-12",
+  "notes": [
+   "Traveller page: Render this angle. Turn your corvette's 3D model to the angle you like, press Render this angle, and Blender renders it from exactly that angle with all its textures and colours, in the same spot on the picture. Rendered angles stay in the Angle list.",
+   "Traveller page: the corvette's 3D model is lighter and faster to turn, shows its real surface pictures, and no longer has white sheets where the game has see-through panels."
+  ]
+ },
+ {
   "version": "2026.11.12.1919",
   "date": "2026-11-12",
   "notes": [

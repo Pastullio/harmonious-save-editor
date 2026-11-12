@@ -60,10 +60,20 @@ type renderReq struct {
 	key, jsonPath string
 	views         bool // the extra camera angles instead of the main cover (job key: <key>-views)
 	model         bool // the corvette as a 3D model, <key>.glb, for the Traveller page to turn (job key: <key>-3d)
+	// one angle the owner turned the 3D model to on the Traveller page (owner 2026-11-12: find the pose, then
+	// render it with textures): <key>-<angle>.png, job <key>-<angle>
+	angle      string
+	azim, elev float64
 }
 
+// a turned angle's name: a<turn>_<tilt> in whole degrees
+var angleRe = regexp.MustCompile(`^a-?\d{1,3}_-?\d{1,2}$`)
+
 // what a request makes: its job name and whether it's there already
-func jobName(key string, views, model bool) string {
+func jobName(key string, views, model bool, angle string) string {
+	if angle != "" {
+		return key + "-" + angle
+	}
 	if model {
 		return key + "-3d"
 	}
@@ -75,7 +85,10 @@ func jobName(key string, views, model bool) string {
 
 func modelPath(key string) string { return filepath.Join(coversDir(), key+".glb") }
 
-func outputDone(key string, views, model bool) bool {
+func outputDone(key string, views, model bool, angle string) bool {
+	if angle != "" {
+		return fileExists(filepath.Join(coversDir(), key+"-"+angle+".png"))
+	}
 	if model {
 		return fileExists(modelPath(key))
 	}
@@ -195,7 +208,7 @@ func runRender(req renderReq) {
 		setJob(req.key, "error", "Blender or Charon Forge wasn't found. Set their locations in the render settings.")
 		return
 	}
-	job := jobName(req.key, req.views, req.model)
+	job := jobName(req.key, req.views, req.model, req.angle)
 	setJob(job, "running", "")
 	script := filepath.Join(appDir, "render_cover.py")
 	if err := os.WriteFile(script, renderScript, 0o644); err != nil {
@@ -205,6 +218,9 @@ func runRender(req renderReq) {
 	renderMu.Lock()
 	size, samples := settings.Size, settings.Samples
 	renderMu.Unlock()
+	if req.angle != "" {   // a picture for the card, often shown large: twice the cover size
+		size = min(size*2, 2048)
+	}
 	out := filepath.Join(coversDir(), req.key+".png")
 	if req.model {
 		out = modelPath(req.key)
@@ -214,6 +230,8 @@ func runRender(req renderReq) {
 	args := []string{"-b", "--factory-startup", "--python", script, "--", charon, req.jsonPath, out, fmt.Sprint(size), fmt.Sprint(samples)}
 	if req.views {
 		args = append(args, "-35", "22", viewSpec())
+	} else if req.angle != "" {   // one view, named after the angle: render_cover writes <out>-<angle>.png
+		args = append(args, "-35", "22", fmt.Sprintf("%s:%g:%g", req.angle, req.azim, req.elev))
 	}
 	cmd := exec.CommandContext(ctx, blender, args...)
 	hideWindow(cmd)
@@ -227,7 +245,7 @@ func runRender(req renderReq) {
 	if lf != nil {
 		lf.Close()
 	}
-	made := outputDone(req.key, req.views, req.model)
+	made := outputDone(req.key, req.views, req.model, req.angle)
 	if err != nil || !made {
 		msg := "Blender stopped before the cover was made"
 		if req.model {
@@ -299,17 +317,23 @@ func handleRender(w http.ResponseWriter, r *http.Request) {
 	force := r.URL.Query().Get("force") == "1"
 	views := r.URL.Query().Get("views") == "1"
 	model := r.URL.Query().Get("model") == "1"
-	if !keyRe.MatchString(key) {
+	angle := r.URL.Query().Get("angle")
+	var azim, elev float64
+	if !keyRe.MatchString(key) || (angle != "" && !angleRe.MatchString(angle)) {
 		http.Error(w, "bad key", http.StatusBadRequest)
 		return
 	}
-	job := jobName(key, views, model)
+	if angle != "" {
+		fmt.Sscanf(r.URL.Query().Get("azim"), "%g", &azim)
+		fmt.Sscanf(r.URL.Query().Get("elev"), "%g", &elev)
+	}
+	job := jobName(key, views, model, angle)
 	body, err := io.ReadAll(io.LimitReader(r.Body, 64<<20))
 	if err != nil || !json.Valid(body) {
 		http.Error(w, "the build isn't valid JSON", http.StatusBadRequest)
 		return
 	}
-	if !force && outputDone(key, views, model) {
+	if !force && outputDone(key, views, model, angle) {
 		setJob(job, "done", "")
 		writeJSON(w, map[string]string{"state": "done"})
 		return
@@ -330,7 +354,7 @@ func handleRender(w http.ResponseWriter, r *http.Request) {
 	f.Close()
 	setJob(job, "queued", "")
 	select {
-	case queue <- renderReq{key: key, jsonPath: f.Name(), views: views, model: model}:
+	case queue <- renderReq{key: key, jsonPath: f.Name(), views: views, model: model, angle: angle, azim: azim, elev: elev}:
 	default:
 		os.Remove(f.Name())
 		setJob(job, "error", "Too many renders waiting; try again in a moment")
@@ -349,12 +373,17 @@ func handleRenderStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	views := r.URL.Query().Get("views") == "1"
 	model := r.URL.Query().Get("model") == "1"
-	job := jobName(key, views, model)
+	angle := r.URL.Query().Get("angle")
+	if angle != "" && !angleRe.MatchString(angle) {
+		http.Error(w, "bad angle", http.StatusBadRequest)
+		return
+	}
+	job := jobName(key, views, model, angle)
 	renderMu.Lock()
 	j, ok := jobs[job]
 	renderMu.Unlock()
 	if !ok {
-		if outputDone(key, views, model) {
+		if outputDone(key, views, model, angle) {
 			writeJSON(w, renderJob{State: "done"})
 		} else {
 			writeJSON(w, renderJob{State: "none"})
@@ -382,7 +411,7 @@ func handleCover(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if v := r.URL.Query().Get("view"); v != "" && v != "hero" {
-		ok := false
+		ok := angleRe.MatchString(v)
 		for _, cv := range coverViews {
 			ok = ok || cv.Name == v
 		}

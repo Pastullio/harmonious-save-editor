@@ -65,6 +65,9 @@ if not meshes:
     os._exit(3)
 
 
+PREVIEW_TRIS = 600000
+
+
 def export_model(path):
     """The corvette as one textured .glb the editor turns like the traveller: every visible mesh made real
     (Charon Forge places parts as instances), then Blender's glTF exporter."""
@@ -93,16 +96,51 @@ def export_model(path):
     if not made:
         log('nothing to export')
         os._exit(3)
+    # Charon Forge's materials are the game's shaders (finish variants, colourise masks, alpha from another branch),
+    # which the glTF exporter can't follow: it wrote pale stand-ins and solid sheets where the game cuts holes. For the
+    # model, each material gets its own diffuse picture as the colour and that picture's alpha as the cut-out. The
+    # renders still use the full shaders (this is a separate Blender run).
+    simple = 0
+    for mat in bpy.data.materials:
+        nt = mat.node_tree if mat.use_nodes else None
+        if nt is None:
+            continue
+        bsdf = next((n for n in nt.nodes if n.type == 'BSDF_PRINCIPLED'), None)
+        diff = nt.nodes.get('Diffuse')
+        if bsdf is None or diff is None or diff.type != 'TEX_IMAGE' or diff.image is None:
+            continue
+        for l in list(bsdf.inputs['Base Color'].links):
+            nt.links.remove(l)
+        nt.links.new(diff.outputs['Color'], bsdf.inputs['Base Color'])
+        if bsdf.inputs['Alpha'].is_linked:
+            for l in list(bsdf.inputs['Alpha'].links):
+                nt.links.remove(l)
+            nt.links.new(diff.outputs['Alpha'], bsdf.inputs['Alpha'])
+        simple += 1
+    log('simplified', simple, 'materials for the model')
+    # the model is for turning and finding an angle, not the final picture: Charon Forge's parts come to millions of
+    # triangles (2.8 million for a test corvette), more than a browser draws smoothly, so it is thinned to ~600,000
+    total = sum(len(o.data.polygons) for o in made)
+    ratio = min(1.0, PREVIEW_TRIS / max(1, total))
+    if ratio < 0.98:
+        for o in made:
+            if len(o.data.polygons) > 200:
+                mod = o.modifiers.new('thin', 'DECIMATE')
+                mod.ratio = ratio
+                mod.use_collapse_triangulate = True
+        log('thinned', total, 'faces by', round(ratio, 3))
     for o in bpy.context.view_layer.objects:
         o.select_set(o in made)
     bpy.context.view_layer.objects.active = made[0]
     tmp = path + '.part.glb'
-    opts = dict(filepath=tmp, export_format='GLB', use_selection=True, export_apply=False, export_animations=False,
-                export_yup=True, export_image_format='JPEG', export_jpeg_quality=85)
+    # textures keep their own format: JPEG would drop the alpha of light cards and see-through panels, which then
+    # show as solid white sheets
+    opts = dict(filepath=tmp, export_format='GLB', use_selection=True, export_apply=True, export_animations=False,
+                export_yup=True, export_image_format='AUTO')
     try:
         bpy.ops.export_scene.gltf(**opts)
     except TypeError:
-        for k in ('export_jpeg_quality', 'export_image_format', 'export_animations'):
+        for k in ('export_image_format', 'export_animations'):
             opts.pop(k, None)
         bpy.ops.export_scene.gltf(**opts)
     os.replace(tmp, path)
