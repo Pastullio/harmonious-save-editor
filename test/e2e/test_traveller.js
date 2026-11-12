@@ -196,6 +196,41 @@ m0 = bpy.context.mode; bpy.ops.harmonious.pose_mode(); m1 = bpy.context.mode; bp
 print('MODES', m0, m1, m2)
 print('ICONS', len(h.ICONS), 'icon_value' in h.ic('build'), 'icon_value' in h.ic('pose'), 'icon_value' in h.ic('logo'))
 print('PANELS', '|'.join(drawn), '|parents:' + ','.join(c.bl_label for c in panels if getattr(c, 'bl_parent_id', None)))
+# the hand's two fingers have joints of their own, and fingers, elbows and knees bend like real ones
+import math
+split = sorted(b.name for b in arm.data.bones if '_03b_' in b.name)
+hinges = {pb.name: pb['harmonious_hinge'] for pb in arm.pose.bones if 'harmonious_hinge' in pb}
+locked_ok = all(sum(arm.pose.bones[n].lock_rotation) == 2 and arm.pose.bones[n].rotation_mode == 'XYZ' for n in hinges)
+mesh = h.traveller_meshes(arm)[0]
+def tips(group):
+    g = mesh.vertex_groups[group]; ids = [v.index for v in mesh.data.vertices if any(e.group == g.index and e.weight > .5 for e in v.groups)]
+    dg = bpy.context.evaluated_depsgraph_get(); em = mesh.evaluated_get(dg).to_mesh()
+    c = sum((em.vertices[i].co for i in ids), mathutils.Vector()) / max(1, len(ids)); mesh.evaluated_get(dg).to_mesh_clear(); return c
+bpy.context.scene.harmonious_pose = 'ready:Standing'; bpy.ops.harmonious.pose(); bpy.context.view_layer.update()
+a0, b0 = tips('r_hand_03_03'), tips('r_hand_03b_03')
+pb = arm.pose.bones['r_hand_03b_01']; e = list(pb.rotation_euler); e[pb['harmonious_hinge']] += h.curl_sign(arm, pb) * math.radians(60); pb.rotation_euler = e; bpy.context.view_layer.update()
+a1, b1 = tips('r_hand_03_03'), tips('r_hand_03b_03')
+one = (a1 - a0).length < 1e-4 and (b1 - b0).length > 0.01
+pb.rotation_euler = (0, 0, 0)
+bpy.context.scene.harmonious_curl_r = 1.0; bpy.context.view_layer.update()
+wrist = arm.matrix_world @ arm.pose.bones['r_arm_Wrist'].head
+f0 = (b0 - wrist).length; c1 = tips('r_hand_03b_03'); f1 = (c1 - wrist).length
+bpy.context.scene.harmonious_curl_r = 0.0
+arm.harmonious_natural = False; unlocked = all(sum(arm.pose.bones[n].lock_rotation) == 0 for n in hinges); arm.harmonious_natural = True
+print('FINGERS', len(split), len(hinges), locked_ok, one, round(f0, 3), round(f1, 3), unlocked)
+# a corvette in 3D: every visible mesh of the file (not the traveller), instances made real, goes to the editor
+cube = bpy.data.objects.new('hull', bpy.data.meshes.new('hull')); bpy.context.scene.collection.objects.link(cube)
+import bmesh; bm = bmesh.new(); bmesh.ops.create_cube(bm, size=2.0); bm.to_mesh(cube.data); bm.free(); cube.location = (5, 0, 0)
+part = bpy.data.collections.new('wing'); w = bpy.data.objects.new('wingpart', cube.data); part.objects.link(w)
+inst = bpy.data.objects.new('wing instance', None); inst.instance_type = 'COLLECTION'; inst.instance_collection = part; inst.location = (8, 0, 0); bpy.context.scene.collection.objects.link(inst)
+bpy.context.scene.harmonious_target_slot = 2; bpy.context.scene.harmonious_target_name = 'Test Corvette'
+before_ship = set(os.listdir(h.LINK.get('exports') or '.'))
+rs = bpy.ops.harmonious.send_ship()
+shipf = [f for f in set(os.listdir(h.LINK.get('exports') or '.')) - before_ship if ' 3D ship ' in f]
+left = [o.name for o in bpy.data.objects if o.name.startswith('part')]
+print('SHIP', 'FINISHED' in rs, shipf[0] if shipf else '-', len(left))
+bpy.data.objects.remove(cube); bpy.data.objects.remove(inst); bpy.data.objects.remove(w)
+bpy.context.scene.harmonious_target_slot = -1; bpy.context.scene.harmonious_target_name = ''
 # Body parts: pick several, each turns at its own joint; picking one again lets go of it
 have = [q[0] for q in h.BODY_PARTS if h.part_bones(arm, q)[0]]
 bpy.ops.harmonious.body_parts_clear(); bpy.ops.harmonious.body_part(part='front'); bpy.ops.harmonious.body_part(part='backpack')
@@ -227,7 +262,7 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
     try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 600000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
-    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|Traceback|  File|\w+Error)/.test(l)).join('\n'));
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|FINGERS|SHIP|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
@@ -258,10 +293,21 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     ok('a light picked in the panel leaves Pose mode and is selected, ready for G and R (' + sl.join(' ') + ')', sl[0] === 'POSE' && sl[1] === 'OBJECT' && sl[2] === 'True' && +sl[3] >= 3);
     const ics = line('ICONS').split(' ');
     ok('the round logo and the coloured icons load as Blender previews (' + ics.join(' ') + ')', +ics[0] >= 14 && ics.slice(1).every((x) => x === 'True'));
+    const sh = line('SHIP').split(' ');
+    const shipFile = sh.slice(1, -1).join(' ');
+    let shipMeshes = 0;
+    if (shipFile !== '-') { const g = fs.readFileSync(path.join(exp, shipFile)), jl = g.readUInt32LE(12), j = JSON.parse(g.slice(20, 20 + jl).toString()); shipMeshes = (j.meshes || []).length; fs.rmSync(path.join(exp, shipFile)); }
+    ok('Send the corvette in 3D sends the file\'s meshes (instances too, not the traveller) and tidies up after (' + sh.join(' ') + ', ' + shipMeshes + ' meshes)', sh[0] === 'True' && /^Test Corvette 3D ship .*\.glb$/.test(shipFile) && shipMeshes === 2 && sh[sh.length - 1] === '0');
     const pn = line('PANELS').replace(' |parents:', '|parents:');
     ok('the add-on\'s sections are panels of their own that draw: ' + pn, ['LiveLink', 'Builds: corvettes and bases', 'Your traveller', 'Poses', 'Body parts', 'Multi-tool', 'Picture and 3D', 'Support the creator'].every((l) => pn.split('|').includes(l)) && !/ERR/.test(pn) && /\|parents:$/.test(pn));
     const md = line('MODES').split(' ');
     ok('Pose the traveller / Done posing switch between Pose and Object mode (' + md.join(' ') + ')', md[1] !== md[0] && md[2] === md[0] && md.includes('POSE') && md.includes('OBJECT'));
+    const fg = line('FINGERS').split(' ');
+    ok('each hand\'s second finger has joints of its own (' + fg.join(' ') + ')', fg[0] === '6');
+    ok('…fingers, elbows and knees bend one way only, like real ones', +fg[1] >= 16 && fg[2] === 'True');
+    ok('…turning one finger leaves the other where it was', fg[3] === 'True');
+    ok('…the hand slider curls the fingers in towards the palm (a fist)', +fg[5] < +fg[4] - .01);
+    ok('…and Natural joints off frees them again', fg[6] === 'True');
     const parts = line('PARTS');
     ok('Body parts lists the traveller\'s parts (' + parts.split(' ')[0] + ')', ['head', 'torso', 'r_arm', 'l_leg', 'backpack', 'front', 'whole'].every((k) => parts.split(' ')[0].split(',').includes(k)));
     ok('…several can be picked at once, each turning at its own joint, and picking one again lets go of it only', / True 4 INDIVIDUAL_ORIGINS \[True, False\] 0$/.test(parts) || / True 4 INDIVIDUAL_ORIGINS \[False, True\] 0$/.test(parts), parts);

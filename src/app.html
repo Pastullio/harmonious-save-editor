@@ -422,7 +422,7 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .tc-wh { display: flex; align-items: end; gap: 8px; } .tc-wh .field { flex: 1; } .tc-wh .x { padding-bottom: 8px; color: var(--dim); }
 .tc-spaces { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .tc-space { display: flex; flex-direction: column; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 9px; background: none; cursor: pointer; color: var(--ink); font: inherit; font-size: 12px; }
-.tc-space canvas { width: 100%; aspect-ratio: 3 / 2; border-radius: 6px; display: block; }
+.tc-space canvas, .tc-space img { width: 100%; aspect-ratio: 3 / 2; border-radius: 6px; display: block; object-fit: cover; }
 .tc-space.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .tc-swatches { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .tc-sw { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line-2); cursor: pointer; padding: 0; }
@@ -2050,16 +2050,25 @@ const GLTEX = (() => {
       vec3 a = vec3(q.x * cy + q.z * sy, q.y, -q.x * sy + q.z * cy); return vec3(a.x, a.y * cp - a.z * sp, a.y * sp + a.z * cp); }
     void main() { vec3 b = turn((p - c) / r); vn = turn(n); vuv = uv; vp = b; gl_Position = vec4(b.x * .92, b.y * .92, -b.z * .45, 1.0); }`;
   const FS = `#version 300 es
-    precision highp float; in vec3 vn; in vec2 vuv; in vec3 vp; uniform sampler2D tex, etex; uniform vec4 base; uniform float hasTex, cutoff, hasE;
+    precision highp float; in vec3 vn; in vec2 vuv; in vec3 vp; uniform sampler2D tex, etex, ntex, mtex; uniform vec4 base; uniform float hasTex, cutoff, hasE, hasN, hasM;
     uniform vec3 kdir, kcol, fdir, fcol, rcol, amb, emis; out vec4 o;
     void main() {
       vec4 t = hasTex > .5 ? texture(tex, vuv) : vec4(1.0); vec4 a = t * base; if (a.a < cutoff) discard;
       vec3 alb = pow(a.rgb, vec3(2.2)), N = normalize(vn); if (!gl_FrontFacing) N = -N;
+      // the game's normal maps (the fine panel lines and dents), with a tangent frame from the screen derivatives
+      if (hasN > .5) {
+        vec3 dp1 = dFdx(vp), dp2 = dFdy(vp); vec2 du1 = dFdx(vuv), du2 = dFdy(vuv);
+        vec3 r1 = cross(dp2, N), r2 = cross(N, dp1), T = r1 * du1.x + r2 * du2.x, B = r1 * du1.y + r2 * du2.y;
+        float im = inversesqrt(max(max(dot(T, T), dot(B, B)), 1e-12)); vec3 nm = texture(ntex, vuv).xyz * 2.0 - 1.0;
+        N = normalize(mat3(T * im, -B * im, N) * nm);
+      }
+      vec4 mr = hasM > .5 ? texture(mtex, vuv) : vec4(1.0, .6, 0.0, 1.0); float rough = clamp(mr.g, .08, 1.0), metal = mr.b;
       vec3 key = normalize(kdir), fill = normalize(fdir);
       float d = max(dot(N, key), 0.0), f = max(dot(N, fill), 0.0), rim = pow(1.0 - max(N.z, 0.0), 3.0);
-      vec3 h = normalize(key + vec3(0, 0, 1)); float sp = pow(max(dot(N, h), 0.0), 40.0) * .25;
+      vec3 h = normalize(key + vec3(0, 0, 1)); float sp = pow(max(dot(N, h), 0.0), mix(90.0, 6.0, rough)) * mix(.9, .1, rough);
+      vec3 spc = mix(vec3(.25), alb * 1.6, metal);
       vec3 e = emis * (hasE > .5 ? pow(texture(etex, vuv).rgb, vec3(2.2)) : vec3(1.0));
-      vec3 col = alb * (amb + kcol * d + fcol * f) + rcol * rim + kcol * sp * .22 + e;
+      vec3 col = alb * (1.0 - metal * .6) * (amb + kcol * d + fcol * f) + rcol * rim + kcol * spc * sp + e;
       o = vec4(pow(col, vec3(1.0 / 2.2)), 1.0);
     }`;
   // light setups for the Traveller page (owner, 2026-11-11), matching the add-on's: view space, x right, y up, z to you
@@ -2118,7 +2127,8 @@ const GLTEX = (() => {
         // glowing parts (Blender's "Lenses and screens glow" exports them as emissive)
         const ek = ((mat.extensions || {}).KHR_materials_emissive_strength || {}).emissiveStrength || 1, ef = (mat.emissiveFactor || [0, 0, 0]).map((v) => Math.min(4, v * ek));
         const et = mat.emissiveTexture && doc.textures && doc.textures[mat.emissiveTexture.index] ? images[doc.textures[mat.emissiveTexture.index].source] : null;
-        prims.push({ pos, nrm: Nn ? nrm : null, uv: UV, idx, base: pbr.baseColorFactor || [1, 1, 1, 1], tex, emis: ef, etexImg: ef.some((v) => v > 0) ? et : null, cutoff: mat.alphaMode === 'MASK' ? (mat.alphaCutoff ?? .5) : mat.alphaMode === 'BLEND' ? .35 : 0 });
+        const img = (ref) => ref && doc.textures && doc.textures[ref.index] ? images[doc.textures[ref.index].source] : null;
+        prims.push({ pos, nrm: Nn ? nrm : null, uv: UV, idx, base: pbr.baseColorFactor || [1, 1, 1, 1], tex, nimg: img(mat.normalTexture), mimg: img(pbr.metallicRoughnessTexture), emis: ef, etexImg: ef.some((v) => v > 0) ? et : null, cutoff: mat.alphaMode === 'MASK' ? (mat.alphaCutoff ?? .5) : mat.alphaMode === 'BLEND' ? .35 : 0 });
       }
       for (const k of nd.children || []) walk(k, m);
     };
@@ -2138,7 +2148,11 @@ const GLTEX = (() => {
       const ib = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, p.idx, gl.STATIC_DRAW);
       gl.bindVertexArray(null);
       if (p.etexImg) { p.getex = p.etexImg === p.tex ? null : gl.createTexture(); if (p.getex) { gl.bindTexture(gl.TEXTURE_2D, p.getex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, p.etexImg); gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT); } }
-      if (p.tex) { p.gtex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, p.gtex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, p.tex); gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT); }
+      const aniso = gl.getExtension('EXT_texture_filter_anisotropic');
+      const mk = (im) => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im); gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT); if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT))); return t; };
+      if (p.tex) p.gtex = mk(p.tex);
+      if (p.nimg) p.gntex = mk(p.nimg);
+      if (p.mimg) p.gmtex = mk(p.mimg);
     }
   }
   // a transparent square picture of the model, turned by yaw and tilted by pitch (radians)
@@ -2148,11 +2162,14 @@ const GLTEX = (() => {
     gl.viewport(0, 0, size, size); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE); gl.useProgram(prog); upload(m);
     const U = (n) => gl.getUniformLocation(prog, n);
-    gl.uniform3f(U('c'), m.c[0], m.c[1], m.c[2]); gl.uniform1f(U('r'), m.r); gl.uniform1f(U('yaw'), yaw); gl.uniform1f(U('pitch'), pitch); gl.uniform1i(U('tex'), 0); gl.uniform1i(U('etex'), 1);
+    gl.uniform3f(U('c'), m.c[0], m.c[1], m.c[2]); gl.uniform1f(U('r'), m.r); gl.uniform1f(U('yaw'), yaw); gl.uniform1f(U('pitch'), pitch); gl.uniform1i(U('tex'), 0); gl.uniform1i(U('etex'), 1); gl.uniform1i(U('ntex'), 2); gl.uniform1i(U('mtex'), 3);
     const L = LIGHTS[light] || LIGHTS.studio; for (const k of ['kdir', 'kcol', 'fdir', 'fcol', 'rcol', 'amb']) gl.uniform3f(U(k), ...L[k]);
     for (const p of m.prims) {
       gl.uniform4f(U('base'), ...p.base); gl.uniform1f(U('hasTex'), p.gtex ? 1 : 0); gl.uniform1f(U('cutoff'), p.cutoff);
       gl.uniform3f(U('emis'), ...(p.emis || [0, 0, 0])); const et = p.etexImg ? (p.getex || p.gtex) : null; gl.uniform1f(U('hasE'), et ? 1 : 0);
+      gl.uniform1f(U('hasN'), p.gntex ? 1 : 0); gl.uniform1f(U('hasM'), p.gmtex ? 1 : 0);
+      gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, p.gmtex || null);
+      gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, p.gntex || null);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, et || null);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, p.gtex || null);
       gl.bindVertexArray(p.vao); gl.drawElements(gl.TRIANGLES, p.idx.length, gl.UNSIGNED_INT, 0);
@@ -2175,7 +2192,13 @@ const TC_NAMES = { trav: 'Your traveller', ship: 'Ship', tool: 'Multi-tool', log
 const TC_FONTS = [['jost', 'Jost', '"Jost", "Segoe UI", sans-serif', 300, 0], ['jostwide', 'Jost, wide', '"Jost", "Segoe UI", sans-serif', 400, .12], ['segoe', 'Segoe UI', '"Segoe UI", system-ui, sans-serif', 600, 0],
   ['georgia', 'Georgia', 'Georgia, "Times New Roman", serif', 400, 0], ['palatino', 'Palatino', '"Palatino Linotype", Palatino, "Book Antiqua", serif', 400, .02], ['impact', 'Impact', 'Impact, "Arial Black", sans-serif', 400, .02],
   ['trebuchet', 'Trebuchet', '"Trebuchet MS", "Segoe UI", sans-serif', 400, 0], ['mono', 'Consolas', 'Consolas, ui-monospace, monospace', 400, 0]];
-const TC_SPACE = [['stars', 'Starfield'], ['nebula', 'Nebula'], ['planet', 'Ringed planet'], ['meteors', 'Shooting stars'], ['galaxy', 'Galaxy']];
+// the space backgrounds: the starfield is drawn (in the sky colours), the rest are the owner's pictures (2026-11-12),
+// inlined by build.js
+const TC_SPACE_IMGS = /*@@SPACEBGS@@*/{};
+const TC_SPACE = [['stars', 'Starfield'], ['eclipse', 'Eclipse'], ['blue-nebula', 'Blue nebula'], ['violet-clouds', 'Violet clouds'], ['meteor-storm', 'Meteor storm'], ['ringed-planets', 'Ringed planets']];
+const TC_SPACE_OLD = { nebula: 'blue-nebula', planet: 'ringed-planets', meteors: 'meteor-storm', galaxy: 'violet-clouds' };
+const TC_SPACE_CACHE = {};
+function tcSpaceImg(k) { return TC_SPACE_CACHE[k] || (TC_SPACE_CACHE[k] = TC_SPACE_IMGS[k] ? tcImage(TC_SPACE_IMGS[k]) : Promise.resolve(null)); }
 const TC_SWATCHES = ['#07131a', '#0d1b2a', '#1d4f5e', '#14324a', '#2a1b3d', '#3b0d2a', '#10271c', '#3a2a1c', '#000000', '#2b2f33', '#e6f0f5', '#ffffff'];
 const TC_DEFAULT = () => ({ v: 2, size: 'portrait', cw: 1600, ch: 900, bg: 'stars', c1: '#07131a', c2: '#1d4f5e', solid: '#07131a', pose: '', ship: '', tool: '', place: 'here', name: travellerName(), title: '', caption: '', font: 'jost',
   watermark: true, open: { size: true, trav: true }, order: TC_ORDER.slice(), cut: {},
@@ -2199,6 +2222,9 @@ function tcLoad() {
   st.order = [...st.order.filter((k) => TC_ORDER.includes(k)), ...TC_ORDER.filter((k) => !st.order.includes(k))];
   if (st.name == null) st.name = travellerName();
   if (st.bg === 'shot' || st.bg === 'file' || st.bg === 'image') st.bg = 'stars';   // pictures aren't kept between visits
+  if (TC_SPACE_OLD[st.bg]) st.bg = TC_SPACE_OLD[st.bg];
+  if ('shipUsePic' in st) { if (st.shipUsePic) st.shipShow = 'pic'; delete st.shipUsePic; }
+  if (TC_SPACE_OLD[st.lastSpace]) st.lastSpace = TC_SPACE_OLD[st.lastSpace];
   return (TC.state = st);
 }
 function tcSave() { try { localStorage.setItem('hse-trav-card', JSON.stringify(TC.state)); } catch (_) {} }
@@ -2260,27 +2286,43 @@ async function tcModelGlb(it) {
     return await GLTEX.parse(await r.arrayBuffer());
   } catch (_) { return null; }
 }
-// a ship's picture: the one you gave it, a corvette's renders (each angle Blender made), else its model, to turn
+// the ways a ship can be shown: its 3D model (a starship's game model, or a corvette Blender sent in 3D), a corvette's
+// renders, or the picture you gave it; `st.shipShow` picks one, else the first of these that it has
+function tcShipModes() { return [TC.shipGlb || TC.shipModel ? '3d' : null, TC.shipViews.length ? 'renders' : null, TC.shipPic ? 'pic' : null].filter(Boolean); }
+function tcShipMode() { const m = tcShipModes(), st = tcLoad(); return m.includes(st.shipShow) ? st.shipShow : m[0] || null; }
+function tcShipPicture() {
+  const mode = tcShipMode(), st = tcLoad();
+  if (mode === 'pic') return TC.shipPic;
+  if (mode === 'renders') { const v = TC.shipViews.find(([x]) => x === st.shipView) || TC.shipViews[0]; return v ? v[2] : null; }
+  return null;
+}
+// a corvette sent from Blender in 3D (LiveLink, Send the corvette in 3D): the newest `<name> 3D ship ….glb` in Exports
+async function tcCorvetteGlb(it) {
+  if (!APP) return null;
+  try {
+    const norm = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const list = (await (await api('/api/exports/ships')).json()).ships || [];
+    const f = list.find((q) => norm(q.name.split(/ 3D ship /i)[0]) === norm(it.name));
+    if (!f) return null;
+    const r = await fetch('/api/exports/file?name=' + encodeURIComponent(f.name) + '&t=' + encodeURIComponent(APP.token));
+    return r.ok ? await GLTEX.parse(await r.arrayBuffer()) : null;
+  } catch (_) { return null; }
+}
 async function tcShipImage(it) {
   TC.shipModel = null; TC.shipGlb = null; TC.shipPic = null; TC.shipViews = []; TC.shipItem = it; TC.shipKey = it.key; TC.cache.ship = null;
   const url = await customCover(it.key);
   if (url) TC.shipPic = await tcImage(url);
-  TC.shipGlb = await tcModelGlb(it);
+  TC.shipGlb = it.kind === 'corvette' ? await tcCorvetteGlb(it) : await tcModelGlb(it);
   // corvettes: every angle Blender rendered, so a corvette with its own picture can still be turned between them
   if (it.kind === 'corvette') {
     await loadRender(it); coverFromMemory(it);
     if (it.renderKey) for (const [v, label] of COVER_VIEWS) { const im = await renderImg(it.renderKey, v); if (im) TC.shipViews.push([v, label, tcTrim(im)]); }
     if (!TC.shipViews.length && it.renderImg) TC.shipViews.push(['hero', 'Cover', tcTrim(it.renderImg)]);
+  } else if (!TC.shipGlb) {
+    await loadModel(it); coverFromMemory(it);
+    if (it.model && GL3D.ok()) TC.shipModel = it.model;
   }
-  if (TC.shipPic && (tcLoad().shipUsePic || !(TC.shipGlb || TC.shipViews.length))) return TC.shipPic;
-  if (TC.shipGlb) return null;
-  if (it.kind === 'corvette') {
-    const st = tcLoad(), pick = TC.shipViews.find(([v]) => v === st.shipView) || TC.shipViews[0];
-    if (pick) return pick[2];
-  }
-  await loadModel(it); coverFromMemory(it);
-  if (it.model && GL3D.ok()) { TC.shipModel = it.model; return null; }
-  return null;
+  return tcShipPicture();
 }
 async function tcToolModel(it) {
   TC.toolGlb = null; TC.toolModel = null; TC.toolKey = it.key; TC.cache.tool = null;
@@ -2321,67 +2363,24 @@ function tcSpace(ctx, W, H, kind, c1, c2) {
   const U = Math.min(W, H);
   let seed = 11; const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
   const gr = ctx.createLinearGradient(0, 0, W * .4, H); gr.addColorStop(0, c1); gr.addColorStop(1, c2); ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
-  const glowAt = (x, y, r, col) => { const g2 = ctx.createRadialGradient(x, y, 0, x, y, r); g2.addColorStop(0, col); g2.addColorStop(1, col.replace(/[\d.]+\)$/, '0)')); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H); };
-  if (kind === 'nebula') {
-    ctx.save(); ctx.globalCompositeOperation = 'screen';
-    const cols = ['rgba(190,60,200,1)', 'rgba(54,214,195,1)', 'rgba(110,90,255,1)', 'rgba(240,90,140,1)'];
-    // a band of cloud across the picture: many soft puffs along a wavy line, bigger and fainter outwards
-    for (let i = 0; i < 70; i++) {
-      const t = rnd(), x = W * (-.1 + t * 1.2), y = H * (.25 + .5 * t + Math.sin(t * 7) * .12) + (rnd() - .5) * U * .35;
-      glowAt(x, y, U * (.06 + rnd() * .22), cols[(i + (t * 3 | 0)) % cols.length].replace(/[\d.]+\)$/, (.05 + rnd() * .1).toFixed(2) + ')'));
-    }
-    ctx.restore();
-  }
-  const stars = (n, big) => { for (let i = 0; i < n; i++) { ctx.fillStyle = `rgba(225,245,255,${.12 + rnd() * .6})`; ctx.beginPath(); ctx.arc(rnd() * W, rnd() * H, rnd() * (big ? 2.2 : 1.6) + .3, 0, 7); ctx.fill(); } };
-  stars(W * H / 4200);
-  if (kind === 'stars') glowAt(W * .7, H * .3, U * .8, 'rgba(54,214,195,.16)');
-  if (kind === 'nebula') stars(W * H / 30000, true);
-  if (kind === 'planet') {
-    glowAt(W * .8, H * .2, U * .5, 'rgba(255,214,170,.12)');
-    const px = W * .2, py = H * .82, pr = U * .42;
-    ctx.save(); ctx.translate(px, py); ctx.rotate(-.35);
-    const ring = (front) => { ctx.save(); ctx.beginPath(); ctx.ellipse(0, 0, pr * 1.75, pr * .38, 0, front ? 0 : Math.PI, front ? Math.PI : Math.PI * 2); ctx.lineWidth = pr * .16; ctx.strokeStyle = 'rgba(214,200,180,.35)'; ctx.stroke(); ctx.lineWidth = pr * .05; ctx.strokeStyle = 'rgba(240,230,215,.45)'; ctx.stroke(); ctx.restore(); };
-    ring(false);
-    const body = ctx.createRadialGradient(-pr * .35, -pr * .4, pr * .1, 0, 0, pr); body.addColorStop(0, '#5fb7c9'); body.addColorStop(.55, '#1f5d78'); body.addColorStop(1, '#071a26');
-    ctx.fillStyle = body; ctx.beginPath(); ctx.arc(0, 0, pr, 0, 7); ctx.fill();
-    ctx.save(); ctx.clip(); ctx.globalAlpha = .18; for (let i = 0; i < 9; i++) { ctx.fillStyle = i % 2 ? '#bfe9ee' : '#0b3346'; ctx.fillRect(-pr, -pr + i * pr * .23 + rnd() * pr * .05, pr * 2, pr * (.05 + rnd() * .07)); } ctx.restore();
-    ring(true); ctx.restore();
-    glowAt(W * .2, H * .82, U * .5, 'rgba(95,183,201,.12)');
-  }
-  if (kind === 'meteors') {
-    for (let i = 0; i < 7; i++) {
-      const x = W * (.1 + rnd() * .85), y = H * (.05 + rnd() * .55), len = U * (.15 + rnd() * .25), a = Math.PI * .8 + rnd() * .15;
-      const x2 = x + Math.cos(a) * len, y2 = y + Math.sin(a) * len, lg = ctx.createLinearGradient(x, y, x2, y2);
-      lg.addColorStop(0, 'rgba(255,255,255,.95)'); lg.addColorStop(.2, 'rgba(160,232,238,.55)'); lg.addColorStop(1, 'rgba(160,232,238,0)');
-      ctx.strokeStyle = lg; ctx.lineWidth = U * (.002 + rnd() * .003); ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x2, y2); ctx.stroke();
-      glowAt(x, y, U * .02, 'rgba(255,255,255,.5)');
-    }
-  }
-  if (kind === 'galaxy') {
-    const gx = W * .62, gy = H * .4, R = U * .6, dot = Math.max(2, U / 380);
-    glowAt(gx, gy, R * .75, 'rgba(150,120,255,.16)');
-    ctx.save(); ctx.translate(gx, gy); ctx.rotate(-.35); ctx.scale(1, .42); ctx.globalCompositeOperation = 'lighter';
-    for (let i = 0; i < 9000; i++) {
-      const arm = i % 2, t = Math.pow(rnd(), .7), r = R * t, th = arm * Math.PI + t * 6.4 + (rnd() - .5) * .9 * (1.15 - t) * (1 - t * .4);
-      const warm = t < .25 || rnd() < .15;
-      ctx.fillStyle = `rgba(${warm ? '255,226,196' : rnd() < .5 ? '170,190,255' : '200,160,255'},${(.12 + rnd() * .35) * (1 - t * .5)})`;
-      const d = dot * (rnd() < .04 ? 2.2 : 1); ctx.fillRect(Math.cos(th) * r, Math.sin(th) * r, d, d);
-    }
-    ctx.restore();
-    glowAt(gx, gy, R * .2, 'rgba(255,236,214,.4)'); glowAt(gx, gy, R * .06, 'rgba(255,250,240,.6)');
-  }
+  for (let i = 0; i < W * H / 4200; i++) { ctx.fillStyle = `rgba(225,245,255,${.12 + rnd() * .6})`; ctx.beginPath(); ctx.arc(rnd() * W, rnd() * H, rnd() * 1.6 + .3, 0, 7); ctx.fill(); }
+  const g2 = ctx.createRadialGradient(W * .7, H * .3, 0, W * .7, H * .3, U * .8); g2.addColorStop(0, 'rgba(54,214,195,.16)'); g2.addColorStop(1, 'rgba(54,214,195,0)'); ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
 }
 async function tcDraw(cv, preview) {
   const st = tcLoad(), [W, H] = tcSize(st); cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d'), U = Math.min(W, H), hits = [];
   await document.fonts.ready.catch(() => {});
   // background
-  if (st.bg === 'image' && TC.img.bg) { const im = TC.img.bg, k = Math.max(W / im.width, H / im.height); ctx.drawImage(im, (W - im.width * k) / 2, (H - im.height * k) / 2, im.width * k, im.height * k); }
+  const cover = (im) => { const k = Math.max(W / im.width, H / im.height); ctx.drawImage(im, (W - im.width * k) / 2, (H - im.height * k) / 2, im.width * k, im.height * k); };
+  const spaceImg = TC_SPACE_IMGS[st.bg] ? await tcSpaceImg(st.bg) : null;
+  if (st.bg === 'image' && TC.img.bg) cover(TC.img.bg);
+  else if (spaceImg) cover(spaceImg);
   else if (st.bg === 'colour') { ctx.fillStyle = st.solid || '#07131a'; ctx.fillRect(0, 0, W, H); }
   else tcSpace(ctx, W, H, TC_SPACE.some(([k]) => k === st.bg) ? st.bg : 'stars', st.c1, st.c2);
   const L = st.layers;
   const place = (id, im, l) => { const h = l.s * H, w = im.width / im.height * h, x = l.x * W - w / 2, y = l.y * H - h / 2; hits.push({ id, x, y, w, h }); return [x, y, w, h]; };
-  const size3d = (l) => Math.max(256, Math.min(1600, Math.round(l.s * H * 1.15)));
+  // drawn a little larger than shown, for crisp edges and detail (owner 2026-11-12: less detailed than Blender)
+  const size3d = (l) => Math.max(256, Math.min(4096, Math.round(l.s * H * 1.5)));
   const imgOf = (id) => {
     if (tcIs3d(id)) return tc3d(id, size3d(L[id]));
     const im = tc2d(id); return im && st.cut[id] ? tcCutBg(im) : im;
@@ -2524,16 +2523,17 @@ PAGES.traveller = (el) => {
     const travIn = `${TC.pics.length ? `<select id="tcPose">${TC.pics.map((q) => `<option value="${esc(q.name)}"${q.name === st.pose && !TC.imp.trav ? ' selected' : ''}>${esc(q.name.replace(/\.(png|glb)$/i, ''))}${/\.glb$/i.test(q.name) ? ' (3D)' : ''}</option>`).join('')}${TC.imp.trav ? '<option value="@imp" selected>Your image</option>' : ''}<option value=""${!st.pose && !TC.imp.trav ? ' selected' : ''}>No traveller</option></select>` : `${TC.imp.trav ? '<p class="small-print" data-keep>Your image</p>' : ''}<p class="dim small-print" data-keep>No poses yet. Pose your traveller in Blender, then in LiveLink press Send the pose to the editor (3D, to turn here) or Save the pose as a picture; it shows here by itself.</p>`}
       ${tcIs3d('trav') ? turnHtml('trav') : ''}${placeHtml('trav')}${cutHtml('trav')}${objActs('trav', { imp: true, has: !!(TC.imp.trav || TC.m3d || TC.img.trav) })}${APP ? '<button class="link addon-btn" type="button">Get LiveLink</button>' : ''}`;
     const shipIn = `<select id="tcShip"><option value="">No ship</option>${TC.imp.ship ? '<option value="@imp" selected>Your image</option>' : ''}${ships.map((x) => `<option value="${esc(x.key)}"${x.key === st.ship && !TC.imp.ship ? ' selected' : ''}>${esc(x.name)} (${esc(x.type.toLowerCase())})</option>`).join('')}</select>
-      ${st.ship && !TC.imp.ship && TC.shipPic && (TC.shipGlb || TC.shipViews.length) ? `<div class="seg tc-show"><button type="button" data-show="3d" aria-pressed="${!st.shipUsePic}">${TC.shipGlb ? '3D model' : 'Renders'}</button><button type="button" data-show="pic" aria-pressed="${!!st.shipUsePic}">Your picture</button></div>` : ''}
+      ${st.ship && !TC.imp.ship && tcShipModes().length > 1 ? `<div class="seg tc-show">${tcShipModes().map((m) => `<button type="button" data-show="${m}" aria-pressed="${tcShipMode() === m}">${{ '3d': '3D model', renders: 'Renders', pic: 'Your picture' }[m]}</button>`).join('')}</div>` : ''}
       ${tcIs3d('ship') ? turnHtml('ship') : ''}
-      ${isCorv && !TC.imp.ship && TC.shipViews.length > 1 && !(TC.shipPic && st.shipUsePic) ? `<label class="field"><span>Angle</span><select id="tcView">${TC.shipViews.map(([v, l]) => `<option value="${v}"${v === (st.shipView || TC.shipViews[0][0]) ? ' selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
-      ${APP && isCorv && !TC.imp.ship && TC.shipViews.length < COVER_VIEWS.length && !(TC.shipPic && st.shipUsePic) ? `<p class="tc-note" id="tcRenderNote" data-keep>${TC.rendering === st.ship ? 'Blender is drawing the front, side, back and top. It can take a few minutes; the angles show here when they are ready.' : ''}</p><button class="btn small" type="button" id="tcRenderViews"${TC.rendering === st.ship ? ' disabled' : ''} title="Blender renders the corvette from the front, side, back and top (needs Blender and Charon Forge)">Render the angles</button>` : ''}
+      ${isCorv && !TC.imp.ship && TC.shipViews.length > 1 && tcShipMode() === 'renders' ? `<label class="field"><span>Angle</span><select id="tcView">${TC.shipViews.map(([v, l]) => `<option value="${v}"${v === (st.shipView || TC.shipViews[0][0]) ? ' selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
+      ${isCorv && !TC.imp.ship && !TC.shipGlb ? `<p class="dim small-print" data-keep>To turn this corvette like your traveller, open its .blend in Blender and press Send the corvette in 3D (LiveLink, Builds).</p>` : ''}
+      ${APP && isCorv && !TC.imp.ship && TC.shipViews.length < COVER_VIEWS.length && tcShipMode() !== 'pic' && tcShipMode() !== '3d' ? `<p class="tc-note" id="tcRenderNote" data-keep>${TC.rendering === st.ship ? 'Blender is drawing the front, side, back and top. It can take a few minutes; the angles show here when they are ready.' : ''}</p><button class="btn small" type="button" id="tcRenderViews"${TC.rendering === st.ship ? ' disabled' : ''} title="Blender renders the corvette from the front, side, back and top (needs Blender and Charon Forge)">Render the angles</button>` : ''}
       ${st.ship || TC.imp.ship ? placeHtml('ship') + cutHtml('ship') : ''}${objActs('ship', { imp: true, has: !!(st.ship || TC.imp.ship) })}`;
     const toolIn = `<select id="tcTool"><option value="">No multi-tool</option>${tools.map((x) => `<option value="${esc(x.key)}"${x.key === st.tool ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
       ${st.tool && !tcIs3d('tool') ? '<p class="dim small-print" data-keep>Its model needs the game files (the item library); without them it can\'t be drawn.</p>' : ''}${tcIs3d('tool') ? turnHtml('tool') : ''}${st.tool ? placeHtml('tool') : ''}${objActs('tool', { has: !!st.tool })}`;
     const bgKind = bgTab || (st.bg === 'colour' ? 'colour' : st.bg === 'image' ? 'image' : 'space');
     const bgIn = `<div class="seg"><button type="button" data-bgk="space" aria-pressed="${bgKind === 'space'}">Space</button><button type="button" data-bgk="colour" aria-pressed="${bgKind === 'colour'}">Plain colour</button><button type="button" data-bgk="image" aria-pressed="${bgKind === 'image'}">Image</button></div>
-      ${bgKind === 'space' ? `<div class="tc-spaces">${TC_SPACE.map(([k, l]) => `<button type="button" class="tc-space${st.bg === k ? ' on' : ''}" data-space="${k}" title="${l}"><canvas width="96" height="64" data-sp="${k}"></canvas><span>${l}</span></button>`).join('')}</div><div class="tc-cols"><label>Sky <input type="color" id="tcC1" value="${esc(st.c1)}"></label><label>and <input type="color" id="tcC2" value="${esc(st.c2)}"></label></div>` : ''}
+      ${bgKind === 'space' ? `<div class="tc-spaces">${TC_SPACE.map(([k, l]) => `<button type="button" class="tc-space${st.bg === k ? ' on' : ''}" data-space="${k}" title="${l}">${TC_SPACE_IMGS[k] ? `<img src="${TC_SPACE_IMGS[k]}" alt="">` : `<canvas width="96" height="64" data-sp="${k}"></canvas>`}<span>${l}</span></button>`).join('')}</div>${st.bg === 'stars' ? `<div class="tc-cols"><label>Sky <input type="color" id="tcC1" value="${esc(st.c1)}"></label><label>and <input type="color" id="tcC2" value="${esc(st.c2)}"></label></div>` : ''}` : ''}
       ${bgKind === 'colour' ? `<div class="tc-swatches">${TC_SWATCHES.map((c) => `<button type="button" class="tc-sw${(st.solid || '').toLowerCase() === c ? ' on' : ''}" data-sw="${c}" style="background:${c}" title="${c}"></button>`).join('')}<label class="tc-wheel" title="Any colour"><input type="color" id="tcSolid" value="${esc(st.solid || '#07131a')}"></label></div>` : ''}
       <label class="field"><span>Lighting for 3D</span><select id="tcLight">${[['studio', 'Studio'], ['hero', 'Hero'], ['sunset', 'Sunset'], ['space', 'Space']].map(([k, l]) => `<option value="${k}"${(st.light || 'studio') === k ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
       ${bgKind === 'image' ? `<div class="tc-objacts"><button class="btn small" type="button" id="tcBgFile">Import image</button>${APP ? '<button class="btn small" type="button" id="tcBgShot">One of your screenshots</button>' : ''}</div>${st.bg === 'image' && TC.img.bg ? '' : '<p class="dim small-print" data-keep>Pick an image for the background.</p>'}` : ''}`;
@@ -2572,9 +2572,7 @@ PAGES.traveller = (el) => {
       TC.sel = k; st.open[BOX_OF[k]] = true; wire(); redraw();
     });
     side.querySelectorAll('[data-show]').forEach((b) => b.onclick = () => {
-      st.shipUsePic = b.dataset.show === 'pic';
-      const view = TC.shipViews.find(([v]) => v === st.shipView) || TC.shipViews[0];
-      TC.img.ship = st.shipUsePic ? TC.shipPic : TC.shipGlb ? null : view ? view[2] : null; TC.cache.ship = null; tcSave(); wire(); redraw();
+      st.shipShow = b.dataset.show; TC.img.ship = tcShipPicture(); TC.cache.ship = null; tcSave(); wire(); redraw();
     });
     const rv = $('#tcRenderViews', side);
     if (rv) rv.onclick = async () => {
@@ -2593,7 +2591,7 @@ PAGES.traveller = (el) => {
         for (const k of [...renderImgs.keys()]) if (k.startsWith(p.key + '|')) renderImgs.delete(k);
         TC.rendering = null;
         if (TC.shipKey !== key) return;
-        st.shipUsePic = false; st.shipView = 'front'; tcSave();
+        st.shipShow = 'renders'; st.shipView = 'front'; tcSave();
         TC.img.ship = await tcShipImage(it); TC.cache.ship = null;
         if (TC.shipViews.length > 1) toast('The front, side, back and top are ready: pick one under Angle.');
         else toast("Blender didn't make the other angles. Check Cover settings in the Garage.", true);
@@ -2615,7 +2613,7 @@ PAGES.traveller = (el) => {
     });
     const bf = $('#tcBgFile', side); if (bf) bf.onclick = async () => { const f = await tcPickFile(); if (!f) return; TC.img.bg = await tcBlobImage(f); if (TC.img.bg) st.bg = 'image'; tcSave(); wire(); redraw(); };
     const bs = $('#tcBgShot', side); if (bs) bs.onclick = async () => { const b = await pickScreenshot(); if (!b) return; TC.img.bg = await tcBlobImage(b); if (TC.img.bg) st.bg = 'image'; tcSave(); wire(); redraw(); };
-    side.querySelectorAll('[data-space]').forEach((b) => b.onclick = () => change(() => { st.bg = b.dataset.space; st.lastSpace = st.bg; side.querySelectorAll('.tc-space').forEach((x) => x.classList.toggle('on', x === b)); }));
+    side.querySelectorAll('[data-space]').forEach((b) => b.onclick = () => { st.bg = b.dataset.space; st.lastSpace = st.bg; tcSave(); wire(); redraw(); });
     side.querySelectorAll('canvas[data-sp]').forEach((c) => { const x = c.getContext('2d'); tcSpace(x, c.width, c.height, c.dataset.sp, st.c1, st.c2); });
     side.querySelectorAll('[data-sw]').forEach((b) => b.onclick = () => { st.solid = b.dataset.sw; tcSave(); wire(); redraw(); });
     const so = $('#tcSolid', side); if (so) { so.oninput = () => change(() => { st.solid = so.value; }); so.onchange = () => wire(); }
@@ -2669,10 +2667,11 @@ PAGES.traveller = (el) => {
       l.yaw = Math.round(((drag.yaw + (p[0] - drag.p[0]) / k * .6) + 540) % 360 - 180); l.pitch = Math.max(-60, Math.min(60, Math.round(drag.pitch + (p[1] - drag.p[1]) / k * .4)));
       side.querySelectorAll(`.tc-turn[data-turn="${drag.id}"] input`).forEach((inp) => { inp.value = l[inp.dataset.ax]; }); redraw(); return;
     }
-    l.x = Math.max(0, Math.min(1, drag.x + (p[0] - drag.p[0]) / cv.width)); l.y = Math.max(0, Math.min(1, drag.y + (p[1] - drag.p[1]) / cv.height)); redraw();
+    // past the edges too (owner 2026-11-12: only the head in the picture), but never quite off it
+    l.x = Math.max(-.6, Math.min(1.6, drag.x + (p[0] - drag.p[0]) / cv.width)); l.y = Math.max(-.6, Math.min(1.6, drag.y + (p[1] - drag.p[1]) / cv.height)); redraw();
   };
   cv.onpointerup = () => { if (drag) { drag = null; tcSave(); } };
-  cv.addEventListener('wheel', (e) => { const h = hitAt(at(e)); if (!h) return; e.preventDefault(); const l = st.layers[h.id]; l.s = Math.max(.05, Math.min(3, l.s * (e.deltaY < 0 ? 1.06 : 1 / 1.06))); TC.sel = h.id; tcSave(); redraw(); }, { passive: false });
+  cv.addEventListener('wheel', (e) => { const h = hitAt(at(e)); if (!h) return; e.preventDefault(); const l = st.layers[h.id]; l.s = Math.max(.05, Math.min(6, l.s * (e.deltaY < 0 ? 1.06 : 1 / 1.06))); TC.sel = h.id; tcSave(); redraw(); }, { passive: false });
   wire(); redraw();
   (async () => {
     if (APP && !FAVS.list) { try { await favLoad(); } catch (_) {} }

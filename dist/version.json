@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.11.1802",
-  "date": "2026-11-11",
-  "size": 13625856,
-  "sha256": "41930b25c73b47b66909c7221d3e9d66a657c88068b55ed72747c7f2864e4a39",
-  "notes": "Please install the LiveLink add-on again (version 1.12.0): the new round LiveLink logo at the top, and coloured icons: neon pink for building corvettes and bases, neon blue for posing your traveller",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.11.1802/HarmoniousSaveEditor.exe",
+  "version": "2026.11.12.1639",
+  "date": "2026-11-12",
+  "size": 14643200,
+  "sha256": "e92224e7d444bdf75321676cf935ae5298d23e76a75139d685a22b131c3febd3",
+  "notes": "Please install the LiveLink add-on again (version 1.13.0): each hand's two fingers now move one at a time, Natural joints (on by default) make fingers, elbows and knees bend the way real ones do at their own joint, and Body parts has Hands sliders from open to a fist\nLiveLink: Send the corvette in 3D (Builds panel) sends a corvette's model to the Traveller page, where it turns like your traveller\nTraveller page: new space backgrounds (Eclipse, Blue nebula, Violet clouds, Meteor storm, Ringed planets) beside the starfield\nTraveller page: things can go past the edges of the picture (only the head showing, say) and be made bigger\nTraveller page: 3D poses, ships and multi-tools are sharper, with the game's surface detail",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.12.1639/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

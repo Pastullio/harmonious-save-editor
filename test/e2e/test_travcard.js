@@ -92,10 +92,11 @@ im.save(${JSON.stringify(file)})`]);
   await p.click('.tc-sw[data-sw="#1d4f5e"]'); await p.waitForTimeout(300);
   ok('…a preset too', await p.evaluate(() => { const d = $('#tcCanvas').getContext('2d').getImageData(5, 5, 1, 1).data; return d[0] === 0x1d && d[1] === 0x4f && d[2] === 0x5e; }));
   await p.click('[data-bgk="space"]'); await p.waitForTimeout(200);
-  ok('Space offers a starfield and four more scenes, each with a little picture', (await p.$$('.tc-space canvas')).length === 5);
+  ok('Space offers the starfield and five pictures, each with a small preview', (await p.$$('.tc-space canvas')).length === 1 && (await p.$$('.tc-space img')).length === 5);
   const sky = () => p.evaluate(() => { const c = $('#tcCanvas'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let s = 0; for (let i = 0; i < d.length; i += 4 * 97) s += d[i] + d[i + 1] * 3 + d[i + 2] * 7; return s; });
-  const skies = {}; for (const k of ['stars', 'nebula', 'planet', 'meteors', 'galaxy']) { await p.click(`[data-space="${k}"]`); await p.waitForTimeout(250); skies[k] = await sky(); await p.screenshot({ path: SP + `/shots/traveller-bg-${k}.png` }); }
-  ok('…and each looks different', new Set(Object.values(skies)).size === 5);
+  const skies = {}; for (const k of ['stars', 'eclipse', 'blue-nebula', 'violet-clouds', 'meteor-storm', 'ringed-planets']) { await p.click(`[data-space="${k}"]`); await p.waitForTimeout(250); skies[k] = await sky(); await p.screenshot({ path: SP + `/shots/traveller-bg-${k}.png` }); }
+  ok('…and each looks different', new Set(Object.values(skies)).size === 6);
+  ok('…the sky colours only show for the starfield', !(await p.$('#tcC1')));
   await p.click('[data-space="stars"]'); await p.waitForTimeout(200);
   await p.selectOption('#tcFont', 'georgia'); await p.waitForTimeout(200);
   ok('the name can have another font', await p.evaluate(() => TC.state.font === 'georgia'));
@@ -211,8 +212,8 @@ im = Image.new('RGB', (300, 200), (250, 250, 250)); d = ImageDraw.Draw(im); d.el
   });
   if (corv) {
     await p.waitForSelector('[data-show="pic"]', { timeout: 15000 }).catch(() => {});
-    ok('a corvette with its own picture offers Your picture / Renders', !!(await p.$('[data-show="pic"]')) && (await p.textContent('[data-show="3d"]')) === 'Renders');
-    await p.click('[data-show="3d"]'); await p.waitForTimeout(400);
+    ok('a corvette with its own picture offers Your picture / Renders', !!(await p.$('[data-show="pic"]')) && (await p.textContent('[data-show="renders"]')) === 'Renders');
+    await p.click('[data-show="renders"]'); await p.waitForTimeout(400);
     await p.screenshot({ path: SP + '/shots/traveller-card-corvette.png' });
     ok('…Renders has every angle', await p.evaluate(() => $('#tcView') && $('#tcView').options.length >= 4));
     await p.selectOption('#tcView', 'side'); await p.waitForTimeout(400);
@@ -222,7 +223,7 @@ im = Image.new('RGB', (300, 200), (250, 250, 250)); d = ImageDraw.Draw(im); d.el
       TC.shipViews = TC.shipViews.slice(0, 1); window.renderImg = async (h, v = 'hero') => (TC.calls.done && v !== 'hero') || v === 'hero' ? (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.fillStyle = v === 'front' ? '#00ff00' : '#ff0000'; x.fillRect(8, 8, 48, 48); return c; })() : null;
       TC.calls = []; window.renderSetup = async () => ({ ready: true });
       window.renderCorvette = async (it, force, onState, views) => { TC.calls.push(views ? 'views' : 'cover'); onState && onState('running'); await new Promise((r) => setTimeout(r, 300)); if (views) TC.calls.done = true; return true; };
-      const st = tcLoad(); st.shipUsePic = false; tcSave(); $('#tcShip').dispatchEvent(new Event('change')); await new Promise((r) => setTimeout(r, 800));
+      const st = tcLoad(); st.shipShow = 'renders'; tcSave(); $('#tcShip').dispatchEvent(new Event('change')); await new Promise((r) => setTimeout(r, 800));
       return !!$('#tcRenderViews');
     });
     ok('Render the angles shows while angles are missing', rv);
@@ -234,6 +235,20 @@ im = Image.new('RGB', (300, 200), (250, 250, 250)); d = ImageDraw.Draw(im); d.el
     }
     await p.click('[data-show="pic"]'); await p.waitForTimeout(400);
     ok('…Your picture goes back to it', await p.evaluate(() => TC.img.ship === TC.shipPic && !$('#tcView')));
+    // a corvette sent from Blender in 3D turns like the traveller (the traveller's model stands in for the corvette's)
+    if (BANKS) {
+      const sentShip = await p.evaluate(async (k) => {
+        const it = coverItems().find((x) => x.key === k), gs = travellerGroups(); if (!gs.length) return null;
+        const glb = await (await api('/api/model/traveller/glb?groups=' + encodeURIComponent(gs.join(',')) + '&name=x&textures=0')).arrayBuffer();
+        return (await (await api('/api/live/ship?name=' + encodeURIComponent(it.name), { method: 'POST', body: glb })).json()).name;
+      }, corv);
+      ok('a corvette sent in 3D is kept in Exports', sentShip && / 3D ship .*\.glb$/.test(sentShip) && fs.existsSync(path.join(exp, sentShip)));
+      await p.evaluate(() => { const sel = $('#tcShip'); sel.dispatchEvent(new Event('change')); });
+      await p.waitForSelector('[data-show="3d"]', { timeout: 15000 }).catch(() => {});
+      await p.click('[data-show="3d"]').catch(() => {}); await p.waitForTimeout(500);
+      ok('…and the Traveller page offers it as a 3D model to turn', await p.evaluate(() => !!TC.shipGlb && tcIs3d('ship')) && !!(await p.$('.tc-turn[data-turn="ship"]')) && !!(await p.$('[data-show="renders"]')));
+      fs.rmSync(path.join(exp, sentShip), { force: true });
+    }
   } else console.log('(no corvette in the test save)');
   // removing things: select, then Remove or Delete
   await p.evaluate(() => { TC.sel = 'glyphs'; }); await p.selectOption('#tcPlace', { index: 1 }).catch(() => {}); await p.waitForTimeout(300);

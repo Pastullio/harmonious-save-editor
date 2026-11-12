@@ -38,7 +38,10 @@ const nmsCore = require('./tools/bundle-nms-core.js');
 const systemGen = nmsCore.bundle(), letterMapGz = nmsCore.letterMap();
 const hero = 'data:image/webp;base64,' + fs.readFileSync(path.join(__dirname, 'src/assets/traveller.webp')).toString('base64');
 const updArt = 'data:image/webp;base64,' + fs.readFileSync(path.join(__dirname, 'src/assets/updating.webp')).toString('base64');
-html = html.replace('/*@@FONTS@@*/', () => fonts).replace('@@HERO@@', () => hero).replace('@@UPDART@@', () => updArt).replace('@@ICON@@', () => icon).replace('@@LOGO@@', () => logo).replace('/*@@GLYPHS@@*/', () => glyphs).replace('/*@@NMSGEN@@*/', () => systemGen).replace('@@LETTERMAP@@', () => letterMapGz).replace('/*@@CODEC@@*/', () => codec).replace('/*@@MAPPING@@*/', () => 'const MAPPING = ' + JSON.stringify(mapping) + ';');
+// the Traveller page's space backgrounds (the owner's pictures, 2026-11-12)
+const SPACE_BGS = ['eclipse', 'blue-nebula', 'violet-clouds', 'meteor-storm', 'ringed-planets'];
+const spaceBgs = '{' + SPACE_BGS.map((n) => JSON.stringify(n) + ': "data:image/webp;base64,' + fs.readFileSync(path.join(__dirname, 'src/assets/backgrounds', n + '.webp')).toString('base64') + '"').join(', ') + '}';
+html = html.replace('/*@@FONTS@@*/', () => fonts).replace('@@HERO@@', () => hero).replace('@@UPDART@@', () => updArt).replace('/*@@SPACEBGS@@*/{}', () => spaceBgs).replace('@@ICON@@', () => icon).replace('@@LOGO@@', () => logo).replace('/*@@GLYPHS@@*/', () => glyphs).replace('/*@@NMSGEN@@*/', () => systemGen).replace('@@LETTERMAP@@', () => letterMapGz).replace('/*@@CODEC@@*/', () => codec).replace('/*@@MAPPING@@*/', () => 'const MAPPING = ' + JSON.stringify(mapping) + ';');
 fs.mkdirSync(path.join(__dirname, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(__dirname, 'dist/nms-save-editor.html'), html);
 fs.writeFileSync(path.join(__dirname, 'desktop/index.html'), html); // embedded into the desktop app

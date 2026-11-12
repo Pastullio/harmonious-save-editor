@@ -122,6 +122,8 @@ func main() {
 	mux.HandleFunc("/api/exports/file", handleExportFile)
 	mux.HandleFunc("/api/live/pose", handleLivePose)
 	mux.HandleFunc("/api/live/tool", handleLiveTool)
+	mux.HandleFunc("/api/live/ship", handleLiveShip)
+	mux.HandleFunc("/api/exports/ships", handleExportShips)
 	mux.HandleFunc("/api/patron", handlePatron)
 	mux.HandleFunc("/api/patron/signin", handlePatronSignin)
 	mux.HandleFunc("/patron", handlePatronReturn)
@@ -233,7 +235,7 @@ func guard(addr string, next http.Handler) http.Handler {
 			return
 		}
 		// the Blender add-on has its own token (from live.json) and may only send builds, fetch the traveller and send a 3D pose
-		if (r.URL.Path == "/api/live/build" || (r.URL.Path == "/api/live/traveller" && r.Method == http.MethodGet) || (r.URL.Path == "/api/live/pose" && r.Method == http.MethodPost) || (r.URL.Path == "/api/live/tool" && r.Method == http.MethodGet)) && liveTokenOK(r) {
+		if (r.URL.Path == "/api/live/build" || (r.URL.Path == "/api/live/traveller" && r.Method == http.MethodGet) || ((r.URL.Path == "/api/live/pose" || r.URL.Path == "/api/live/ship") && r.Method == http.MethodPost) || (r.URL.Path == "/api/live/tool" && r.Method == http.MethodGet)) && liveTokenOK(r) {
 			next.ServeHTTP(w, r)
 			return
 		}

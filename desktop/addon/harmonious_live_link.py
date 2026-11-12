@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 12, 0),
+    "version": (1, 13, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -519,6 +519,10 @@ class HARMONIOUS_PT_build(LiveLinkPanel, bpy.types.Panel):
         row = layout.row()
         row.enabled = LINK["state"] == "on"
         row.operator(HARMONIOUS_OT_send.bl_idname, **ic("send", "EXPORT"))
+        if context.scene.harmonious_target_slot >= 0 and not base_info(context.scene):
+            row = layout.row()
+            row.enabled = LINK["state"] != "none"
+            row.operator(HARMONIOUS_OT_send_ship.bl_idname, **ic("corvette", "EXPORT"))
         box = layout.box()
         box.label(text="Last send", **ic("info", "INFO"))
         lines = box.column(align=True)   # tight lines, not one widely spaced row each
@@ -612,6 +616,263 @@ def apply_keep_shape(arm):
             pb.location = (0.0, 0.0, 0.0)
         if on:
             pb.scale = (1.0, 1.0, 1.0)
+
+
+# ---------------------------------------------------------------- fingers and natural joints (owner, 2026-11-12)
+# The traveller's hand has two fingers on one chain of joints (hand_03, the game moves them together) and a thumb
+# (hand_05). split_fingers gives the second finger its own joints (hand_03b), so each can be posed. Natural joints:
+# fingers, elbows and knees only bend the way a real one does (Euler rotation with the other two axes locked), and
+# every bone turns at its own joint.
+SEGMENTS = ("01", "02", "03")
+
+
+def _world_verts(arm, meshes, group):
+    out = []
+    for m in meshes:
+        g = m.vertex_groups.get(group)
+        if g is None:
+            continue
+        mw = m.matrix_world
+        for v in m.data.vertices:
+            for e in v.groups:
+                if e.group == g.index and e.weight > 0.001:
+                    out.append((m, v.index, e.weight, mw @ v.co))
+    return out
+
+
+def finger_axis(arm, meshes, side):
+    """The line across the hand from one finger to the other (the fingers bend round it), in world space, from the
+    spread of the first finger joint's vertices across the finger."""
+    import mathutils
+    b = arm.data.bones.get("%s_hand_03_01" % side)
+    if b is None:
+        return None
+    W = arm.matrix_world
+    head, tail = W @ b.head_local, W @ b.tail_local
+    d = (tail - head).normalized()
+    pts = [p for _, _, w, p in _world_verts(arm, meshes, b.name) if w > 0.5]
+    if len(pts) < 20:
+        return None
+    flat = [(p - head) - d * (p - head).dot(d) for p in pts]
+    c = sum(flat, mathutils.Vector()) / len(flat)
+    cov = mathutils.Matrix(((0.0,) * 3,) * 3)
+    for q in flat:
+        q = q - c
+        for i in range(3):
+            for j in range(3):
+                cov[i][j] += q[i] * q[j]
+    v = mathutils.Vector((1, 0.3, 0.2))   # the strongest direction, by power iteration
+    for _ in range(40):
+        v = (cov @ v)
+        if v.length < 1e-12:
+            return None
+        v.normalize()
+    return v
+
+
+def split_fingers(context, arm, meshes):
+    """Give each hand's second finger its own joints; returns how many hands were split."""
+    import mathutils
+    done = 0
+    W = arm.matrix_world
+    Wi3 = W.inverted().to_3x3()
+    plans = []
+    for side in ("l", "r"):
+        names = ["%s_hand_03_%s" % (side, k) for k in SEGMENTS]
+        if not all(n in arm.data.bones for n in names) or ("%s_hand_03b_01" % side) in arm.data.bones:
+            continue
+        L = finger_axis(arm, meshes, side)
+        if L is None:
+            continue
+        thumb = arm.data.bones.get("%s_hand_05_01" % side)
+        moves = []
+        ok = True
+        for n in names:
+            b = arm.data.bones[n]
+            head = W @ b.head_local
+            vs = _world_verts(arm, meshes, n)
+            plus = [x for x in vs if (x[3] - head).dot(L) > 0]
+            minus = [x for x in vs if (x[3] - head).dot(L) <= 0]
+            if len(plus) < 0.2 * len(vs) or len(minus) < 0.2 * len(vs):
+                ok = False
+                break
+            off = lambda xs: sum((x[3] - head).dot(L) for x in xs) / len(xs)
+            moves.append((n, plus, minus, off(plus), off(minus)))
+        if not ok:
+            continue
+        # the finger nearer the thumb keeps the game's joints; the other gets the new ones
+        if thumb is not None:
+            t = W @ thumb.head_local
+            h0 = W @ arm.data.bones[names[0]].head_local
+            if (t - h0).dot(L) > 0:
+                L = -L
+                moves = [(n, mi, pl, -om, -op) for n, pl, mi, op, om in moves]
+        plans.append((side, L, moves))
+    if not plans:
+        return 0
+    # the weights: the second finger's vertices move to the new joints
+    for side, L, moves in plans:
+        for n, plus, minus, op, om in moves:
+            nb = n.replace("_03_", "_03b_")
+            for m in {x[0] for x in plus}:
+                if m.vertex_groups.get(nb) is None:
+                    m.vertex_groups.new(name=nb)
+            for m, vi, w, _ in plus:
+                m.vertex_groups[nb].add([vi], w, "REPLACE")
+                m.vertex_groups[n].remove([vi])
+    # the joints: a copy of the chain beside the second finger, the game's one moved into the first
+    prev_active = context.view_layer.objects.active
+    context.view_layer.objects.active = arm
+    mode = context.mode
+    if mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
+    bpy.ops.object.mode_set(mode="EDIT")
+    eb = arm.data.edit_bones
+    for side, L, moves in plans:
+        La = Wi3 @ L
+        prev = None
+        for n, plus, minus, op, om in moves:
+            src = eb[n]
+            nb = eb.new(n.replace("_03_", "_03b_"))
+            nb.head, nb.tail, nb.roll = src.head.copy(), src.tail.copy(), src.roll
+            nb.parent = prev if prev is not None else src.parent
+            nb.use_connect = False
+            nb.head += La * op
+            nb.tail += La * op
+            src.head += La * om
+            src.tail += La * om
+            nb.use_deform = True
+            prev = nb
+        arm[("harmonious_finger_axis_%s" % side)] = tuple(L)
+        done += 1
+    bpy.ops.object.mode_set(mode="OBJECT")
+    if hasattr(arm.data, "collections") and arm.data.collections.get("Body") is not None:
+        for side, L, moves in plans:
+            for n, *_ in moves:
+                b = arm.data.bones.get(n.replace("_03_", "_03b_"))
+                if b is not None:
+                    arm.data.collections["Body"].assign(b)
+                    set_hidden(arm, b, True)
+    context.view_layer.objects.active = prev_active or arm
+    return done
+
+
+def hinge_axes(arm):
+    """World hinge axis for each bone that bends one way only: fingers (across the hand), elbows and knees."""
+    import mathutils
+    W = arm.matrix_world
+    b = arm.data.bones
+    out = {}
+    try:
+        fwd, left, up = body_frame(arm)
+    except Exception:
+        return out
+    for side in ("l", "r"):
+        L = arm.get("harmonious_finger_axis_%s" % side)
+        L = mathutils.Vector(L) if L else finger_axis(arm, [o for o in arm.children if o.type == "MESH"], side)
+        if L is not None:
+            for chain in ("03", "03b"):
+                for k in SEGMENTS:
+                    n = "%s_hand_%s_%s" % (side, chain, k)
+                    if n in b:
+                        out[n] = L
+        for joint, end in (("%s_arm_Elbow" % side, "%s_arm_Wrist" % side), ("%s_leg_Knee" % side, "%s_leg_Ankle" % side)):
+            if joint in b and end in b:
+                d = (W @ b[end].head_local) - (W @ b[joint].head_local)
+                a = d.cross(fwd)
+                if a.length > 1e-6:
+                    out[joint] = a.normalized()
+    return out
+
+
+def apply_natural(arm):
+    """Natural joints on: hinge bones turn round one axis only (Euler, the other two locked). Off: free again."""
+    on = bool(getattr(arm, "harmonious_natural", True))
+    W3i = arm.matrix_world.inverted().to_3x3()
+    hinges = hinge_axes(arm) if on else {}
+    for pb in arm.pose.bones:
+        a = hinges.get(pb.name)
+        if a is None:
+            if "harmonious_hinge" in pb:
+                pb.lock_rotation = (False, False, False)
+                if pb.rotation_mode != "QUATERNION":
+                    pb.rotation_mode = "QUATERNION"
+                del pb["harmonious_hinge"]
+            continue
+        local = pb.bone.matrix_local.to_3x3().transposed() @ (W3i @ a)
+        local.normalize()
+        idx = max(range(3), key=lambda i: abs(local[i]))
+        if abs(local[idx]) < 0.7:
+            continue
+        if pb.rotation_mode != "XYZ":
+            pb.rotation_mode = "XYZ"
+        pb.lock_rotation = tuple(i != idx for i in range(3))
+        pb["harmonious_hinge"] = idx
+
+
+def natural_changed(self, context):
+    if self.type == "ARMATURE":
+        apply_natural(self)
+
+
+def curl_sign(arm, pb):
+    """Which way round the hinge curls the finger in (towards the thumb's side of the hand)."""
+    import mathutils
+    idx = pb.get("harmonious_hinge")
+    if idx is None:
+        return 0
+    W = arm.matrix_world
+    side = pb.name[0]
+    thumb = arm.data.bones.get("%s_hand_05_02" % side) or arm.data.bones.get("%s_hand_05_01" % side)
+    if thumb is None:
+        return 1
+    P = W @ thumb.head_local
+    rest = W @ pb.bone.matrix_local
+    axis = rest.to_3x3().col[idx].normalized()
+    head, tail = W @ pb.bone.head_local, W @ pb.bone.tail_local
+    best = []
+    for s in (1, -1):
+        R = mathutils.Matrix.Rotation(0.6 * s, 3, axis)
+        best.append(((head + R @ (tail - head)) - P).length)
+    return 1 if best[0] <= best[1] else -1
+
+
+CURL = {"01": 70, "02": 85, "03": 60}   # degrees for a closed fist
+
+
+def set_curl(arm, side, amount):
+    """Curl both fingers of one hand: 0 open, 1 a fist."""
+    import math
+    n = 0
+    for chain in ("03", "03b"):
+        for k in SEGMENTS:
+            pb = arm.pose.bones.get("%s_hand_%s_%s" % (side, chain, k))
+            if pb is None or "harmonious_hinge" not in pb:
+                continue
+            e = list(pb.rotation_euler)
+            e[pb["harmonious_hinge"]] = curl_sign(arm, pb) * math.radians(CURL[k]) * amount
+            pb.rotation_euler = e
+            n += 1
+    return n
+
+
+def curl_changed(side):
+    def update(self, context):
+        arm = find_traveller()
+        if arm is not None:
+            if not any("harmonious_hinge" in pb for pb in arm.pose.bones):
+                apply_natural(arm)
+            set_curl(arm, side, getattr(self, "harmonious_curl_" + side))
+    return update
+
+
+def follow_fingers(arm, keep=()):
+    """The second finger takes the first one's pose (ready-made and older saved poses only know the game's joints)."""
+    for pb in arm.pose.bones:
+        if "_hand_03b_" in pb.name and pb.name not in keep:
+            src = arm.pose.bones.get(pb.name.replace("_03b_", "_03_"))
+            if src is not None:
+                pb.matrix_basis = src.matrix_basis.copy()
 
 
 def keep_shape_changed(self, context):
@@ -719,7 +980,12 @@ class HARMONIOUS_OT_traveller(bpy.types.Operator):
                 o["harmonious_traveller"] = name
                 o.show_in_front = True
                 tidy_skeleton(o, [m for m in new if m.type == "MESH" and m.parent == o])
+                try:
+                    split_fingers(context, o, [m for m in new if m.type == "MESH" and m.parent == o])
+                except Exception as error:   # the fingers stay together; nothing else is lost
+                    print("LiveLink: couldn't split the fingers:", error)
                 apply_keep_shape(o)
+                apply_natural(o)
                 context.view_layer.objects.active = o
                 arm = o
         # the importer draws each bone as a sphere (an Icosphere in a glTF_not_exported collection); plain bones instead
@@ -737,6 +1003,7 @@ class HARMONIOUS_OT_traveller(bpy.types.Operator):
                     o.select_set(False)
                 arm.select_set(True)
                 bpy.ops.object.mode_set(mode="POSE")
+                context.scene.tool_settings.transform_pivot_point = "INDIVIDUAL_ORIGINS"
             except RuntimeError:
                 pass
         set_status("%s is in the scene, in Pose mode: click a part of the body to show its bone, then press R to turn it. Ctrl+Tab goes back to Object mode." % name)
@@ -831,6 +1098,12 @@ BODY_PARTS = (
     ("l_arm", "Left arm", ("l_arm_Clavicle",), r"l_arm_(Clavicle|Shoulder|Elbow)"),
     ("r_hand", "Right hand", ("r_arm_Wrist",), r"r_arm_Wrist|r_hand_.*"),
     ("l_hand", "Left hand", ("l_arm_Wrist",), r"l_arm_Wrist|l_hand_.*"),
+    ("r_finger1", "Right first finger", ("r_hand_03_01",), r"r_hand_03_\d+"),
+    ("l_finger1", "Left first finger", ("l_hand_03_01",), r"l_hand_03_\d+"),
+    ("r_finger2", "Right second finger", ("r_hand_03b_01",), r"r_hand_03b_\d+"),
+    ("l_finger2", "Left second finger", ("l_hand_03b_01",), r"l_hand_03b_\d+"),
+    ("r_thumb", "Right thumb", ("r_hand_05_01",), r"r_hand_05_\d+"),
+    ("l_thumb", "Left thumb", ("l_hand_05_01",), r"l_hand_05_\d+"),
     ("r_leg", "Right leg", ("r_leg_Hip",), r"r_leg_.*"),
     ("l_leg", "Left leg", ("l_leg_Hip",), r"l_leg_.*"),
     ("backpack", "Backpack", ("backpack_root_Aux",), r"backpack_root_Aux|RetroWing.*"),
@@ -1154,6 +1427,11 @@ def pose_traveller(context, key):
             return "Couldn't read the pose %s: %s" % (name, error)
         if not apply_pose_data(arm, data):
             return "The pose %s has no bones this traveller has" % name
+        follow_fingers(arm, keep=set((data.get("bones") or {}).keys()))
+        apply_natural(arm)
+        return ""
+    follow_fingers(arm)
+    apply_natural(arm)
     return ""
 
 
@@ -1269,6 +1547,113 @@ def posed_glb(context, arm):
                 pass
     with open(path, "rb") as f:
         return f.read()
+
+
+# ---------------------------------------------------------------- a corvette in 3D (owner, 2026-11-12)
+# The editor can't draw a corvette's hull from the game files, but this .blend has it: every visible mesh (Charon
+# Forge's parts, instances made real for the export) goes to the editor as one .glb, which the Traveller page turns.
+def build_glb(context):
+    dg = context.evaluated_depsgraph_get()
+    skip = set()
+    arm = find_traveller()
+    if arm is not None:
+        skip.update(traveller_meshes(arm))
+        skip.update(held_tools(arm))
+    coll = bpy.data.collections.new("_harmonious_ship_export")
+    context.scene.collection.children.link(coll)
+    made = []
+    try:
+        for inst in dg.object_instances:
+            ob = inst.object
+            if ob.type != "MESH" or ob.original in skip:
+                continue
+            src = inst.instance_object if inst.is_instance else ob
+            if src is not None and getattr(src.original, "hide_render", False):
+                continue
+            try:
+                me = bpy.data.meshes.new_from_object(ob, preserve_all_data_layers=False, depsgraph=dg)
+            except Exception:
+                continue
+            if not me.polygons:
+                bpy.data.meshes.remove(me)
+                continue
+            o = bpy.data.objects.new("part", me)
+            o.matrix_world = inst.matrix_world.copy()
+            coll.objects.link(o)
+            made.append(o)
+        if not made:
+            raise RuntimeError("There's nothing to send in this file")
+        view = context.view_layer
+        mode, active = context.mode, view.objects.active
+        picked = [o for o in view.objects if o.select_get()]
+        path = os.path.join(tempfile.gettempdir(), "harmonious_livelink", "ship.glb")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        try:
+            if mode != "OBJECT":
+                bpy.ops.object.mode_set(mode="OBJECT")
+            for o in view.objects:
+                o.select_set(False)
+            for o in made:
+                o.select_set(True)
+            view.objects.active = made[0]
+            opts = dict(filepath=path, export_format="GLB", use_selection=True, export_apply=False,
+                        export_animations=False, export_yup=True, export_image_format="JPEG", export_jpeg_quality=85)
+            try:
+                bpy.ops.export_scene.gltf(**opts)
+            except TypeError:
+                for k in ("export_jpeg_quality", "export_image_format", "export_animations"):
+                    opts.pop(k, None)
+                bpy.ops.export_scene.gltf(**opts)
+        finally:
+            for o in view.objects:
+                o.select_set(o in picked)
+            view.objects.active = active
+        with open(path, "rb") as f:
+            return f.read(), len(made)
+    finally:
+        for o in made:
+            me = o.data
+            bpy.data.objects.remove(o, do_unlink=True)
+            if me.users == 0:
+                bpy.data.meshes.remove(me)
+        bpy.data.collections.remove(coll)
+
+
+class HARMONIOUS_OT_send_ship(bpy.types.Operator):
+    bl_idname = "harmonious.send_ship"
+    bl_label = "Send the corvette in 3D"
+    bl_description = "Send this corvette's model to the editor's Traveller page, to turn and place on your picture"
+
+    def execute(self, context):
+        addr = editor_address()
+        if addr is None:
+            self.report({"ERROR"}, "Harmonious Save Editor isn't running")
+            return {"CANCELLED"}
+        scene = context.scene
+        name = scene.harmonious_target_name if scene.harmonious_target_slot >= 0 else ""
+        if not name:
+            self.report({"ERROR"}, "Choose which corvette this file is (This file updates) first")
+            return {"CANCELLED"}
+        try:
+            data, n = build_glb(context)
+        except (RuntimeError, OSError) as error:
+            self.report({"ERROR"}, "Couldn't export the corvette: %s" % error)
+            return {"CANCELLED"}
+        url, token = addr
+        try:
+            req = urllib.request.Request(url.replace("/api/live/build", "/api/live/ship") + "?name=" + urllib.parse.quote(name),
+                                         data=data, method="POST", headers={"X-Live-Token": token, "Content-Type": "model/gltf-binary"})
+            with urllib.request.urlopen(req, timeout=300) as res:
+                json.loads(res.read().decode("utf-8"))
+        except urllib.error.HTTPError as error:
+            self.report({"ERROR"}, error.read().decode("utf-8", "replace").strip() or str(error))
+            return {"CANCELLED"}
+        except (urllib.error.URLError, OSError, ValueError) as error:
+            self.report({"ERROR"}, "Couldn't reach Harmonious Save Editor: %s" % error)
+            return {"CANCELLED"}
+        set_status("%s sent in 3D (%d parts, %d MB): pick it on the Traveller page" % (name, n, max(1, len(data) // 1048576)))
+        self.report({"INFO"}, "Sent %s in 3D" % name)
+        return {"FINISHED"}
 
 
 # ---------------------------------------------------------------- a multi-tool in the hand (owner, 2026-11-10)
@@ -1701,6 +2086,8 @@ class HARMONIOUS_OT_pose_mode(bpy.types.Operator):
         arm.select_set(True)
         context.view_layer.objects.active = arm
         bpy.ops.object.mode_set(mode="POSE")
+        # every part turns at its own joint, the way a real one does
+        context.scene.tool_settings.transform_pivot_point = "INDIVIDUAL_ORIGINS"
         return {"FINISHED"}
 
 
@@ -1742,6 +2129,7 @@ class HARMONIOUS_PT_traveller(LiveLinkPanel, bpy.types.Panel):
         for line in wrap(text, 40):
             tip.label(text=line)
         layout.prop(arm, "harmonious_keep_shape")
+        layout.prop(arm, "harmonious_natural")
         shown = not any(is_hidden(arm, b) for b in body_bones(arm))
         layout.operator(HARMONIOUS_OT_show_bones.bl_idname, text="Hide the sticks" if shown else "Show every stick", icon="HIDE_OFF" if not shown else "HIDE_ON")
 
@@ -1791,6 +2179,11 @@ class HARMONIOUS_PT_parts(LiveLinkPanel, bpy.types.Panel):
                 continue
             grid.operator(HARMONIOUS_OT_body_part.bl_idname, text=part[1], depress=part_on(arm, part)).part = part[0]
         layout.operator(HARMONIOUS_OT_body_parts_clear.bl_idname, icon="X")
+        hands = layout.box()
+        hands.label(text="Hands: open to fist", **ic("bone", "HAND"))
+        col = hands.column(align=True)
+        col.prop(context.scene, "harmonious_curl_r", slider=True)
+        col.prop(context.scene, "harmonious_curl_l", slider=True)
 
 
 class HARMONIOUS_PT_tool(LiveLinkPanel, bpy.types.Panel):
@@ -1898,7 +2291,7 @@ _KEYMAPS = []
 
 CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_OT_pick_part, HARMONIOUS_OT_show_bones, HARMONIOUS_OT_pose, HARMONIOUS_OT_pose_reset,
            HARMONIOUS_OT_pose_save, HARMONIOUS_OT_poses_folder, HARMONIOUS_OT_hold_tool, HARMONIOUS_OT_drop_tool, HARMONIOUS_OT_send_pose, HARMONIOUS_OT_picture,
-           HARMONIOUS_OT_body_part, HARMONIOUS_OT_body_parts_clear, HARMONIOUS_OT_pose_mode, HARMONIOUS_OT_light, HARMONIOUS_OT_select_light,
+           HARMONIOUS_OT_body_part, HARMONIOUS_OT_body_parts_clear, HARMONIOUS_OT_pose_mode, HARMONIOUS_OT_light, HARMONIOUS_OT_select_light, HARMONIOUS_OT_send_ship,
            HARMONIOUS_PT_live, HARMONIOUS_PT_build, HARMONIOUS_PT_traveller, HARMONIOUS_PT_poses, HARMONIOUS_PT_parts,
            HARMONIOUS_PT_tool, HARMONIOUS_PT_share, HARMONIOUS_PT_support)
 
@@ -1925,6 +2318,13 @@ def register():
     bpy.types.Object.harmonious_keep_shape = bpy.props.BoolProperty(
         name="Keep the body's proportions", default=True, update=keep_shape_changed,
         description="Bones only turn, so arms and legs never stretch. Turn off to move and scale bones freely")
+    bpy.types.Object.harmonious_natural = bpy.props.BoolProperty(
+        name="Natural joints", default=True, update=natural_changed,
+        description="Fingers, elbows and knees only bend the way real ones do, each at its own joint. Turn off to turn them any way")
+    bpy.types.Scene.harmonious_curl_r = bpy.props.FloatProperty(name="Right hand", min=0.0, max=1.0, default=0.0, subtype="FACTOR",
+        update=curl_changed("r"), description="Open hand to fist")
+    bpy.types.Scene.harmonious_curl_l = bpy.props.FloatProperty(name="Left hand", min=0.0, max=1.0, default=0.0, subtype="FACTOR",
+        update=curl_changed("l"), description="Open hand to fist")
     bpy.types.Scene.harmonious_target_name = bpy.props.StringProperty(name="Corvette")
     if on_save not in bpy.app.handlers.save_post:
         bpy.app.handlers.save_post.append(on_save)
@@ -1959,6 +2359,9 @@ def unregister():
     del bpy.types.Scene.harmonious_target_slot
     del bpy.types.Scene.harmonious_target_name
     del bpy.types.Object.harmonious_keep_shape
+    del bpy.types.Object.harmonious_natural
+    del bpy.types.Scene.harmonious_curl_r
+    del bpy.types.Scene.harmonious_curl_l
     del bpy.types.Scene.harmonious_pose
     del bpy.types.Scene.harmonious_quality
     del bpy.types.Scene.harmonious_lighting

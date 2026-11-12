@@ -111,6 +111,38 @@ func handleExportFile(w http.ResponseWriter, r *http.Request) {
 // POST /api/live/pose?name=Pastullio (from the LiveLink add-on, a .glb of the posed traveller, textured, the pose
 // baked into the mesh) -> saved in Exports as "<name> 3D pose <date>.glb" for the Traveller page to turn and place.
 func handleLivePose(w http.ResponseWriter, r *http.Request) {
+	saveLiveGLB(w, r, " 3D pose ", "Traveller")
+}
+
+// POST /api/live/ship?name=<corvette> (the live token may do this): a corvette Blender sent in 3D, saved as
+// "<corvette> 3D ship <date>.glb" in Exports for the Traveller page (owner, 2026-11-12)
+func handleLiveShip(w http.ResponseWriter, r *http.Request) {
+	saveLiveGLB(w, r, " 3D ship ", "Corvette")
+}
+
+// GET /api/exports/ships -> the corvettes sent in 3D, newest first
+func handleExportShips(w http.ResponseWriter, r *http.Request) {
+	type ship struct {
+		Name  string `json:"name"`
+		MTime int64  `json:"mtime"`
+	}
+	out := []ship{}
+	if es, err := os.ReadDir(exportsDir()); err == nil {
+		for _, e := range es {
+			n := e.Name()
+			if e.IsDir() || strings.ToLower(filepath.Ext(n)) != ".glb" || !strings.Contains(strings.ToLower(n), " 3d ship ") {
+				continue
+			}
+			if fi, err := e.Info(); err == nil {
+				out = append(out, ship{n, fi.ModTime().UnixMilli()})
+			}
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].MTime > out[j].MTime })
+	writeJSON(w, map[string]any{"ships": out})
+}
+
+func saveLiveGLB(w http.ResponseWriter, r *http.Request, kind, fallback string) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST only", http.StatusMethodNotAllowed)
 		return
@@ -122,14 +154,14 @@ func handleLivePose(w http.ResponseWriter, r *http.Request) {
 	}
 	name := strings.TrimSpace(exportBad.ReplaceAllString(r.URL.Query().Get("name"), "_"))
 	if name == "" || strings.HasPrefix(name, ".") {
-		name = "Traveller"
+		name = fallback
 	}
 	dir := exportsDir()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	stem := name + " 3D pose " + time.Now().Format("2006-01-02 150405")
+	stem := name + kind + time.Now().Format("2006-01-02 150405")
 	p := filepath.Join(dir, stem+".glb")
 	for n := 2; fileExists(p); n++ {
 		p = filepath.Join(dir, stem+" ("+strconv.Itoa(n)+").glb")

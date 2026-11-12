@@ -1,5 +1,16 @@
 [
  {
+  "version": "2026.11.12.1639",
+  "date": "2026-11-12",
+  "notes": [
+   "Please install the LiveLink add-on again (version 1.13.0): each hand's two fingers now move one at a time, Natural joints (on by default) make fingers, elbows and knees bend the way real ones do at their own joint, and Body parts has Hands sliders from open to a fist",
+   "LiveLink: Send the corvette in 3D (Builds panel) sends a corvette's model to the Traveller page, where it turns like your traveller",
+   "Traveller page: new space backgrounds (Eclipse, Blue nebula, Violet clouds, Meteor storm, Ringed planets) beside the starfield",
+   "Traveller page: things can go past the edges of the picture (only the head showing, say) and be made bigger",
+   "Traveller page: 3D poses, ships and multi-tools are sharper, with the game's surface detail"
+  ]
+ },
+ {
   "version": "2026.11.11.1802",
   "date": "2026-11-11",
   "notes": [
