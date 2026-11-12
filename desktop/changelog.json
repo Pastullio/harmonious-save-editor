@@ -1,5 +1,15 @@
 [
  {
+  "version": "2026.11.12.2052",
+  "date": "2026-11-12",
+  "notes": [
+   "LiveLink: natural joints now follow a person's range of movement. Elbows bend forwards and knees backwards and both can twist a little; the neck, back, shoulders, hips, wrists and ankles move freely within a natural range; fingers still bend like hinges. Turn Natural joints off to move any joint any way.",
+   "Traveller page: a new loading mark (the Harmonious logo, its orbs circling the star) shows over the ship while Blender makes its 3D model or renders it.",
+   "Traveller page: a note under the picture says the page is still experimental, with a link to Discord to report problems.",
+   "Please install the LiveLink add-on again (version 1.15.0)."
+  ]
+ },
+ {
   "version": "2026.11.12.2020",
   "date": "2026-11-12",
   "notes": [

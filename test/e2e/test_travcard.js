@@ -66,6 +66,7 @@ im.save(${JSON.stringify(file)})`]);
   await p.selectOption('#tcPose', 'Pastullio pose 2026-11-10 120000.png'); await p.waitForTimeout(300);
   const px = await p.evaluate(() => { const h = TC.hits.find((x) => x.id === 'trav'), c = $('#tcCanvas'), d = c.getContext('2d').getImageData(Math.round(h.x + h.w / 2), Math.round(h.y + h.h * .5), 1, 1).data; return [...d]; });
   ok('choosing another pose picture draws it', px[2] > 150 && px[0] < 120);
+  ok('under the picture it says the page is experimental, with the Discord link to report problems', await p.evaluate(() => { const e = document.querySelector('.tc-exp'); return e && e.offsetParent && /experimental/.test(e.textContent) && e.querySelector('a').href === 'https://discord.gg/NzTHwmQpy'; }));
   // drag the words and scroll over the traveller
   const before = await p.evaluate(() => ({ ...TC.state.layers.text }));
   const box = await p.$eval('#tcCanvas', (c) => { const r = c.getBoundingClientRect(), h = TC.hits.find((x) => x.id === 'text'), k = r.width / c.width; return { x: r.left + (h.x + 20) * k, y: r.top + (h.y + 20) * k, k }; });

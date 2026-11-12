@@ -407,7 +407,19 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .tc-boxin > .link, .tc-boxin > .addon-btn { align-self: flex-start; }
 .tc-stage canvas:focus { outline: none; }
 .tc-show { margin-top: 2px; }
-.tc-stage { background: var(--well); border: 1px solid var(--line); border-radius: 8px; padding: 2px; display: flex; justify-content: center; }
+.tc-stage { background: var(--well); border: 1px solid var(--line); border-radius: 8px; padding: 2px; display: flex; justify-content: center; position: relative; }
+/* the loading mark (owner 2026-11-12): the Harmonious logo, its two orbs circling the star while the star glows */
+.hse-spin { display: inline-block; width: 28px; height: 31px; flex: none; vertical-align: middle; }
+.hse-spin svg { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 0 4px rgba(255, 190, 70, .35)); }
+.hse-spin .orbs { transform-origin: 50px 56px; animation: hseOrbit 2.4s linear infinite; }
+.hse-spin .flare { transform-origin: 50px 56px; animation: hseFlare 1.2s ease-in-out infinite alternate; }
+@keyframes hseOrbit { to { transform: rotate(360deg); } }
+@keyframes hseFlare { from { opacity: .25; transform: scale(.7); } to { opacity: 1; transform: scale(1.15); } }
+@media (prefers-reduced-motion: reduce) { .hse-spin .orbs { animation: none; } .hse-spin .flare { animation-duration: 2.4s; } }
+.tc-busy { position: absolute; display: grid; justify-items: center; align-content: center; gap: 8px; pointer-events: none; text-align: center; color: #fff; font-size: 13px; text-shadow: 0 1px 4px rgba(0, 0, 0, .8); }
+.tc-busy .hse-spin { width: 56px; height: 62px; }
+.tc-note .hse-spin { width: 20px; height: 22px; margin-right: 6px; }
+.tc-exp { margin: 0; font-size: 13px; color: var(--dim); line-height: 1.45; }
 .tc-stage canvas { max-width: 100%; max-height: calc(100vh - 186px); height: auto; border-radius: 6px; touch-action: none; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
 .tc-side { display: flex; flex-direction: column; gap: 10px; }
 .tc-box { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
@@ -2785,6 +2797,15 @@ async function makeCorvetteGlb(it, onState) {
 // Forge's materials from the angle the 3D layer is turned to. GLTEX is orthographic and looks along +Z of the glTF
 // (Y up); turned by yaw then pitch its viewer sits at (-sin y cos p, sin p, cos y cos p), which is Blender's
 // (-sin y cos p, -cos y cos p, sin p): render_cover's azimuth -yaw, elevation pitch.
+// the Harmonious logo as a loading mark: the split ring, the long four-pointed star and its two orbs, which circle it
+function hseSpinner(label) {
+  const id = 'hsg' + Math.random().toString(36).slice(2, 7);
+  return `<span class="hse-spin" role="img" aria-label="${esc(label || 'Working…')}"><svg viewBox="0 0 100 112" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1b8"/><stop offset=".45" stop-color="#f3b63a"/><stop offset="1" stop-color="#a5620e"/></linearGradient><radialGradient id="${id}f"><stop offset="0" stop-color="#fffbe6"/><stop offset=".35" stop-color="#ffd76a" stop-opacity=".8"/><stop offset="1" stop-color="#ffb43a" stop-opacity="0"/></radialGradient></defs>`
+    + `<g fill="none" stroke="url(#${id})" stroke-width="9" stroke-linecap="butt"><path d="M44 18.5 A38 38 0 0 0 44 93.5"/><path d="M56 18.5 A38 38 0 0 1 56 93.5"/></g>`
+    + `<path fill="url(#${id})" stroke="#6b3c08" stroke-width=".8" d="M50 2 L53 44 Q55 53 72 56 Q55 59 53 68 L50 110 L47 68 Q45 59 28 56 Q45 53 47 44 Z"/>`
+    + `<g class="orbs" fill="url(#${id})" stroke="#6b3c08" stroke-width=".8"><circle cx="35" cy="38" r="5.5"/><circle cx="65" cy="74" r="5.5"/></g>`
+    + `<circle class="flare" cx="50" cy="56" r="11" fill="url(#${id}f)"/></svg></span>`;
+}
 function tcAngleName(yaw, pitch) { return 'a' + Math.round(yaw) + '_' + Math.round(pitch); }
 function tcAngleLabel(name) { const m = /^a(-?\d+)_(-?\d+)$/.exec(name); return m ? `Your angle (turn ${m[1]}°, tilt ${m[2]}°)` : name; }
 async function renderShipAngle(it, yaw, pitch, onState) {
@@ -2992,7 +3013,7 @@ async function tcPatronDialog(after) {
 PAGES.traveller = (el) => {
   const st = tcLoad();
   el.innerHTML = `<div class="page-head"><div><h1>Traveller</h1><p>Make a picture of your traveller: your pose from Blender, a background, your ship, multi-tool and portal glyphs. Drag things on the picture to move them and scroll over one to make it bigger or smaller. Drag with the middle mouse button to turn a 3D pose, ship or multi-tool (Shift and the middle button moves it, as in Blender). Click one and press Delete to take it off.</p></div></div>
-    <div class="tc-wrap"><div class="tc-stagecol"><div class="tc-stage"><canvas id="tcCanvas" aria-label="Your traveller picture" tabindex="0"></canvas></div><div class="tc-selbar" id="tcSel" hidden></div></div><div class="tc-side" id="tcSide"></div></div>`;
+    <div class="tc-wrap"><div class="tc-stagecol"><div class="tc-stage"><canvas id="tcCanvas" aria-label="Your traveller picture" tabindex="0"></canvas><div class="tc-busy" id="tcBusy" hidden></div></div><div class="tc-selbar" id="tcSel" hidden></div><p class="tc-exp" data-keep>The Traveller page is an experimental feature and still being developed, so some things may not work as they should yet. If you run into a problem or have an idea, tell me on <a href="https://discord.gg/NzTHwmQpy" target="_blank" rel="noopener">Discord</a>.</p></div><div class="tc-side" id="tcSide"></div></div>`;
   const cv = $('#tcCanvas', el), side = $('#tcSide', el);
   let busy = false, again = false, bgTab = null;
   const BOX_OF = { trav: 'trav', ship: 'ship', tool: 'tool', logo: 'text', text: 'text', glyphs: 'glyphs' };
@@ -3004,7 +3025,18 @@ PAGES.traveller = (el) => {
     $('#tcRemove', b).onclick = () => removeLayer(TC.sel);
     b.querySelectorAll('[data-sb]').forEach((x) => x.onclick = () => { const id = TC.sel, a = x.dataset.sb; if (a === 'front') { st.layers[id].yaw = 0; st.layers[id].pitch = 0; } else move(id, a === 'up' ? 'forward' : 'backward'); tcSave(); wire(); redraw(); });
   };
-  const redraw = async () => { if (busy) { again = true; return; } busy = true; await tcDraw(cv, true); busy = false; selBar(); if (again) { again = false; redraw(); } };
+  // the loading mark over the ship while Blender makes its 3D model or renders it (or over the middle of the picture)
+  const busyOverlay = () => {
+    const o = $('#tcBusy', el); if (!o) return;
+    const what = TC.angleBusy ? 'Rendering this angle…' : TC.making3d && TC.making3d === st.ship ? 'Making it in 3D…' : TC.rendering && TC.rendering === st.ship ? 'Rendering the angles…' : '';
+    if (!what) { o.hidden = true; o.innerHTML = ''; return; }
+    const h = TC.hits.find((x) => x.id === 'ship'), k = cv.clientWidth / cv.width || 1;
+    const box = h ? [h.x, h.y, h.w, h.h] : [cv.width * .3, cv.height * .3, cv.width * .4, cv.height * .4];
+    Object.assign(o.style, { left: cv.offsetLeft + box[0] * k + 'px', top: cv.offsetTop + box[1] * k + 'px', width: box[2] * k + 'px', height: box[3] * k + 'px' });
+    if (o.dataset.what !== what || o.hidden) { o.innerHTML = hseSpinner(what) + `<span>${what}</span>`; o.dataset.what = what; }
+    o.hidden = false;
+  };
+  const redraw = async () => { if (busy) { again = true; return; } busy = true; await tcDraw(cv, true); busy = false; selBar(); busyOverlay(); if (again) { again = false; redraw(); } };
   const move = (id, how) => {
     const o = st.order.filter((k) => k !== id), i = st.order.indexOf(id);
     if (how === 'front') o.push(id); else if (how === 'back') o.unshift(id);
@@ -3039,10 +3071,10 @@ PAGES.traveller = (el) => {
     const shipIn = `<select id="tcShip"><option value="">No ship</option>${TC.imp.ship ? '<option value="@imp" selected>Your image</option>' : ''}${ships.map((x) => `<option value="${esc(x.key)}"${x.key === st.ship && !TC.imp.ship ? ' selected' : ''}>${esc(x.name)} (${esc(x.type.toLowerCase())})</option>`).join('')}</select>
       ${st.ship && !TC.imp.ship && tcShipModes().length > 1 ? `<div class="seg tc-show">${tcShipModes().map((m) => `<button type="button" data-show="${m}" aria-pressed="${tcShipMode() === m}">${{ '3d': '3D model', renders: 'Renders', pic: 'Your picture' }[m]}</button>`).join('')}</div>` : ''}
       ${tcIs3d('ship') ? turnHtml('ship') : ''}
-      ${APP && isCorv && !TC.imp.ship && TC.shipGlb && tcShipMode() === '3d' ? `<div class="tc-renderangle"><button class="btn small primary" type="button" id="tcRenderAngle"${TC.angleBusy ? ' disabled' : ''} title="Blender renders the corvette from this angle with all its textures and colours">Render this angle</button><p class="tc-note" id="tcAngleNote" data-keep>${TC.angleBusy ? 'Blender is rendering it with its textures. It can take a minute or two; it takes this spot on the picture when it is done.' : 'Turn it to the angle you want, then render it with all its textures and colours.'}</p></div>` : ''}
+      ${APP && isCorv && !TC.imp.ship && TC.shipGlb && tcShipMode() === '3d' ? `<div class="tc-renderangle"><button class="btn small primary" type="button" id="tcRenderAngle"${TC.angleBusy ? ' disabled' : ''} title="Blender renders the corvette from this angle with all its textures and colours">Render this angle</button><p class="tc-note" id="tcAngleNote" data-keep>${TC.angleBusy ? hseSpinner() + 'Blender is rendering it with its textures. It can take a minute or two; it takes this spot on the picture when it is done.' : 'Turn it to the angle you want, then render it with all its textures and colours.'}</p></div>` : ''}
       ${isCorv && !TC.imp.ship && TC.shipViews.length > 1 && tcShipMode() === 'renders' ? `<label class="field"><span>Angle</span><select id="tcView">${TC.shipViews.map(([v, l]) => `<option value="${v}"${v === (st.shipView || TC.shipViews[0][0]) ? ' selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
-      ${isCorv && !TC.imp.ship && !TC.shipGlb ? `<p class="tc-note" id="tc3dNote" data-keep>${TC.making3d === st.ship ? 'Making it in 3D in the background (Blender works out of sight). It takes a minute or two; then it turns like your traveller.' : TC.no3d ? 'To turn a corvette, the editor needs Blender and Charon Forge on this PC (set them in the Garage\'s Cover settings). It runs them for you, out of sight.' : ''}</p>` : ''}
-      ${APP && isCorv && !TC.imp.ship && TC.shipViews.filter(([v]) => !/^a-?\d/.test(v)).length < COVER_VIEWS.length && tcShipMode() !== 'pic' && tcShipMode() !== '3d' ? `<p class="tc-note" id="tcRenderNote" data-keep>${TC.rendering === st.ship ? 'Blender is drawing the front, side, back and top. It can take a few minutes; the angles show here when they are ready.' : ''}</p><button class="btn small" type="button" id="tcRenderViews"${TC.rendering === st.ship ? ' disabled' : ''} title="Blender renders the corvette from the front, side, back and top (needs Blender and Charon Forge)">Render the angles</button>` : ''}
+      ${isCorv && !TC.imp.ship && !TC.shipGlb ? `<p class="tc-note" id="tc3dNote" data-keep>${TC.making3d === st.ship ? hseSpinner() + 'Making it in 3D in the background (Blender works out of sight). It takes a minute or two; then it turns like your traveller.' : TC.no3d ? 'To turn a corvette, the editor needs Blender and Charon Forge on this PC (set them in the Garage\'s Cover settings). It runs them for you, out of sight.' : ''}</p>` : ''}
+      ${APP && isCorv && !TC.imp.ship && TC.shipViews.filter(([v]) => !/^a-?\d/.test(v)).length < COVER_VIEWS.length && tcShipMode() !== 'pic' && tcShipMode() !== '3d' ? `<p class="tc-note" id="tcRenderNote" data-keep>${TC.rendering === st.ship ? hseSpinner() + 'Blender is drawing the front, side, back and top. It can take a few minutes; the angles show here when they are ready.' : ''}</p><button class="btn small" type="button" id="tcRenderViews"${TC.rendering === st.ship ? ' disabled' : ''} title="Blender renders the corvette from the front, side, back and top (needs Blender and Charon Forge)">Render the angles</button>` : ''}
       ${st.ship || TC.imp.ship ? placeHtml('ship') + cutHtml('ship') : ''}${objActs('ship', { imp: true, has: !!(st.ship || TC.imp.ship) })}`;
     const toolIn = `<select id="tcTool"><option value="">No multi-tool</option>${tools.map((x) => `<option value="${esc(x.key)}"${x.key === st.tool ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
       ${st.tool && !tcIs3d('tool') ? '<p class="dim small-print" data-keep>Its model needs the game files (the item library); without them it can\'t be drawn.</p>' : ''}${tcIs3d('tool') ? turnHtml('tool') : ''}${st.tool ? placeHtml('tool') : ''}${objActs('tool', { has: !!st.tool })}`;
@@ -3090,6 +3122,7 @@ PAGES.traveller = (el) => {
   };
   const wire = () => {
     side.innerHTML = sideHtml();
+    busyOverlay();
     side.querySelectorAll('details.tc-box').forEach((d) => d.addEventListener('toggle', () => { st.open[d.dataset.box] = d.open; tcSave(); }));
     side.querySelectorAll('.tc-turn input').forEach((inp) => inp.oninput = () => { const k = inp.closest('.tc-turn').dataset.turn; st.layers[k][inp.dataset.ax] = +inp.value; TC.sel = k; tcSave(); redraw(); });
     side.querySelectorAll('[data-front]').forEach((b) => b.onclick = () => { const l = st.layers[b.dataset.front]; l.yaw = 0; l.pitch = 0; tcSave(); wire(); redraw(); });
@@ -3118,7 +3151,7 @@ PAGES.traveller = (el) => {
       const setup = await renderSetup().catch(() => null);
       if (!setup || !setup.ready) { toast("Renders need Blender and Charon Forge. Set them up in the Garage's Cover settings.", true); return; }
       TC.rendering = key; wire();
-      const note = (t) => { const n = $('#tcRenderNote'); if (n) n.textContent = t; };
+      const note = (t) => { const n = $('#tcRenderNote'); if (n) n.innerHTML = hseSpinner() + esc(t); };
       const busyNote = 'Blender is drawing the front, side, back and top. It can take a few minutes; the angles show here when they are ready.';
       try {
         const p = await buildPayload(it);
@@ -3142,7 +3175,7 @@ PAGES.traveller = (el) => {
       const setup = await renderSetup().catch(() => null);
       if (!setup || !setup.ready) { toast("Rendering needs Blender and Charon Forge. Set them up in the Garage's Cover settings.", true); return; }
       TC.angleBusy = true; wire();
-      const note = (t) => { const n = $('#tcAngleNote'); if (n) n.textContent = t; };
+      const note = (t) => { const n = $('#tcAngleNote'); if (n) n.innerHTML = hseSpinner() + esc(t); };
       try {
         const { name, img } = await renderShipAngle(it, l.yaw || 0, l.pitch || 0, (s2) => note(s2 === 'queued' ? 'Waiting for Blender…' : 'Blender is rendering it with its textures. It can take a minute or two; it takes this spot on the picture when it is done.'));
         if (TC.shipKey === key) {

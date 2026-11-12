@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 14, 0),
+    "version": (1, 15, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -834,19 +834,125 @@ def hinge_axes(arm):
     return out
 
 
+# Every other joint turns as far as a real one does (owner 2026-11-12: with elbows and knees locked to one axis the
+# limbs were too stiff): a Limit Rotation constraint per bone, in the bone's own space. The traveller's bones lie
+# along their local X, so X is the twist; the bend ("flex") axis is the one nearest the line across the body (or across
+# the hand for the wrist), the last one is side to side. Degrees: (flex, side, twist); a flex range is turned round
+# when the bone bends the other way, so it always bends forwards (back for knees). None leaves an axis free.
+NATURAL = "Harmonious natural"
+JOINT_LIMITS = (
+    (r"spine_0[12]|spine_Top", (-15, 30), (-15, 15), (-20, 20), "fwd"),
+    (r"neck_01_0[12]", (-30, 40), (-25, 25), (-45, 45), "fwd"),
+    (r"head_Top", (-15, 15), (-10, 10), (-15, 15), None),
+    (r"[lr]_arm_Clavicle", (-20, 20), (-25, 25), (-10, 10), None),
+    (r"[lr]_arm_Shoulder", None, None, (-90, 90), None),
+    (r"[lr]_arm_Elbow", (0, 150), (-5, 5), (-85, 85), "fwd"),
+    (r"[lr]_arm_Wrist", (-75, 75), (-30, 30), (-15, 15), None),
+    (r"[lr]_leg_Hip", (-30, 120), (-45, 45), (-45, 45), "fwd"),
+    (r"[lr]_leg_Knee", (0, 150), (-5, 5), (-25, 25), "back"),
+    (r"[lr]_leg_Ankle", (-45, 45), (-30, 30), (-20, 20), None),
+    (r"[lr]_leg_Ball", (-40, 40), (-5, 5), (-5, 5), None),
+    (r"[lr]_hand_05_0[123]", (-60, 60), (-30, 30), (-20, 20), None),
+)
+
+
+def joint_limits(arm):
+    """{bone: ((lo, hi) per local axis X, Y, Z in radians or None)} for the joints in JOINT_LIMITS."""
+    import math
+    import re
+    import mathutils
+    try:
+        fwd, left, up = body_frame(arm)
+    except Exception:
+        return {}
+    W3 = arm.matrix_world.to_3x3()
+    out = {}
+    for b in arm.data.bones:
+        name = b.name.rsplit(":", 1)[-1]
+        spec = next((j for j in JOINT_LIMITS if re.fullmatch(j[0], name)), None)
+        if spec is None:
+            continue
+        _, flex, side, twist, toward = spec
+        R = W3 @ b.matrix_local.to_3x3()
+        axes = [R.col[i].normalized() for i in range(3)]
+        along = axes[0]
+        if name.endswith("Wrist"):
+            L = arm.get("harmonious_finger_axis_%s" % name[0])
+            across = mathutils.Vector(L) if L else left
+        else:
+            across = along.cross(fwd)
+            if across.length < 0.3:   # a bone along the forward line (the foot): its bend is across the body
+                across = left.copy()
+        across.normalize()
+        fi = max((1, 2), key=lambda i: abs(axes[i].dot(across)))
+        si = 3 - fi
+        if flex is not None and toward is not None:
+            # the limb's line, from this joint to the next one (on the right side the bones' X points back up the
+            # limb, and a Blender bone's tail lies along its Y, not the limb)
+            kid = next((c for c in b.children if (c.head_local - b.head_local).length > 1e-4), None)
+            line = ((arm.matrix_world @ kid.head_local) - (arm.matrix_world @ b.head_local)) if kid else along
+            want = fwd if toward == "fwd" else -fwd
+            turned = mathutils.Matrix.Rotation(0.5, 3, axes[fi]) @ line
+            if (turned - line).dot(want) < 0:
+                flex = (-flex[1], -flex[0])
+        lim = [None, None, None]
+        for i, r in ((0, twist), (fi, flex), (si, side)):
+            if r is not None:
+                lim[i] = (math.radians(r[0]), math.radians(r[1]))
+        out[b.name] = lim
+    return out
+
+
+def natural_mute(arm, mute):
+    """Poses are worked out with the limits off; apply_natural puts them back."""
+    for pb in arm.pose.bones:
+        c = pb.constraints.get(NATURAL)
+        if c is not None:
+            c.mute = mute
+
+
 def apply_natural(arm):
-    """Natural joints on: hinge bones turn round one axis only (Euler, the other two locked). Off: free again."""
+    """Natural joints on: fingers bend round one axis only (Euler, the other two locked), every other joint turns
+    within a person's range (JOINT_LIMITS). Off: free again."""
     on = bool(getattr(arm, "harmonious_natural", True))
     W3i = arm.matrix_world.inverted().to_3x3()
-    hinges = hinge_axes(arm) if on else {}
+    hinges = {n: a for n, a in hinge_axes(arm).items() if "_hand_03" in n} if on else {}
+    limits = joint_limits(arm) if on else {}
     for pb in arm.pose.bones:
+        c = pb.constraints.get(NATURAL)
+        lim = limits.get(pb.name)
+        if lim is None:
+            if c is not None:
+                pb.constraints.remove(c)
+        else:
+            if c is None:
+                c = pb.constraints.new("LIMIT_ROTATION")
+                c.name = NATURAL
+            c.owner_space = "LOCAL"
+            c.mute = False
+            if hasattr(c, "euler_order"):
+                c.euler_order = "XYZ"
+            if hasattr(c, "use_legacy_behavior"):
+                c.use_legacy_behavior = False
+            c.use_transform_limit = True
+            for k, r in zip("xyz", lim):
+                setattr(c, "use_limit_" + k, r is not None)
+                if r is not None:
+                    setattr(c, "min_" + k, r[0])
+                    setattr(c, "max_" + k, r[1])
+            if pb.rotation_mode != "XYZ":
+                pb.rotation_mode = "XYZ"   # converts the rotation; R then stops at the limits too
         a = hinges.get(pb.name)
         if a is None:
             if "harmonious_hinge" in pb:
                 pb.lock_rotation = (False, False, False)
-                if pb.rotation_mode != "QUATERNION":
-                    pb.rotation_mode = "QUATERNION"
                 del pb["harmonious_hinge"]
+            if lim is None and pb.rotation_mode != "QUATERNION" and (not on or "harmonious_limited" in pb):
+                pb.rotation_mode = "QUATERNION"
+            if lim is None and "harmonious_limited" in pb:
+                del pb["harmonious_limited"]
+            elif lim is not None:
+                pb["harmonious_limited"] = 1
             continue
         local = pb.bone.matrix_local.to_3x3().transposed() @ (W3i @ a)
         local.normalize()
@@ -1415,19 +1521,26 @@ def apply_ready_pose(arm, name):
             pb.matrix = Wi @ new
             bpy.context.view_layer.update()
     if contacts:
-        rest = {n: (W @ arm.data.bones[n].head_local).z for n in FEET if arm.data.bones.get(n)}
-        want = {n: rest[n] for n in rest} if contacts == "feet" else contacts
-        drop = min((W @ bones[n].head).z - h for n, h in want.items() if bones.get(n) is not None)
-        root = bones.get("ROOT")
-        if root is not None and abs(drop) > 1e-4:
-            m = W @ root.matrix
-            root.matrix = Wi @ (mathutils.Matrix.Translation((0, 0, -drop)) @ m)
-            bpy.context.view_layer.update()
+        touch_down(arm, contacts)
     for pb in bones:   # bones only turn (the body keeps its proportions)
         if not free_bone(pb):
             pb.location = (0, 0, 0)
         pb.scale = (1, 1, 1)
     return True
+
+
+def touch_down(arm, contacts):
+    """Lower (or raise) the whole traveller so the pose's ground contacts touch the floor."""
+    import mathutils
+    W, Wi, bones = arm.matrix_world, arm.matrix_world.inverted(), arm.pose.bones
+    rest = {n: (W @ arm.data.bones[n].head_local).z for n in FEET if arm.data.bones.get(n)}
+    want = {n: rest[n] for n in rest} if contacts == "feet" else contacts
+    drop = min(((W @ bones[n].head).z - h for n, h in want.items() if bones.get(n) is not None), default=0)
+    root = bones.get("ROOT")
+    if root is not None and abs(drop) > 1e-4:
+        m = W @ root.matrix
+        root.matrix = Wi @ (mathutils.Matrix.Translation((0, 0, -drop)) @ m)
+        bpy.context.view_layer.update()
 
 
 def pose_data(arm):
@@ -1459,11 +1572,27 @@ def apply_pose_data(arm, data):
 
 
 def pose_traveller(context, key):
+    """Puts the pose on with the joint limits off, then turns them on again (also when the pose can't be read)."""
+    arm = find_traveller()
+    try:
+        return _pose_traveller(context, key)
+    finally:
+        if arm is not None:
+            apply_natural(arm)
+            bpy.context.view_layer.update()
+            # the limits can move a leg a little: the feet touch the floor again
+            spec = next((p for p in POSES if "ready:" + p[0] == key), None)
+            if spec is not None and spec[3]:
+                touch_down(arm, spec[3])
+
+
+def _pose_traveller(context, key):
     arm = find_traveller()
     if arm is None:
         return "Import your traveller first"
     for pb in arm.pose.bones:
         pb.rotation_mode = "QUATERNION"
+    natural_mute(arm, True)
     kind, _, name = key.partition(":")
     if kind == "ready":
         if not apply_ready_pose(arm, name):
@@ -2369,7 +2498,7 @@ def register():
         description="Bones only turn, so arms and legs never stretch. Turn off to move and scale bones freely")
     bpy.types.Object.harmonious_natural = bpy.props.BoolProperty(
         name="Natural joints", default=True, update=natural_changed,
-        description="Fingers, elbows and knees only bend the way real ones do, each at its own joint. Turn off to turn them any way")
+        description="Every joint turns as far as a person's can: elbows and knees bend one way and twist a little, fingers bend like hinges, the neck, back, wrists and ankles stay in reach. Turn off to turn them any way")
     bpy.types.Scene.harmonious_curl_r = bpy.props.FloatProperty(name="Right hand", min=0.0, max=1.0, default=0.0, subtype="FACTOR",
         update=curl_changed("r"), description="Open hand to fist")
     bpy.types.Scene.harmonious_curl_l = bpy.props.FloatProperty(name="Left hand", min=0.0, max=1.0, default=0.0, subtype="FACTOR",

@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.12.2020",
+  "version": "2026.11.12.2052",
   "date": "2026-11-12",
-  "size": 14673920,
-  "sha256": "7027c8ff5eea1b42098a65b465ec2d9d2fcd31b4de499be1122335a594ac81e6",
-  "notes": "Traveller page: Render this angle. Turn your corvette's 3D model to the angle you like, press Render this angle, and Blender renders it from exactly that angle with all its textures and colours, in the same spot on the picture. Rendered angles stay in the Angle list.\nTraveller page: the corvette's 3D model is lighter and faster to turn, shows its real surface pictures, and no longer has white sheets where the game has see-through panels.",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.12.2020/HarmoniousSaveEditor.exe",
+  "size": 14684672,
+  "sha256": "4b5b406d06f4c0912139207693ea64209bbe2f17093c499a34b509d15562bc81",
+  "notes": "LiveLink: natural joints now follow a person's range of movement. Elbows bend forwards and knees backwards and both can twist a little; the neck, back, shoulders, hips, wrists and ankles move freely within a natural range; fingers still bend like hinges. Turn Natural joints off to move any joint any way.\nTraveller page: a new loading mark (the Harmonious logo, its orbs circling the star) shows over the ship while Blender makes its 3D model or renders it.\nTraveller page: a note under the picture says the page is still experimental, with a link to Discord to report problems.\nPlease install the LiveLink add-on again (version 1.15.0).",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.12.2052/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

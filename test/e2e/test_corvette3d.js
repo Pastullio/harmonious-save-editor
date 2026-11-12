@@ -25,6 +25,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.selectOption('#tcShip', corv.key);
   await p.waitForFunction(() => /Making it in 3D/.test((document.querySelector('#tc3dNote') || {}).textContent || ''), null, { timeout: 30000 }).catch(() => {});
   ok('picking the corvette starts making it in 3D, and says so', /Making it in 3D/.test(await p.evaluate(() => (document.querySelector('#tc3dNote') || {}).textContent || '')));
+  ok('…with the Harmonious loading mark over the ship and in the note', await p.evaluate(() => { const o = document.querySelector('#tcBusy'); return o && !o.hidden && !!o.querySelector('.hse-spin svg .orbs') && /Making it in 3D/.test(o.textContent) && !!document.querySelector('#tc3dNote .hse-spin'); }));
   const t0 = Date.now();
   await p.waitForFunction(() => TC.shipGlb && tcShipMode() === '3d', null, { timeout: 600000, polling: 1000 }).catch(() => {});
   console.log('made in', Math.round((Date.now() - t0) / 1000), 's');
@@ -45,6 +46,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   ok('a 3D corvette offers Render this angle', await p.isVisible('#tcRenderAngle'));
   await p.click('#tcRenderAngle');
   await p.waitForFunction(() => tcShipMode() === 'renders' && TC.state.shipView === 'a60_25', null, { timeout: 600000, polling: 1000 }).catch(() => {});
+  ok('…and the loading mark goes away when it is done', await p.evaluate(() => document.querySelector('#tcBusy').hidden));
   ok('…which renders it and shows the picture in its place', await p.evaluate(() => tcShipMode() === 'renders' && TC.state.shipView === 'a60_25' && !!TC.img.ship));
   ok('…kept with the covers', fs.readdirSync(path.join(cfg, 'HarmoniousSaveEditor', 'covers')).some((f) => /^[0-9a-f]+-a60_25\.png$/.test(f)));
   // the render matches the preview's outline (Blender's camera from the same side and height)

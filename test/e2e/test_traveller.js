@@ -217,6 +217,24 @@ wrist = arm.matrix_world @ arm.pose.bones['r_arm_Wrist'].head
 f0 = (b0 - wrist).length; c1 = tips('r_hand_03b_03'); f1 = (c1 - wrist).length
 bpy.context.scene.harmonious_curl_r = 0.0
 arm.harmonious_natural = False; unlocked = all(sum(arm.pose.bones[n].lock_rotation) == 0 for n in hinges); arm.harmonious_natural = True
+# the other joints turn as far as a person's: elbows bend forwards (not back) and the forearm twists; knees bend back
+h.clear_pose(arm); bpy.context.view_layer.update()
+def wpos(n): return arm.matrix_world @ arm.pose.bones[n].head
+fwd = h.body_frame(arm)[0]
+limited = [pb.name for pb in arm.pose.bones if pb.constraints.get(h.NATURAL)]
+def bend(joint, end, deg):
+    pb = arm.pose.bones[joint]; c = pb.constraints[h.NATURAL]
+    fi = next(i for i, k in enumerate('xyz') if getattr(c, 'use_limit_' + k) and min(abs(getattr(c, 'min_' + k)), abs(getattr(c, 'max_' + k))) < 1e-4)
+    allowed = 1 if getattr(c, 'max_' + 'xyz'[fi]) > 1e-3 else -1
+    p0 = wpos(end); e = [0, 0, 0]; e[fi] = allowed * math.radians(deg); pb.rotation_euler = e; bpy.context.view_layer.update(); p1 = wpos(end)
+    e[fi] = -allowed * math.radians(deg); pb.rotation_euler = e; bpy.context.view_layer.update(); p2 = wpos(end)
+    pb.rotation_euler = (0, 0, 0); bpy.context.view_layer.update()
+    return (p1 - p0).dot(fwd), (p2 - p0).length
+el_fwd, el_back = bend('r_arm_Elbow', 'r_arm_Wrist', 80); el2 = bend('l_arm_Elbow', 'l_arm_Wrist', 80); el_fwd, el_back = min(el_fwd, el2[0]), max(el_back, el2[1])
+kn_fwd, kn_back = bend('l_leg_Knee', 'l_leg_Ankle', 80); kn2 = bend('r_leg_Knee', 'r_leg_Ankle', 80); kn_fwd, kn_back = max(kn_fwd, kn2[0]), max(kn_back, kn2[1])
+pb = arm.pose.bones['r_arm_Elbow']; t0 = wpos('r_hand_05_01'); pb.rotation_euler = (math.radians(60), 0, 0); bpy.context.view_layer.update(); twist = (wpos('r_hand_05_01') - t0).length; pb.rotation_euler = (0, 0, 0)
+arm.harmonious_natural = False; freed = not any(pb.constraints.get(h.NATURAL) for pb in arm.pose.bones); arm.harmonious_natural = True
+print('LIMITS', len(limited), round(el_fwd, 3), round(el_back, 3), round(kn_fwd, 3), round(kn_back, 3), round(twist, 3), freed)
 # no piece of a finger is shared by both fingers (it would stretch when one finger moves)
 import collections
 mixed = 0
@@ -285,7 +303,7 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
     try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 600000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
-    console.log(out.split('\n').filter((l) => /^(GAP|WORST|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|FINGERS|SHIP|Traceback|  File|\w+Error)/.test(l)).join('\n'));
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|LIMITS|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|FINGERS|SHIP|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
@@ -327,7 +345,13 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     ok('Pose the traveller / Done posing switch between Pose and Object mode (' + md.join(' ') + ')', md[1] !== md[0] && md[2] === md[0] && md.includes('POSE') && md.includes('OBJECT'));
     const fg = line('FINGERS').split(' ');
     ok('each hand\'s second finger has joints of its own (' + fg.join(' ') + ')', fg[0] === '6');
-    ok('…fingers, elbows and knees bend one way only, like real ones', +fg[1] >= 16 && fg[2] === 'True');
+    ok('…fingers bend one way only, like real ones', +fg[1] >= 12 && fg[2] === 'True');
+    const lm = line('LIMITS').split(' ');
+    ok('the other joints turn as far as a person\'s (' + lm.join(' ') + ')', +lm[0] >= 20);
+    ok('…an elbow bends forwards but not backwards', +lm[1] > .05 && +lm[2] < .02);
+    ok('…a knee bends backwards but not forwards', +lm[3] < -.05 && +lm[4] < .02);
+    ok('…the forearm twists', +lm[5] > .005);
+    ok('…and Natural joints off frees them', lm[6] === 'True');
     ok('…turning one finger leaves the other where it was', fg[3] === 'True');
     ok('…the hand slider curls the fingers in towards the palm (a fist)', +fg[5] < +fg[4] - .01);
     ok('…and Natural joints off frees them again', fg[6] === 'True');
