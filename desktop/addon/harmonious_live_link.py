@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 17, 0),
+    "version": (1, 18, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -2789,44 +2789,59 @@ def add_blend(context, path):
         holder.objects.link(o)
     for x in got:
         bpy.data.scenes.remove(x)
-    # what was hidden or left out there stays so here (Charon Forge keeps its part library out of the view)
-    for lc_coll, was_off in off.items():
-        if was_off:
-            stack = [context.view_layer.layer_collection]
-            while stack:
-                lc = stack.pop()
-                if lc.collection == lc_coll:
-                    lc.exclude = True
-                    break
-                stack.extend(lc.children)
-    shown = {c for c, o in _layer_tree(context.view_layer.layer_collection, {}).items() if not o}
-    objs = [o for o in holder.all_objects if any(c in shown or c == holder for c in o.users_collection)]
     # cameras, lights and travellers of that file would change this picture
-    for o in list(objs):
+    for o in list(holder.all_objects):
         if o.type in ("CAMERA", "LIGHT") or o.get("harmonious_traveller") or (o.parent is not None and o.parent.get("harmonious_traveller")):
             for c in list(o.users_collection):
                 c.objects.unlink(o)
-            objs.remove(o)
+    # The build shows through one empty that instances it (owner 2026-11-13: parenting every part to an empty drew a
+    # dotted relationship line from each of its hundreds of parts). Everything that came in sits in "<name> parts",
+    # left out of the view; what showed in that file is gathered in "<name> model", which the empty draws. What was
+    # hidden or left out there (Charon Forge's part library) stays out of the model.
+    hidden = lambda c: off.get(c, False) or c.hide_viewport
+    parts = bpy.data.collections.new(name + " parts")
+    model = bpy.data.collections.new(name + " model")
+    for c in list(holder.children):
+        holder.children.unlink(c)
+        parts.children.link(c)
+        if not hidden(c):
+            model.children.link(c)
+    stack = [c for c in model.children]
+    while stack:
+        c = stack.pop()
+        for cc in list(c.children):
+            if hidden(cc):
+                c.children.unlink(cc)
+                if cc.name not in parts.children:
+                    parts.children.link(cc)
+            else:
+                stack.append(cc)
+    for o in list(holder.objects):
+        holder.objects.unlink(o)
+        model.objects.link(o)
+    parts.children.link(model)
+    holder.children.link(parts)
+    objs = list(model.all_objects)
     context.view_layer.update()
     # placed by what shows in the picture (hidden helpers can lie far off)
     box = _bounds([o for o in objs if not o.hide_get() and not o.hide_viewport and not o.hide_render]) or _bounds(objs)
+    for lc in context.view_layer.layer_collection.children:
+        if lc.collection == holder:
+            for x in lc.children:
+                if x.collection == parts:
+                    x.exclude = True
     empty = bpy.data.objects.new(name + " (move me)", None)
+    empty.instance_type = "COLLECTION"
+    empty.instance_collection = model
     empty.empty_display_type = "ARROWS"
     holder.objects.link(empty)
-    if box is not None:
-        lo, hi = box
-        centre = (lo + hi) / 2
-        empty.location = (centre.x, centre.y, lo.z)
-        empty.empty_display_size = max(1.0, (hi - lo).length * 0.1)
-    context.view_layer.update()
-    for o in objs:
-        if o.parent is None:
-            o.parent = empty
-            o.matrix_parent_inverse = empty.matrix_world.inverted()
     # behind the traveller, its keel on the floor
     arm = find_traveller()
     if box is not None:
         lo, hi = box
+        centre = (lo + hi) / 2
+        model.instance_offset = (centre.x, centre.y, lo.z)
+        empty.empty_display_size = max(1.0, (hi - lo).length * 0.1)
         size = max((hi - lo).x, (hi - lo).y)
         if arm is not None:
             fwd, left, up = body_frame(arm)
@@ -2908,8 +2923,10 @@ class HARMONIOUS_OT_backdrop(bpy.types.Operator):
         for o in list(holder.all_objects):
             if all(c in colls for c in o.users_collection):
                 bpy.data.objects.remove(o, do_unlink=True)
-        for c in reversed(colls):
-            if c.name in bpy.data.collections:
+        names = list(dict.fromkeys(c.name for c in colls))   # a collection can sit under two parents (the model)
+        for n in reversed(names):
+            c = bpy.data.collections.get(n)
+            if c is not None:
                 bpy.data.collections.remove(c)
         bpy.data.orphans_purge(do_recursive=True) if hasattr(bpy.data, "orphans_purge") else None
         return {"FINISHED"}

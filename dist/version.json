@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.13.1735",
+  "version": "2026.11.13.1829",
   "date": "2026-11-13",
-  "size": 14755328,
-  "sha256": "2a35b49a609399887fa2ed586975e3e17c75e9cce2ff2ef7bd1fdd7ea829bd49",
-  "notes": "Please install the LiveLink add-on again (version 1.17.0).\nLiveLink: put one of your corvettes behind your traveller. Lighting & Rendering has a Backdrop list of your corvettes' .blend files (or Choose a .blend file…); the whole build comes in textured, on the floor behind your traveller, with an empty to move, turn and scale it.",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.1735/HarmoniousSaveEditor.exe",
+  "size": 14756864,
+  "sha256": "09deddeface3256f04e518dd7fa4ff4fbe0e6d8e8844cb2e5e903c0ed8e96198",
+  "notes": "Please install the LiveLink add-on again (version 1.18.0).\nLiveLink: a corvette added as a backdrop no longer draws a dotted line from every part; it shows through one empty you move, turn and scale. Remove it and add it again to get the tidy version.",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.1829/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

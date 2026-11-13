@@ -302,12 +302,13 @@ bd = h.backdrops()
 got = bd[0] if bd else None
 hulls = [o for o in got.all_objects if o.name.startswith('ship hull')] if got else []
 lamps = [o for o in got.all_objects if o.type == 'LIGHT'] if got else []
-lcs = {}
-def lwalk(lc):
-    for c in lc.children: lcs[c.collection.name.split('.')[0]] = c.exclude; lwalk(c)
-lwalk(bpy.context.view_layer.layer_collection)
+inst = next((o for o in got.objects if o.instance_type == 'COLLECTION'), None) if got else None
+shown = [o.name.split('.')[0] for o in inst.instance_collection.all_objects] if inst else []
+# the build shows through one instancing empty (no dotted line from each part), the left-out library isn't in it
+left_out = 'ship hull' in shown and 'spare part' not in shown and not any(o.parent is not None for o in got.all_objects if o.name.startswith('ship hull'))
+lcs = {'part library': left_out}
 fwd = h.body_frame(arm)[0]
-behind = hulls and (hulls[0].matrix_world.translation - aw.translation).dot(fwd) < -5
+behind = inst is not None and (inst.matrix_world.translation - aw.translation).dot(fwd) < -5
 mover = bpy.context.view_layer.objects.active; mover = mover is not None and mover.name.endswith('(move me)')
 rr = bpy.ops.harmonious.backdrop(name=got.name, action='REMOVE') if got else None
 gone = not h.backdrops() and not any(o.name.startswith(('ship hull', 'spare part')) for o in bpy.data.objects)

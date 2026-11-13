@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.13.1829",
+  "date": "2026-11-13",
+  "notes": [
+   "Please install the LiveLink add-on again (version 1.18.0).",
+   "LiveLink: a corvette added as a backdrop no longer draws a dotted line from every part; it shows through one empty you move, turn and scale. Remove it and add it again to get the tidy version."
+  ]
+ },
+ {
   "version": "2026.11.13.1735",
   "date": "2026-11-13",
   "notes": [
