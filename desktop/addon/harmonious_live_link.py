@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 20, 0),
+    "version": (1, 21, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -2051,6 +2051,7 @@ def build_glb(context):
     if arm is not None:
         skip.update(traveller_meshes(arm))
         skip.update(held_tools(arm))
+    skip.update(o for o in bpy.data.objects if o.get(PREVIEW_TAG))
     coll = bpy.data.collections.new("_harmonious_ship_export")
     context.scene.collection.children.link(coll)
     made = []
@@ -3232,9 +3233,25 @@ def write_stl(path, mesh, scale, shift):
     return nt
 
 
+PREVIEW_TAG = "harmonious_print_preview"
+PREVIEW_NAME = "Print preview"
+
+
 def print_traveller(context, arm, height_mm, base, base_mm, detail, keep):
     """Make the posed traveller printable and write it; returns (file, triangles, size in mm (w, d, h))."""
-    import datetime
+    solid, scale, H = make_print_mesh(context, arm, height_mm, base, base_mm, detail)
+    return _print_out(context, arm, solid, scale, H, height_mm, keep)
+
+
+def print_size_mm(mesh, scale):
+    xs = [v.co.x for v in mesh.vertices]
+    ys = [v.co.y for v in mesh.vertices]
+    zs = [v.co.z for v in mesh.vertices]
+    return tuple((max(a) - min(a)) * scale * 1000 for a in (xs, ys, zs))
+
+
+def make_print_mesh(context, arm, height_mm, base, base_mm, detail):
+    """The printable solid (a new mesh in the traveller's own size), the print scale and the figure's model height."""
     import bmesh
     import mathutils
     dg = context.evaluated_depsgraph_get()
@@ -3270,7 +3287,7 @@ def print_traveller(context, arm, height_mm, base, base_mm, detail, keep):
     context.scene.collection.objects.link(ob)
     try:
         if detail == "ORIGINAL":   # the game's own triangles, left for the slicer to fuse
-            return _print_out(context, arm, me.copy(), scale, H, height_mm, keep)
+            return me.copy(), scale, H
         sol = ob.modifiers.new("Wall", "SOLIDIFY")
         sol.thickness = to_model(PRINT_WALL_MM)
         sol.offset = 0.0
@@ -3283,7 +3300,7 @@ def print_traveller(context, arm, height_mm, base, base_mm, detail, keep):
         context.view_layer.update()
         dg = context.evaluated_depsgraph_get()
         solid = bpy.data.meshes.new_from_object(ob.evaluated_get(dg), preserve_all_data_layers=False, depsgraph=dg)
-        return _print_out(context, arm, solid, scale, H, height_mm, keep)
+        return solid, scale, H
     finally:
         bpy.data.objects.remove(ob, do_unlink=True)
         bpy.data.meshes.remove(me)
@@ -3305,20 +3322,91 @@ def _print_out(context, arm, solid, scale, H, height_mm, keep):
     ys = [v.co.y for v in solid.vertices]
     size = ((max(xs) - min(xs)) * scale * 1000, (max(ys) - min(ys)) * scale * 1000, (max(zs) - min(zs)) * scale * 1000)
     if keep:
-        # a copy to look over, beside the traveller, at the traveller's size
-        old = bpy.data.objects.get("Miniature to check")
-        if old is not None:
-            data = old.data
-            bpy.data.objects.remove(old, do_unlink=True)
-            if data.users == 0:
-                bpy.data.meshes.remove(data)
-        chk = bpy.data.objects.new("Miniature to check", solid)
-        context.scene.collection.objects.link(chk)
-        fwd, left, up = body_frame(arm)
-        chk.location = -left * H * 0.8
+        show_preview(context, arm, solid, scale, H)
     else:
         bpy.data.meshes.remove(solid)
     return out, nt, size
+
+
+def clear_preview():
+    for o in [o for o in bpy.data.objects if o.get(PREVIEW_TAG)]:
+        data = o.data
+        bpy.data.objects.remove(o, do_unlink=True)
+        if data is not None and data.users == 0:
+            bpy.data.meshes.remove(data)
+
+
+def show_preview(context, arm, solid, scale, H):
+    """The print model beside the traveller, at the traveller's size, in a plain grey like a printed figure before
+    it's painted; left out of pictures, 3D sends and ship sends."""
+    clear_preview()
+    ob = bpy.data.objects.new(PREVIEW_NAME, solid)
+    ob[PREVIEW_TAG] = 1
+    ob["harmonious_print_mm"] = list(print_size_mm(solid, scale))
+    context.scene.collection.objects.link(ob)
+    mat = bpy.data.materials.get("Harmonious print grey") or bpy.data.materials.new("Harmonious print grey")
+    mat.diffuse_color = (0.55, 0.56, 0.58, 1.0)
+    mat.roughness = 0.55
+    try:
+        mat.use_nodes = True
+        bsdf = next((n for n in mat.node_tree.nodes if n.type == "BSDF_PRINCIPLED"), None)
+        if bsdf is not None:
+            bsdf.inputs["Base Color"].default_value = (0.55, 0.56, 0.58, 1.0)
+            bsdf.inputs["Roughness"].default_value = 0.55
+    except Exception:
+        pass
+    solid.materials.clear()
+    solid.materials.append(mat)
+    for poly in solid.polygons:
+        poly.use_smooth = True
+    ob.hide_render = True
+    fwd, left, up = body_frame(arm)
+    c, _h = traveller_box(arm)
+    import mathutils
+    spot = mathutils.Vector((c.x, c.y, arm.matrix_world.translation.z)) - left * H * 0.9
+    ob.location = (spot.x, spot.y, arm.matrix_world.translation.z)
+    return ob
+
+
+class HARMONIOUS_OT_print_preview(bpy.types.Operator):
+    bl_idname = "harmonious.print_preview"
+    bl_label = "Preview the print"
+    bl_description = ("Make the print model and stand it beside your traveller in plain grey, as it comes off a printer, "
+                      "to look over before you export it (nothing is saved)")
+    bl_options = {"REGISTER", "UNDO"}
+    remove: bpy.props.BoolProperty(options={"SKIP_SAVE"})
+
+    @classmethod
+    def poll(cls, context):
+        return find_traveller() is not None
+
+    def execute(self, context):
+        if self.remove:
+            clear_preview()
+            return {"FINISHED"}
+        sc = context.scene
+        arm = find_traveller()
+        if context.mode != "OBJECT":
+            bpy.ops.object.mode_set(mode="OBJECT")
+        h = print_height(sc)
+        try:
+            solid, scale, H = make_print_mesh(context, arm, h, sc.harmonious_print_base, print_base_mm(sc, h), print_detail(sc, h))
+        except (RuntimeError, ValueError) as error:
+            self.report({"ERROR"}, "Couldn't make the print model: %s" % error)
+            return {"CANCELLED"}
+        ob = show_preview(context, arm, solid, scale, H)
+        for x in context.selected_objects:
+            x.select_set(False)
+        ob.select_set(True)
+        context.view_layer.objects.active = ob
+        try:   # bring it into view
+            if context.area is not None and context.area.type == "VIEW_3D":
+                bpy.ops.view3d.view_selected()
+        except RuntimeError:
+            pass
+        w, d, z = ob["harmonious_print_mm"]
+        set_status("Print preview: %.0f × %.0f × %.0f mm, %s triangles" % (w, d, z, "{:,}".format(len(solid.polygons))))
+        return {"FINISHED"}
 
 
 class HARMONIOUS_OT_print(bpy.types.Operator):
@@ -3393,7 +3481,18 @@ class HARMONIOUS_PT_export(LiveLinkPanel, bpy.types.Panel):
         if d == "ORIGINAL":
             for line in wrap("Not one solid: your slicer or a mesh-repair tool fuses the pieces.", 40):
                 note.label(text=line, icon="INFO" if line.startswith("Not") else "NONE")
-        box.prop(sc, "harmonious_print_keep")
+        prev = next((o for o in bpy.data.objects if o.get(PREVIEW_TAG)), None)
+        row = box.row(align=True)
+        row.operator(HARMONIOUS_OT_print_preview.bl_idname, text="Preview again" if prev else "Preview the print", icon="HIDE_OFF")
+        if prev is not None:
+            row.operator(HARMONIOUS_OT_print_preview.bl_idname, text="", icon="X").remove = True
+            mm = prev.get("harmonious_print_mm")
+            if mm:
+                info = box.column(align=True)
+                info.scale_y = 0.8
+                info.label(text="Preview: %.0f × %.0f × %.0f mm (W × D × H)" % tuple(mm), icon="INFO")
+                for line in wrap("The grey figure beside your traveller is the print. Look it over in Solid view, close up for detail.", 40):
+                    info.label(text=line)
         box.operator(HARMONIOUS_OT_print.bl_idname, icon="EXPORT")
         tip = box.column(align=True)
         tip.scale_y = 0.8
@@ -3439,7 +3538,7 @@ _KEYMAPS = []
 CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_OT_pick_part, HARMONIOUS_OT_show_bones, HARMONIOUS_OT_pose, HARMONIOUS_OT_pose_reset,
            HARMONIOUS_OT_pose_save, HARMONIOUS_OT_poses_folder, HARMONIOUS_OT_hold_tool, HARMONIOUS_OT_drop_tool, HARMONIOUS_OT_send_pose, HARMONIOUS_OT_picture,
            HARMONIOUS_OT_body_part, HARMONIOUS_OT_body_parts_clear, HARMONIOUS_OT_pose_mode, HARMONIOUS_OT_light, HARMONIOUS_OT_select_light, HARMONIOUS_OT_send_ship,
-           HARMONIOUS_OT_tip, HARMONIOUS_OT_camera, HARMONIOUS_OT_add_blend, HARMONIOUS_OT_backdrop, HARMONIOUS_OT_print, HARMONIOUS_OT_camera_view, HARMONIOUS_OT_clean_view,
+           HARMONIOUS_OT_tip, HARMONIOUS_OT_camera, HARMONIOUS_OT_add_blend, HARMONIOUS_OT_backdrop, HARMONIOUS_OT_print, HARMONIOUS_OT_print_preview, HARMONIOUS_OT_camera_view, HARMONIOUS_OT_clean_view,
            HARMONIOUS_PT_live, HARMONIOUS_PT_build, HARMONIOUS_PT_traveller, HARMONIOUS_PT_poses, HARMONIOUS_PT_parts,
            HARMONIOUS_PT_tool, HARMONIOUS_PT_share, HARMONIOUS_PT_export, HARMONIOUS_PT_support)
 
@@ -3471,8 +3570,8 @@ def register():
         description="The base's diameter in millimetres; 0 makes it fit the figure (25 mm for tabletop size)")
     bpy.types.Scene.harmonious_print_detail = bpy.props.EnumProperty(name="Detail", items=PRINT_DETAIL, default="AUTO",
         description="How finely the solid is made; Auto gives bigger prints more detail")
-    bpy.types.Scene.harmonious_print_keep = bpy.props.BoolProperty(name="Show me the print model", default=False,
-        description="Also put the solid print model beside your traveller, to look it over")
+    bpy.types.Scene.harmonious_print_keep = bpy.props.BoolProperty(name="Show the print model", default=False,
+        description="Also stand the exported print model beside your traveller")
     bpy.types.Scene.harmonious_blend = bpy.props.EnumProperty(name="Corvette file", items=blend_items,
         description="Your corvettes' .blend files that the editor knows (sent from Blender or linked in Shipwright)")
     bpy.types.Scene.harmonious_pose = bpy.props.EnumProperty(name="Pose", items=pose_items, update=pose_changed,

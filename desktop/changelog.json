@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.13.1918",
+  "date": "2026-11-13",
+  "notes": [
+   "Please install the LiveLink add-on again (version 1.21.0).",
+   "LiveLink 3D printing: Preview the print stands the print model beside your traveller in plain grey, with its size in millimetres, so you can look it over before exporting (no printer needed)."
+  ]
+ },
+ {
   "version": "2026.11.13.1849",
   "date": "2026-11-13",
   "notes": [

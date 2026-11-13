@@ -328,11 +328,20 @@ if stl:
     rec = np.frombuffer(data[84:84 + tri * 50], dtype=[('n', '<f4', 3), ('v', '<f4', 9), ('x', '<u2')])
     zs = rec['v'][:, 2::3]; zmax = float(zs.max() - zs.min())
     os.remove(os.path.join(h.LINK['exports'], stl[0]))
-chk = bpy.data.objects.get('Miniature to check')
+chk = next((o for o in bpy.data.objects if o.get(h.PREVIEW_TAG)), None)
 if chk is not None:
     bmc = bmesh.new(); bmc.from_mesh(chk.data); open_edges = sum(1 for e in bmc.edges if len(e.link_faces) != 2); bmc.free()
-    bpy.data.objects.remove(chk)
-print('PRINT', 'FINISHED' in rp, len(stl), tri, round(zmax, 1), open_edges, not any(o.name.startswith('Miniature') and o.name != 'Miniature to check' for o in bpy.data.objects))
+h.clear_preview()
+print('PRINT', 'FINISHED' in rp, len(stl), tri, round(zmax, 1), open_edges, not any(o.name.startswith('Miniature') for o in bpy.data.objects))
+# Preview the print: the grey print model beside the traveller, left out of pictures, nothing written; × removes it
+before_stl = set(os.listdir(h.LINK.get('exports') or '.'))
+rv = bpy.ops.harmonious.print_preview()
+pv = next((o for o in bpy.data.objects if o.get(h.PREVIEW_TAG)), None)
+mm = list(pv['harmonious_print_mm']) if pv else [0, 0, 0]
+pv_ok = pv is not None and pv.hide_render and pv.data.materials[0].name.startswith('Harmonious print grey') and abs((pv.location - aw.translation).length) > 0.5
+nofile = not [f for f in set(os.listdir(h.LINK.get('exports') or '.')) - before_stl if f.endswith('.stl')]
+bpy.ops.harmonious.print_preview(remove=True)
+print('PREVIEW', 'FINISHED' in rv, pv_ok, round(mm[2]), nofile, not any(o.get(h.PREVIEW_TAG) for o in bpy.data.objects))
 sc.harmonious_print_keep = False
 # an action figure with the game's own triangles: the preset's height, the base fitted to it, Auto detail by size
 sc.harmonious_print_size = 'FIGURE'; sc.harmonious_print_detail = 'ORIGINAL'
@@ -377,8 +386,8 @@ print('HOLD', hold)
 h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
-    try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 600000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
-    console.log(out.split('\n').filter((l) => /^(GAP|WORST|LIMITS|INSTANT|BACKDROP|PRINT|PRINTSIZES|CAMERA|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|FINGERS|SHIP|Traceback|  File|\w+Error)/.test(l)).join('\n'));
+    try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 1200000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|LIMITS|INSTANT|BACKDROP|PRINT|PRINTSIZES|PREVIEW|CAMERA|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|FINGERS|SHIP|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
@@ -440,6 +449,8 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     ok('Add a corvette .blend brings its scene in behind the traveller, without its lights, the left-out collection still left out, and it comes out again (' + bk.join(' ') + ')', bk.every((x) => x === 'True' || x === '1' || x === '0') && bk[0] === 'True' && bk[1] === '1' && bk[2] === '0' && bk[3] === 'True' && bk[4] === 'True' && bk[5] === 'True' && bk[6] === 'True');
     const pr = line('PRINT').split(' ');
     ok('Export for 3D printing writes one closed solid STL at the height asked for, on its base (' + pr.join(' ') + ')', pr[0] === 'True' && pr[1] === '1' && +pr[2] > 20000 && Math.abs(+pr[3] - 33) < 1.5 && pr[4] === '0' && pr[5] === 'True');
+    const pvw = line('PREVIEW').split(' ');
+    ok('Preview the print stands the grey print model beside the traveller, out of pictures, writes nothing, and × takes it away (' + pvw.join(' ') + ')', pvw[0] === 'True' && pvw[1] === 'True' && Math.abs(+pvw[2] - 33) <= 1 && pvw[3] === 'True' && pvw[4] === 'True');
     const ps = line('PRINTSIZES').split(' ');
     ok('…sizes: an action figure is 152 mm on a fitted base, the game mesh as is, and Auto gives bigger prints more detail (' + ps.join(' ') + ')', ps[0] === 'True' && Math.abs(+ps[1] - 155) <= 2 && ps[2] === '90' && ps[3] === 'ULTRA' && ps[4] === 'NORMAL' && ps[5] === 'HIGH');
     const parts = line('PARTS');

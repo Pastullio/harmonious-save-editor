@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.13.1849",
+  "version": "2026.11.13.1918",
   "date": "2026-11-13",
-  "size": 14771712,
-  "sha256": "04ee5d3d721d07aaddb09ffa7a4cfede64d2b51108d7f18b52f5bc05264d7ede",
-  "notes": "Please install the LiveLink add-on again (version 1.20.0).\nLiveLink 3D printing: pick the size (tabletop, heroic, action figure, collector or your own height), and the detail grows with it (Auto), or choose Quick, Normal, High or Ultra yourself, or the game's mesh as is to sort out in your slicer. The base fits the figure.",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.1849/HarmoniousSaveEditor.exe",
+  "size": 14776832,
+  "sha256": "243dd97a2a6cfdcbc8b73004a588ad6f3717c38eced8cfb9e5dd8ef4d9f6079f",
+  "notes": "Please install the LiveLink add-on again (version 1.21.0).\nLiveLink 3D printing: Preview the print stands the print model beside your traveller in plain grey, with its size in millimetres, so you can look it over before exporting (no printer needed).",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.1918/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
