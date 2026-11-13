@@ -299,6 +299,14 @@ im = Image.new('RGB', (300, 200), (250, 250, 250)); d = ImageDraw.Draw(im); d.el
   }
   await p.evaluate(() => { document.documentElement.dataset.theme = 'dark'; }); await p.click('nav button[data-s="traveller"]'); await p.waitForTimeout(600);
   await p.screenshot({ path: SP + '/shots/traveller-card-dark.png' });
+  // the Exosuit card shows the traveller standing, from the game files (owner 2026-11-13: it was an empty backdrop)
+  if (BANKS) {
+    await p.evaluate(() => go('exosuit'));
+    await p.waitForSelector('.pic-card .trav-stand', { timeout: 90000 }).catch(() => {});
+    const st = await p.evaluate(() => { const c = document.querySelector('.pic-card .trav-stand'); if (!c) return 0; const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let k = 3; k < d.length; k += 4) if (d[k] > 30) n++; return n / (c.width * c.height); });
+    ok('the Exosuit card shows the traveller standing (' + Math.round(st * 100) + '% of the square)', st > 0.04);
+    await p.screenshot({ path: path.join(SP, 'exo-traveller.png'), clip: await p.$eval('.trav-top', (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; }) });
+  }
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
   await b.close(); proc.kill();
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS'); process.exit(fails.length ? 1 : 0);

@@ -125,6 +125,36 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.fill('[data-fs="6"]', '99'); await p.press('[data-fs="6"]', 'Tab');
   ok('frigate edits', await p.evaluate(() => { const f = g(ps(), 'FleetFrigates')[0]; return str(g(f, 'CustomName')) === 'Sunrise' && str(g(f, 'InventoryClass', 'InventoryClass')) === 'A' && num(g(f, 'Stats')[6]) === 99; }));
   await (await p.$('#frigates')).scrollIntoViewIfNeeded(); await p.screenshot({ path: `${SP}/shots/ed-frigates.png` });
+  // frigate tools (owner 2026-11-13): max out, copy / paste / duplicate, profiles and delete
+  const fr = () => p.evaluate(() => g(ps(), 'FleetFrigates').map((f) => ({ name: str(g(f, 'CustomName')), cls: str(g(f, 'InventoryClass', 'InventoryClass')), stats: (g(f, 'Stats') || []).map(num), dmg: num(g(f, 'DamageTaken')) })));
+  const pickFrig = async (k) => { await p.click(`#frigates ~ .ed .ed-list [data-k="${k}"]`); await p.waitForTimeout(250); };
+  const fa = async (a) => { await p.click(`.fr-acts [data-fa="${a}"]`); await p.waitForTimeout(250); };
+  ok('the help line under the grid is a ? tip now', await p.evaluate(() => !document.querySelector('.legend-hint') && !!document.querySelector('.legend-tip .hint')));
+  await pickFrig(2); await fa('max');
+  let F = await fr();
+  ok('Max out: S class, no damage, stats at 50 and fuel burn rate at 0', F[2].cls === 'S' && F[2].dmg === 0 && F[2].stats.every((v, k) => v === (k === 4 ? 0 : 50)));
+  await pickFrig(0); await fa('copy'); await pickFrig(4); await fa('paste'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(250);
+  F = await fr(); ok('Copy and paste puts the same frigate on another', F[4].name === 'Sunrise' && F[4].cls === 'A' && F[4].stats[6] === 99);
+  // an expedition with frigates 5 and 10 out, to see that a delete keeps it pointing at the same frigates
+  await p.evaluate(() => { g(ps(), 'FleetExpeditions').push(fromPlain(mapOf({ AllFrigateIndices: [N(5), N(10)], ActiveFrigateIndices: [N(5), N(10)], DamagedFrigateIndices: [], DestroyedFrigateIndices: [] }))); });
+  await pickFrig(5); await fa('del'); await p.click('#dlgActs .btn.danger'); await p.waitForTimeout(250);
+  ok('a frigate out on an expedition is not deleted', (await fr()).length === 30 && /expedition/.test(await p.textContent('#toast')));
+  await pickFrig(3); await fa('del'); await p.click('#dlgActs .btn.danger'); await p.waitForTimeout(300);
+  F = await fr();
+  ok('Delete removes a frigate', F.length === 29);
+  ok('…and the expedition still points at the same two frigates', await p.evaluate(() => { const e = g(ps(), 'FleetExpeditions').slice(-1)[0]; return g(e, 'AllFrigateIndices').map(num).join() === '4,9' && g(e, 'ActiveFrigateIndices').map(num).join() === '4,9'; }));
+  await p.evaluate(() => g(ps(), 'FleetExpeditions').pop());
+  await pickFrig(0); await fa('dup');
+  F = await fr(); ok('Duplicate adds a copy at the end', F.length === 30 && F[29].name === 'Sunrise');
+  ok('…and Duplicate is off when the fleet is full', await p.evaluate(() => document.querySelector('.fr-acts [data-fa="dup"]').disabled));
+  await fa('save'); await p.fill('#profName', 'Test frigate'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(500);
+  await pickFrig(6); await fa('profiles'); await p.waitForSelector('#dlg[open] .prof');
+  ok('the profile is listed', /Test frigate/.test(await p.textContent('#dlgBody')));
+  await p.click('#dlgBody .prof [data-a="apply"]'); await p.waitForTimeout(300);
+  F = await fr(); ok('…and puts that frigate on another', F[6].name === 'Sunrise' && F[6].stats[6] === 99);
+  await p.click('#fMaxAll'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(300);
+  F = await fr(); ok('Max out every frigate', F.every((f) => f.cls === 'S' && f.stats.every((v, k) => v === (k === 4 ? 0 : 50))));
+  await p.evaluate(() => { const f = g(ps(), 'FleetFrigates')[0]; g(f, 'Stats')[6] = N(99); set(g(f, 'InventoryClass'), 'InventoryClass', 'A'); });
 
   // ---- find anything
   const find = async (q) => { await p.click('#findBox'); await p.fill('#findBox', q); await p.waitForSelector('#findRes:not([hidden]) [data-k]'); return p.$$eval('#findRes [data-k]', (x) => x.map((b) => b.textContent)); };

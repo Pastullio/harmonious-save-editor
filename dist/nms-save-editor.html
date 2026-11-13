@@ -572,7 +572,7 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .ctx-menu hr { border: 0; border-top: 1px solid var(--line); margin: 5px 4px; }
 .page-acts { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; margin: 0 0 14px; }
 .page-acts-l { display: flex; gap: 8px; flex-wrap: wrap; }
-.page-acts .view-switch { margin-left: auto; }
+.page-acts-r { display: flex; gap: 8px; align-items: center; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
 .dy-act-info { display: flex; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; min-width: 0; }
 .dy-act-info b { font-size: 17px; font-weight: 500; }
 .dy-act-btns { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -844,7 +844,11 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .cell.sel { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
 .grid { user-select: none; -webkit-user-select: none; }
 .grid .cell.sel { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
-.legend .legend-hint { margin-left: auto; color: var(--faint); }
+.legend .legend-tip { margin-left: auto; color: var(--faint); display: inline-flex; align-items: center; }
+.fr-acts { margin-top: 12px; gap: 6px; }
+.exo-list { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 6px; }
+.exo-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 10px; border-radius: 10px; background: var(--well); }
+.exo-known { font-size: 12.5px; color: var(--ok, var(--dim)); }
 .small-print { font-size: 12px; margin: 0; }
 .cell:not(.has):not(.locked) { background: color-mix(in srgb, var(--field) 45%, transparent); border-color: color-mix(in srgb, var(--line) 55%, transparent); }
 .cell.has { background: var(--surface); border-color: var(--line-2); box-shadow: var(--lift); }
@@ -984,6 +988,7 @@ dialog.wide { max-width: 1000px; }
 .qf-body .currencies { margin-bottom: 0; }
 .qf-body .cur { box-shadow: none; background: var(--well); }
 .tc.has-gear { position: relative; }
+.pic-card .trav-stand { position: absolute; left: 8%; top: 3%; width: 84%; aspect-ratio: 1; pointer-events: none; filter: drop-shadow(0 8px 18px rgba(0, 0, 0, .45)); }
 .tc-gear { position: absolute; top: 8px; right: 8px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .25); background: rgba(6, 20, 26, .6); color: #fff; display: grid; place-items: center; cursor: pointer; padding: 0; backdrop-filter: blur(4px); transition: background .15s, transform .2s; }
 .tc-gear svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
 .tc-gear:hover, .tc-gear.on { background: rgba(6, 20, 26, .85); transform: rotate(30deg); }
@@ -2530,12 +2535,42 @@ async function travellerExport(btn) {
   } catch (e) { toast('Couldn\'t export your traveller: ' + e.message, true); }
   if (btn) btn.disabled = false;
 }
+// the traveller standing, drawn from the same model Blender gets (owner 2026-11-13: the Exosuit card showed only the
+// empty backdrop): the rigged .glb in its rest pose, in the save's colours, facing the viewer. Kept for the session.
+const TRAV_STILL = new Map();
+async function travellerStill(groups, name, size) {
+  const look = travellerLook(), key = groups.join(',') + '|' + JSON.stringify(look || null) + '|' + size;
+  if (TRAV_STILL.has(key)) return TRAV_STILL.get(key);
+  const job = (async () => {
+    if (!APP || !groups.length || !GLTEX.ok()) return null;
+    const r = await api('/api/model/traveller/glb?groups=' + encodeURIComponent(groups.join(',')) + '&name=' + encodeURIComponent(name) + (look ? '&look=' + encodeURIComponent(JSON.stringify(look)) : ''));
+    if (!r.ok) return null;
+    const glb = await GLTEX.parse(await r.arrayBuffer());
+    const cv = GLTEX.render(glb, size, -12 * Math.PI / 180, 4 * Math.PI / 180, 'studio'); if (!cv) return null;
+    const out = document.createElement('canvas'); out.width = cv.width; out.height = cv.height; out.getContext('2d').drawImage(cv, 0, 0);
+    return out;
+  })().catch(() => null);
+  TRAV_STILL.set(key, job);
+  return job;
+}
 function travellerCard(el) {
   const groups = travellerGroups(), name = travellerName();
   const wrap = document.createElement('div'); wrap.className = 'trav-top';
   el.appendChild(wrap);
   const it = { kind: 'traveller', i: 0, name, type: 'Traveller', cls: '', seed: '', key: 'traveller|' + groups.join(','), scene: '', picks: {} };
   const card = pictureCard(wrap, it, 'Your traveller');
+  // with no picture of their own, the traveller stands on the card
+  const stand = async () => {
+    if (await customCover(it.key).catch(() => null)) return;
+    const art = card.querySelector('.tc-art'); art.classList.add('trav-loading');
+    const cv = await travellerStill(groups, name, 640);
+    art.classList.remove('trav-loading');
+    if (!cv || !card.isConnected || await customCover(it.key).catch(() => null)) return;
+    // over the backdrop, not in it: the backdrop draws itself after this and would replace it
+    cv.className = 'trav-stand'; card.querySelectorAll('.trav-stand').forEach((x) => x.remove()); art.after(cv);
+  };
+  card.onPaint = () => { card.querySelectorAll('.trav-stand').forEach((x) => x.remove()); setTimeout(stand, 50); };
+  stand();
   const info = document.createElement('div'); info.className = 'panel trav-info';
   info.innerHTML = `<h3>Pose ${esc(name)} in Blender</h3><p class="dim">Your traveller as the game builds them from your save, with the skeleton, ready to pose. In Blender: File, Import, glTF. Or press Import my traveller in the LiveLink add-on's panel, pose them, and make a picture of the pose on the Traveller page.</p>
     <div class="toolbar"><button class="btn primary" type="button" id="travGlb">Export for Blender (.glb)</button><button class="btn addon-btn" type="button">Get LiveLink</button><button class="btn" type="button" id="travPic">Make a picture</button>${APP ? '<button class="btn ghost" type="button" id="travSample">Save traveller files for the developer</button>' : ''}</div>`;
@@ -3367,9 +3402,12 @@ if (!window.NMS_APP) document.querySelectorAll('.app-only').forEach((x) => x.rem
 
 // A page's own buttons (Add a ship, Render corvettes…) sit in one row just above what they act on, on the left; on pages
 // with covers the Cover Flow / Grid switch shares the row on the right (owner, 2026-11-01). Same place on every page.
+// actions: [label, id, fn, class, {right}]; right ones sit beside the Cover Flow / Grid switch (owner 2026-11-13)
 function pageActs(actions, withSwitch) {
   const row = document.createElement('div'); row.className = 'page-acts';
-  row.innerHTML = `<div class="page-acts-l">${actions.map(([l, id, , cls], k) => `<button class="btn${cls ? ' ' + cls : k ? '' : ' primary'}" type="button" id="${id}">${l}</button>`).join('')}</div>${withSwitch ? viewSwitch() : ''}`;
+  const btn = ([l, id, , cls], k) => `<button class="btn${cls ? ' ' + cls : k ? '' : ' primary'}" type="button" id="${id}">${l}</button>`;
+  const left = actions.filter((a) => !(a[4] && a[4].right)), right = actions.filter((a) => a[4] && a[4].right);
+  row.innerHTML = `<div class="page-acts-l">${left.map(btn).join('')}</div><div class="page-acts-r">${right.map((a) => btn(a, 1)).join('')}${withSwitch ? viewSwitch() : ''}</div>`;
   for (const [, id, fn] of actions) row.querySelector('#' + id).onclick = (e) => fn(e.currentTarget);
   return row;
 }
@@ -3422,7 +3460,7 @@ PAGES.ships = (el) => ownedPage(el, {
   label: (s, i) => str(g(s, 'Name')) || 'Ship ' + (i + 1), sub: (s) => [modelName(g(s, 'Resource', 'Filename')), invClass(g(s, 'Inventory'))].filter(Boolean).join(', ') + ' class',
   invs: (s) => standardInvs(s, ''),
   details: (ed, s, i) => entityDetails(ed, s, i, 'ship'), top: shipSlotsPanel,
-  actions: [['Add a ship', 'addShip', addShipDialog], APP && ships().some((x) => isCorvetteEntry(x.s)) && ['Render corvettes', 'renderCorv', renderAllCorvettes]],
+  actions: [['Add a ship', 'addShip', addShipDialog], APP && ships().some((x) => isCorvetteEntry(x.s)) && ['Render corvettes', 'renderCorv', renderAllCorvettes, '', { right: true }]],
 });
 PAGES.tools = (el) => ownedPage(el, {
   title: 'Multi-tools', intro: 'Each multi-tool has a single store for its technology.', list: tools(), key: 'tool', primaryKey: 'ActiveMultioolIndex', nameKey: 'Name', flow: 'tool',
@@ -4827,10 +4865,10 @@ function gearMenu(card, title, items) {
   return { pop, gear, close: () => open(false) };
 }
 // the picture options of a card, behind its gear: a screenshot, an image file, or back to the generated cover
-function pictureGear(card, it, onChange, title) {
+function pictureGear(card, it, onChange, title, more = []) {
   let has = false; customCover(it.key).then((u) => { has = !!u; });
   const set = async (blob) => { if (blob && await chooseCover(it, blob)) { has = true; onChange(); } };
-  return gearMenu(card, title || 'Picture', [
+  return gearMenu(card, title || 'Picture', [...more,
     ...(APP ? [['Choose a screenshot', async () => set(await pickScreenshot())]] : []),
     ['Import image', (f) => set(f), '', { file: true }],
     ['Use the generated cover', async () => { if (await setCustomCover(it.key, null)) { has = false; onChange(); } }, 'ghost', { hidden: () => !has }],
@@ -4839,12 +4877,12 @@ function pictureGear(card, it, onChange, title) {
 // a picture card for things without Cover Flow (freighter, exocraft): generated cover until a picture is added
 function pictureCard(host, it, caption) {
   const card = document.createElement('div'); card.className = 'tc pic-card';
-  card.innerHTML = `<div class="tc-art"></div><div class="tc-cap"><span class="k">${esc(caption)}</span><b>${esc(it.name)}</b>${APP && it.scene && S.lib && S.lib.game ? '<span class="tc-acts"><button class="link parts" type="button">Choose parts</button></span>' : ''}</div>`;
+  card.innerHTML = `<div class="tc-art"></div><div class="tc-cap"><span class="k">${esc(caption)}</span><b>${esc(it.name)}</b></div>`;
   host.appendChild(card);
-  const paint = () => miniCover(card, it, 240);
+  const paint = () => { miniCover(card, it, 240); if (card.onPaint) card.onPaint(); };
   paint();
-  pictureGear(card, it, () => { it.custom = false; paint(); }, 'Picture');
-  const pl = card.querySelector('.link.parts'); if (pl) pl.onclick = () => partsDialog(it, paint);
+  // Choose parts sits in the gear with the picture options (owner 2026-11-13)
+  pictureGear(card, it, () => { it.custom = false; paint(); }, 'Picture', APP && it.scene && S.lib && S.lib.game ? [['Choose parts', () => partsDialog(it, paint)]] : []);
   card.addEventListener('dragover', (e) => { e.preventDefault(); card.classList.add('drop-over'); });
   card.addEventListener('dragleave', () => card.classList.remove('drop-over'));
   card.addEventListener('drop', async (e) => { e.preventDefault(); card.classList.remove('drop-over'); const f = e.dataTransfer.files[0]; if (f && await chooseCover(it, f)) { it.custom = false; paint(); } });
@@ -4864,7 +4902,7 @@ PAGES.hangar = (el) => {
   S.hangar = S.hangar || { filter: 'all', key: null };
   let list = (groups.find((gr) => gr[0] === S.hangar.filter) || groups[0])[2];
   el.innerHTML = `<div class="page-head"><div><h1>Garage</h1><p>Scroll, drag or use the arrow keys. Click the centre cover to open its loadout. To change a cover, drop a picture on it or choose one of your screenshots below.</p></div></div><div id="cfHost"></div><div class="panel" id="hangarDetail"></div>`;
-  $('#cfHost', el).before(pageActs(APP ? [['Render all corvettes', 'renderAll', () => {}, ' ']] : [], true));
+  $('#cfHost', el).before(pageActs(APP ? [['Render all corvettes', 'renderAll', () => {}, ' ', { right: true }]] : [], true));
   const chips = `<div class="cf-chips">${groups.map(([id, label, l]) => `<button class="chip" data-f="${id}" aria-pressed="${S.hangar.filter === id}">${label}<span class="n">${l.length}</span></button>`).join('')}</div>`;
   const start = Math.max(0, list.findIndex((x) => x.key === S.hangar.key));
   const big = Math.max(180, Math.min(340, Math.round((($('#main').clientWidth || 1000) - 80) / 3.6)));
@@ -5289,7 +5327,7 @@ function invBlock(el, inv, title, peers) {
         <button class="btn small ghost" data-act="settings">Size and class</button>
       </div></div>
     <div class="inv-wrap"><div><div class="grid${S.db ? ' named' : ''}" style="--w:${w}">${cells}</div>
-      <div class="legend"><span><i style="background:var(--substance)"></i>Substance</span><span><i style="background:var(--product)"></i>Product</span><span><i style="background:var(--technology)"></i>Technology</span><span><i style="background:var(--danger)"></i>Damaged</span><span><i style="background:var(--accent)"></i>Stack or charge level</span>${charged.size || chargeable ? '<span><i class="lg-charge"></i>Supercharged</span>' : ''}<span class="legend-hint">Click an empty slot to add an item; right-click any slot for more. Drag across empty slots to select a block; Ctrl-click or Shift-click to pick more</span></div></div>
+      <div class="legend"><span><i style="background:var(--substance)"></i>Substance</span><span><i style="background:var(--product)"></i>Product</span><span><i style="background:var(--technology)"></i>Technology</span><span><i style="background:var(--danger)"></i>Damaged</span><span><i style="background:var(--accent)"></i>Stack or charge level</span>${charged.size || chargeable ? '<span><i class="lg-charge"></i>Supercharged</span>' : ''}<span class="legend-tip">How to use the grid ${hint('Click an empty slot to add an item; right-click any slot for more. Drag across empty slots to select a block; Ctrl-click or Shift-click to pick more.')}</span></div></div>
       <div class="insp-slot"></div></div>`;
   el.appendChild(block);
   loadIcons(block);
@@ -8074,12 +8112,12 @@ PAGES.library = (el) => {
   // one row of buttons (owner 2026-11-12): the other views, then what you can do here
   const sub = document.createElement('div'); sub.className = 'dy-sub';
   sub.innerHTML = `<button type="button" class="btn small" data-v="all" aria-pressed="${isOn('all')}">All ships</button><button type="button" class="btn small" data-v="linked" aria-pressed="${isOn('linked')}">Linked folders <span data-n="linked"></span></button><button type="button" class="btn small" id="libFolders">Manage folders</button>
-    <span class="dy-sub-gap"></span><label class="btn small">Import files<input type="file" id="libImport" multiple accept=".json,.txt,.nmsship,.so" hidden></label>${S.save ? '<button class="btn small" id="libAddSave" type="button">Add this save\'s ships</button>' : ''}<button class="btn small" id="libRender" type="button">Render corvettes</button>`;
+    <label class="btn small">Import files<input type="file" id="libImport" multiple accept=".json,.txt,.nmsship,.so" hidden></label>${S.save ? '<button class="btn small" id="libAddSave" type="button">Add this save\'s ships</button>' : ''}`;
   el.appendChild(sub);
   const bar = sub;
   // the filters beside the Cover Flow / Grid switch
   const filt = document.createElement('div'); filt.className = 'view-row dy-filters';
-  filt.innerHTML = `<select class="input" id="libType" aria-label="Type"><option value="all">All types</option></select><select class="input" id="libTag" aria-label="Tag"><option value="">All tags</option></select><span class="dy-sub-gap"></span>${viewSwitch()}`;
+  filt.innerHTML = `<select class="input" id="libType" aria-label="Type"><option value="all">All types</option></select><select class="input" id="libTag" aria-label="Tag"><option value="">All tags</option></select><span class="dy-sub-gap"></span><button class="btn small" id="libRender" type="button">Render corvettes</button>${viewSwitch()}`;
   el.appendChild(filt);
   // how many ships, under the title
   const status = document.createElement('p'); status.className = 'dim lib-status head-sub'; status.textContent = 'Reading your ships…';
@@ -8158,7 +8196,7 @@ PAGES.library = (el) => {
   if (addSave) addSave.onclick = async () => { let n = 0; for (const { i } of ships()) { await saveShipToLibrary(i, true); n++; } toast(`${plural(n, 'ship')} added to Ship storage`); render(); };
   $('#libFolders', sub).onclick = () => libFoldersDialog();
   // render every corvette shown here with Blender + Charon Forge (renders are cached by build, so repeats are instant)
-  const rb = $('#libRender', bar);
+  const rb = $('#libRender', filt);
   rb.onclick = async () => {
     const setup = await renderSetup().catch(() => null);
     if (!setup || !setup.ready) { renderSettingsDialog(); return; }
@@ -8531,18 +8569,30 @@ async function addToolDialog() {
   markDirty(); S.pick.tool = slot; S.sel = null; renderSide(); render(); toast(`Added to slot ${slot + 1}. Press Save to game to keep it.`);
 }
 // exocraft come from their geobays: learning a geobay's blueprint lets you build it and summon that exocraft
+// Each exocraft is summoned from its own geobay, a base part whose blueprint the player learns (the Knowledge page's
+// "Learn all base parts" learns them all too). Each one gets its own Learn button (owner 2026-11-13).
 async function addExoDialog() {
-  const lib = S.lib && S.lib.byId, known = new Set((g(ps(), 'KnownProducts') || []).map(str));
-  const bays = lib ? Object.values(lib).filter((it) => it.type === 'Product' && /geobay|nautilon chamber|exocraft summoning/i.test(it.name || '')) : [];
+  const known = new Set((g(ps(), 'KnownProducts') || []).map(str));
+  const bays = S.db ? S.db.list.filter((it) => it.type === 'Product' && !it.hashed && /geobay|nautilon chamber|summoning station/i.test(it.name || '')) : [];
+  const bayFor = (n) => bays.find((b) => new RegExp('\\b' + n + '\\b', 'i').test(b.name)) || null;
   const vs = g(ps(), 'VehicleOwnership') || [];
-  const rows = EXOCRAFT.map(([n], i) => { const v = vs[i], has = v instanceof Map && ((g(v, 'Inventory_TechOnly', 'Slots') || []).length || (g(v, 'Inventory', 'Slots') || []).length); return `<li>${n} <span class="dim">${has ? '(set up)' : '(not yet)'}</span></li>`; }).join('');
+  const rows = EXOCRAFT.map(([n], i) => {
+    const v = vs[i], has = v instanceof Map && ((g(v, 'Inventory_TechOnly', 'Slots') || []).length || (g(v, 'Inventory', 'Slots') || []).length), b = bayFor(n);
+    const learn = !b ? '' : known.has(b.id) ? `<span class="exo-known">Blueprint known</span>` : `<button class="btn small primary" type="button" data-learn="${esc(b.id)}" title="Learn the ${esc(b.name)} blueprint">Learn ${esc(b.name)}</button>`;
+    return `<li class="exo-row"><span><b>${n}</b> <span class="dim">${has ? '(set up)' : '(not yet)'}</span></span>${learn}</li>`;
+  }).join('');
   const missing = bays.filter((b) => !known.has(b.id));
-  const body = `<p>Exocraft are summoned from the geobay you build for each one. Learning a geobay's blueprint lets you build it at any base, then summon that exocraft.</p><ul class="place-facts">${rows}</ul>`
-    + (!lib ? '<p class="dim">The item library isn\'t loaded, so the blueprints can\'t be listed here.</p>' : !bays.length ? '<p class="dim">No geobays found in the item library.</p>' : missing.length ? `<p>Blueprints you don't know yet: ${missing.map((b) => '<b>' + esc(b.name) + '</b>').join(', ')}.</p>` : '<p>You already know every geobay blueprint.</p>');
-  const ok = await dialog('Add exocraft', body, missing.length ? [['Cancel', false, 'ghost'], ['Learn the blueprints', true, 'primary']] : [['Close', false]]);
-  if (!ok) return;
-  const kp = g(ps(), 'KnownProducts'); for (const b of missing) kp.push(b.id);
-  markDirty(); toast(`${plural(missing.length, 'blueprint')} learned. Build the geobays in the game to summon them.`);
+  const body = `<p>Exocraft are summoned from the geobay you build for each one. Learning a geobay's blueprint lets you build it at any base, then summon that exocraft. (Learn all base parts on the Knowledge page learns them too.)</p><ul class="exo-list">${rows}</ul>`
+    + (!S.db ? '<p class="dim">The item library isn\'t loaded, so the blueprints can\'t be listed here.</p>' : !bays.length ? '<p class="dim">No geobays found in the item library.</p>' : '');
+  const learn = (ids) => { const kp = g(ps(), 'KnownProducts'); let n = 0; for (const id of ids) if (!known.has(id)) { kp.push(id); known.add(id); n++; } if (n) markDirty(); return n; };
+  const host = $('#dlgBody');
+  const onClick = (e) => { const b = e.target.closest('[data-learn]'); if (!b) return; learn([b.dataset.learn]); b.replaceWith(Object.assign(document.createElement('span'), { className: 'exo-known', textContent: 'Blueprint known' })); toast((S.db.byId.get(b.dataset.learn) || {}).name + ' learnt. Build it in the game to summon the exocraft.'); };
+  host.addEventListener('click', onClick);
+  const res = await dialog('Add exocraft', body, missing.length > 1 ? [['Close', false, 'ghost'], ['Learn every geobay', true, 'primary']] : [['Close', false]]);
+  host.removeEventListener('click', onClick);
+  if (!res) return;
+  const n = learn(missing.map((b) => b.id));
+  toast(n ? `${plural(n, 'blueprint')} learned. Build the geobays in the game to summon them.` : 'You already know every geobay blueprint');
 }
 
 // ---------------------------------------------------------------- ship slots: arrange and repair
@@ -9687,6 +9737,80 @@ PAGES.companions = (el) => {
 const FRIGATE_CLASSES = [['Combat', 'Combat'], ['Exploration', 'Exploration'], ['Mining', 'Industrial'], ['Diplomacy', 'Trade'], ['Support', 'Support'], ['Normandy', 'Normandy'], ['DeepSpace', 'Living ship'], ['DeepSpaceCommon', 'Organic frigate'], ['Pirate', 'Pirate'], ['GhostShip', 'Ghost ship'], ['Swarm', 'Swarm']];
 const FRIGATE_STATS = ['Combat', 'Exploration', 'Mining', 'Trade', 'Fuel burn rate', 'Fuel capacity', 'Speed', 'Extra loot', 'Repair', 'Invulnerable', 'Stealth'];   // GcFrigateStatType
 const frigateName = (f, i) => { if (str(g(f, 'CustomName'))) return str(g(f, 'CustomName')); const l = (FRIGATE_CLASSES.find(([v]) => v === str(g(f, 'FrigateClass', 'FrigateClass'))) || [, 'Frigate'])[1]; return l + (/frigate|ship/i.test(l) ? ' ' : ' frigate ') + (i + 1); };
+// Frigate tools (owner 2026-11-13): max out, copy / paste / duplicate, profiles, delete.
+// Max out: S class, no damage, every stat at FRIGATE_MAX except fuel burn rate (lower is better) at 0.
+const FRIGATE_MAX = 50, FRIGATE_LIMIT = 30;
+function maxOutFrigate(f) {
+  set(g(f, 'InventoryClass'), 'InventoryClass', 'S'); set(f, 'DamageTaken', N(0));
+  const st = g(f, 'Stats'); if (Array.isArray(st)) for (let k = 0; k < st.length; k++) st[k] = N(k === 4 ? 0 : FRIGATE_MAX);
+}
+// every list of frigate positions in the save's expeditions (All/Active/Damaged/Destroyed/Repairing/AffectedFrigateIndices)
+function frigateIndexLists(o, out = []) {
+  if (o instanceof Map) for (const [k, v] of o) { if (/FrigateIndices$/.test(nameOf(k)) && Array.isArray(v)) out.push(v); else frigateIndexLists(v, out); }
+  else if (Array.isArray(o)) for (const v of o) frigateIndexLists(v, out);
+  return out;
+}
+// a frigate can go when no expedition has it; the frigates after it move up one, so the expeditions' lists follow
+function deleteFrigate(k) {
+  const p = ps(), fr = g(p, 'FleetFrigates'), lists = frigateIndexLists(g(p, 'FleetExpeditions'));
+  if (lists.some((l) => l.some((x) => num(x) === k))) return 'It is out on an expedition. Wait for the expedition to come back, then delete it.';
+  fr.splice(k, 1);
+  for (const l of lists) for (let n = 0; n < l.length; n++) if (num(l[n]) > k) l[n] = N(num(l[n]) - 1);
+  return '';
+}
+// frigate profiles share the loadout profiles' files, marked for: 'frigate'
+async function saveFrigateProfile(f, i) {
+  const def = frigateName(f, i);
+  const ok = await dialog('Save as profile', `<p>Keeps this frigate exactly as it is (type, crew, class, stats, traits and look) so you can put it on another frigate or add it as a new one, in this save or any other.</p>
+    <label class="field"><span>Profile name</span><input class="input" id="profName" maxlength="60" value="${esc(def)}"></label>`, [['Cancel', false, 'ghost'], ['Save profile', true, 'primary']]);
+  if (!ok) return;
+  const name = $('#profName').value.trim() || def;
+  const doc = mapOf({ Harmonious: mapOf({ kind: 'profile', for: 'frigate', version: N(1), created: new Date().toISOString() }) });
+  doc.set('Name', name); doc.set('Source', frigateName(f, i)); doc.set('Type', (FRIGATE_CLASSES.find(([v]) => v === str(g(f, 'FrigateClass', 'FrigateClass'))) || [, ''])[1]);
+  doc.set('Class', str(g(f, 'InventoryClass', 'InventoryClass'))); doc.set('Frigate', toPlain(cloneJSON(f)));
+  const existing = new Set((await Profiles.list().catch(() => [])).map((x) => x.file));
+  let file = safeFile(name) + '.json', n = 2; while (existing.has(file)) file = safeFile(name) + ' ' + n++ + '.json';
+  try { await Profiles.save(file, C.stringifyJSON(doc)); toast(`Profile "${name}" saved`); } catch (e) { toast('Could not save the profile: ' + e.message, true); }
+}
+// a copied frigate goes on as it was, keeping the target's income clock
+function putFrigate(target, src) {
+  const keep = g(target, 'TimeOfLastIncomeCollection');
+  for (const k of [...target.keys()]) target.delete(k);
+  for (const [k, v] of cloneJSON(src)) target.set(k, v);
+  if (keep !== undefined) set(target, 'TimeOfLastIncomeCollection', keep);
+}
+async function frigateProfilesDialog(i, onDone) {
+  const fr = g(ps(), 'FleetFrigates');
+  let all = [];
+  try { all = (await Profiles.list()).map(readProfile).filter((x) => x && x.for === 'frigate'); } catch (e) { toast('Could not read profiles: ' + e.message, true); return; }
+  let chosen = null, act = null;
+  const room = fr.length < FRIGATE_LIMIT;
+  const body = all.length ? `<div class="prof-list">${all.map((pf, n) => `<div class="prof"><div><b>${esc(pf.name)}</b><span class="dim">${esc([str(pf.doc.get('Type')), str(pf.doc.get('Class')) + ' class', 'from ' + str(pf.doc.get('Source')), new Date(pf.mtime).toLocaleDateString()].filter(Boolean).join(' · '))}</span></div>
+      <span class="prof-acts"><button class="btn small primary" data-a="apply" data-n="${n}">Put on ${esc(frigateName(fr[i], i))}</button><button class="btn small" data-a="add" data-n="${n}"${room ? '' : ' disabled title="The fleet is full (30 frigates)"'}>Add as a new frigate</button><button class="btn small ghost" data-a="export" data-n="${n}">Export</button><button class="btn small ghost danger-text" data-a="del" data-n="${n}">Delete</button></span></div>`).join('')}</div>`
+    : '<p>No frigate profiles yet. Pick a frigate you like and choose <b>Save as profile</b>, or import a profile file someone shared.</p>';
+  const pick = $('#dlgBody');
+  const onClick = (e) => { const b = e.target.closest('[data-a]'); if (!b || b.disabled) return; chosen = all[+b.dataset.n]; act = b.dataset.a; $('#dlg').close(); };
+  pick.addEventListener('click', onClick);
+  const res = await dialog('Frigate profiles', body, [['Close', false, 'ghost'], ...(APP ? [['Open profiles folder', 'folder', 'ghost']] : []), ['Import a profile file', 'import', '']]);
+  pick.removeEventListener('click', onClick);
+  if (res === 'folder') { api('/api/profiles?reveal=1').catch(() => {}); return; }
+  if (res === 'import') {
+    const f = await new Promise((r) => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json,application/json'; inp.onchange = () => r(inp.files[0] || null); inp.click(); });
+    if (!f) return; const text = await f.text(), pf = readProfile({ file: f.name, text, mtime: Date.now() });
+    if (!pf || pf.for !== 'frigate') { toast("That file isn't a frigate profile.", true); return; }
+    await Profiles.save(safeFile(pf.name) + '.json', text); toast(`Profile "${pf.name}" imported`); return frigateProfilesDialog(i, onDone);
+  }
+  if (!chosen) return;
+  if (act === 'export') { downloadText(chosen.file, C.stringifyJSON(chosen.doc)); return; }
+  if (act === 'del') {
+    if (await dialog('Delete profile?', `<p>Deletes "${esc(chosen.name)}". Frigates it was put on stay as they are.</p>`, [['Cancel', false, 'ghost'], ['Delete', true, 'danger']])) { await Profiles.del(chosen.file); toast('Profile deleted'); }
+    return frigateProfilesDialog(i, onDone);
+  }
+  const src = fromPlain(chosen.doc.get('Frigate'));
+  if (!(src instanceof Map)) { toast('That profile has no frigate in it.', true); return; }
+  if (act === 'apply') { putFrigate(fr[i], src); markDirty(); toast(`${chosen.name} put on frigate ${i + 1}`); onDone(i); }
+  if (act === 'add') { const nf = cloneJSON(fr[fr.length - 1]); putFrigate(nf, src); fr.push(nf); markDirty(); toast(`${chosen.name} added as frigate ${fr.length}`); onDone(fr.length - 1); }
+}
 function frigatesPanel(el) {
   const fr = g(ps(), 'FleetFrigates'); if (!Array.isArray(fr) || !fr.length) return;
   const F2 = S.frig || (S.frig = { pick: 0 }); if (F2.pick >= fr.length) F2.pick = 0;
@@ -9694,11 +9818,17 @@ function frigatesPanel(el) {
   const damaged = (f) => num(g(f, 'DamageTaken')) > 0;
   const { main } = listDetail(el, { title: plural(fr.length, 'frigate'), pick: String(F2.pick), onPick: (k) => { F2.pick = +k; render(); requestAnimationFrame(() => $('#frigates').scrollIntoView()); },
     items: fr.map((f, i) => ({ key: String(i), name: frigateName(f, i), sub: `${str(g(f, 'InventoryClass', 'InventoryClass'))} class · ${num(g(f, 'TotalNumberOfExpeditions'))} expeditions`, dot: damaged(f) ? 'bad' : 'ok' })),
-    extra: `<div class="sw-side-acts"><button class="btn" type="button" id="fRepairAll">Repair every frigate</button></div>` });
+    extra: `<div class="sw-side-acts"><button class="btn primary" type="button" id="fMaxAll">Max out every frigate</button><button class="btn" type="button" id="fRepairAll">Repair every frigate</button></div>` });
   $('#fRepairAll', el).onclick = () => { let n = 0; for (const f of fr) if (damaged(f)) { set(f, 'DamageTaken', N(0)); n++; } toast(n ? plural(n, 'frigate') + ' repaired' : 'No frigate needs repairs'); render(); };
+  $('#fMaxAll', el).onclick = async () => {
+    if (!await dialog('Max out every frigate?', `<p>Every frigate becomes S class with no damage, and every stat goes to ${FRIGATE_MAX} (fuel burn rate to 0, as lower is better). Names, types, crews and traits stay.</p>`, [['Cancel', false, 'ghost'], ['Max out ' + plural(fr.length, 'frigate'), true, 'primary']])) return;
+    fr.forEach(maxOutFrigate); markDirty(); toast(plural(fr.length, 'frigate') + ' maxed out'); render();
+  };
+  const goTo = (k) => { F2.pick = k; render(); requestAnimationFrame(() => { const h = $('#frigates'); if (h) h.scrollIntoView(); }); };
   const f = fr[F2.pick], stats = g(f, 'Stats') || [], traits = g(f, 'TraitIDs') || [], cls = str(g(f, 'FrigateClass', 'FrigateClass'));
   const traitInfo = (id) => (S.db && S.db.traits && S.db.traits.get(str(id))) || null;
   main.innerHTML = `<div class="panel sw-bar"><div class="sw-title"><b>${esc(frigateName(f, F2.pick))}</b><span class="dim">${esc(raceLabel(str(g(f, 'Race', 'AlienRace'))))} crew · ${num(g(f, 'TotalNumberOfSuccessfulEvents'))} successes, ${num(g(f, 'TotalNumberOfFailedEvents'))} failures${damaged(f) ? ' · damaged' : ''}</span></div>
+      <div class="sw-acts fr-acts"><button class="btn small primary" type="button" data-fa="max">Max out</button><button class="btn small" type="button" data-fa="copy">Copy frigate</button><button class="btn small" type="button" data-fa="paste"${S.frigClip ? '' : ' disabled title="Copy a frigate first"'}>Paste onto this one</button><button class="btn small" type="button" data-fa="dup"${fr.length < FRIGATE_LIMIT ? '' : ' disabled title="The fleet is full (30 frigates)"'}>Duplicate</button><button class="btn small" type="button" data-fa="save">Save as profile</button><button class="btn small" type="button" data-fa="profiles">Profiles…</button><button class="btn small danger" type="button" data-fa="del"${fr.length > 1 ? '' : ' disabled'}>Delete</button></div>
       <div class="details-grid">
         <label class="field wide"><span>Name</span><input class="input" id="fName" maxlength="60" value="${esc(str(g(f, 'CustomName')))}" placeholder="${esc(frigateName(new Map(), F2.pick).replace(/ \d+$/, ''))}"></label>
         <label class="field"><span>Type</span><select class="input" id="fClass">${FRIGATE_CLASSES.some(([v]) => v === cls) ? '' : `<option selected>${esc(cls)}</option>`}${FRIGATE_CLASSES.map(([v, l]) => `<option value="${v}"${v === cls ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
@@ -9709,6 +9839,24 @@ function frigatesPanel(el) {
     <div class="panel"><h3>Stats</h3><div class="details-grid">${FRIGATE_STATS.map((l, k) => k < stats.length ? `<label class="field"><span>${l}</span><input class="input mono" inputmode="numeric" data-fs="${k}" value="${num(stats[k])}"></label>` : '').join('')}</div>
       <p class="dim ed-note">Expedition success depends on these: the higher the better, except fuel burn rate, where lower is better.</p></div>
     <div class="panel"><h3>Traits</h3>${traits.length ? `<ul class="perks">${traits.map((id) => { const t = traitInfo(id); return `<li class="${t && t.strength < 3 ? 'neg' : ''}"><span><b>${esc(t ? t.name : str(id).replace(/^\^/, ''))}</b><span class="dim">${t ? esc(FRIGATE_STATS[t.stat] || '') + (t.strength === 9 ? ', primary' : t.strength < 3 ? ', negative' : '') : esc(str(id))}</span></span></li>`; }).join('')}</ul>` : '<p class="dim">No traits.</p>'}</div>`;
+  main.querySelector('.fr-acts').onclick = async (e) => {
+    const b = e.target.closest('[data-fa]'); if (!b || b.disabled) return;
+    const k = F2.pick, a = b.dataset.fa;
+    if (a === 'max') { maxOutFrigate(f); markDirty(); toast(frigateName(f, k) + ' maxed out'); render(); }
+    else if (a === 'copy') { S.frigClip = { f: cloneJSON(f), name: frigateName(f, k) }; toast(`Copied ${frigateName(f, k)}. Pick another frigate and paste, or Duplicate.`); render(); }
+    else if (a === 'paste' && S.frigClip) {
+      if (!await dialog('Paste the frigate?', `<p>${esc(frigateName(f, k))} becomes a copy of ${esc(S.frigClip.name)}: type, crew, class, stats, traits and look.</p>`, [['Cancel', false, 'ghost'], ['Paste', true, 'primary']])) return;
+      putFrigate(f, S.frigClip.f); markDirty(); toast('Pasted'); render();
+    }
+    else if (a === 'dup') { const nf = cloneJSON(f); fr.push(nf); markDirty(); toast(`${frigateName(f, k)} duplicated as frigate ${fr.length}`); goTo(fr.length - 1); }
+    else if (a === 'save') saveFrigateProfile(f, k);
+    else if (a === 'profiles') frigateProfilesDialog(k, goTo);
+    else if (a === 'del') {
+      if (!await dialog('Delete this frigate?', `<p>${esc(frigateName(f, k))} leaves your fleet for good (unless you don't save). The frigates after it move up one.</p>`, [['Cancel', false, 'ghost'], ['Delete frigate', true, 'danger']])) return;
+      const why = deleteFrigate(k); if (why) { toast("Can't delete it: " + why, true); return; }
+      markDirty(); toast('Frigate deleted'); goTo(Math.min(k, fr.length - 1));
+    }
+  };
   $('#fName', main).onchange = (e) => { set(f, 'CustomName', e.target.value); render(); };
   $('#fClass', main).onchange = (e) => { set(g(f, 'FrigateClass'), 'FrigateClass', e.target.value); render(); };
   $('#fInv', main).onchange = (e) => { set(g(f, 'InventoryClass'), 'InventoryClass', e.target.value); render(); };

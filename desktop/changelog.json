@@ -1,5 +1,17 @@
 [
  {
+  "version": "2026.11.13.1458",
+  "date": "2026-11-13",
+  "notes": [
+   "Garage, Starships and Dock Yard: Render corvettes sits right beside Cover Flow / Grid; on the Dock Yard, Import files and Add this save's ships sit beside Manage folders.",
+   "Inventories: the how-to line under each grid is a ? at the end of the colour key, so the page is shorter.",
+   "Frigates: Max out (one or every frigate), Copy frigate and Paste onto another, Duplicate, frigate profiles (save one and put it on any frigate, in any save), and Delete (not while it's out on an expedition).",
+   "Exocraft: Choose parts is in the gear on the picture.",
+   "Add exocraft: each exocraft has its own Learn button for its geobay blueprint (it wrongly said the item library wasn't loaded).",
+   "Exosuit: your traveller stands on the card, built from your save like the Blender model, unless you've set your own picture."
+  ]
+ },
+ {
   "version": "2026.11.13.1323",
   "date": "2026-11-13",
   "notes": [

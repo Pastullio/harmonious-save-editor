@@ -52,8 +52,21 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const toolsFull = await p.evaluate(() => tools().length === g(ps(), 'Multitools').length);
   if (toolsFull) ok('all multi-tool slots used: says so', /in use/.test(await p.textContent('#toast')));
   else { await confirm(); ok('a multi-tool copy is added', /copy$/.test(await p.evaluate(() => str(g(g(ps(), 'Multitools')[S.pick.tool], 'Name'))))); }
+  // each exocraft's geobay can be learnt right there (owner 2026-11-13): the Roamer's geobay from the library (a stand-in
+  // when the test library has none), forgotten first so it can be learnt
+  const bay = await p.evaluate(() => {
+    let it = S.db.list.find((x) => x.type === 'Product' && /\broamer\b/i.test(x.name) && /geobay/i.test(x.name));
+    if (!it) { it = { id: '^TEST_GEOBAY_ROAMER', name: 'Roamer Geobay', type: 'Product', cat: 'BuildingPart' }; S.db.list.push(it); S.db.byId.set(it.id, it); }
+    const kp = g(ps(), 'KnownProducts'); for (let k = kp.length - 1; k >= 0; k--) if (str(kp[k]) === it.id) kp.splice(k, 1);
+    return { id: it.id, name: it.name };
+  });
   await p.evaluate(() => go('vehicles')); await p.waitForSelector('#addExo'); await p.click('#addExo'); await p.waitForSelector('#dlg[open]');
-  ok('exocraft dialog lists the seven exocraft', (await p.$$('#dlgBody .place-facts li')).length === 7); await p.click('#dlgX');
+  ok('exocraft dialog lists the seven exocraft', (await p.$$('#dlgBody .exo-list li')).length === 7);
+  ok('…and never says the item library is missing when it is loaded', !/isn.t loaded/.test(await p.textContent('#dlgBody')));
+  ok('…with a Learn button beside the Roamer for its geobay', (await p.textContent('#dlgBody .exo-list li:first-child')).includes('Learn ' + bay.name));
+  await p.click(`#dlgBody [data-learn="${bay.id}"]`);
+  ok('…which learns the blueprint', await p.evaluate((id) => (g(ps(), 'KnownProducts') || []).map(str).includes(id), bay.id) && /Blueprint known/.test(await p.textContent('#dlgBody .exo-list li:first-child')));
+  await p.click('#dlgX');
   await p.evaluate(() => go('companions')); await p.waitForSelector('#addPet');
   const n0 = await p.evaluate(() => g(ps(), 'Pets').filter(isPet).length);
   await p.click('#addPet'); await confirm();
