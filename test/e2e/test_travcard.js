@@ -302,9 +302,12 @@ im = Image.new('RGB', (300, 200), (250, 250, 250)); d = ImageDraw.Draw(im); d.el
   // the Exosuit card shows the traveller standing, from the game files (owner 2026-11-13: it was an empty backdrop)
   if (BANKS) {
     await p.evaluate(() => go('exosuit'));
-    await p.waitForSelector('.pic-card .trav-stand', { timeout: 90000 }).catch(() => {});
-    const st = await p.evaluate(() => { const c = document.querySelector('.pic-card .trav-stand'); if (!c) return 0; const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let k = 3; k < d.length; k += 4) if (d[k] > 30) n++; return n / (c.width * c.height); });
-    ok('the Exosuit card shows the traveller standing (' + Math.round(st * 100) + '% of the square)', st > 0.04);
+    await p.waitForSelector('.pic-card[data-tex] .tc-art', { timeout: 90000 }).catch(() => {});
+    const snap = () => p.evaluate(() => { const c = document.querySelector('.pic-card[data-tex] .tc-art canvas'); return c ? c.toDataURL() : ''; });
+    const a = await snap();
+    ok('the Exosuit card shows the textured traveller as its cover', !!a);
+    if (!a) console.log(await p.evaluate(async () => ({ cards: document.querySelectorAll('.pic-card').length, art: document.querySelector('.pic-card .tc-art')?.className, gl: GLTEX.ok(), groups: travellerGroups().length, glb: !!(await travellerGlb(travellerGroups(), travellerName())) })));
+    if (a) { const box = await p.$eval('.pic-card[data-tex] .tc-art', (e) => { const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }); await p.mouse.move(box.x, box.y); await p.waitForTimeout(900); ok('…and it turns on hover', (await snap()) !== a); await p.mouse.move(0, 0); }
     await p.screenshot({ path: path.join(SP, 'exo-traveller.png'), clip: await p.$eval('.trav-top', (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; }) });
   }
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);

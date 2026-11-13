@@ -990,7 +990,6 @@ dialog.wide { max-width: 1000px; }
 .qf-body .currencies { margin-bottom: 0; }
 .qf-body .cur { box-shadow: none; background: var(--well); }
 .tc.has-gear { position: relative; }
-.pic-card .trav-stand { position: absolute; left: 8%; top: 3%; width: 84%; aspect-ratio: 1; pointer-events: none; filter: drop-shadow(0 8px 18px rgba(0, 0, 0, .45)); }
 .tc-gear { position: absolute; top: 8px; right: 8px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .25); background: rgba(6, 20, 26, .6); color: #fff; display: grid; place-items: center; cursor: pointer; padding: 0; backdrop-filter: blur(4px); transition: background .15s, transform .2s; }
 .tc-gear svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; }
 .tc-gear:hover, .tc-gear.on { background: rgba(6, 20, 26, .85); transform: rotate(30deg); }
@@ -2373,7 +2372,7 @@ function miniCover(host, it, size, onClick) {
     document.addEventListener('cover-model', on); if (it.model) paintCover(cv, it); else loadModel(it);
   }
   // turntable: the model turns slowly while the pointer is over it, and follows a drag (renders and pictures stay still)
-  const canSpin = () => cv.isConnected && !it.custom && !it.renderImg && (it.holo || (it.model && GL3D.ok()) || !!wireMesh(it));
+  const canSpin = () => cv.isConnected && !it.custom && !it.renderImg && (it.holo || (it.texGlb && GLTEX.ok()) || (it.model && GL3D.ok()) || !!wireMesh(it));
   const base = it.holo ? -.65 : it.kind === 'tool' ? -1.25 : -.95;
   let angle = null, raf = 0, hover = false, dragX = null;
   const loop = () => { raf = 0; if (!canSpin() || !hover) return; if (dragX == null && !REDUCED) angle = (angle ?? base) + .012; paintCover(cv, it, angle ?? base); raf = requestAnimationFrame(loop); };
@@ -2542,17 +2541,15 @@ async function travellerExport(btn) {
 // the traveller standing, drawn from the same model Blender gets (owner 2026-11-13: the Exosuit card showed only the
 // empty backdrop): the rigged .glb in its rest pose, in the save's colours, facing the viewer. Kept for the session.
 const TRAV_STILL = new Map();
-async function travellerStill(groups, name, size) {
-  const look = travellerLook(), key = groups.join(',') + '|' + JSON.stringify(look || null) + '|' + size;
+// the traveller as the game builds them, textured (GLTEX), for the Exosuit card's turntable
+async function travellerGlb(groups, name) {
+  const look = travellerLook(), key = groups.join(',') + '|' + JSON.stringify(look || null);
   if (TRAV_STILL.has(key)) return TRAV_STILL.get(key);
   const job = (async () => {
     if (!APP || !groups.length || !GLTEX.ok()) return null;
     const r = await api('/api/model/traveller/glb?groups=' + encodeURIComponent(groups.join(',')) + '&name=' + encodeURIComponent(name) + (look ? '&look=' + encodeURIComponent(JSON.stringify(look)) : ''));
     if (!r.ok) return null;
-    const glb = await GLTEX.parse(await r.arrayBuffer());
-    const cv = GLTEX.render(glb, size, -12 * Math.PI / 180, 4 * Math.PI / 180, 'studio'); if (!cv) return null;
-    const out = document.createElement('canvas'); out.width = cv.width; out.height = cv.height; out.getContext('2d').drawImage(cv, 0, 0);
-    return out;
+    return GLTEX.parse(await r.arrayBuffer());
   })().catch(() => null);
   TRAV_STILL.set(key, job);
   return job;
@@ -2563,17 +2560,17 @@ function travellerCard(el) {
   el.appendChild(wrap);
   const it = { kind: 'traveller', i: 0, name, type: 'Traveller', cls: '', seed: '', key: 'traveller|' + groups.join(','), scene: '', picks: {} };
   const card = pictureCard(wrap, it, 'Your traveller');
-  // with no picture of their own, the traveller stands on the card
+  // with no picture of their own, the textured traveller stands on the card and turns like the other covers
+  // (owner 2026-11-13: the textured still sat over the turning hologram; now the textured model is the cover)
   const stand = async () => {
-    if (await customCover(it.key).catch(() => null)) return;
+    if (it.texGlb || await customCover(it.key).catch(() => null)) return;
     const art = card.querySelector('.tc-art'); art.classList.add('trav-loading');
-    const cv = await travellerStill(groups, name, 640);
+    const glb = await travellerGlb(groups, name);
     art.classList.remove('trav-loading');
-    if (!cv || !card.isConnected || await customCover(it.key).catch(() => null)) return;
-    // over the backdrop, not in it: the backdrop draws itself after this and would replace it
-    cv.className = 'trav-stand'; card.querySelectorAll('.trav-stand').forEach((x) => x.remove()); art.after(cv);
+    if (!glb || !card.isConnected || await customCover(it.key).catch(() => null)) return;
+    it.texGlb = glb; card.dataset.tex = '1'; miniCover(card, it, 240);
   };
-  card.onPaint = () => { card.querySelectorAll('.trav-stand').forEach((x) => x.remove()); setTimeout(stand, 50); };
+  card.onPaint = () => setTimeout(stand, 50);
   stand();
   const info = document.createElement('div'); info.className = 'panel trav-info';
   info.innerHTML = `<h3>Pose ${esc(name)} in Blender</h3><p class="dim">Your traveller as the game builds them from your save, with the skeleton, ready to pose. In Blender: File, Import, glTF. Or press Import my traveller in the LiveLink add-on's panel, pose them, and make a picture of the pose on the Traveller page.</p>
@@ -4498,6 +4495,12 @@ function paintCover(canvas, it, angle) {
   if (it.renderImg) { paintRender(ctx, W, it.renderImg); paintBadge(ctx, W, it.cls, null); return; }
   if (!it.model && it.still && it.still !== true && !it.holo) { paintStill(ctx, W, it.still, tint); paintBadge(ctx, W, it.cls, null); return; }
   if (it.kind === 'pet' && !it.model) { paintEgg(ctx, W, tint, angle != null ? angle : 0); return; }
+  if (it.texGlb && GLTEX.ok()) {
+    // a textured model (the traveller): the turntable's angle turns it, from a little off the front
+    const yaw = (angle != null ? angle + .95 : 0) - 12 * Math.PI / 180;
+    const cv = GLTEX.render(it.texGlb, W, yaw, 4 * Math.PI / 180, 'studio');
+    if (cv) { const m = W * .03; ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = W * .04; ctx.shadowOffsetY = W * .015; ctx.drawImage(cv, m, m * .4, W - 2 * m, W - 2 * m); ctx.restore(); return; }
+  }
   const wire = wireMesh(it);
   if (it.holo) paintHologram(ctx, W, it.holo, tint, angle != null ? angle : -.65);
   else if (it.model && GL3D.ok()) paintModel(ctx, W, it.model, tint, angle != null ? angle : it.kind === 'tool' ? -1.25 : -.95);
