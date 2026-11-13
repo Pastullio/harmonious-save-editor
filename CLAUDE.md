@@ -1,6 +1,8 @@
-# Harmonious Save Editor
+# Harmonious DryDock (formerly Harmonious Save Editor)
 
-No Man's Sky save editor for Steam/GOG PC saves (Frontiers 3.60+). Owner: Pastullio. GPL-3.0.
+No Man's Sky save editor, ship library and Blender toolkit for Steam/GOG PC saves (Frontiers 3.60+). Owner: Pastullio. GPL-3.0.
+
+Name (owner 2026-11-13): shown as **Harmonious DryDock** (`appTitle` in desktop/main.go; page title, wordmark, About, updating screen, picture watermarks, guide, README, the add-on's text). On purpose still the old name: the repo, the exe and release asset file names (`Harmonious Save Editor.exe`, `HarmoniousSaveEditor.exe`, so download links and self-updates keep working), the `Documents\Harmonious Save Editor…` folders and `%LOCALAPPDATA%\HarmoniousSaveEditor`, the AppUserModelID and `hse-` keys. `tagEditorWindows` matches both titles (`oldAppTitle`). The About banner (`@@LOGO@@`) is the owner's art and still reads SAVE EDITOR until they make a new one.
 
 ## Layout
 - `src/codec.js` — save format: LZ4 chunked data file, XXTEA-encrypted meta file, lossless JSON (keeps key order, number lexemes, escapes, raw hashed-ID bytes). Works in browser and Node.

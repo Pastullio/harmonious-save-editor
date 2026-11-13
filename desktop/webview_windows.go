@@ -390,7 +390,7 @@ func createEditorWindow() (uintptr, error) {
 		return 0, errors.New("RegisterClassEx: " + err.Error())
 	}
 	x, y, w, h := nativePlacement()
-	hwnd, _, err := pCreateWindowEx.Call(0, uintptr(unsafe.Pointer(className)), uintptr(unsafe.Pointer(utf16("Harmonious Save Editor"))),
+	hwnd, _, err := pCreateWindowEx.Call(0, uintptr(unsafe.Pointer(className)), uintptr(unsafe.Pointer(utf16(appTitle))),
 		0x00CF0000, // WS_OVERLAPPEDWINDOW
 		uintptr(x), uintptr(y), uintptr(w), uintptr(h), 0, 0, inst, 0)
 	if hwnd == 0 {

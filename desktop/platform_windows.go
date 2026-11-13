@@ -167,7 +167,7 @@ if ($f.ShowDialog($owner) -eq 'OK') { [Console]::Out.Write($f.FileName) }`
 func fatal(msg string) {
 	user32 := syscall.NewLazyDLL("user32.dll")
 	box := user32.NewProc("MessageBoxW")
-	t, _ := syscall.UTF16PtrFromString("Harmonious Save Editor")
+	t, _ := syscall.UTF16PtrFromString(appTitle)
 	m, _ := syscall.UTF16PtrFromString(msg)
 	box.Call(0, uintptr(unsafe.Pointer(m)), uintptr(unsafe.Pointer(t)), 0x10) // MB_ICONERROR
 	os.Exit(1)

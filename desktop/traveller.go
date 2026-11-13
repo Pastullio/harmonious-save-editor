@@ -184,7 +184,7 @@ func handleLiveTool(w http.ResponseWriter, r *http.Request) {
 	}
 	trav.Unlock()
 	if !ok {
-		http.Error(w, "Open a save in Harmonious Save Editor first.", http.StatusNotFound)
+		http.Error(w, "Open a save in Harmonious DryDock first.", http.StatusNotFound)
 		return
 	}
 	sc := normGamePath(t.Scene)
@@ -232,7 +232,7 @@ func handleLiveTraveller(w http.ResponseWriter, r *http.Request) {
 	groups, name, look := trav.groups, trav.name, trav.look
 	trav.Unlock()
 	if len(groups) == 0 {
-		http.Error(w, "Open a save in Harmonious Save Editor first.", http.StatusNotFound)
+		http.Error(w, "Open a save in Harmonious DryDock first.", http.StatusNotFound)
 		return
 	}
 	names, _, err := travellerNames(groups)
@@ -656,7 +656,7 @@ func writeGLB(name string, parts []meshPart, joints []tJoint, byIndex map[int]in
 		skel = skelRoots[0]
 	}
 	doc := map[string]any{
-		"asset":       map[string]any{"version": "2.0", "generator": "Harmonious Save Editor " + appVersion},
+		"asset":       map[string]any{"version": "2.0", "generator": "Harmonious DryDock " + appVersion},
 		"scene":       0,
 		"scenes":      []any{map[string]any{"name": name, "nodes": []int{0}}},
 		"nodes":       nodes,

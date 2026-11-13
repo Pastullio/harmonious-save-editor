@@ -1,4 +1,4 @@
-# Harmonious Save Editor: read a base or corvette build out of a .blend, run by the app as
+# Harmonious DryDock: read a base or corvette build out of a .blend, run by the app as
 #   blender -b --factory-startup --python blend_read.py -- <file.blend> <out.json> <folder with harmonious_live_link.py> [charon dir]
 # Opens the file and reads its build the way the LiveLink add-on does. A base (NMS Base Builder scene) is read from
 # its objects with an ObjectID (Z-up turned into the game's Y-up) plus the base details the Base Builder keeps in the

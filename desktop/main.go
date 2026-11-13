@@ -1,4 +1,4 @@
-// Harmonious Save Editor — desktop app.
+// Harmonious DryDock — desktop app.
 //
 // Serves the editor page on 127.0.0.1 and gives it a small, token-protected API that lists, reads and
 // writes No Man's Sky save pairs directly on disk, so Chrome's block on AppData folders doesn't apply.
@@ -28,6 +28,11 @@ import (
 	"sync/atomic"
 	"time"
 )
+
+// The app's name (owner 2026-11-13: Harmonious Save Editor became Harmonious DryDock). Folders, the exe and the
+// AppUserModelID keep the old name, so settings, the Dock Yard and self-updates carry on; the Edge window is still
+// found by its old title while an older page is open.
+const appTitle, oldAppTitle = "Harmonious DryDock", "Harmonious Save Editor"
 
 //go:embed index.html
 var indexHTML string

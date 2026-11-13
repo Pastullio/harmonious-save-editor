@@ -30,5 +30,5 @@ function makePass(p) {
 }
 const redirectUri = () => (env('URL') || 'http://localhost:8888') + '/.netlify/functions/patreon-callback';
 const page = (title, text, status = 200) => ({ statusCode: status, headers: { 'Content-Type': 'text/html; charset=utf-8' },
-  body: `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Harmonious Save Editor</title><body style="font-family:Segoe UI,system-ui,sans-serif;background:#07131a;color:#fff;display:grid;place-items:center;min-height:90vh;margin:0"><div style="max-width:520px;padding:24px;text-align:center"><h1 style="font-weight:300;letter-spacing:.12em;text-transform:uppercase;font-size:22px">${title}</h1><p style="line-height:1.5;color:#cfe3ea">${text}</p></div></body>` });
+  body: `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Harmonious DryDock</title><body style="font-family:Segoe UI,system-ui,sans-serif;background:#07131a;color:#fff;display:grid;place-items:center;min-height:90vh;margin:0"><div style="max-width:520px;padding:24px;text-align:center"><h1 style="font-weight:300;letter-spacing:.12em;text-transform:uppercase;font-size:22px">${title}</h1><p style="line-height:1.5;color:#cfe3ea">${text}</p></div></body>` });
 module.exports = { env, makeState, readState, makePass, redirectUri, page };

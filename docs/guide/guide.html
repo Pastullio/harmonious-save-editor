@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Harmonious Save Editor Guide</title>
-<meta name="description" content="How to use Harmonious Save Editor, the No Man's Sky save editor: every section, with screenshots.">
+<title>Harmonious DryDock Guide</title>
+<meta name="description" content="How to use Harmonious DryDock, the No Man's Sky save editor: every section, with screenshots.">
 <link rel="icon" href="@@ICON@@">
 <script>try { var t = localStorage.getItem("hse-theme"); if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t); } catch (e) {}</script>
 <style>
@@ -149,8 +149,8 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
 <section class="page" id="home" data-group="start" data-title="Welcome" data-c="#2fc3d6">
   <div class="hero">
     <div>
-      <h1>Harmonious Save Editor</h1>
-      <p>A save editor for No Man's Sky on PC (Steam and GOG). Edit your traveller, ships, corvettes, bases and inventories. Keep every ship you've owned. Find places by their portal glyphs and warp there. Build in Blender and send it straight into your save.</p>
+      <h1>Harmonious DryDock</h1>
+      <p>Formerly Harmonious Save Editor. A save editor, ship library and Blender toolkit for No Man's Sky on PC (Steam and GOG). Edit your traveller, ships, corvettes, bases and inventories. Keep every ship you've owned. Find places by their portal glyphs and warp there. Build in Blender and send it straight into your save.</p>
       <p><a class="btn primary" href="#start">Get started</a> <a class="btn" href="#sections">Tour the sections</a></p>
     </div>
     <img src="shots/overview.webp" alt="The editor's Overview page with the traveller, current ship and multi-tool">
@@ -421,7 +421,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   <h2>Saving and the watermark</h2>
   <ul>
     <li><span class="ui">Save picture</span> puts a PNG in <b>Documents\Harmonious Save Editor\Exports</b>; <span class="ui">Copy picture</span> puts it on the clipboard to paste into Discord. The page remembers your layout; <span class="ui">Reset layout</span> puts everything back.</li>
-    <li>Pictures carry a small "Harmonious Save Editor" in the bottom-right corner. Patrons can take it off: untick <span class="ui">Watermark</span> and press <span class="ui">Sign in with Patreon</span>. Patreon opens in your browser; once it has checked your pledge, come back and the watermark is off. The editor remembers you for a month, then asks you to sign in again.</li>
+    <li>Pictures carry a small "Harmonious DryDock" in the bottom-right corner. Patrons can take it off: untick <span class="ui">Watermark</span> and press <span class="ui">Sign in with Patreon</span>. Patreon opens in your browser; once it has checked your pledge, come back and the watermark is off. The editor remembers you for a month, then asks you to sign in again.</li>
   </ul>
 </section>
 
@@ -791,7 +791,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
     document.documentElement.style.setProperty('--c', page.dataset.c);
     nav.querySelectorAll('a').forEach((a) => a.toggleAttribute('aria-current', a.getAttribute('href') === '#' + page.id) || a.removeAttribute('aria-current'));
     nav.querySelectorAll('a').forEach((a) => { if (a.getAttribute('href') === '#' + page.id) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
-    document.title = (page.id === 'home' ? '' : page.dataset.title + ' · ') + 'Harmonious Save Editor Guide';
+    document.title = (page.id === 'home' ? '' : page.dataset.title + ' · ') + 'Harmonious DryDock Guide';
     document.body.classList.remove('menu'); document.getElementById('menuBtn').setAttribute('aria-expanded', 'false');
     if (anchor) anchor.scrollIntoView(); else window.scrollTo(0, 0);
   };

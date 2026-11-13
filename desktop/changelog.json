@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.13.2113",
+  "date": "2026-11-13",
+  "notes": [
+   "Harmonious Save Editor is now Harmonious DryDock: same app, same saves, settings and Dock Yard, a name that fits everything it does now. Your folders keep their names. The LiveLink add-on (1.23.1) uses the new name too."
+  ]
+ },
+ {
   "version": "2026.11.13.2108",
   "date": "2026-11-13",
   "notes": [

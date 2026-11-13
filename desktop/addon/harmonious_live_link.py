@@ -1,6 +1,6 @@
-# Harmonious LiveLink - a Blender add-on for Harmonious Save Editor (GPL-3.0, same as the editor).
+# Harmonious LiveLink - a Blender add-on for Harmonious DryDock (GPL-3.0, same as the editor).
 #
-# Every time you save your .blend (Ctrl+S), this sends the corvette build in the scene to Harmonious Save Editor,
+# Every time you save your .blend (Ctrl+S), this sends the corvette build in the scene to Harmonious DryDock,
 # which puts it on the corvette you chose (Shipwright > LiveLink) and writes your save, backing it up first.
 # The build is read with Charon Forge when it's installed, otherwise with the NMS Base Builder add-on.
 #
@@ -10,10 +10,10 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 23, 0),
+    "version": (1, 23, 1),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
-    "description": "Send your corvette build to Harmonious Save Editor every time you save",
+    "description": "Send your corvette build to Harmonious DryDock every time you save",
     "category": "Import-Export",
 }
 
@@ -264,7 +264,7 @@ def send(scene):
         return
     addr = editor_address()
     if addr is None:
-        set_status("Harmonious Save Editor isn't running")
+        set_status("Harmonious DryDock isn't running")
         return
     try:
         objects, source = build_objects(scene)
@@ -293,7 +293,7 @@ def send(scene):
             if answer.get("ok") and isinstance(answer.get("target"), dict):
                 STATE["target"] = answer["target"]   # the editor confirmed the corvette: this .blend remembers it
         except (urllib.error.URLError, OSError, ValueError) as error:
-            text = "Couldn't reach Harmonious Save Editor: %s" % error
+            text = "Couldn't reach Harmonious DryDock: %s" % error
         STATE["status"] = text
         STATE["busy"] = False
         # back on Blender's main thread: remember the corvette in the scene (saved with the .blend) and redraw
@@ -322,7 +322,7 @@ def on_save(_):
 class HARMONIOUS_OT_send(bpy.types.Operator):
     bl_idname = "harmonious.live_send"
     bl_label = "Send now"
-    bl_description = "Send the build to Harmonious Save Editor now"
+    bl_description = "Send the build to Harmonious DryDock now"
 
     def execute(self, context):
         send(context.scene)
@@ -378,7 +378,7 @@ SUPPORT = (
     ("Buy me a coffee", "https://buymeacoffee.com/pastullio", "HEART"),
     ("Discord", "https://discord.gg/3PfZfPYDn", "COMMUNITY"),
     ("YouTube", "https://www.youtube.com/@PastullioTheHarmonious", "PLAY"),
-    ("Harmonious Save Editor", "https://github.com/Pastullio/harmonious-save-editor", "URL"),
+    ("Harmonious DryDock", "https://github.com/Pastullio/harmonious-save-editor", "URL"),
 )
 
 # the creator's other free tools
@@ -470,7 +470,7 @@ class HARMONIOUS_PT_live(bpy.types.Panel):
             link.label(text="Editor open, LiveLink off", icon="UNLINKED")
             link.label(text="Turn it on in Shipwright or on Bases")
         else:
-            link.label(text="Harmonious Save Editor isn't running", icon="ERROR")
+            link.label(text="Harmonious DryDock isn't running", icon="ERROR")
 
 
 # Each part of LiveLink is a panel of its own in the sidebar's LiveLink tab, opened and closed on its own header
@@ -1219,12 +1219,12 @@ def show_bone(arm, name, extend=False):
 class HARMONIOUS_OT_traveller(bpy.types.Operator):
     bl_idname = "harmonious.import_traveller"
     bl_label = "Import my traveller"
-    bl_description = "Bring in the traveller from the save open in Harmonious Save Editor, with its skeleton, ready to pose"
+    bl_description = "Bring in the traveller from the save open in Harmonious DryDock, with its skeleton, ready to pose"
 
     def execute(self, context):
         addr = editor_address()
         if addr is None:
-            self.report({"ERROR"}, "Harmonious Save Editor isn't running")
+            self.report({"ERROR"}, "Harmonious DryDock isn't running")
             return {"CANCELLED"}
         url, token = addr
         try:
@@ -1235,7 +1235,7 @@ class HARMONIOUS_OT_traveller(bpy.types.Operator):
             self.report({"ERROR"}, error.read().decode("utf-8", "replace").strip() or str(error))
             return {"CANCELLED"}
         except (urllib.error.URLError, OSError) as error:
-            self.report({"ERROR"}, "Couldn't reach Harmonious Save Editor: %s" % error)
+            self.report({"ERROR"}, "Couldn't reach Harmonious DryDock: %s" % error)
             return {"CANCELLED"}
         path = os.path.join(tempfile.gettempdir(), "harmonious_livelink", name + ".glb")
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -2128,7 +2128,7 @@ class HARMONIOUS_OT_send_ship(bpy.types.Operator):
     def execute(self, context):
         addr = editor_address()
         if addr is None:
-            self.report({"ERROR"}, "Harmonious Save Editor isn't running")
+            self.report({"ERROR"}, "Harmonious DryDock isn't running")
             return {"CANCELLED"}
         scene = context.scene
         name = scene.harmonious_target_name if scene.harmonious_target_slot >= 0 else ""
@@ -2150,7 +2150,7 @@ class HARMONIOUS_OT_send_ship(bpy.types.Operator):
             self.report({"ERROR"}, error.read().decode("utf-8", "replace").strip() or str(error))
             return {"CANCELLED"}
         except (urllib.error.URLError, OSError, ValueError) as error:
-            self.report({"ERROR"}, "Couldn't reach Harmonious Save Editor: %s" % error)
+            self.report({"ERROR"}, "Couldn't reach Harmonious DryDock: %s" % error)
             return {"CANCELLED"}
         set_status("%s sent in 3D (%d parts, %d MB): pick it on the Traveller page" % (name, n, max(1, len(data) // 1048576)))
         self.report({"INFO"}, "Sent %s in 3D" % name)
@@ -2237,7 +2237,7 @@ class HARMONIOUS_OT_hold_tool(bpy.types.Operator):
     def execute(self, context):
         addr = editor_address()
         if addr is None:
-            self.report({"ERROR"}, "Harmonious Save Editor isn't running")
+            self.report({"ERROR"}, "Harmonious DryDock isn't running")
             return {"CANCELLED"}
         i = int(context.scene.harmonious_tool or -1)
         if i < 0:
@@ -2251,7 +2251,7 @@ class HARMONIOUS_OT_hold_tool(bpy.types.Operator):
             self.report({"ERROR"}, error.read().decode("utf-8", "replace").strip() or str(error))
             return {"CANCELLED"}
         except (urllib.error.URLError, OSError) as error:
-            self.report({"ERROR"}, "Couldn't reach Harmonious Save Editor: %s" % error)
+            self.report({"ERROR"}, "Couldn't reach Harmonious DryDock: %s" % error)
             return {"CANCELLED"}
         name = (LINK.get("tools") or [""])[i] if i < len(LINK.get("tools") or []) else "Multi-tool"
         try:
@@ -2283,7 +2283,7 @@ class HARMONIOUS_OT_drop_tool(bpy.types.Operator):
 class HARMONIOUS_OT_send_pose(bpy.types.Operator):
     bl_idname = "harmonious.send_pose"
     bl_label = "Send the pose to the editor"
-    bl_description = "Send your posed traveller to Harmonious Save Editor in 3D, to turn and place on the Traveller page"
+    bl_description = "Send your posed traveller to Harmonious DryDock in 3D, to turn and place on the Traveller page"
 
     @classmethod
     def poll(cls, context):
@@ -2292,7 +2292,7 @@ class HARMONIOUS_OT_send_pose(bpy.types.Operator):
     def execute(self, context):
         addr = editor_address()
         if addr is None:
-            self.report({"ERROR"}, "Harmonious Save Editor isn't running")
+            self.report({"ERROR"}, "Harmonious DryDock isn't running")
             return {"CANCELLED"}
         arm = find_traveller()
         try:
@@ -2311,7 +2311,7 @@ class HARMONIOUS_OT_send_pose(bpy.types.Operator):
             self.report({"ERROR"}, error.read().decode("utf-8", "replace").strip() or str(error))
             return {"CANCELLED"}
         except (urllib.error.URLError, OSError, ValueError) as error:
-            self.report({"ERROR"}, "Couldn't reach Harmonious Save Editor: %s" % error)
+            self.report({"ERROR"}, "Couldn't reach Harmonious DryDock: %s" % error)
             return {"CANCELLED"}
         set_status("Sent to the editor in 3D (%d MB): open the Traveller page" % max(1, len(data) // 1048576))
         self.report({"INFO"}, "Sent " + out.get("name", "the pose"))
@@ -2621,7 +2621,7 @@ class HARMONIOUS_PT_traveller(LiveLinkPanel, bpy.types.Panel):
         col = layout.column(align=True)
         col.scale_y = 0.8
         if LINK["state"] == "none":
-            col.label(text="Open Harmonious Save Editor and a save")
+            col.label(text="Open Harmonious DryDock and a save")
         elif LINK.get("traveller"):
             col.label(text="In the editor: " + LINK["traveller"], icon="USER")
         else:
@@ -3851,7 +3851,7 @@ class HARMONIOUS_PT_support(LiveLinkPanel, bpy.types.Panel):
         layout = self.layout
         text = layout.column(align=True)
         text.scale_y = 0.8
-        for line in wrap("LiveLink and Harmonious Save Editor are free, made by Pastullio the Harmonious. If they help you, you can support the work or come and say hello:", 40):
+        for line in wrap("LiveLink and Harmonious DryDock are free, made by Pastullio the Harmonious. If they help you, you can support the work or come and say hello:", 40):
             text.label(text=line)
         col = layout.column(align=True)
         for label, url, icon in SUPPORT:
@@ -3888,7 +3888,7 @@ def register():
         bpy.utils.register_class(cls)
     bpy.types.Scene.harmonious_live_on = bpy.props.BoolProperty(
         name="Send on save", default=True,
-        description="Send the build to Harmonious Save Editor every time this file is saved")
+        description="Send the build to Harmonious DryDock every time this file is saved")
     bpy.types.Scene.harmonious_target_slot = bpy.props.IntProperty(name="Corvette slot", default=-1)
     bpy.types.Scene.harmonious_tool = bpy.props.EnumProperty(name="Multi-tool", items=tool_items,
         description="One of the multi-tools in the save open in the editor")

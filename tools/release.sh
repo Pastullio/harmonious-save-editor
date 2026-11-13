@@ -22,7 +22,7 @@ BODY="$NOTES
 
 **Download:** HarmoniousSaveEditor.exe below (Windows, no installer). If you already have the editor, it updates itself.
 The user guide and the browser version are attached too."
-gh release create "v$VERSION" -R "$REPO" --target main --title "Harmonious Save Editor $VERSION" --notes "$BODY" --latest \
+gh release create "v$VERSION" -R "$REPO" --target main --title "Harmonious DryDock $VERSION" --notes "$BODY" --latest \
   "$TMP/HarmoniousSaveEditor.exe" "$TMP/Harmonious-Save-Editor-Guide.html" "$TMP/nms-save-editor-browser.html"
 rm -rf "$TMP"
 echo "released v$VERSION"

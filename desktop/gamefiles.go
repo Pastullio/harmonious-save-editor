@@ -196,7 +196,7 @@ func openMbin(b []byte, guid uint64, what string) (*mbin, error) {
 		return nil, fmt.Errorf("%s isn't an MBIN file", what)
 	}
 	if g := binary.LittleEndian.Uint64(b[0x10:]); g != guid {
-		return nil, fmt.Errorf("%s has a newer layout than this app knows (template %016X); update Harmonious Save Editor", what, g)
+		return nil, fmt.Errorf("%s has a newer layout than this app knows (template %016X); update Harmonious DryDock", what, g)
 	}
 	return &mbin{b}, nil
 }

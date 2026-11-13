@@ -138,7 +138,7 @@ func handlePatronReturn(w http.ResponseWriter, r *http.Request) {
 	nonce := r.URL.Query().Get("nonce")
 	page := func(title, text string) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		io.WriteString(w, `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Harmonious Save Editor</title>`+
+		io.WriteString(w, `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Harmonious DryDock</title>`+
 			`<body style="font-family:Segoe UI,system-ui,sans-serif;background:#07131a;color:#fff;display:grid;place-items:center;min-height:90vh;margin:0">`+
 			`<div style="max-width:460px;padding:24px;text-align:center"><h1 style="font-weight:300;letter-spacing:.12em;text-transform:uppercase;font-size:22px">`+html.EscapeString(title)+
 			`</h1><p style="line-height:1.5;color:#cfe3ea">`+html.EscapeString(text)+`</p></div></body>`)
@@ -162,7 +162,7 @@ func handlePatronReturn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if p.Active {
-		page("Thank you!", "You're signed in as "+p.Name+". Go back to Harmonious Save Editor: the watermark can come off now. You can close this tab.")
+		page("Thank you!", "You're signed in as "+p.Name+". Go back to Harmonious DryDock: the watermark can come off now. You can close this tab.")
 	} else {
 		reason := p.Reason
 		if reason == "" {

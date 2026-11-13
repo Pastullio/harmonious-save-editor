@@ -26,5 +26,5 @@ jobs:
           cp "dist/Harmonious Save Editor Guide.html" out/Harmonious-Save-Editor-Guide.html
           cp dist/nms-save-editor.html out/nms-save-editor-browser.html
           printf '%s\n\n**Download:** HarmoniousSaveEditor.exe below (Windows, no installer). If you already have the editor, it updates itself.\nThe user guide and the browser version are attached too.\n' "$NOTES" > notes.md
-          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "Harmonious Save Editor $VERSION" --notes-file notes.md --latest \
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "Harmonious DryDock $VERSION" --notes-file notes.md --latest \
             out/HarmoniousSaveEditor.exe out/Harmonious-Save-Editor-Guide.html out/nms-save-editor-browser.html

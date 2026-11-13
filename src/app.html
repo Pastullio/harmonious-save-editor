@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Harmonious Save Editor</title>
+<title>Harmonious DryDock</title>
 <link rel="icon" type="image/png" href="@@ICON@@">
 <!--@@APP@@-->
 <style>/*@@FONTS@@*/</style>
@@ -1216,7 +1216,7 @@ nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .
 <section id="landing">
   <div class="landing-inner">
     <div class="landing-copy">
-      <h1 class="wordmark">Harmonious<br>Save Editor</h1>
+      <h1 class="wordmark">Harmonious<br>DryDock</h1>
       <p class="err" id="landingErr" role="alert"></p>
       <div class="acct-list" id="acctList"></div>
       <div class="slot-list" id="slotList"></div>
@@ -1277,7 +1277,7 @@ nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .
 <div id="diskNote" class="disk-note" role="status" hidden></div>
 <div id="updScreen" class="upd" hidden role="status" aria-live="polite"><div class="upd-sky"></div><div class="upd-streaks" aria-hidden="true"></div>
     <div class="upd-art-wrap" aria-hidden="true"><img class="upd-art" src="@@UPDART@@" alt=""><span class="upd-ring"></span><span class="upd-flare"></span></div>
-    <div class="upd-copy"><span class="upd-k">Harmonious Save Editor</span><h1>Updating</h1><p class="upd-ver" id="updVer"></p>
+    <div class="upd-copy"><span class="upd-k">Harmonious DryDock</span><h1>Updating</h1><p class="upd-ver" id="updVer"></p>
       <div class="upd-bar"><i id="updBar"></i></div><div class="upd-stage"><span id="updStage">Getting ready</span><span id="updPct"></span></div>
       <p class="upd-note" id="updNote">Your saves, backups, Dock Yard and settings stay exactly as they are.</p></div></div>
   <div id="liveNote" class="live-note" role="status" aria-live="polite" hidden></div>
@@ -1424,13 +1424,13 @@ drawResources();
 const LINKS = [['GitHub', 'https://github.com/Pastullio/harmonious-save-editor'], ['Discord', 'https://discord.gg/3PfZfPYDn'], ['YouTube', 'https://www.youtube.com/@PastullioTheHarmonious'], ['Patreon', 'https://www.patreon.com/pastullio'], ['Buy me a coffee', 'https://buymeacoffee.com/pastullio']];
 function aboutDialog() {
   const ver = window.NMS_APP ? 'Desktop app' + (window.NMS_APP.version && window.NMS_APP.version !== '1' ? ' · version ' + window.NMS_APP.version : '') : 'Browser version';
-  dialog('About', `<div class="about-sky"><img src="@@LOGO@@" alt="Harmonious Save Editor"><div class="ver">${ver}</div></div>
-    <p>A No Man's Sky save editor for Steam and GOG on PC, by Pastullio the Harmonious. It reads your own game files for item names, icons and models, and backs up every save before it changes it.</p>
+  dialog('About', `<div class="about-sky"><img src="@@LOGO@@" alt="Harmonious DryDock"><div class="ver">${ver}</div></div>
+    <p>A save editor, ship library and Blender toolkit for No Man's Sky on PC (Steam and GOG), by Pastullio the Harmonious. It reads your own game files for item names, icons and models, and backs up every save before it changes it.</p>
     <div class="about-links"><a class="btn small primary" href="${GUIDE_URL}" target="_blank" rel="noopener">User guide</a>${APP ? '<button class="btn small addon-btn" type="button">LiveLink</button>' : ''}${LINKS.map(([t, u]) => `<a class="btn small" href="${u}" target="_blank" rel="noopener">${t}</a>`).join('')}</div>
     <p class="dim" style="margin:12px 0 6px">Built with thanks to</p>
     <ul class="about-credits"><li>libNOM.map and libNOM.io by zencq (save keys and format)</li><li>MBINCompiler by monkeyman192 and contributors (game table layouts)</li><li>HGPAKtool by monkeyman192 (game archive format)</li><li>Charon Forge by xX-Charon-Xx (corvette renders)</li><li>nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, and its JavaScript port nms-core by elegra1965 (system and planet prediction; MIT)</li><li>Pillow (texture decoding), klauspost/compress (zstd), Jost by indestructible type* (typeface)</li></ul>
     <p class="dim" style="font-size:13px;margin:12px 0 0">Free software under the GPL-3.0 licence. Not affiliated with Hello Games.</p>
-    <div class="about-version">${window.NMS_APP && appVer() ? `<p>Harmonious Save Editor version: <b class="mono">${esc(appVer())}</b></p><div class="about-ver-acts"><button class="link" type="button" id="aboutNew">What's new</button><button class="btn primary" type="button" id="aboutUpd">Check for updates</button></div>` : '<p>Harmonious Save Editor, browser version</p>'}</div>`, [['Close', false]]);
+    <div class="about-version">${window.NMS_APP && appVer() ? `<p>Harmonious DryDock version: <b class="mono">${esc(appVer())}</b></p><div class="about-ver-acts"><button class="link" type="button" id="aboutNew">What's new</button><button class="btn primary" type="button" id="aboutUpd">Check for updates</button></div>` : '<p>Harmonious DryDock, browser version</p>'}</div>`, [['Close', false]]);
 }
 document.addEventListener('click', (e) => { if (e.target.closest('.about-btn')) aboutDialog(); if (e.target.closest('#aboutNew')) whatsNew(true); if (e.target.closest('#aboutUpd')) checkForUpdate(true); });
 document.querySelectorAll('.guide-btn').forEach((a) => { a.href = GUIDE_URL; });
@@ -2636,7 +2636,7 @@ async function tcDraw(cv, preview) {
   for (const id of st.order) await draw[id]();
   // the watermark, bottom right, on top of everything; patrons can take it off
   if (st.watermark || !tcPatron()) {
-    const t = 'Harmonious Save Editor', fs = Math.round(U * .024);
+    const t = 'Harmonious DryDock', fs = Math.round(U * .024);
     ctx.save(); ctx.font = `500 ${fs}px ${F}`; ctx.textBaseline = 'alphabetic'; ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = fs * .4; ctx.fillStyle = 'rgba(255,255,255,.62)';
     track(t.toUpperCase(), W - U * .035 - (ctx.measureText(t.toUpperCase()).width + t.length * fs * .12), H - U * .035, fs * .12); ctx.restore();
   }
@@ -5954,7 +5954,7 @@ function placeText(p, s) {
   return [`${s.name}${pl ? ' · planet ' + p.planet + ': ' + pl : ''}`, `${s.region}, ${GALAXIES[p.gi]} (galaxy ${p.gi + 1})`,
     `Portal code: ${Place.portal(p)}`, `Galactic address: ${Place.galactic(p)}`,
     `Star: ${s.star}${s.gasGiant ? ' (gas giant system)' : ''} · Race: ${s.abandoned ? 'none (abandoned)' : s.race} · Economy: ${s.abandoned ? 'none' : s.pirate ? 'pirate' : s.economy + ', ' + s.wealth.toLowerCase() + ' wealth'} · Conflict: ${s.abandoned ? 'none' : s.pirate ? 'pirate controlled' : s.conflict}`,
-    s.planets.length ? 'Planets: ' + s.planets.map((n, i) => `${i + 1}. ${n}`).join(', ') : 'No planets', 'Made with Harmonious Save Editor'].join('\n');
+    s.planets.length ? 'Planets: ' + s.planets.map((n, i) => `${i + 1}. ${n}`).join(', ') : 'No planets', 'Made with Harmonious DryDock'].join('\n');
 }
 const glyphImgCache = new Map();
 function glyphImage(d) {
@@ -5990,7 +5990,7 @@ async function placeCard(p, s) {
   // planets
   const px = 880; ctx.fillStyle = 'rgba(160,230,235,.7)'; ctx.font = `500 12px ${F}`; track(`${s.planets.length} PLANET${s.planets.length === 1 ? '' : 'S'}${s.moonCount ? `, ${s.moonCount} MOON${s.moonCount === 1 ? '' : 'S'}` : ''}`, px, 372, 3);
   s.planets.slice(0, 5).forEach((n, i) => { const on = p.planet === i + 1; ctx.fillStyle = on ? '#36d6c3' : 'rgba(255,255,255,.88)'; ctx.font = `${on ? 500 : 400} 21px ${F}`; ctx.fillText(`${i + 1}  ${n}`, px, 410 + i * 34); });
-  ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.font = `400 14px ${F}`; ctx.fillText('Harmonious Save Editor', W - 64 - ctx.measureText('Harmonious Save Editor').width, H - 36);
+  ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.font = `400 14px ${F}`; ctx.fillText('Harmonious DryDock', W - 64 - ctx.measureText('Harmonious DryDock').width, H - 36);
   return new Promise((res) => cv.toBlob(res, 'image/png'));
 }
 async function shareCard(how, p, s) {
@@ -9197,7 +9197,7 @@ function search(q) {
 function preview(x) { const k = kind(x); if (k === 'object' || k === 'array') return summary(x); const s = String(x); return /[\uF780-\uF7FF]/.test(s) ? idLabel(s) : s.length > 80 ? s.slice(0, 80) + '…' : s; }
 
 // ------------------------------------------------------------------ desktop app mode
-// When this page is served by the Harmonious Save Editor app, window.NMS_APP holds a per-run token
+// When this page is served by the Harmonious DryDock app, window.NMS_APP holds a per-run token
 // and the app reads and writes the save folder directly (Chrome's AppData block doesn't apply).
 const APP = window.NMS_APP || null;
 async function api(path, opts = {}) {
@@ -9347,7 +9347,7 @@ async function checkForUpdateNow(manual) {
   let skipped = ''; try { skipped = localStorage.getItem('hse-skip-version') || ''; } catch (_) {}
   if (!manual && skipped === u.latest) return;
   const dirty = S.dirty || (S.acct && S.acct.dirty);
-  const v = await dialog('A new version is available', `<div class="upd-offer"><div><p>Harmonious Save Editor <b>${esc(u.latest)}</b>${u.date ? ` <span style="white-space:nowrap">(${esc(u.date)})</span>` : ''} is out. You have ${esc(u.current)}.</p>${u.notes ? `<p>${esc(u.notes)}</p>` : ''}
+  const v = await dialog('A new version is available', `<div class="upd-offer"><div><p>Harmonious DryDock <b>${esc(u.latest)}</b>${u.date ? ` <span style="white-space:nowrap">(${esc(u.date)})</span>` : ''} is out. You have ${esc(u.current)}.</p>${u.notes ? `<p>${esc(u.notes)}</p>` : ''}
     <p class="dim">Updating downloads the new version, checks it, and restarts the editor. Your saves, backups, Dock Yard and settings stay as they are.</p></div><img src="${$('#updScreen .upd-art').src}" alt=""></div>${dirty ? '<p class="err">You have unsaved changes. Save them first, or they are lost when the editor restarts.</p>' : ''}`,
     [['Not now', 'later', 'ghost'], ['Update now', 'go', 'primary']]);
   if (v === 'later') { try { localStorage.setItem('hse-skip-version', u.latest); } catch (_) {} return; }

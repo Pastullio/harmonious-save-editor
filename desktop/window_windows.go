@@ -81,7 +81,7 @@ func editorWindows() []uintptr {
 			return 1
 		}
 		getText.Call(h, uintptr(unsafe.Pointer(&buf[0])), 256)
-		if t := syscall.UTF16ToString(buf); t == "Harmonious Save Editor" || strings.HasPrefix(t, "Harmonious Save Editor - ") {
+		if t := syscall.UTF16ToString(buf); t == appTitle || strings.HasPrefix(t, appTitle+" - ") || t == oldAppTitle || strings.HasPrefix(t, oldAppTitle+" - ") {
 			out = append(out, h)
 		}
 		return 1
@@ -169,7 +169,7 @@ func tagWindow(h uintptr) bool {
 	}
 	set(2, `"`+exe+`"`)                       // RelaunchCommand
 	set(3, exe+",0")                          // RelaunchIconResource
-	set(4, "Harmonious Save Editor")          // RelaunchDisplayNameResource
+	set(4, appTitle)          // RelaunchDisplayNameResource
 	set(5, editorAUMID)                       // ID, last
 	syscall.SyscallN(vtbl[7], uintptr(store)) // Commit
 	syscall.SyscallN(vtbl[2], uintptr(store)) // Release

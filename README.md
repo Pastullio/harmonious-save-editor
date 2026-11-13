@@ -1,8 +1,8 @@
-<p align="center"><img src="docs/logo.png" alt="Harmonious Save Editor" width="560"></p>
+<p align="center"><img src="docs/logo.png" alt="Harmonious DryDock" width="560"></p>
 
-# Harmonious Save Editor
+# Harmonious DryDock
 
-A save editor for No Man's Sky on PC (Steam and GOG, Frontiers 3.60 or newer). Edit your traveller, ships, corvettes, bases and inventories. Keep a library of every ship you've owned. Find places by portal glyphs and warp there. Build corvettes and bases in Blender and send them straight into your save.
+*Formerly Harmonious Save Editor.* A save editor, ship library and Blender toolkit for No Man's Sky on PC (Steam and GOG, Frontiers 3.60 or newer). Searching for an NMS save editor? This is it. Edit your traveller, ships, corvettes, bases and inventories. Keep a library of every ship you've owned. Find places by portal glyphs and warp there. Build corvettes and bases in Blender and send them straight into your save.
 
 Nothing is uploaded anywhere. Item names and icons come from your own copy of the game.
 

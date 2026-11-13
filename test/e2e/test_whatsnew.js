@@ -34,7 +34,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   // About: the version and What's new
   await p.click('.land-corner .about-btn'); await p.waitForSelector('#dlg[open] .about-version');
   const t = await p.textContent('.about-version');
-  ok('About says which version this is', t.includes('Harmonious Save Editor version: ' + V));
+  ok('About says which version this is', t.includes('Harmonious DryDock version: ' + V));
   await p.click('#aboutNew'); await p.waitForSelector('#dlg[open] .whatsnew');
   ok("What's new in About lists the recent changes", (await p.$$('#dlg .whatsnew li')).length >= 5);
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
