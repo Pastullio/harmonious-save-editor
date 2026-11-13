@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 22, 0),
+    "version": (1, 23, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -415,6 +415,14 @@ def ic(name, fallback="NONE"):
         return {"icon_value": previews()[name].icon_id}
     except Exception:
         return {"icon": fallback}
+
+
+def ICON_ID(name):
+    """One of our icons as a number, for enum items (0: none)."""
+    try:
+        return previews()[name].icon_id
+    except Exception:
+        return 0
 
 
 def draw_logo(context, layout):
@@ -3245,22 +3253,99 @@ PRINT_SHIP_SIZES = (
     ("SAME", "Same scale as the figure", "Matches the traveller's print size (corvettes come out very big)", -1.0),
     ("CUSTOM", "Custom length", "Any length you type in", 0.0),
 )
-_TARGET_ITEMS = []
+_PRINT_ITEMS = []
+
+
+SCENE_BUILD = "SCENE"   # the print target that is this file's own build (a corvette or base opened in Blender)
+
+
+def scene_build_objects(scene, first=False):
+    """What this file's own build is made of: every visible mesh or instancing empty that isn't the traveller, a
+    multi-tool in their hand, a print preview or a backdrop (owner 2026-11-13: the corvette's own .blend had no way
+    to print). first=True stops at the first one (to know there is one)."""
+    skip = set()
+    arm = find_traveller()
+    if arm is not None:
+        skip.add(arm)
+        skip.update(traveller_meshes(arm))
+        for t in held_tools(arm):
+            skip.add(t)
+            skip.update(t.children_recursive)
+    for c in backdrops():
+        skip.update(c.all_objects)
+    out = []
+    for o in scene.objects:
+        if o in skip or o.get(PREVIEW_TAG) or o.hide_render or not o.visible_get():
+            continue
+        if (o.type == "MESH" and o.data is not None and len(o.data.vertices)) or \
+                (o.instance_type == "COLLECTION" and o.instance_collection is not None):
+            out.append(o)
+            if first:
+                break
+    return out
+
+
+def scene_build_name(scene):
+    if scene.harmonious_target_slot >= 0 and scene.harmonious_target_name:
+        return scene.harmonious_target_name
+    base = base_info(scene)
+    if base and base.get("name"):
+        return base["name"]
+    return os.path.splitext(os.path.basename(bpy.data.filepath))[0] if bpy.data.filepath else "Build"
 
 
 def print_targets(self, context):
-    """What can be printed: the traveller, then each corvette added as a backdrop."""
-    global _TARGET_ITEMS
-    items = [("TRAVELLER", "Your traveller", "Your posed traveller with the multi-tool in their hand")]
-    for c in backdrops():
-        items.append(("SHIP:" + c.name, c.name, "The backdrop " + c.name))
-    _TARGET_ITEMS = items
+    """What can be printed: the traveller, this file's own build, then each corvette added as a backdrop. Numbered so
+    a stored pick doesn't slide onto another one when the traveller comes or goes."""
+    global _PRINT_ITEMS
+    items = []
+    if find_traveller() is not None:
+        items.append(("TRAVELLER", "Your traveller", "Your posed traveller with the multi-tool in their hand", ICON_ID("printme"), 0))
+    sc = context.scene if context is not None else bpy.context.scene
+    if sc is not None and scene_build_objects(sc, first=True):
+        items.append((SCENE_BUILD, scene_build_name(sc) + " (this file)", "The build in this file, as it shows in the 3D view", ICON_ID("printship"), 1))
+    for i, c in enumerate(backdrops()):
+        items.append(("SHIP:" + c.name, c.name, "The backdrop " + c.name, ICON_ID("printship"), 2 + i))
+    if not items:
+        items.append(("NONE", "Nothing to print yet", "Import your traveller or open a corvette or base", 0, 99))
+    _PRINT_ITEMS = items
     return items
 
 
+def print_target(scene):
+    """The panel's pick, or the first thing that can be printed when the pick has gone."""
+    try:
+        t = scene.harmonious_print_target
+    except Exception:
+        t = ""
+    ids = [x[0] for x in print_targets(None, bpy.context)]
+    return t if t in ids else ids[0]
+
+
 def print_ship(scene):
-    t = scene.harmonious_print_target or "TRAVELLER"
+    """None for the traveller, SCENE_BUILD for this file's build, else the backdrop's collection."""
+    t = print_target(scene)
+    if t == SCENE_BUILD:
+        return SCENE_BUILD
     return bpy.data.collections.get(t[5:]) if t.startswith("SHIP:") else None
+
+
+def can_print(context):
+    return print_target(context.scene) != "NONE"
+
+
+class HARMONIOUS_OT_print_pick(bpy.types.Operator):
+    """The print's subject is kept as text, picked from this menu: a stored enum number slid onto another item (or
+    none) when the traveller came or went."""
+    bl_idname = "harmonious.print_pick"
+    bl_label = "Print"
+    bl_description = "What to print: your traveller, this file's corvette or base, or a backdrop"
+    bl_property = "target"
+    target: bpy.props.EnumProperty(items=print_targets)
+
+    def execute(self, context):
+        context.scene.harmonious_print_target = self.target
+        return {"FINISHED"}
 
 
 def print_size(scene, ship=None, model_size=None):
@@ -3286,18 +3371,25 @@ def make_print(context):
     ship = print_ship(sc)
     fwd, left, up = body_frame(arm) if arm is not None else (None, None, None)
     if ship is None:
+        if arm is None:
+            raise RuntimeError("Import your traveller first")
         h = print_height(sc)
         solid, scale, H = make_print_mesh(context, arm, h, sc.harmonious_print_base, print_base_mm(sc, h), print_detail(sc, h))
         name = str(arm.get("harmonious_traveller") or LINK.get("traveller") or "Traveller")
         return solid, scale, H, h, name, -left * H * 0.9
     import mathutils
-    box = _bounds([backdrop_empty(ship)]) if backdrop_empty(ship) is not None else None
+    if ship == SCENE_BUILD:
+        box = _bounds(scene_build_objects(sc))
+        name = scene_build_name(sc)
+    else:
+        box = _bounds([backdrop_empty(ship)]) if backdrop_empty(ship) is not None else None
+        name = ship.name
     L = max((box[1] - box[0]).x, (box[1] - box[0]).y, (box[1] - box[0]).z) if box else 40.0
     mm = print_size(sc, ship, L)
     base = sc.harmonious_print_base_mm if sc.harmonious_print_base_mm > 0 else max(40.0, min(140.0, round(mm * 0.45 / 5) * 5))
     solid, scale, H = make_print_mesh(context, arm, mm, True, base, print_detail(sc, mm), ship=ship, stand=sc.harmonious_print_stand)
     side = (-left if left is not None else mathutils.Vector((1, 0, 0)))
-    return solid, scale, H, mm, ship.name, side * (H * 1.1)
+    return solid, scale, H, mm, name, side * (H * 1.1)
 
 
 def print_traveller(context, arm, height_mm, base, base_mm, detail, keep):
@@ -3389,13 +3481,11 @@ def _np_cone(radius1, radius2, depth, at, segments=96):
 
 
 def _ship_arrays(holder):
-    """A backdrop's build as numpy arrays in world space (its parts, collection instances made real). Charon Forge
-    corvettes run to millions of triangles, so this stays in numpy rather than bmesh (bmesh ran out of memory), and
-    nothing is removed while parts are read (that left stale references and crashed Blender)."""
+    """A backdrop's build (or, for SCENE_BUILD, this file's own build) as numpy arrays in world space (its parts,
+    collection instances made real). Charon Forge corvettes run to millions of triangles, so this stays in numpy
+    rather than bmesh (bmesh ran out of memory), and nothing is removed while parts are read (that left stale
+    references and crashed Blender)."""
     import mathutils
-    empty = backdrop_empty(holder)
-    if empty is None:
-        return None
     parts = []
 
     def walk(o, M, depth=0):
@@ -3407,10 +3497,17 @@ def _ship_arrays(holder):
             for x in list(coll.all_objects):   # (a parented part's matrix_world already holds its parent's)
                 walk(x, inner, depth + 1)
 
-    coll = empty.instance_collection
-    inner = empty.matrix_world @ mathutils.Matrix.Translation(-coll.instance_offset)
-    for x in list(coll.all_objects):
-        walk(x, inner)
+    if holder == SCENE_BUILD:
+        for x in scene_build_objects(bpy.context.scene):
+            walk(x, mathutils.Matrix.Identity(4))
+    else:
+        empty = backdrop_empty(holder)
+        if empty is None:
+            return None
+        coll = empty.instance_collection
+        inner = empty.matrix_world @ mathutils.Matrix.Translation(-coll.instance_offset)
+        for x in list(coll.all_objects):
+            walk(x, inner)
     if not parts:
         return None
     return _np_join([_np_mesh(d, M) for d, M in parts])
@@ -3574,14 +3671,14 @@ def show_preview(context, arm, solid, scale, H, offset=None):
 class HARMONIOUS_OT_print_preview(bpy.types.Operator):
     bl_idname = "harmonious.print_preview"
     bl_label = "Preview the print"
-    bl_description = ("Make the print model and stand it beside your traveller in plain grey, as it comes off a printer, "
+    bl_description = ("Make the print model and stand it beside what you're printing in plain grey, as it comes off a printer, "
                       "to look over before you export it (nothing is saved)")
     bl_options = {"REGISTER", "UNDO"}
     remove: bpy.props.BoolProperty(options={"SKIP_SAVE"})
 
     @classmethod
     def poll(cls, context):
-        return find_traveller() is not None
+        return can_print(context)
 
     def execute(self, context):
         if self.remove:
@@ -3614,12 +3711,12 @@ class HARMONIOUS_OT_print_preview(bpy.types.Operator):
 class HARMONIOUS_OT_print(bpy.types.Operator):
     bl_idname = "harmonious.print"
     bl_label = "Export for 3D printing"
-    bl_description = ("Make your posed traveller (and the multi-tool in their hand) one solid, printable model on a round base, "
-                      "at the height you set, and save it as an STL in millimetres to the Exports folder")
+    bl_description = ("Make what you picked (your posed traveller, this file's corvette or base, or a backdrop) one solid, printable "
+                      "model at the size you set, and save it as an STL in millimetres to the Exports folder")
 
     @classmethod
     def poll(cls, context):
-        return find_traveller() is not None
+        return can_print(context)
 
     def execute(self, context):
         sc = context.scene
@@ -3658,14 +3755,36 @@ class HARMONIOUS_PT_export(LiveLinkPanel, bpy.types.Panel):
         tip.scale_y = 0.8
         for line in wrap("The 3D pose turns on the Traveller page; the picture is what the camera sees, with the lights and quality above.", 40):
             tip.label(text=line)
-        box = layout.box()
-        box.label(text="3D print: a miniature", icon="MOD_SOLIDIFY")
+
+
+class HARMONIOUS_PT_print(LiveLinkPanel, bpy.types.Panel):
+    """3D printing in its own panel, in neon green (owner 2026-11-13): it works without a traveller, so a corvette's
+    or base's own .blend can be printed too."""
+    bl_label = "3D print"
+    bl_idname = "HARMONIOUS_PT_print"
+    bl_order = 8
+    header_icon = ("print", "MOD_SOLIDIFY")
+
+    def draw(self, context):
+        layout = self.layout
         sc = context.scene
-        box.prop(sc, "harmonious_print_target", text="Print")
+        target = print_target(sc)
+        if target == "NONE":
+            note = layout.column(align=True)
+            note.scale_y = 0.8
+            for line in wrap("Nothing to print yet. Open a corvette or base .blend, or import your traveller.", 40):
+                note.label(text=line)
+            return
+        row = layout.row(align=True)
+        row.label(text="", **ic("printship" if target != "TRAVELLER" else "printme", "MOD_SOLIDIFY"))
+        label = next((x[1] for x in _PRINT_ITEMS if x[0] == target), target)
+        row.operator_menu_enum(HARMONIOUS_OT_print_pick.bl_idname, "target", text=label)
         ship = print_ship(sc)
-        col = box.column(align=True)
+        col = layout.column(align=True)
         if ship is None:
-            col.prop(sc, "harmonious_print_size", text="")
+            size = col.row(align=True)
+            size.label(text="", **ic("printsize", "FIXED_SIZE"))
+            size.prop(sc, "harmonious_print_size", text="")
             if sc.harmonious_print_size == "CUSTOM":
                 col.prop(sc, "harmonious_print_height")
             h = print_height(sc)
@@ -3675,15 +3794,19 @@ class HARMONIOUS_PT_export(LiveLinkPanel, bpy.types.Panel):
             sub.enabled = sc.harmonious_print_base
             sub.prop(sc, "harmonious_print_base_mm", text="Size (mm)" if sc.harmonious_print_base_mm > 0 else "Size: fits (%d mm)" % print_base_mm(sc, h))
         else:
-            col.prop(sc, "harmonious_print_ship_size", text="")
+            size = col.row(align=True)
+            size.label(text="", **ic("printsize", "FIXED_SIZE"))
+            size.prop(sc, "harmonious_print_ship_size", text="")
             if sc.harmonious_print_ship_size == "CUSTOM":
                 col.prop(sc, "harmonious_print_ship_mm")
             h = print_size(sc, ship) if sc.harmonious_print_ship_size != "SAME" else 150.0
-            col.prop(sc, "harmonious_print_stand", expand=True)
-        box.prop(sc, "harmonious_print_detail", text="Detail")
+            stand = col.row(align=True)
+            stand.label(text="", **ic("printstand", "OUTLINER_OB_EMPTY"))
+            stand.prop(sc, "harmonious_print_stand", expand=True)
+        layout.prop(sc, "harmonious_print_detail", text="Detail")
         d = print_detail(sc, h)
         n, mb = print_estimate(d)
-        note = box.column(align=True)
+        note = layout.column(align=True)
         note.scale_y = 0.8
         if sc.harmonious_print_detail == "AUTO":
             note.label(text="Auto picks %s for %d mm" % (next(x[1] for x in PRINT_DETAIL if x[0] == d), round(h)))
@@ -3692,33 +3815,35 @@ class HARMONIOUS_PT_export(LiveLinkPanel, bpy.types.Panel):
             for line in wrap("Not one solid: your slicer or a mesh-repair tool fuses the pieces.", 40):
                 note.label(text=line, icon="INFO" if line.startswith("Not") else "NONE")
         prev = next((o for o in bpy.data.objects if o.get(PREVIEW_TAG)), None)
-        row = box.row(align=True)
-        row.operator(HARMONIOUS_OT_print_preview.bl_idname, text="Preview again" if prev else "Preview the print", icon="HIDE_OFF")
+        row = layout.row(align=True)
+        row.operator(HARMONIOUS_OT_print_preview.bl_idname, text="Preview again" if prev else "Preview the print", **ic("printeye", "HIDE_OFF"))
         if prev is not None:
             row.operator(HARMONIOUS_OT_print_preview.bl_idname, text="", icon="X").remove = True
             mm = prev.get("harmonious_print_mm")
             if mm:
-                info = box.column(align=True)
+                info = layout.column(align=True)
                 info.scale_y = 0.8
                 info.label(text="Preview: %.0f × %.0f × %.0f mm (W × D × H)" % tuple(mm), icon="INFO")
-                for line in wrap("The grey figure beside your traveller is the print. Look it over in Solid view, close up for detail.", 40):
+                for line in wrap("The grey model beside it is the print. Look it over in Solid view, close up for detail.", 40):
                     info.label(text=line)
-        box.operator(HARMONIOUS_OT_print.bl_idname, icon="EXPORT")
-        if not backdrops():
-            hint = box.column(align=True)
+        big = layout.row()
+        big.scale_y = 1.3
+        big.operator(HARMONIOUS_OT_print.bl_idname, **ic("printsave", "EXPORT"))
+        if find_traveller() is not None and not backdrops():
+            hint = layout.column(align=True)
             hint.scale_y = 0.8
-            for line in wrap("To print a corvette, add it as a backdrop first (Lighting & Rendering).", 40):
+            for line in wrap("To print a corvette beside your traveller, add it as a backdrop (Lighting & Rendering).", 40):
                 hint.label(text=line)
-        tip = box.column(align=True)
+        tip = layout.column(align=True)
         tip.scale_y = 0.8
-        for line in wrap("One solid STL in millimetres, ready to slice: thin cloth gets a printable wall and the pieces fuse into one. Takes up to a minute. For your own prints; the models are Hello Games'.", 40):
+        for line in wrap("One solid STL in millimetres, ready to slice, saved to the Exports folder. Takes up to a minute. For your own prints; the models are Hello Games'.", 40):
             tip.label(text=line)
 
 
 class HARMONIOUS_PT_support(LiveLinkPanel, bpy.types.Panel):
     bl_label = "Support the creator"
     bl_idname = "HARMONIOUS_PT_support"
-    bl_order = 8
+    bl_order = 9
     header_icon = "FUND"
     bl_options = {"DEFAULT_CLOSED"}  # one line until opened (owner, 2026-11-06: open was too in-your-face)
 
@@ -3755,7 +3880,7 @@ CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HA
            HARMONIOUS_OT_body_part, HARMONIOUS_OT_body_parts_clear, HARMONIOUS_OT_pose_mode, HARMONIOUS_OT_light, HARMONIOUS_OT_select_light, HARMONIOUS_OT_send_ship,
            HARMONIOUS_OT_tip, HARMONIOUS_OT_camera, HARMONIOUS_OT_add_blend, HARMONIOUS_OT_backdrop, HARMONIOUS_OT_print, HARMONIOUS_OT_print_preview, HARMONIOUS_OT_camera_view, HARMONIOUS_OT_clean_view,
            HARMONIOUS_PT_live, HARMONIOUS_PT_build, HARMONIOUS_PT_traveller, HARMONIOUS_PT_poses, HARMONIOUS_PT_parts,
-           HARMONIOUS_PT_tool, HARMONIOUS_PT_share, HARMONIOUS_PT_export, HARMONIOUS_PT_support)
+           HARMONIOUS_PT_tool, HARMONIOUS_PT_share, HARMONIOUS_PT_export, HARMONIOUS_PT_print, HARMONIOUS_PT_support, HARMONIOUS_OT_print_pick)
 
 
 def register():
@@ -3775,8 +3900,8 @@ def register():
         description="Lights put round your traveller as soon as you pick them")
     bpy.types.Scene.harmonious_glow = bpy.props.BoolProperty(name="Lenses and screens glow", default=True, update=glow_changed,
         description="The game's lenses, screens and visor give off light (in Cycles they light what's near them)")
-    bpy.types.Scene.harmonious_print_target = bpy.props.EnumProperty(name="Print", items=print_targets,
-        description="Your traveller, or a corvette you added as a backdrop")
+    bpy.types.Scene.harmonious_print_target = bpy.props.StringProperty(name="Print", default="",
+        description="Your traveller, this file's corvette or base, or a corvette you added as a backdrop")
     bpy.types.Scene.harmonious_print_ship_size = bpy.props.EnumProperty(name="Ship size", items=[x[:3] for x in PRINT_SHIP_SIZES], default="MEDIUM",
         description="How long the printed ship is, along its longest side")
     bpy.types.Scene.harmonious_print_ship_mm = bpy.props.FloatProperty(name="Length (mm)", default=150.0, min=20.0, max=1000.0,
@@ -3877,5 +4002,12 @@ ICONS = {
     "light": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAL50lEQVR42uWba2wc13XHf2dmdpcvUaQsqW6Coq2NBmlZGGiEFGqsaEhFtGzLSZHGK6AuUMcObCNpUaMtCgQBiuV+aT+0aOACTVDbcWWgCAKui9qOZVKPeLmyLSeWH19MIalb9EOBttHDpElK3J3Xvx92lqL43BVXpGpfYIHZ3Zl7//ece/7n3HPuwMe82VYNnB+Vu/h76YjFHx+xS9bUb5vQvC2ZvJk+f0wH3E4eB4jneeJVs1ca/20mHGczBytIDmbyj+s33Ryn3CxfSj+n7hzTAGaiIOcjK4CJiXS8hPu9LiycpRbOUs30YJ7xAIA/uLmYvK1kAsA1w4mrhIIJgN0X+OiawFIPZCBzceIqsznjDEApT3LzC6DdjG3YrMi13bO0XQAFOQ2mzo/KbacgvOg6l75k+VG5mAnJWiXRFjhARtESiuCX1VcasunFbm3L4gkzlSD2y+qrmE3XuUUGzWFqSlqFghwwDY1pYKisE454f+iknt7zoroYwdrhuiKvxai0IIcRbM+L6ho6qacd8f5QWSeGxjQApkKTmJoDPgJ+WV5ifNfrYTiucUumn6/1ZPkORUvyA9hGzEEJyuUIWlr2AxhFS3qyfCfTz9fiGrd4PQwnxnf9sjxG2sUBkhXNkvgy2yQ+E0wRGKh6kSDTy4ODx/Vk6YjF+RJOs0Iw1e1dYIqRm6WTgF9pan8iWb6EUzpi8eBxPZnp5cHqxTqmYIpA4jPxZbYVzZJm8KwvgJTwXjvMtMFzuR1kZUQG2eBDIq+XR1oVghyyQIKRSIRuFx2I3wfwJ9bAtGTyXi+PBB/WsciIcjvIGjz32mGmF4ixHSZQypMUwDIejwfTPJPtJSsRmeEF0ysIYRX7awQ5SUIFw3Fcsk6GLIYlCZU1A6GCnGWTn65jkIiyvWSDaZ7JeDxeAGs2nrBWGRdgRQB9eNEMT00cskfX9A7p7/vH9C0nwx8BJCH/cPoe+6v1ntnw2BvOBxTk5AewVbWwHS+6wjOe+LM7DzJbBK0MpO6mho+rG+DkIbu8quuSrAD2+im2RcbfeV08HHy48uTzo3JLk4iiJTfU9zaSGYPH9eTBN6T9Ywr9cWn/uGp3vSX5Yzq6+L6Vml+Wt9L1iokTyfwxHb3rrfoY/nh9zINvSIPH9eTi+zYnI7SUjLbxSDBDYMLDJVJMmMT80mv32dQ1y1EyfwJ39wW0NAOUH5V7fhc2OEFSbGgwfXbfS+p3XP7LXDLEeLK6zUezizSfJ9ncgGyRhv3xVDtjSobPSv64TvtleQVdJcOlqyE/Ktd/V33+u+rbe0adK2m9kUPwy/L8cZ0ePlsf4663JH9cRzei+fbkBFO237OHjt5O/h6X38V4lyp/Wr7HJgsFOcWRlNXNNHxcu6MshxVznxI+DfwiAsQsLj91PE6S8MPyF+xnjckXR4CiJUNjGqCDbyN+i5gXZub5k7ffpgr1/7cuKbpoiftl9VUae4Sl/x3XX5rHH7sd7CaBJASlRmAOWAYcF6J5asD3L8/wF2d/zy7lR+UuNpdrxmjDPsTaZg4pJyAZI2m/RUv2jmpH5w6+73ZxKLoMSUSEYQaG0vsMCYSQGV6mF+Iq78dz/MHpL9nZBXYfqXuVdtq8tZsXFralwBf+lR1xL2NeN58NpwkBD1t3TCEit4uMIqbiGodO32tnC5KzEN62kezamxFKgeVLOIxgYRc/8Lr5bDBFiJFpYvJpeoRMdJkYh34nw0v+S7q1CPWEaZuZvu0psbzqNrt/L9/MbudgME1oDpmWZengxvNEbie7MZ7FTIUR2t5sNXtudo9wjUbSpb9vjJ2ux0/NoU8h1qTmV8ucxl4nbjTPgdN3W3kpKS7wT4MjVlNMCWcl3vBWy7C05ApTN+RP4FaGLHJe1hcz3ewIZojNNrjKhMxFwENAmfwaeItrKKtxzyK81wog7WzPPyrT+2l+J57HXQuX24lVL/LeG1+x841nF3ZyxheVIIx2sLQb1zDEgb2j6iyZzWNAchXv9tvZF0b8uyLmVuojl8MJjTtq5zn3kwfs54uJ1GukvIqgoZd1uzp4wWDA61gfXOcuzvvH9FjF7Hm/LK80SLx3VJ1m/HoSYtYOjjFMIXIy7PR6+FXgnP+KvArEQy/rdmV5gSwDTsQVPGoSZqngG9dhjLkd9HV/kgv+MT1aMXu+YUoOwLkBDDPFUMj0MBBdIYzmSaJ5kqhKvOwzTxJfIcTYLYe/2XtGnZXB1L566QRuVQwLfn7D3hU5GXKu8QmA3btwFvD2MhBdJjCHLnPpdzz6zKV/8bXj0hdfIcLY1cBbypMgmbekUvELcQ0BMWvZrtWDlqRGDPQn02QgDUtnQL3ckFJvnKbSJs8tw5soJlynCqMkWITXbH6ZAIC/JmIou52OJEyLV6t16OE6HgTT/O2b99iMX5ZXgcjJEpqYxaGvja7KFBE5MAOw7zZ0bgletHZYJ4G5EKZ486NyS2axLSXBO1/QQGYbX0lqvIcx1YjtABRj5iITrmX4XBzz41cP2YnGs41ozR/TCbebg9EVEmNtMm3KC3hYEnGpKm57816bWdj9pXizPXxZYX0crWB2MhKvA4uqnDl9t51cRoILUZxkr5tNApNNQDu1NAJMq78JxiuOyzDaOAvISNwOnGSOs2/+hLmFkDhVWgt4l0Wsy+OAVIsTEzjrVWnP78KWJjYqEwuJyOeieUbMIYPWW5zrR0JmmGP8M0VLJgblQTrOIrzNdLVSIqbtXNVwL/6Yjmb6eDCYJjRrPRROl3PsduAmVd7nf7lj4qvUzNLKws26FyjlSQqS43n8eTTHf3pdZCTi69B8Yi5GghB/WHnIqiMpH968m6FF5PKjYbukgCOKmXI7cJUQtaJ5HMzrwEmqPFa5136cH5XbbLVn8wWwpERdHKmbQuWwvRXPcQjxP5lteBKJRJTasJayvSCWiNwOXDdHHM3yaOWwPeWX5ZUm0Y0ozd/QlFiDDz73vD6R7eZpJ8s95kJcBUUg1cnMwMzD3FxdJXHAJPM8NnHYXvfL8iqDxCuOseUpsXWSohTkFEag4bYOnNKwjAckDijmk25H3XcnASAu4PGGxfzLz6f4wbkjFuRH5f7GJCrelEnRRXlAf1xHczt5sHoB5XZiwSVeJceBwUGSa+w21dZ9L6qr2ssvJ3ArEUQBc9kM/3Zq2D68Ktu6v19wczVeyd7C52sXUccurHaRZyt321c3mh/c1MJIozaw2rHYxmQrQ8T1IvqNL4zYhie/uD4IQcdOsrULPFu5m4cWMsUr9OFP4O7ehTN5DjpvQ2/vIVppAo3J+eP8U27XwlmA7Ip1wesQwpYWR1cj06W/38ji6NaVx3+oX3O6+aaJ3VGVb796eI2zwlteHm+XFiQTcNcJugLxTnYHn4prkNSQYu6oHLL3rtns3JDVdx2BUL6EUwSFEU9k+3g4mCFYdfJ5ktWWYL6EY2aqid/2uvhU7SJhNEfV68JIuH/RjnJ5K1pSypPkR+VOHLJHoxmeyvbVMZjhBTME2T4eDiOeKIKazWw3dUiqdMTifcfoE9xf+6DO9oIgu701EipN1qO/OOA/4iqz5uGl+YLmiMtMy4SwvY7FhFf7gEBw/75j9C2U6TYsgHTL6XYza8Y72X6yAuvYSTac4dmWGDjN24ce04oJ7Wq9oHkuWiKEcIZnO3bWMWX7yZrxjtvNbONofnv2AiNQGbLIEV+P5jjp5rgUTvG9uYBvUFC9KNGC+3HmmqoRri2EyXqpbC7gG+EU33NzXIrmOOmIr1eGLGr2nGBruZm0+WX1La0GNe1JgH0vqd8f1weDJyV/TMHBM5I/ppG0b6/V/pZhaiEn28JuMH2bQ7LKkE0v7Mi26pzwojReflRuZcimrx6Wbh5Tay9MpIelkaxkN8lbXo3S2FVltKQQ57olv4HmhjfgrZDrxLQlb4x4PbhLKbCRet/stqkCaAQnYcwdbo7+OCRKC6hJen74oy2ARj0uqvKzJGA204NnDlkMZ92zwh+V1jg7uP9lfXmwrPcGf6T/3n9M32rZpf6/bulE86NyG+eF4eMy+UWJjpWuP15Nsq1e9v8HxLnjhk00SHAAAAAASUVORK5CYII=",
     "import": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFLklEQVR42u2bT2xURRzHP79573W3LbQUxINnL9ST0RIhQP/EBIJA9LA1hhMHOfTg1Zior2u8ePTgBRNjTDTaTQyJCDQQ2CUYQ0g0IZEY9aInDthi47b7Z978POwWSmHbpbt9u8j7XTbZy8z3M7/5zcx35kESSSSRRBLxR6hqMjPqLf8+WepVpan/Ygi/I+JFdP93utvv4x1VBrCcyot8Q6iGrLg4u2PiTnsEDpzVEb+PgknxqgmY8Af5+sBZnSIrLu7pECuAmzkEREXImjTp6r+Uo0WqdhEnhum9p3VrLoOLczrECmA4gwIo9KhF61PQJ8KoErg0ASL6v82AfL7WnlF+NAGC1oAgIAbnWzTukmToTNgHiyMdWQU6AkClM2K7KQNIACQAEgAJgARAAiABkABIADz+AFQyusLa2tSjbPvbaoMjJJoTovv7WXN92g+g/W1tHECd/mgeT6q87fUy4cr84UqEBZFboarJSpvsLVUJp5H8GOZhbbUCYcNTIARhGqHE5z3b+dBZJrytnJQ0l/ad0aGsiAtVTTvEZ3KYbFacVPgiGKq15W/lpARceum8btcVAxILgMyMelkRt38PL3q9HC/fphqViSpzVEwPu/w0s22BUBefm5RobFZPeVt4Y7mt8hzlYJBdaTghIjqax4u/CEZsEQPOIQKeCD22iPXSjLQMYZV4f4A3qwtYEQIBD8WoAo5tsa8CuQwuDNWkfa7ZJX5KbcNXV3N5RPCrCy1DeEB85Q5WpFaz1OG8FIFdpKiGL1GVQh4XXwaIaBa4cFCKtsxr0RLXg4EVEMzDIfQuNZemo/l1xKcxwLxb4mjhkPwaTiMbvU/Y+BTIiiNU88Mx+at6i4NRaX0I5w9Lea1iVa5gUJXCuNg1xSvzUZGDV47I5cyMetkWLlNaqwH1i4yrx2XeltaHMPKt7qgvV/6DUx6T6sEhomOz+um64o/J9dHL6ucmJWppZ9GOZXp5zd93Rof8NLNempHqAlbM3c7bYAA/KvGzeuzVEm/1DPFRZR4r4EmAaJV50jxNlY+DAaYq8+uLL4yL7YqzwHKRu3pk7Uzw+3meMqdFeEYtsMIdVqhQ5iu/j6lmRr4d4tuWAU1nguK8FMZVa4pX98RLgV3CidQGZrPFtx1AMxAA1yjzVOMVvykAmoSw9h4oJvGb5gesVxO6RfymGiIbgRC3+E13hB4FQifEx2KJNYSgVFcUv6gT4jetCDZTGP1+Rir/EKGo34+v1fjFx2qKrsyE0hyH7CLnvBSe34fvIn7phPjORHjvWDxxUXcfuKjjo6H6y0bLk+FFq8rqU2EYakcs+o6+1Fge8VymdgrsagD3dbaLI5Or1bXcJA7aBbVDz1jj6Hdz9wIiOnFRd1tLf+Bxo1zu3iwwhmf9PrZc+oQriETr3RnImvSmkeHn8HcO8pnXy3GNICrxjwhOFRFBu2ewa/0Rw5DXB67MNeD1yy/Ln+H7ahrZZg0BZFS9nEg0ek7fSz3FB6XbWMAYv7svVDVC1WFTOwgqc1wgzeGxMVyjW6qGU2CYu684j9olLIIIGLXdM+oNclpE8Ct3iBT2B5bBrMjfjaZCQwA372XHDS/FiC1SVrpcPHedpsjvJWWL/G59iqoq0qAONASQo/5q+3verS6wJ7Wd4bqP1+WFv+ZBRiUWEKYK41KarC3h0aPvA+pp88KMDg7u5ISLGHQWRLsTgwjqDOoFuOoiM1dfkd9a/wjjcd0DrDp3tLYTVJWN3r52Kgp5XNyf3ySRRBJJPHbxH9VbkSuXXYRsAAAAAElFTkSuQmCC",
     "send3d": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFLElEQVR42u2by29bRRTGf2fm2m7cR5rSIv4AYFE2SGlBICVOK6ANgaXbRVdIUAQsEBLiIQHGbGGBkJCACthUXdgLEJA2FW1TBzZILYtKVOIhIba81LQUkvje+Vg4CekjIU3Sa7e5n2RZsi3PfL9z5sy542vIlClTpkyZUldFcuWa/MzzanPvrnhNslXhvTSqCKDvc92z47g+GTim4wMj2jv3vTRlaZtv7LC4/zPd59dywhVYowRcHqbO8ezYoL3Te0q509usedMBmGN+u1/HiAKb1KQpcDgUrSFK/mJ/Y8gOzHz2pgFwifm1HMXoSSYJZrRqgRAO+S5cciFdCK4t5ifmmG+FwQhYMkHi1/NBaVhPNHZYnEZNcG0x764yrmEkuLQhuI4w30YIrmPMCwFKG4Jrg/lw1eB7DDCUbia4tM27Au4yCDIHIWF8GoRQepngUjTfzPfgkgnexjjuiyBIBMEXwWBMsM8XMTwhLQguDfMSca6b3NQ4H44N2nMSbm4HogAYG8Z226GpcZ7ya/BpQXBpmM9vJIrPc6DxkD2OZIgIXVEEQ0VyXw3Ze8kF9i8GQu8p5doKoFyTX6z5k7tsf+/7ymEmm6cQVs3C7sMqNIbswP9CGNETp7dZc7mX0ksGUJFcfY8l/cN60K/nKCxsvlyTX3fnFXG/QvcO0ux9X7kFIfxD8F180HdYz9f3WFKRXLoAJKuCSl/oNhdxCOhJpkgWMl8vEwYGrh75y3X6SWuWRhXNCyFgySRJfj1v9h3VzqpZWGomLAlAuY7DTETc7Ytsjv8mNodfyDxmupYxZgrdJRDcJVtksIjEBwYBft2ytAu7JQGof9dKZSd+DhPELsKT0EQ0893LN78ABDedCU0ZMsMLzgDc+htKbwlUWyk3OmjfhyYvR0Us6iaX6yHXvEDt5C7bX5HccszPhdB7arYmvBB14aMN5PIbyU+do3brBQ5VKq16tJTvX/JeWt9jSaUiV33Y3uob1rf5TfQ3x/mpscsOUpGrgpZrfrYmTFf7+iP2Zt+wTs+OtdsOzjSTnXXAucDOAVA6ohM7x6T+EcX9I4p3jkmlIzox9zPLHeu6Z8Dly2GmCF3XU5zrMNaKtJNLXX+dMJZjlSsDkAHIAGQAMgAZgAxABiADkAFos8TijstuDgD23+mNCReaYHDH/Z9qfdUspHm/UNSmcEcYAREAUyBgbHZR+vNJNQPO1mcPLt9zEc7lyOFwhU144OOvhzhXrsmv1EnS4pIxbVXkqFroO6JnojwvSRQNDgbPi40BJluzSg9Amypea433fqZiaVQbb4g5l2vy5Zp867e95T/m/rhZGlVERW4lvnd2nit6UHqj3sW5iHkvruqaaecx3RPHrM15zkxOtmfPXlRVd9weFVl34l3GMEuQbKGaYgvSex3behfRlm4+8l3sUwLJBONmBAkzQ50T7NZ8zNHjixAm+QbYO/qA/VJ5Ta5atXBNAMqSr5slpSN6tbCZNyZ+Jwacizq7fVaCFIgLt5Cb+pMvWcPDAwOEql0dwLxLYCvT0TUejf8hxjADp5jO3qIMMyOaOkci6MvFdFfN/phvKcwL4Ox/2XHGF9geX2RS0Pn7c2uGSdRFIb7Ij3HERUlm89SBeQHUodWTD/NK8zz3FTaxVXFbWqdrrQWYI0omOI/xdGOHTexp3TuQXHsnOJ02vTV1d2/hsZDQHWIwdSYGMxQc8jlC829qXw/ZDzOd5+rrAWba7hW5FpCsdJIb6n89jZOE5UU+U6ZMmVaB/gVCF6UB9mfGSAAAAABJRU5ErkJggg==",
+    "print": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAEbklEQVR42u2aPWwcRRTHf29m9s7nfNiBigKJOkg0RrJDwRVpkZCQzh0KDUGkCQVSSAHrzQdSlIYmDTWisGmoERImwVZQoqBIqaBECghIIMax925mHsVeFARYuTvv3sVk/801p52Z/7yv/3sDNWrUeJIhla+gurs1RLS+pj1rAaoyx4WDLX43lqYG8oHXK/4/JZbtjVXJfFVbdJWZvYi2eWemy6EbgekZTwCmBv5EDzQhSg/zKnC5o8t2RRbD3iCgj0BLFJ62mAOKDmVwiiJYlJhUuUc3Bh/rKUGVoCAyOAFEJRgh6p4moDi1SHH7IsNxJ5VnKfOkZ4GagJqAmoCagJqAiuuAXeRxVcHoniXAk4tCE1RHO7wVqbhWqYYAEU01NU0O3gO+MTRFIQ7xhWhwxpP/LGzdQpEVOnFPWUAGrErmm+ixQPcXgzMMSIKCGqxE/OuX5cPbHZZNVX2B6lxAstjRZbsq2U8QThicKBIfffjoE1o2sP3RVTn7RVUqcDz9AKCtqVuVzC/oB5caHDjRZcMLxu2gAINjynry757l8IsAK3RilV2hyrPAKkuho8vWsPWeZ+umpemUGHcIeihhw6HHVmQxHOaWVt0Sq74O6B9gTS5uKN03FA2Ci4qGQvISKX59QstGuqevSHazranLJItVb28shdCKLIa2pm5dzt2I5O8mTDtLwzoaxtEwBmeaHEy6bH62LmcuPXCbcexNGCf6rbIjevZlIdqH9YJniv14uLYmpzYe/I8a/zcL6KOjHQudf7tKxRG/Ro0aY4oBqtJmyZZbUBEZQ13weGO3g9b/gCt9gyK6oOlTjuRtj3emqPFH3rhCtEyZyObn6yI3Uk1NmRViqYymmpqvoJEjXzaZeSmSl1BsFiMyz/27ge78Vc79AKmU5Q6uzNvPROKCptPAC13ueYiqpUx3NDimDgn6HML3HX3erDyWLgA4cvW0nCAmMuREdAcTjSgGSxyuqzQxFzA5cqnBvuOBLrLLJRTFkBDY/taw9cpRGr9lLJUmk11pwQ/IWIJCxb21oOc/LQSPL+GWnORsXrsuF/44qqkpes2Pi2DSdHKzhRLSYikuMKenZlrMGst2/xnMDDlq4hBPYh6FBKIjV3j4fOaKnL47MQJSTU3Gkh5h6U1D83ykKzqmBoug0dIwAb88w+zJee70Rq0NZGTTE9G2npzNOfSjJdmn+LGqa0VJaNFjs70u2dejdo93FQRzZg3Qi/gSc/7AiBFvDaY5mSygiOF+L7LvfsL0bKTL+Gat2l8rIsgdgMN0dHwE9EdfmWQb8/r+a4HumUDPFj6gUn0MkGBp2kD+ybpk14u9yJhiwN+k7p/cluvycW+SWXhOjyf7eUZryTxibeCG+nDJUrfEiDCyZB5489VI3fIoGFUyu0FvvzqpWxoJI0lmN5y/lCt1y5S0o0rmYV2gVKlbZlU4qmSWodxMigdP/5ztTRqBqE2mxfPrtTW5+ITPFnU4sxzJhnea7U0a9WyxRo0aNWrUGAp/ARDKKOIh2LzHAAAAAElFTkSuQmCC",
+    "printeye": "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",
+    "printsize": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAD70lEQVR42u2Yz2skRRTHP6+qu5Pszq4H2QX/AXHxpOKyhoW4J9mLt97jSi6eBdkfKjppWRBcPHjdq7fZkyAe1oMOSHLQsAdJLgoigoLij2R/ODNdVc9DT5vJbEw6mAxJrA8MzMzrb3fXq/eqXj2IRCKRSCQSiUQikUgkEolEIv8nZFurIqBHYJSy+0Hk2rFHZZZz7VhUZdcRcE4/mEkYTFt66unLYRq0ZUoB7jOjy3J9rXEKqKossCB3MG8K9lXFH1eC7JQtBzS/FawX9JMUf7VL8RvoppSQ8VC5LZf8rC68lfLYjZJ7hz78FSXjBH3W77yEXgQopAiPOkBVQJjlSitw/DuDfTzgEMQoGgRCdUOMIGZkcXSbH3jg7IA4Q5oG3NklaX9VTzRAMhYzGtSlIBmorUJIxZJZQ2oBAiWBwdB3QsJ0Wn1XQA6Y/R+nWEHUwsnxCEke/WNK/cZsB0tmA4NuYPDF8JIXDdlcoETRnufhhwo9xRghhANkD4AZnV7F+B0dMMwbEQSBYMisMvh0UYr3AWa1fdWQzgVKBB4uSnF9VHsw7Nmcpwyy2QFUi3kDB4y7I0BrTtsJQB9adphfCnJe3zhlyf7oczKdYr0skRNsY5+kvgmm4XYSulK4rhSuXgxHHOS6UriSlutK4SD0NnSi4/ZJ6puQ7NV20+InHc7Kk0oIoKIgrmEBtff6PYyA8cJ6h+PDE4bEGDIRUENSVmeKyektqQFN9sUBQhhsDtGK0zytKCL4a47+CsjPwGuLcvNem7bUM7T/envN0fvGYNdpsBg0coCCybVjc+1YRc7oRhomIEmuuf2FFcnpmCW5cfdPymd7rJ1ZkoWPcu3YVVbl9PAe+69/526PH54z2FcsqSj47RyRNFoCkb/qyumctqerEsSghN+/lPd+HVesSjEABgC1jupFJqJfllvleX33xybDS3bIJ1EcQnhqVosL1b9hMeBeNtjU4T8/q29fMBhrRoqMer8VjG4uUQn7rQ8EKxA84RlTRYrsOgLq3BLUevoI6WWDvVw9wBFwCoIg8xkz8w3TCJmA3oxUL9VZBqPV1qmNCiHLlDrUgvj6fopTh6/daUZXYsfA76L7pBPQ19fJxvsTQBK7RSlsRttGuXZsl2JN4OOMllXUKwQdWW2r3xufXZ1MJ6OvrxteG1zGscTT/3aGY1+rqtwmD1tGQG3I0NdLHpyyTF2sT1WHrx1S9QIEMZ5yBfz8Z3LlwYLeN2zZD9iCF7R4Xkhajh7J3hWNE3ZC5gd8v7Qst0pUpVmDVFX+rYl4eFtDbbPrpmiuuYX80I/9NpcCchT6+5FIJBKJRCKRSCQSiUQikUjkv/I3mKn72u5wF14AAAAASUVORK5CYII=",
+    "printstand": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFhUlEQVR42u2aXYgcVRqGn++c6u7EgWQjmojCXonITGBdEMyPMKsw4I2yNx0QvNuFVVlcvJBVVqgpNeqFKCwLCnvnH5j2ygsVvNnBhcSwLsomUXRRFBSNEIj5mamuOuf1oqbHyaTHdLp7Ov7UC33VVafqfc53vu/UOQdq1apVq1atWrVqTVhKXarUIVlbbf+L8Z0qdW0dON+wZG0d8Aj7WRpvq+2RVszt1SMze/TY83v02Ft7lc2de+3kQNgkjHeYFpZFgN16dI8R/wDuLk+jKSICIuVbRvKPa8jf7FjW7YHosC9i6KcFQFibA67D0RXje7V/TsQHDDdneAJLCIXll3CeloEjUhwReuYk4cVjyyBmlSYLzAfM9OMG0DNu+8L3ob7auCOwJEE0zK1+viCA8DS8IyH0AVFFRDuOE4RthPG20uYXtG4T5Z8dyZxhlOQRJMMulPGjkCoQDQL5EYf9vcC99o797etxR8RoACSbZd4vWFYCTCttbsXfZdj9jsZOiATyXo9fbKlbA6L7teC5iHv2XBDE3jCbHADJ2nRWeny1cU9jZ6QkUAQwDEat8VFIDu89rb4gqqHxfb7ZOABrevwm7d/RIN4R0X2e1s5IQaAIhhngxpxZJSw4XNIDAfasKF45aNmHw4IYDIBSNwtutXFHvMfgbk9zx8YavyCIHPSyCE8ftOxID8Q0R5UNAMIuZLzNjPVCfa3xQE4kTMh4PxBVbknYRKDogl5aDaIaqvtcxzphpAjYpcev9cQ7he71NK+qjMfSkKcyf0m/KoRWg8hFfCHB//Nte/jwcBGwnOQ+54MbPe5BR+P3niYlZ4kUxXLlMyr3bhIzynULcAVAhkVAhjUTpgAoWXw3Eve3iG8sMJ/3K5tJfyym40rN45qC9wPdk4HudaDrHc1tjgQQkYAIiBgFceXujYGyYhZMgDPMObwZCYZ5EQgUZ0rOfCr0Ebj/J1hR+bQcYWun1Rf1krN66oqcMzPAbw1+Y9i00HWO5FdjhrKeWZbNUpktzxr6TOhD0H+N5LBn8wdX8esvV89Gh06CqVL3L3DbmdF6HyVDQrE+84Pef2Mx21bbH2fatnNMIyfBc3PDPlc1PDyUylC+6vHC0cDRGNHsjDocFWQa9AvSxpCDB4ayxKmdBjc4/K2Guz1Qxqp+Ji5Qvid4tYn9B6aObYTZCX4O/zCU3UqvN5r/i5TOUEiYapScfuigZU9upNlLsiCydhoNkPPtFmPrx4a7XIQiYapRcObRFjyymcv9m5woNsJsP01u9mamBebDgmVlQktaA98gLlhWLnIiYFmchPnJAviRqgZQA6gB1ABqADWAGkANoAZQA6gB1ABqADWAUSTZBX9gSJb3fW51zWmutoHaGtMRGjc242Ya4BcxU6S1aKxdn7eAmd61PxWDtYVQOvL7J6OZx3q7LTfriW2eJQXydXum5EpL+EYBdy24y0RUtcMkgMtu1oPbPC0fyNddxva0FNhh/+bek1gWV+APKRup5800q/SKguR5YJcI5y119XmeDDYZtlkrQWAILQGLvWt+oAEZDsN/Eej+8ZBlh1OlLhvykMTQAHqbJjm83mLLXJdT2MAjSug8j1Ydpxjwbk+LSPe4Z+mGt3n8KxDDRIIbtvczy2LOt1vA9nQ5HYBYRcAgP6lfo4PeD1LB2dLT3C4aMxhq03ETzwEJLZXYomFTImrErXK7mIA0nIvEIFy4ZEnQs6iSTZuFheWNTGMiq9kGKDp8QxRx1JaGUnUC9EDcxfwzLbb+pWRp4DE8cuUlkrCJLqcONdHc7+BsxryGyQEjVAGsl3h2K3vYkdwS6GoCs8voaJihTwLlXw9ZdmLUUvjT1ogzwrHEbO9U1iR9H2PGxn1stlatWrVq/dL0HXyPsV3AqKyJAAAAAElFTkSuQmCC",
+    "printsave": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFFklEQVR42u2bTWhcVRTHf+fe92bSfBgrRRRc6ibZCKFNJ6AjgqCCy0kXXQk2RUVEUFvB5s6rXRTqQl21DeqmdDGzcOPGRQspklQkIoUE/ABxWxDsV77ee/e4mMTGmu9M30zad+DNYob3zv3/7rnnnnfvHcgtt9xyy+3hNWmVY6fOzNAvfUzrDP1Sl+H04cGuzvz/u9Z1RqZWVhcAHFR3YEhPfTOkpy4NavXQyt8e2CFQVheMS5QM6fES9Fy2BB1KiiEk5va7kxJ9MaDnwik5GmfVJpO1+JKe2C90fwu+I2E2TlhIF5lNLMXPh3T0yJQcjbOMBMlefPE7gb0pi14wSx2gCkYtBeOZG5mQk2PL9+z6CNhYPIAIeElZTA17zg/p6JFxiZIsIsG0Xvx/IJisIZj2EN86CKZ9xKONK1sIpgXi/erZ2EgjKWumkWCyFm8IzT0QVDAo6Y0lENqYFbKBYDIUH4d0G8/CZ6CXLEUUUkW9pQBwRdHDlqKA8VlBMFmIV0gCusKYO19Oysn39F+/uvSpAI9clehizJ03LQWbFQSThfiQriBhdmxS3BuoikCwSgb0Tp25Kp+c9cyNbAbCgJ4LWwqgojW7BfEjAzoSIqK6RiKMJPIv6zvFCTk5thkIU3I0rmjNtgSAU2fqMpwO6omXhI4NxVe0Zrt5Ujd67iCPxQM6Em4AwRs6zpfUvV+X4dSt9np9XwGoSkSkZXVPGIKLDfFxup74OhX/who9f69Nyfm4rC5YB4KkxKllz5mSuhcjifx2I2FbACrUDYKmBM8GFPclLCSC2PXEI6Jb8bGc6O6BsHKK9IJJFXkF4DrTkhmAOtPaqGj0j5Q4MVgLGoPGIZ07Fr82hNAsRUIMooKxAtcAHqdfsxsCEvmKVuyEjP6iJB9ZihLQGYZ0hwlztUlxI06d2Yn4lRCWc0LC/IeWom346irE3K49xfTF5Xy0nedvey6tSz116kwk0acldT8FdD+fMPf7pLgLqDMRVd2p+JU5oaI1W5fhMyV1U3d9VS/sdD1xR8VEJJFHnZmU6DJweWWEQNTUmr0uw+mqvhr1s7YEwMrhcJ0+WQ7Z+7d+1XxfQXN6p57Zmn6zfWW2KNqulgPIAeQAcgA5gBxADiAHkAPIAbTYdJPLZQ8IgLvrBI1dkARBnhnSD3oar9ia2cmVoEUdHoB4AQ8qivfAPoMNHugImKFfGr3uzxqsEYIQjCnQY0G//p7Tf1e0Zpu1krSpWMx+sDuDRL6k1bcFexzoBC6EJMfGqS40WpUdgBZlvMYYH1DXWVb36K5oc0UrtqI1i6o041q5uVlWF6DONOO5d9vZzOjOMCvfj0jb+Swgogf11AFP2qWE14rc9O2qOWXP00LQPcHPVxBJUZX1coqsT68qfRD0Yr6yFA4rHs/iDUX80r3tlKwEUIPsNXTgiX9Q9NCknPhzaf/CbykCKtRNXaK0V0ePFeg5vMDNRMAItredx4PiNWE2KdAzuMitsbK6V1mnylwTQN/S/p8iryUsJKACYpS0zacoEYEg5nYK8lzAfG8kp/9aaygEGxctXLOE+1PmF7RxjG03pL80oFhMWPgtoXhHVUXWyANrAqhT8ahKgerHMbOlAj19Skr7A1DABJ7FmwZ5a1yq88M6Y4F065XgUtgM6LHeDnpeV3yvxyO057QoiHpELYFf5FbtRzn963LluROgu/efHJs4OrM5capSpmp3k/Zx8Dvr+dxyyy23h8D+AXGijGEFi3DvAAAAAElFTkSuQmCC",
+    "printship": "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",
+    "printme": "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",
 }
 # ---- /LOGO ----

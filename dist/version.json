@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.13.1957",
+  "version": "2026.11.13.2047",
   "date": "2026-11-13",
-  "size": 14788096,
-  "sha256": "876513eb6c0d9e6696ec80debc9eed8762fe2687adecfea471c956722a596d67",
-  "notes": "Exosuit: your traveller's card now shows your traveller in full colour and turns when you hover or drag it, in place of the plain hologram.",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.1957/HarmoniousSaveEditor.exe",
+  "size": 14811136,
+  "sha256": "14cd6efa44c358ef9245d271e2740036f8687a4a32a0c5bfbd8eb28ddc4ad90b",
+  "notes": "LiveLink add-on 1.23.0 (install it again in Blender: Get LiveLink): 3D printing has its own panel, in green, and works without a traveller. Open a corvette's or base's own .blend and print it from there, on a flight stand or flat.",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.2047/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

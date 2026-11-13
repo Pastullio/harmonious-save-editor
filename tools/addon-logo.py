@@ -1,14 +1,15 @@
 """Puts the LiveLink logo and the add-on's coloured icons into the Blender add-on as base64, between the LOGO markers,
 so the add-on stays one .py file.
 - The logo: src/assets/livelink/logo-round.png (the owner's round logo, 2026-11-11), shrunk to 256 px, 256 colours.
-- The icons, drawn here: neon pink for the build tools (corvettes and bases), neon blue for posing (owner, 2026-11-11).
+- The icons, drawn here: neon pink for the build tools (corvettes and bases), neon blue for posing (owner, 2026-11-11),
+  neon green for 3D printing (owner, 2026-11-13).
 Usage: python3 tools/addon-logo.py"""
 import base64, io, math, os, re
 from PIL import Image, ImageDraw
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 addon = os.path.join(root, "desktop", "addon", "harmonious_live_link.py")
-PINK, BLUE = (255, 63, 160), (63, 184, 255)
+PINK, BLUE, GREEN = (255, 63, 160), (63, 184, 255), (57, 255, 128)
 S = 256   # drawn big, shrunk to 64 for smooth edges
 
 
@@ -121,9 +122,35 @@ def importer(d, c):   # an arrow down into a tray
     line(d, [(44, 214), (212, 214)], c)
 
 
+def printer(d, c):   # a print head over a model being built up in layers
+    d.polygon([(96, 28), (160, 28), (160, 76), (140, 104), (116, 104), (96, 76)], fill=c)
+    for k, (x0, x1) in enumerate(((48, 208), (64, 192), (84, 172))):
+        y = 216 - k * 30
+        d.rounded_rectangle((x0, y - 18, x1, y), 6, fill=c)
+
+
+def eye(d, c):
+    d.ellipse((20, 64, 236, 192), outline=c, width=W)
+    d.ellipse((92, 92, 164, 164), fill=c)
+
+
+def ruler(d, c):
+    d.rounded_rectangle((20, 92, 236, 164), 12, outline=c, width=18)
+    for k, x in enumerate(range(56, 220, 32)):
+        line(d, [(x, 100), (x, 128 if k % 2 else 140)], c, 14)
+
+
+def stand(d, c):   # a ship on a flight stand
+    d.polygon([(28, 92), (128, 44), (228, 92), (128, 112)], fill=c)
+    line(d, [(128, 112), (128, 196)], c, 18)
+    d.rounded_rectangle((64, 196, 192, 222), 10, fill=c)
+
+
 ICONS = {"link": (link, PINK), "build": (build, PINK), "corvette": (corvette, PINK), "send": (send, PINK), "info": (info, PINK), "base": (base, PINK),
          "traveller": (person, BLUE), "pose": (pose, BLUE), "bone": (bone, BLUE), "tool": (tool, BLUE), "picture": (picture, BLUE),
-         "light": (light, BLUE), "import": (importer, BLUE), "send3d": (send, BLUE)}
+         "light": (light, BLUE), "import": (importer, BLUE), "send3d": (send, BLUE),
+         "print": (printer, GREEN), "printeye": (eye, GREEN), "printsize": (ruler, GREEN), "printstand": (stand, GREEN),
+         "printsave": (send, GREEN), "printship": (corvette, GREEN), "printme": (person, GREEN)}
 
 logo = Image.open(os.path.join(root, "src", "assets", "livelink", "logo-round.png")).convert("RGBA")
 logo.thumbnail((256, 256), Image.LANCZOS)

@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.13.2047",
+  "date": "2026-11-13",
+  "notes": [
+   "LiveLink add-on 1.23.0 (install it again in Blender: Get LiveLink): 3D printing has its own panel, in green, and works without a traveller. Open a corvette's or base's own .blend and print it from there, on a flight stand or flat."
+  ]
+ },
+ {
   "version": "2026.11.13.1957",
   "date": "2026-11-13",
   "notes": [

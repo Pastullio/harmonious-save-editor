@@ -322,11 +322,23 @@ if spv is not None:
     bmc = bmesh.new(); bmc.from_mesh(spv.data); sopen = sum(1 for e in bmc.edges if len(e.link_faces) != 2); bmc.free()
 else: sopen = -1
 h.clear_preview(); sc.harmonious_print_target = 'TRAVELLER'
-print('SHIPPRINT', 'FINISHED' in rsp, len(targets), smm[0], smm[2], sopen)
+print('SHIPPRINT', 'FINISHED' in rsp, len([t for t in targets if t == 'TRAVELLER' or t.startswith('SHIP:')]), smm[0], smm[2], sopen)
 rr = bpy.ops.harmonious.backdrop(name=got.name, action='REMOVE') if got else None
 gone = not h.backdrops() and not any(o.name.startswith(('ship hull', 'spare part')) for o in bpy.data.objects)
 print('BACKDROP', 'FINISHED' in rb, len(hulls), len(lamps), lcs.get('part library'), bool(behind), mover, gone)
 os.remove(shipblend)
+# the file's own build prints too, from its own 3D print panel (owner 2026-11-13: a corvette's .blend had no print)
+own = bpy.data.objects.new('corvette hull', bpy.data.meshes.new('corvette hull')); bm = bmesh.new(); bmesh.ops.create_cube(bm, size=20.0); bm.to_mesh(own.data); bm.free()
+bpy.context.scene.collection.objects.link(own); bpy.context.view_layer.update()
+built = [o.name for o in h.scene_build_objects(sc)]
+targets = [i[0] for i in h.print_targets(None, bpy.context)]
+sc.harmonious_print_target = 'SCENE'
+sc.harmonious_print_ship_size = 'SMALL'; sc.harmonious_print_detail = 'QUICK'; sc.harmonious_print_stand = 'STAND'
+rsc = bpy.ops.harmonious.print_preview()
+opv = next((o for o in bpy.data.objects if o.get(h.PREVIEW_TAG)), None)
+omm = [round(x) for x in opv['harmonious_print_mm']] if opv else [0, 0, 0]
+h.clear_preview(); bpy.data.objects.remove(own); sc.harmonious_print_target = 'TRAVELLER'
+print('SCENEPRINT', 'SCENE' in targets, built == ['corvette hull'], 'FINISHED' in rsc, omm[0], h.print_target(sc))
 # a miniature for 3D printing (owner 2026-11-13): one closed solid on a round base, the asked height, an STL in mm
 import struct
 sc = bpy.context.scene
@@ -400,7 +412,7 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
     try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 1200000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
-    console.log(out.split('\n').filter((l) => /^(GAP|WORST|LIMITS|INSTANT|BACKDROP|SHIPPRINT|PRINT|PRINTSIZES|PREVIEW|CAMERA|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|FINGERS|SHIP|Traceback|  File|\w+Error)/.test(l)).join('\n'));
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|LIMITS|INSTANT|BACKDROP|SHIPPRINT|SCENEPRINT|PRINT|PRINTSIZES|PREVIEW|CAMERA|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|FINGERS|SHIP|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
@@ -440,7 +452,7 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     if (shipFile !== '-') { const g = fs.readFileSync(path.join(exp, shipFile)), jl = g.readUInt32LE(12), j = JSON.parse(g.slice(20, 20 + jl).toString()); shipMeshes = (j.meshes || []).length; fs.rmSync(path.join(exp, shipFile)); }
     ok('Send the corvette in 3D sends the file\'s meshes (instances too, not the traveller) and tidies up after (' + sh.join(' ') + ', ' + shipMeshes + ' meshes)', sh[0] === 'True' && /^Test Corvette 3D ship .*\.glb$/.test(shipFile) && shipMeshes === 2 && sh[sh.length - 1] === '0');
     const pn = line('PANELS').replace(' |parents:', '|parents:');
-    ok('the add-on\'s sections are panels of their own that draw: ' + pn, ['LiveLink', 'Builds: corvettes and bases', 'Your traveller', 'Poses', 'Body parts', 'Multi-tool', 'Lighting & Rendering', 'Export', 'Support the creator'].every((l) => pn.split('|').includes(l)) && !/ERR/.test(pn) && /\|parents:$/.test(pn));
+    ok('the add-on\'s sections are panels of their own that draw: ' + pn, ['LiveLink', 'Builds: corvettes and bases', 'Your traveller', 'Poses', 'Body parts', 'Multi-tool', 'Lighting & Rendering', 'Export', '3D print', 'Support the creator'].every((l) => pn.split('|').includes(l)) && !/ERR/.test(pn) && /\|parents:$/.test(pn));
     const md = line('MODES').split(' ');
     ok('Pose Mode / Object Mode switch between Pose and Object mode (' + md.join(' ') + ')', md[1] !== md[0] && md[2] === md[0] && md[3] === 'POSE' && md[4] === 'POSE' && md[5] === 'OBJECT');
     const cm = line('CAMERA').split(' ');
@@ -464,6 +476,8 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     ok('Export for 3D printing writes one closed solid STL at the height asked for, on its base (' + pr.join(' ') + ')', pr[0] === 'True' && pr[1] === '1' && +pr[2] > 20000 && Math.abs(+pr[3] - 33) < 1.5 && pr[4] === '0' && pr[5] === 'True');
     const sp = line('SHIPPRINT').split(' ');
     ok('a backdrop corvette can be printed too: picked from the list, 100 mm long on a flight stand, closed (' + sp.join(' ') + ')', sp[0] === 'True' && sp[1] === '2' && Math.abs(+sp[2] - 100) <= 2 && +sp[3] > 120 && sp[4] === '0');
+    const scp = line('SCENEPRINT').split(' ');
+    ok('the 3D print panel also prints the file\'s own build (not the traveller), 100 mm long on a stand (' + scp.join(' ') + ')', scp[0] === 'True' && scp[1] === 'True' && scp[2] === 'True' && Math.abs(+scp[3] - 100) <= 2 && scp[4] === 'TRAVELLER');
     const pvw = line('PREVIEW').split(' ');
     ok('Preview the print stands the grey print model beside the traveller, out of pictures, writes nothing, and × takes it away (' + pvw.join(' ') + ')', pvw[0] === 'True' && pvw[1] === 'True' && Math.abs(+pvw[2] - 33) <= 1 && pvw[3] === 'True' && pvw[4] === 'True');
     const ps = line('PRINTSIZES').split(' ');
