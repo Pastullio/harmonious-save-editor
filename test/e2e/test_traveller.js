@@ -284,6 +284,35 @@ left = [o.name for o in bpy.data.objects if o.name.startswith('part')]
 print('SHIP', 'FINISHED' in rs, shipf[0] if shipf else '-', len(left))
 bpy.data.objects.remove(cube); bpy.data.objects.remove(inst); bpy.data.objects.remove(w)
 bpy.context.scene.harmonious_target_slot = -1; bpy.context.scene.harmonious_target_name = ''
+# a corvette .blend behind the traveller (owner 2026-11-13): its scene comes in, minus lights and cameras, what was
+# left out of the view stays out, an empty moves it, and it can be taken out again
+src = bpy.data.scenes.new('ship scene')
+hull = bpy.data.objects.new('ship hull', bpy.data.meshes.new('ship hull')); bm = bmesh.new(); bmesh.ops.create_cube(bm, size=20.0); bm.to_mesh(hull.data); bm.free()
+kept = bpy.data.collections.new('ship parts'); src.collection.children.link(kept); kept.objects.link(hull)
+lib = bpy.data.collections.new('part library'); src.collection.children.link(lib)
+spare = bpy.data.objects.new('spare part', bpy.data.meshes.new('spare part')); lib.objects.link(spare)
+src.view_layers[0].layer_collection.children['part library'].exclude = True
+lamp = bpy.data.objects.new('ship lamp', bpy.data.lights.new('ship lamp', 'POINT')); kept.objects.link(lamp)
+shipblend = os.path.join(h.LINK.get('exports') or '.', 'backdrop test.blend')
+bpy.data.libraries.write(shipblend, {src}, fake_user=False)
+bpy.data.scenes.remove(src); bpy.data.objects.remove(hull); bpy.data.objects.remove(spare); bpy.data.objects.remove(lamp)
+bpy.data.collections.remove(kept); bpy.data.collections.remove(lib)
+rb = bpy.ops.harmonious.add_blend(filepath=shipblend)
+bd = h.backdrops()
+got = bd[0] if bd else None
+hulls = [o for o in got.all_objects if o.name.startswith('ship hull')] if got else []
+lamps = [o for o in got.all_objects if o.type == 'LIGHT'] if got else []
+lcs = {}
+def lwalk(lc):
+    for c in lc.children: lcs[c.collection.name.split('.')[0]] = c.exclude; lwalk(c)
+lwalk(bpy.context.view_layer.layer_collection)
+fwd = h.body_frame(arm)[0]
+behind = hulls and (hulls[0].matrix_world.translation - aw.translation).dot(fwd) < -5
+mover = bpy.context.view_layer.objects.active; mover = mover is not None and mover.name.endswith('(move me)')
+rr = bpy.ops.harmonious.backdrop(name=got.name, action='REMOVE') if got else None
+gone = not h.backdrops() and not any(o.name.startswith(('ship hull', 'spare part')) for o in bpy.data.objects)
+print('BACKDROP', 'FINISHED' in rb, len(hulls), len(lamps), lcs.get('part library'), bool(behind), mover, gone)
+os.remove(shipblend)
 # Body parts: pick several, each turns at its own joint; picking one again lets go of it
 have = [q[0] for q in h.BODY_PARTS if h.part_bones(arm, q)[0]]
 bpy.ops.harmonious.body_parts_clear(); bpy.ops.harmonious.body_part(part='front'); bpy.ops.harmonious.body_part(part='backpack')
@@ -315,7 +344,7 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
     try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 600000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
-    console.log(out.split('\n').filter((l) => /^(GAP|WORST|LIMITS|INSTANT|CAMERA|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|FINGERS|SHIP|Traceback|  File|\w+Error)/.test(l)).join('\n'));
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|LIMITS|INSTANT|BACKDROP|CAMERA|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|FINGERS|SHIP|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
@@ -373,6 +402,8 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     ok('…the hand slider curls the fingers in towards the palm (a fist)', +fg[5] < +fg[4] - .01);
     ok('…and Natural joints off frees them again', fg[6] === 'True');
     ok('…and no piece of a finger is shared by both fingers, so they don\'t stretch (' + fg[7] + ' shared)', fg[7] === '0');
+    const bk = line('BACKDROP').split(' ');
+    ok('Add a corvette .blend brings its scene in behind the traveller, without its lights, the left-out collection still left out, and it comes out again (' + bk.join(' ') + ')', bk.every((x) => x === 'True' || x === '1' || x === '0') && bk[0] === 'True' && bk[1] === '1' && bk[2] === '0' && bk[3] === 'True' && bk[4] === 'True' && bk[5] === 'True' && bk[6] === 'True');
     const parts = line('PARTS');
     ok('Body parts lists the traveller\'s parts (' + parts.split(' ')[0] + ')', ['head', 'torso', 'r_arm', 'l_leg', 'backpack', 'front', 'whole'].every((k) => parts.split(' ')[0].split(',').includes(k)));
     ok('…several can be picked at once, each turning at its own joint, and picking one again lets go of it only', / True 4 INDIVIDUAL_ORIGINS \[True, False\] 0$/.test(parts) || / True 4 INDIVIDUAL_ORIGINS \[False, True\] 0$/.test(parts), parts);

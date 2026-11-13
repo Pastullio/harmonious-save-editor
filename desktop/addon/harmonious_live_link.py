@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 16, 0),
+    "version": (1, 17, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -59,7 +59,7 @@ def editor_address():
 # ---------------------------------------------------------------- is the editor linked?
 # Every few seconds the add-on asks the editor whether LiveLink is on and for which corvette; the panel shows it,
 # and the editor sees Blender check in.
-LINK = {"state": "none", "target": "", "slot": -1, "corvettes": [], "kind": "corvette", "base": None, "traveller": "", "exports": "", "addon": "", "tools": []}
+LINK = {"state": "none", "target": "", "slot": -1, "corvettes": [], "kind": "corvette", "base": None, "traveller": "", "exports": "", "addon": "", "tools": [], "blends": []}
 
 
 def newer_addon():
@@ -86,7 +86,7 @@ def check_link_now():
                     slot=int(info.get("slot", -1)), corvettes=info.get("corvettes") or LINK["corvettes"],
                     kind=info.get("kind") or "corvette", base=info.get("base"),
                     traveller=info.get("traveller") or "", exports=info.get("exports") or "", addon=info.get("addon") or "",
-                    tools=list(info.get("tools") or []))
+                    tools=list(info.get("tools") or []), blends=list(info.get("blends") or []))
     except (urllib.error.URLError, OSError, ValueError):
         LINK.update(state="none", target="")
 
@@ -2709,6 +2709,212 @@ class HARMONIOUS_PT_tool(LiveLinkPanel, bpy.types.Panel):
         row.operator(HARMONIOUS_OT_drop_tool.bl_idname, icon="X")
 
 
+# ------------------------------------------------------------------ a corvette (or any .blend) behind the traveller
+# Blender's Ctrl+V only pastes what was copied with Ctrl+C in Blender, and Append wants a folder inside the file, so the
+# add-on brings a whole .blend's scene in (owner 2026-11-13: "is it not possible to add a copy/paste function?").
+BACKDROP = "harmonious_backdrop"
+_BLEND_ITEMS = []
+
+
+def blend_items(self, context):
+    """The .blend files the editor remembers for corvettes and bases (newest first), for the Add list."""
+    global _BLEND_ITEMS
+    items = []
+    for i, b in enumerate(LINK.get("blends") or []):
+        f = b.get("file") or ""
+        if f:
+            items.append((f, "%s (%s)" % (b.get("name") or "Corvette", os.path.basename(f)), f))
+    if not items:
+        items = [("", "No corvette files yet", "Send a build from Blender, or link a .blend in Shipwright, and it shows here")]
+    _BLEND_ITEMS = items
+    return items
+
+
+def _layer_tree(lc, out, hidden=False):
+    """{collection: excluded or hidden} for every collection under a layer collection."""
+    for c in lc.children:
+        off = hidden or c.exclude or c.hide_viewport or c.collection.hide_viewport
+        out[c.collection] = off
+        _layer_tree(c, out, off)
+    return out
+
+
+def _bounds(objs):
+    """World box of objects as they show, collection instances (Charon Forge's parts) included."""
+    import mathutils
+    pts = []
+
+    def walk(o, M, depth=0):
+        if o.type == "MESH" and o.data is not None and len(o.data.vertices):
+            pts.extend(M @ o.matrix_world @ mathutils.Vector(c) for c in o.bound_box)
+        if o.instance_type == "COLLECTION" and o.instance_collection is not None and depth < 6:
+            coll = o.instance_collection
+            inner = M @ o.matrix_world @ mathutils.Matrix.Translation(-coll.instance_offset)
+            for x in coll.all_objects:
+                walk(x, inner, depth + 1)
+    for o in objs:
+        walk(o, mathutils.Matrix.Identity(4))
+    if not pts:
+        return None
+    lo = mathutils.Vector([min(p[i] for p in pts) for i in range(3)])
+    hi = mathutils.Vector([max(p[i] for p in pts) for i in range(3)])
+    return lo, hi
+
+
+def add_blend(context, path):
+    """Bring a .blend's scene into this one, in a collection of its own with an empty to move it by, behind the
+    traveller. Returns (the new collection, how many objects) or raises with a reason."""
+    import mathutils
+    path = bpy.path.abspath(path)
+    if not path or not os.path.isfile(path):
+        raise RuntimeError("That .blend file wasn't found")
+    if bpy.data.filepath and os.path.normcase(os.path.abspath(bpy.data.filepath)) == os.path.normcase(os.path.abspath(path)):
+        raise RuntimeError("That's this file")
+    scene = context.scene
+    before = set(bpy.data.scenes)
+    with bpy.data.libraries.load(path, link=False) as (src, dst):
+        dst.scenes = list(src.scenes)
+    got = [x for x in bpy.data.scenes if x not in before]
+    if not got:
+        raise RuntimeError("The file has no scene to bring in")
+    sc = max(got, key=lambda x: len(x.objects))
+    name = os.path.splitext(os.path.basename(path))[0]
+    holder = bpy.data.collections.new(name)
+    holder[BACKDROP] = path
+    scene.collection.children.link(holder)
+    off = _layer_tree(sc.view_layers[0].layer_collection, {}) if sc.view_layers else {}
+    for c in list(sc.collection.children):
+        holder.children.link(c)
+    for o in list(sc.collection.objects):
+        holder.objects.link(o)
+    for x in got:
+        bpy.data.scenes.remove(x)
+    # what was hidden or left out there stays so here (Charon Forge keeps its part library out of the view)
+    for lc_coll, was_off in off.items():
+        if was_off:
+            stack = [context.view_layer.layer_collection]
+            while stack:
+                lc = stack.pop()
+                if lc.collection == lc_coll:
+                    lc.exclude = True
+                    break
+                stack.extend(lc.children)
+    shown = {c for c, o in _layer_tree(context.view_layer.layer_collection, {}).items() if not o}
+    objs = [o for o in holder.all_objects if any(c in shown or c == holder for c in o.users_collection)]
+    # cameras, lights and travellers of that file would change this picture
+    for o in list(objs):
+        if o.type in ("CAMERA", "LIGHT") or o.get("harmonious_traveller") or (o.parent is not None and o.parent.get("harmonious_traveller")):
+            for c in list(o.users_collection):
+                c.objects.unlink(o)
+            objs.remove(o)
+    context.view_layer.update()
+    # placed by what shows in the picture (hidden helpers can lie far off)
+    box = _bounds([o for o in objs if not o.hide_get() and not o.hide_viewport and not o.hide_render]) or _bounds(objs)
+    empty = bpy.data.objects.new(name + " (move me)", None)
+    empty.empty_display_type = "ARROWS"
+    holder.objects.link(empty)
+    if box is not None:
+        lo, hi = box
+        centre = (lo + hi) / 2
+        empty.location = (centre.x, centre.y, lo.z)
+        empty.empty_display_size = max(1.0, (hi - lo).length * 0.1)
+    context.view_layer.update()
+    for o in objs:
+        if o.parent is None:
+            o.parent = empty
+            o.matrix_parent_inverse = empty.matrix_world.inverted()
+    # behind the traveller, its keel on the floor
+    arm = find_traveller()
+    if box is not None:
+        lo, hi = box
+        size = max((hi - lo).x, (hi - lo).y)
+        if arm is not None:
+            fwd, left, up = body_frame(arm)
+            c, _h = traveller_box(arm)
+            spot = mathutils.Vector((c.x, c.y, 0)) - fwd * (size * 0.5 + 3.0)
+        else:
+            spot = mathutils.Vector((0, 0, 0))
+        empty.location = (spot.x, spot.y, arm.matrix_world.translation.z if arm is not None else 0.0)
+    context.view_layer.update()
+    return holder, len(objs)
+
+
+def backdrops():
+    return [c for c in bpy.data.collections if c.get(BACKDROP)]
+
+
+class HARMONIOUS_OT_add_blend(bpy.types.Operator):
+    bl_idname = "harmonious.add_blend"
+    bl_label = "Add a corvette .blend"
+    bl_description = "Bring a corvette (or any .blend) into this scene behind your traveller, to use as a backdrop: its parts come in as they are in that file, with an empty to move it by"
+    bl_options = {"REGISTER", "UNDO"}
+    filepath: bpy.props.StringProperty(subtype="FILE_PATH", options={"SKIP_SAVE"})
+    filter_glob: bpy.props.StringProperty(default="*.blend", options={"HIDDEN"})
+    browse: bpy.props.BoolProperty(default=False, options={"SKIP_SAVE", "HIDDEN"})
+
+    def invoke(self, context, event):
+        if self.browse or not self.filepath:
+            context.window_manager.fileselect_add(self)
+            return {"RUNNING_MODAL"}
+        return self.execute(context)
+
+    def execute(self, context):
+        if context.mode != "OBJECT":
+            bpy.ops.object.mode_set(mode="OBJECT")
+        try:
+            holder, n = add_blend(context, self.filepath)
+        except (RuntimeError, OSError) as error:
+            self.report({"ERROR"}, str(error))
+            return {"CANCELLED"}
+        empty = next((o for o in holder.objects if o.type == "EMPTY" and o.name.endswith("(move me)")), None)
+        if empty is not None:
+            for x in context.selected_objects:
+                x.select_set(False)
+            empty.select_set(True)
+            context.view_layer.objects.active = empty
+        set_status("Added %s (%d parts): G moves it, R turns it" % (holder.name, n))
+        self.report({"INFO"}, "Added %s: G moves it, R turns it, S scales it" % holder.name)
+        return {"FINISHED"}
+
+
+class HARMONIOUS_OT_backdrop(bpy.types.Operator):
+    bl_idname = "harmonious.backdrop"
+    bl_label = "Backdrop"
+    bl_description = "Select it to move (G), turn (R) or scale (S) it, or take it out of this file"
+    bl_options = {"REGISTER", "UNDO"}
+    name: bpy.props.StringProperty()
+    action: bpy.props.EnumProperty(items=(("SELECT", "Select", ""), ("REMOVE", "Remove", "")))
+
+    @classmethod
+    def description(cls, context, props):
+        return "Take it out of this file" if props.action == "REMOVE" else "Select it: G moves it, R turns it, S scales it"
+
+    def execute(self, context):
+        holder = bpy.data.collections.get(self.name)
+        if holder is None:
+            return {"CANCELLED"}
+        if context.mode != "OBJECT":
+            bpy.ops.object.mode_set(mode="OBJECT")
+        empty = next((o for o in holder.objects if o.type == "EMPTY" and o.name.endswith("(move me)")), None)
+        if self.action == "SELECT":
+            for x in context.selected_objects:
+                x.select_set(False)
+            if empty is not None:
+                empty.hide_set(False)
+                empty.select_set(True)
+                context.view_layer.objects.active = empty
+            return {"FINISHED"}
+        colls = [holder] + list(holder.children_recursive)
+        for o in list(holder.all_objects):
+            if all(c in colls for c in o.users_collection):
+                bpy.data.objects.remove(o, do_unlink=True)
+        for c in reversed(colls):
+            if c.name in bpy.data.collections:
+                bpy.data.collections.remove(c)
+        bpy.data.orphans_purge(do_recursive=True) if hasattr(bpy.data, "orphans_purge") else None
+        return {"FINISHED"}
+
+
 SHARE_TIP = ("Light your traveller here, frame it with the camera, then go to Export: both go to the editor's Traveller "
              "page, the 3D pose to turn there, the picture as you framed it.")
 
@@ -2860,6 +3066,21 @@ class HARMONIOUS_PT_share(LiveLinkPanel, bpy.types.Panel):
         layout = self.layout
         scene = context.scene
         box = layout.box()
+        box.label(text="Backdrop: a corvette behind you", icon="SCENE_DATA")
+        row = box.row(align=True)
+        row.prop(scene, "harmonious_blend", text="")
+        add = row.row(align=True)
+        add.enabled = bool(scene.harmonious_blend)
+        op = add.operator(HARMONIOUS_OT_add_blend.bl_idname, text="Add", icon="ADD")
+        op.filepath = scene.harmonious_blend
+        box.operator(HARMONIOUS_OT_add_blend.bl_idname, text="Choose a .blend file…", icon="FILE_FOLDER").browse = True
+        for c in backdrops():
+            row = box.row(align=True)
+            sel = row.operator(HARMONIOUS_OT_backdrop.bl_idname, text=c.name, icon="RESTRICT_SELECT_OFF")
+            sel.name, sel.action = c.name, "SELECT"
+            rm = row.operator(HARMONIOUS_OT_backdrop.bl_idname, text="", icon="X")
+            rm.name, rm.action = c.name, "REMOVE"
+        box = layout.box()
         box.label(text="Lighting", icon="LIGHT")
         box.prop(scene, "harmonious_lighting", text="")
         box.prop(scene, "harmonious_glow")
@@ -2968,7 +3189,7 @@ _KEYMAPS = []
 CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_OT_pick_part, HARMONIOUS_OT_show_bones, HARMONIOUS_OT_pose, HARMONIOUS_OT_pose_reset,
            HARMONIOUS_OT_pose_save, HARMONIOUS_OT_poses_folder, HARMONIOUS_OT_hold_tool, HARMONIOUS_OT_drop_tool, HARMONIOUS_OT_send_pose, HARMONIOUS_OT_picture,
            HARMONIOUS_OT_body_part, HARMONIOUS_OT_body_parts_clear, HARMONIOUS_OT_pose_mode, HARMONIOUS_OT_light, HARMONIOUS_OT_select_light, HARMONIOUS_OT_send_ship,
-           HARMONIOUS_OT_tip, HARMONIOUS_OT_camera, HARMONIOUS_OT_camera_view, HARMONIOUS_OT_clean_view,
+           HARMONIOUS_OT_tip, HARMONIOUS_OT_camera, HARMONIOUS_OT_add_blend, HARMONIOUS_OT_backdrop, HARMONIOUS_OT_camera_view, HARMONIOUS_OT_clean_view,
            HARMONIOUS_PT_live, HARMONIOUS_PT_build, HARMONIOUS_PT_traveller, HARMONIOUS_PT_poses, HARMONIOUS_PT_parts,
            HARMONIOUS_PT_tool, HARMONIOUS_PT_share, HARMONIOUS_PT_export, HARMONIOUS_PT_support)
 
@@ -2990,6 +3211,8 @@ def register():
         description="Lights put round your traveller as soon as you pick them")
     bpy.types.Scene.harmonious_glow = bpy.props.BoolProperty(name="Lenses and screens glow", default=True, update=glow_changed,
         description="The game's lenses, screens and visor give off light (in Cycles they light what's near them)")
+    bpy.types.Scene.harmonious_blend = bpy.props.EnumProperty(name="Corvette file", items=blend_items,
+        description="Your corvettes' .blend files that the editor knows (sent from Blender or linked in Shipwright)")
     bpy.types.Scene.harmonious_pose = bpy.props.EnumProperty(name="Pose", items=pose_items, update=pose_changed,
         description="Pick a pose and the traveller takes it at once: ready-made ones, then yours from the Poses folder")
     bpy.types.Object.harmonious_keep_shape = bpy.props.BoolProperty(
@@ -3040,6 +3263,7 @@ def unregister():
     del bpy.types.Scene.harmonious_curl_r
     del bpy.types.Scene.harmonious_curl_l
     del bpy.types.Scene.harmonious_pose
+    del bpy.types.Scene.harmonious_blend
     del bpy.types.Scene.harmonious_quality
     del bpy.types.Scene.harmonious_lighting
     del bpy.types.Scene.harmonious_glow

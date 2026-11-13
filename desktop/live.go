@@ -19,6 +19,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -171,7 +172,7 @@ func handleLiveBuild(w http.ResponseWriter, r *http.Request) {
 		trav.Lock()
 		tname, tools := trav.name, toolNames()
 		trav.Unlock()
-		writeJSON(w, map[string]any{"ok": true, "armed": armed, "target": target, "slot": slot, "corvettes": corvettes, "kind": kind, "base": base, "version": appVersion, "traveller": tname, "tools": tools, "exports": exportsDir(), "addon": addonVersion})
+		writeJSON(w, map[string]any{"ok": true, "armed": armed, "target": target, "slot": slot, "corvettes": corvettes, "kind": kind, "base": base, "version": appVersion, "traveller": tname, "tools": tools, "exports": exportsDir(), "addon": addonVersion, "blends": rememberedBlends()})
 		return
 	}
 	if r.Method != http.MethodPost {
@@ -238,6 +239,43 @@ func readLiveFiles() map[string]liveFile {
 		_ = json.Unmarshal(b, &m)
 	}
 	return m
+}
+
+// rememberedBlends: the .blend files corvettes and bases were last sent from or linked to, newest first and each file
+// once, named by the corvette or base (for the add-on's "Add a corvette .blend" list; owner 2026-11-13)
+func rememberedBlends() []map[string]string {
+	liveFilesMu.Lock()
+	m := readLiveFiles()
+	liveFilesMu.Unlock()
+	type row struct {
+		name, file string
+		t          int64
+	}
+	var rows []row
+	for k, v := range m {
+		if v.File == "" || !strings.HasSuffix(strings.ToLower(v.File), ".blend") {
+			continue
+		}
+		if _, err := os.Stat(v.File); err != nil {
+			continue
+		}
+		name := k
+		if i := strings.LastIndex(k, "|"); i >= 0 {
+			name = k[i+1:]
+		}
+		rows = append(rows, row{name, v.File, v.Time})
+	}
+	sort.Slice(rows, func(i, j int) bool { return rows[i].t > rows[j].t })
+	out := []map[string]string{}
+	seen := map[string]bool{}
+	for _, r := range rows {
+		if seen[strings.ToLower(r.file)] {
+			continue
+		}
+		seen[strings.ToLower(r.file)] = true
+		out = append(out, map[string]string{"name": r.name, "file": r.file})
+	}
+	return out
 }
 
 // GET: the whole map; POST {key, file}: remember a file ("" forgets it)

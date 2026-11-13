@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.13.1735",
+  "date": "2026-11-13",
+  "notes": [
+   "Please install the LiveLink add-on again (version 1.17.0).",
+   "LiveLink: put one of your corvettes behind your traveller. Lighting & Rendering has a Backdrop list of your corvettes' .blend files (or Choose a .blend file…); the whole build comes in textured, on the floor behind your traveller, with an empty to move, turn and scale it."
+  ]
+ },
+ {
   "version": "2026.11.13.1636",
   "date": "2026-11-13",
   "notes": [
