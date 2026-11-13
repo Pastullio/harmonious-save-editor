@@ -847,6 +847,7 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .legend .legend-tip { margin-left: auto; color: var(--faint); display: inline-flex; align-items: center; }
 .fr-acts { margin-top: 12px; gap: 6px; }
 .exo-list { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 6px; }
+.exo-pic-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 14px; }
 .exo-acts { display: flex; align-items: center; gap: 8px; }
 .exo-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 10px; border-radius: 10px; background: var(--well); }
 .exo-known { font-size: 12.5px; color: var(--ok, var(--dim)); }
@@ -3424,7 +3425,7 @@ function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, 
   if (S.pick[key] == null || !list.some((x) => x.i === S.pick[key])) S.pick[key] = (list.find((x) => x.i === primary) || list[0]).i;
   const ed = document.createElement('div');
   if (flow) {
-    const items = coverItems().filter((x) => (flow === 'tool' ? x.kind === 'tool' : x.kind !== 'tool'));
+    const items = Array.isArray(flow) ? flow : coverItems().filter((x) => (flow === 'tool' ? x.kind === 'tool' : x.kind !== 'tool'));
     const host = document.createElement('div'); el.appendChild(host);
     Covers(host, items, { size: 170, gridSize: 180, index: Math.max(0, items.findIndex((x) => x.i === S.pick[key])), label: title, noSwitch: true,
       onChange: (n) => { S.pick[key] = items[n].i; S.sel = null; editor(); }, onOpen: () => ed.scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth' }) });
@@ -3476,13 +3477,30 @@ PAGES.tools = (el) => ownedPage(el, {
 const EXOCRAFT = [['Roamer', 'buggy/buggy'], ['Nomad', 'bike/bike'], ['Colossus', 'rover/rover'], ['Pilgrim', 'wheeledbike/wheeledbike'], ['Hovercraft', 'hover/hovercraft'], ['Nautilon', 'submarine/submarine'], ['Minotaur', 'mech_suit/mech_suit']];
 const exoName = (s, i) => str(g(s, 'Name')) || (EXOCRAFT[i] || ['Exocraft ' + (i + 1)])[0];
 const exoScene = (s, i) => str(g(s, 'Resource', 'Filename')) || (EXOCRAFT[i] ? `MODELS/COMMON/VEHICLES/${EXOCRAFT[i][1].toUpperCase()}.SCENE.MBIN` : '');
-PAGES.vehicles = (el) => ownedPage(el, {
-  title: 'Exocraft', intro: 'Cargo and technology for each exocraft bay in your save.', list: vehicles(), key: 'veh', primaryKey: 'PrimaryVehicle',
-  label: (s, i) => exoName(s, i), sub: (s, i) => (EXOCRAFT[i] ? EXOCRAFT[i][0] + ', ' : '') + 'bay ' + (i + 1),
-  invs: (s) => [[g(s, 'Inventory_TechOnly'), 'Technology'], [g(s, 'Inventory'), 'Cargo']],
-  picture: (s, i) => { const model = modelName(g(s, 'Resource', 'Filename')); return { kind: 'ship', type: 'Exocraft', name: exoName(s, i), cls: '', key: 'veh|' + i + '|' + model, seed: str((seedOf(s) || [])[1]), scene: exoScene(s, i) }; },
-  actions: [['Add exocraft', 'addExo', addExoDialog]],
-});
+// a cover item per exocraft bay, for Cover Flow / Grid like Starships (owner 2026-11-13)
+function exoItem(s, i) {
+  const model = modelName(g(s, 'Resource', 'Filename')), primary = num(g(ps(), 'PrimaryVehicle')), name = exoName(s, i), cls = invClass(g(s, 'Inventory_TechOnly')) || invClass(g(s, 'Inventory')) || '';
+  return { kind: 'ship', type: 'Exocraft', i, obj: s, name, cls: '', key: 'veh|' + i + '|' + model, seed: str((seedOf(s) || [])[1]), scene: exoScene(s, i), current: i === primary,
+    sub: [(EXOCRAFT[i] || [])[0] !== name && (EXOCRAFT[i] || [])[0], 'bay ' + (i + 1), cls && cls + ' class', i === primary && 'current'].filter(Boolean).join(', ') };
+}
+// Cover Flow's Change picture covers the picture; Choose parts sits under it, as on Starships
+function exoPictureActs(ed, s, i) {
+  const it = exoItem(s, i); if (!(APP && it.scene && S.lib && S.lib.game)) return;
+  const row = document.createElement('div'); row.className = 'exo-pic-acts';
+  row.innerHTML = '<button class="btn small" type="button" data-x="parts">Choose parts</button>';
+  ed.appendChild(row);
+  row.querySelector('button').onclick = () => partsDialog(it, () => render());
+}
+PAGES.vehicles = (el) => {
+  const list = vehicles();
+  ownedPage(el, {
+    title: 'Exocraft', intro: 'Cargo and technology for each exocraft bay in your save.', list, key: 'veh', primaryKey: 'PrimaryVehicle', flow: list.map(({ s, i }) => exoItem(s, i)),
+    label: (s, i) => exoName(s, i), sub: (s, i) => (EXOCRAFT[i] ? EXOCRAFT[i][0] + ', ' : '') + 'bay ' + (i + 1),
+    invs: (s) => [[g(s, 'Inventory_TechOnly'), 'Technology'], [g(s, 'Inventory'), 'Cargo']],
+    details: exoPictureActs,
+    actions: [['Add exocraft', 'addExo', addExoDialog]],
+  });
+};
 
 // ------------------------------------------------------------------ ship and multi-tool details (type, class, seed, colours, stats)
 const M = 'MODELS/COMMON/SPACECRAFT/', W = 'MODELS/COMMON/WEAPONS/MULTITOOL/';

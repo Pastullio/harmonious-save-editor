@@ -11,12 +11,13 @@ const SP = process.argv[2]; // scratch dir with dbroot/NMS (a real save) and sho
   const ok = (n, c) => console.log((c ? 'PASS ' : 'FAIL ') + n);
   await p.goto(url); await p.waitForSelector('.slot-row'); await p.click('.slot-row'); await p.waitForSelector('#app:not(.hidden)');
   const img = SP + '/shots/a2-overview.png';
-  for (const [sec, sel] of [['ships', '.cf-pic'], ['freighter', '.pic-card .tc-gear'], ['vehicles', '.pic-card .tc-gear']]) {
+  for (const [sec, sel] of [['ships', '.cf-pic'], ['freighter', '.pic-card .tc-gear'], ['vehicles', '.cf-pic']]) {
     await p.click(`nav button[data-s="${sec}"]`); await p.waitForTimeout(800);
     await p.click(sel);
     let chooser;
-    if (sec === 'ships') {
-      await p.waitForSelector('#dlg[open]'); await p.screenshot({ path: SP + '/shots/b0-picture-dialog.png' });
+    const flow = sec !== 'freighter';   // Starships and Exocraft (owner 2026-11-13) use Cover Flow
+    if (flow) {
+      await p.waitForSelector('#dlg[open]'); if (sec === 'ships') await p.screenshot({ path: SP + '/shots/b0-picture-dialog.png' });
       [chooser] = await Promise.all([p.waitForEvent('filechooser'), p.click('#dlgActs button:has-text("Image file")')]);
     } else {   // the picture card's gear (owner 2026-11-12) opens its options
       await p.waitForSelector('.pic-card .tc-gearpop:not([hidden])');
@@ -25,10 +26,10 @@ const SP = process.argv[2]; // scratch dir with dbroot/NMS (a real save) and sho
     }
     await chooser.setFiles(img);
     await p.waitForSelector('#dlg[open] .crop canvas', { timeout: 60000 }); await p.click('#dlgActs .btn.primary');
-    await p.waitForFunction((sec) => sec === 'ships' ? !!document.querySelector('.cf-item.center img') : !!document.querySelector('.pic-card .tc-art img'), sec, { timeout: 15000 }).catch(() => {});
-    const has = sec === 'ships' ? await p.$eval('.cf-item.center', (e) => !!e.querySelector('img')) : await p.$eval('.pic-card .tc-art', (e) => !!e.querySelector('img'));
+    await p.waitForFunction((sec) => sec !== 'freighter' ? !!document.querySelector('.cf-item.center img') : !!document.querySelector('.pic-card .tc-art img'), sec, { timeout: 15000 }).catch(() => {});
+    const has = flow ? await p.$eval('.cf-item.center', (e) => !!e.querySelector('img')) : await p.$eval('.pic-card .tc-art', (e) => !!e.querySelector('img'));
     ok(sec + ': picture added', has);
-    if (sec !== 'ships') {
+    if (!flow) {
       await p.click('.pic-card .tc-gear');
       ok(sec + ': …and then the gear offers the generated cover again', /Use the generated cover/.test(await p.textContent('.pic-card .tc-gearpop')));
       await p.keyboard.press('Escape');

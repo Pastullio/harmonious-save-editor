@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.13.1521",
+  "version": "2026.11.13.1527",
   "date": "2026-11-13",
-  "size": 14715392,
-  "sha256": "63ce7eb937b543b58bcf94c45c38a386281e1a55558eceb9526d333e7e4fa100",
-  "notes": "Exocraft: every exocraft bay in your save is listed now (some saves showed only the Colossus).\nAdd exocraft explains that the save already has a bay for each exocraft, and each row has an Open button that takes you to it.",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.1521/HarmoniousSaveEditor.exe",
+  "size": 14716928,
+  "sha256": "ee4c21724d368d2a77eabf62e291e775adaca98d6ba97ac15818d6be341506ae",
+  "notes": "Exocraft: Cover Flow and Grid, like Starships. Change picture sits under the covers and Choose parts below them.",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.1527/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

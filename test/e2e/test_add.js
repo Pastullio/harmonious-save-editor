@@ -73,6 +73,11 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   if (lastOpen >= 0) {
     await p.click(`#dlgBody [data-open="${lastOpen}"]`); await p.waitForTimeout(300);
     ok('…and Open shows that exocraft', !(await p.$('#dlg[open]')) && (await p.evaluate(() => S.pick.veh)) === lastOpen);
+    // Cover Flow / Grid like Starships, with the picture options under it
+    await p.waitForSelector('.cf-stage, .cg-grid');
+    ok('the Exocraft page has Cover Flow and the view switch', !!(await p.$('.view-switch')) && (await p.$$('.cf-item, .cg-card')).length === bays);
+    ok('…and its Change picture button', !!(await p.$('.cf-pic, .cg-card')));
+    await p.screenshot({ path: process.argv[2] + '/exocraft-flow.png' });
   } else await p.click('#dlgX');
   await p.evaluate(() => go('companions')); await p.waitForSelector('#addPet');
   const n0 = await p.evaluate(() => g(ps(), 'Pets').filter(isPet).length);
