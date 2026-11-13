@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.13.2123",
+  "date": "2026-11-13",
+  "notes": [
+   "New LiveLink page (under Shipwright): a setup checklist that shows whether Blender and the add-on are ready, every corvette and base you can link with its .blend, recent builds, what Blender sent back, and a library of your 3D prints with previews you can turn.",
+   "LiveLink add-on 1.24.0 (install it again in Blender: Get LiveLink): it tells DryDock its version, so the LiveLink page can say when it's out of date."
+  ]
+ },
+ {
   "version": "2026.11.13.2113",
   "date": "2026-11-13",
   "notes": [

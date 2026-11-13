@@ -15,16 +15,16 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const groups = () => p.$$eval('#nav .nav-group', (gs) => gs.map((g) => [...g.querySelectorAll('button')].map((x) => x.dataset.s).join(',')));
   await p.goto(url); await open();
   const before = await groups();
-  ok('the usual sidebar to begin with', before[0] === 'overview,shipwright,coords,hangar,library' && before.length === 5);
+  ok('the usual sidebar to begin with', before[0] === 'overview,shipwright,livelink,coords,hangar,library' && before.length === 5);
   await p.click('#navEditBtn'); await p.waitForSelector('#nav.nav-editing');
   await p.click('[data-eye="raw"]');
-  for (let k = 0; k < 4; k++) await p.click('[data-im="library"][data-d="-1"]');
+  for (let k = 0; k < 5; k++) await p.click('[data-im="library"][data-d="-1"]');
   await p.click('[data-im="companions"][data-d="1"]');                 // last in its group: goes to the top of the next one
   await p.dragAndDrop('.ne-item[data-id="cargo"]', '.ne-item[data-id="overview"]');
   await p.click('[data-gm="g3"][data-d="-1"]');
   await p.click('#neDone');
   const after = await groups(); console.log(after);
-  ok('arrows and dragging move pages, also into another group', after[0] === 'library,cargo,overview,shipwright,coords,hangar' && after[3] === 'companions,bases,storage');
+  ok('arrows and dragging move pages, also into another group', after[0] === 'library,cargo,overview,shipwright,livelink,coords,hangar' && after[3] === 'companions,bases,storage');
   ok('groups move, and a hidden page leaves the sidebar', after[2] === 'knowledge,rewards,standing,difficulty' && after[4] === 'items' && !after.join(',').includes('raw'));
   await p.click('#findBox'); await p.fill('#findBox', 'raw data'); await p.waitForTimeout(400);
   ok('a hidden page is still found', /Raw data/.test(await p.textContent('#findRes')));

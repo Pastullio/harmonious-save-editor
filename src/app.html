@@ -934,6 +934,49 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); opacity: 0; background: var(--ink); color: var(--bg); padding: 11px 20px; border-radius: 999px; transition: .2s; pointer-events: none; z-index: 40; max-width: 90vw; box-shadow: 0 10px 30px rgba(0, 0, 0, .25); }
 #toast.show { opacity: 1; transform: translateX(-50%); }
 #toast.bad { background: var(--danger); color: #fff; }
+.ll-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 18px; align-items: start; }
+@media (max-width: 1100px) { .ll-cols { grid-template-columns: 1fr; } }
+.ll-col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.ll-col > .panel { margin: 0; }
+.ll-col h4 { margin: 14px 0 6px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); font-weight: 600; }
+.ll-badge { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; margin-left: 6px; vertical-align: 2px; }
+.ll-badge.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.ll-steps, .ll-targets, .ll-files, .ll-panel-list { list-style: none; margin: 0; padding: 0; }
+.ll-step { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.ll-step:first-child { border-top: 0; }
+.ll-step > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ll-step > div .dim { font-size: 13px; overflow-wrap: anywhere; }
+.ll-ic { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; color: #fff; background: var(--danger); }
+.ll-step.ok .ll-ic { background: var(--ok); }
+.ll-step.opt .ll-ic { background: var(--faint); }
+.ll-acts { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.ll-first { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; }
+.ll-first summary { cursor: pointer; font-weight: 600; }
+.ll-target { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--r-sm); }
+.ll-target:nth-child(odd) { background: color-mix(in srgb, var(--well) 45%, transparent); }
+.ll-target.on { outline: 1.5px solid var(--ok); }
+.ll-target > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ll-target .small-print { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ll-linked .check { margin-top: 12px; }
+.ll-print-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.ll-print { margin: 0; }
+.ll-print .tc-cap { display: flex; flex-direction: column; gap: 2px; }
+.ll-print .tc-cap b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ll-print .ll-acts { justify-content: flex-start; margin-top: 4px; }
+.link.danger { color: var(--danger); }
+.ll-from-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 700px) { .ll-from-grid { grid-template-columns: 1fr; } }
+.ll-thumbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.ll-thumbs img { width: 100%; aspect-ratio: 1; object-fit: contain; background: var(--well); border-radius: 8px; }
+.ll-files li { display: flex; flex-direction: column; padding: 4px 0; border-top: 1px solid var(--line); font-size: 13px; overflow-wrap: anywhere; }
+.ll-files li:first-child { border-top: 0; }
+.ll-from .toolbar { margin-top: 12px; }
+.ll-panel-list li { display: flex; gap: 10px; padding: 7px 0; align-items: flex-start; }
+.ll-panel-list li > div { display: flex; flex-direction: column; }
+.ll-sw { flex: none; width: 10px; height: 10px; border-radius: 3px; margin-top: 6px; }
+.ll-panel-list .pink .ll-sw { background: #ff3fa0; box-shadow: 0 0 8px #ff3fa0; }
+.ll-panel-list .blue .ll-sw { background: #3fb8ff; box-shadow: 0 0 8px #3fb8ff; }
+.ll-panel-list .green .ll-sw { background: #39ff80; box-shadow: 0 0 8px #39ff80; }
 .upd-ok { position: fixed; left: 50%; top: 24px; transform: translate(-50%, -12px); opacity: 0; transition: .22s; z-index: 60; display: flex; align-items: center; gap: 12px; padding: 12px 10px 12px 16px; border-radius: 14px; background: var(--surface); color: var(--ink); border: 1px solid var(--ok); box-shadow: 0 14px 40px rgba(0, 0, 0, .35); max-width: min(420px, calc(100vw - 32px)); }
 .upd-ok.show { opacity: 1; transform: translate(-50%, 0); }
 .upd-ok svg { color: var(--ok); flex: none; }
@@ -1755,7 +1798,7 @@ function download(bytes, name) { const u = URL.createObjectURL(new Blob([bytes])
 
 // ------------------------------------------------------------------ navigation
 const SECTIONS = [
-  ['overview', 'Overview'], ['shipwright', 'Shipwright'], ['coords', 'Coordinates'], ['hangar', 'Garage'], ['library', 'Dock Yard'],
+  ['overview', 'Overview'], ['shipwright', 'Shipwright'], ['livelink', 'LiveLink'], ['coords', 'Coordinates'], ['hangar', 'Garage'], ['library', 'Dock Yard'],
   ['exosuit', 'Exosuit'], ['traveller', 'Traveller'], ['tools', 'Multi-tools'], ['ships', 'Starships'], ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['companions', 'Companions'],
   ['bases', 'Bases'], ['storage', 'Storage'], ['cargo', 'Cargo'],
   ['knowledge', 'Knowledge'], ['rewards', 'Rewards'], ['standing', 'Standing'], ['difficulty', 'Difficulty'],
@@ -1763,7 +1806,7 @@ const SECTIONS = [
 ];
 // The sidebar in groups of related pages, each with a faint tint of its own colour behind it.
 const NAV_GROUPS = [
-  { tint: '#2fc3d6', ids: ['overview', 'shipwright', 'coords', 'hangar', 'library'] },          // getting around and your fleet
+  { tint: '#2fc3d6', ids: ['overview', 'shipwright', 'livelink', 'coords', 'hangar', 'library'] },          // getting around and your fleet
   { tint: '#a37bff', ids: ['exosuit', 'traveller', 'tools', 'ships', 'freighter', 'vehicles', 'companions'] }, // what you carry and ride
   { tint: '#ff8a70', ids: ['bases', 'storage', 'cargo'] },                                         // where things are kept
   { tint: '#7ba2ff', ids: ['knowledge', 'rewards', 'standing', 'difficulty'] },                   // progress and settings
@@ -1772,7 +1815,7 @@ const NAV_GROUPS = [
 // Spectrum: each section's colour sweeps down the sidebar, teal and aqua through blue, violet, magenta, rose and coral
 // (owner's pick), then sky, periwinkle and steel for progress and settings, mint (item names) and slate (raw data).
 // One bright base per section; light mode darkens it automatically.
-const SECTION_COLORS = { overview: '#2fc3d6', shipwright: '#36d6c3', coords: '#3cb6ea', hangar: '#4ea8ff', library: '#6598ff', exosuit: '#7d8bff', traveller: '#9083ff', tools: '#a37bff', ships: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', companions: '#ff7690', bases: '#ff8079', storage: '#ff8a70', cargo: '#ffa086', knowledge: '#5ab8f0', rewards: '#7ba2ff', standing: '#9a8cff', difficulty: '#a3b3cf', items: '#3fd9a3', raw: '#8fb3c4' };
+const SECTION_COLORS = { overview: '#2fc3d6', shipwright: '#36d6c3', livelink: '#38c4e2', coords: '#3cb6ea', hangar: '#4ea8ff', library: '#6598ff', exosuit: '#7d8bff', traveller: '#9083ff', tools: '#a37bff', ships: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', companions: '#ff7690', bases: '#ff8079', storage: '#ff8a70', cargo: '#ffa086', knowledge: '#5ab8f0', rewards: '#7ba2ff', standing: '#9a8cff', difficulty: '#a3b3cf', items: '#3fd9a3', raw: '#8fb3c4' };
 const secColor = (id) => SECTION_COLORS[id];
 function applySection(id) {
   const c = secColor(id);
@@ -1819,11 +1862,11 @@ function renderSide() {
   $('#saveMeta').textContent = bits.join(', ');
   const counts = { hangar: ships().length + tools().length, ships: ships().length, tools: tools().length, storage: storageInvs().length };
   const label = Object.fromEntries(SECTIONS);
-  const btn = (id) => `<button data-s="${id}" ${S.section === id ? 'aria-current="page"' : ''} style="--dot:${secColor(id) || 'var(--line-2)'}"><span class="dot" aria-hidden="true"></span><span class="lbl">${label[id]}</span>${LIVE.on && id === (LIVE.kind === 'base' ? 'bases' : 'shipwright') ? '<span class="live-pill" title="LiveLink from Blender is on"><span class="live-dot"></span>Live</span>' : NEW_SECTIONS[id] && APP && !seenSection(id) ? '<span class="new-pill">New</span>' : counts[id] != null ? `<span class="count">${counts[id]}</span>` : ''}</button>`;
+  const btn = (id) => `<button data-s="${id}" ${S.section === id ? 'aria-current="page"' : ''} style="--dot:${secColor(id) || 'var(--line-2)'}"><span class="dot" aria-hidden="true"></span><span class="lbl">${label[id]}</span>${LIVE.on && (id === 'livelink' || id === (LIVE.kind === 'base' ? 'bases' : 'shipwright')) ? '<span class="live-pill" title="LiveLink from Blender is on"><span class="live-dot"></span>Live</span>' : NEW_SECTIONS[id] && APP && !seenSection(id) ? '<span class="new-pill">New</span>' : counts[id] != null ? `<span class="count">${counts[id]}</span>` : ''}</button>`;
   const L = navLayout();
   if (S.navEdit) { renderNavEdit(L, label); updateStatus(); return; }
   $('#nav').classList.remove('nav-editing');
-  $('#nav').innerHTML = L.groups.map((gr) => { const ids = gr.ids.filter((id) => label[id] && !L.hidden.has(id)); return ids.length ? `<div class="nav-group" style="--tint:${gr.tint}">${ids.map(btn).join('')}</div>` : ''; }).join('');
+  $('#nav').innerHTML = L.groups.map((gr) => { const ids = gr.ids.filter((id) => label[id] && !L.hidden.has(id) && (APP || id !== 'livelink')); return ids.length ? `<div class="nav-group" style="--tint:${gr.tint}">${ids.map(btn).join('')}</div>` : ''; }).join('');
   applySection(S.section);
   $('#nav').querySelectorAll('button').forEach((b) => b.onclick = () => go(b.dataset.s));
   updateStatus();
@@ -4065,7 +4108,7 @@ function paintCover(canvas, it, angle) {
   if (it.texGlb && GLTEX.ok()) {
     // a textured model (the traveller): the turntable's angle turns it, from a little off the front
     const yaw = (angle != null ? angle + .95 : 0) - 12 * Math.PI / 180;
-    const cv = GLTEX.render(it.texGlb, W, yaw, 4 * Math.PI / 180, 'studio');
+    const cv = GLTEX.render(it.texGlb, W, yaw, (it.pitch != null ? it.pitch : 4) * Math.PI / 180, 'studio');
     if (cv) { const m = W * .03; ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = W * .04; ctx.shadowOffsetY = W * .015; ctx.drawImage(cv, m, m * .4, W - 2 * m, W - 2 * m); ctx.restore(); return; }
   }
   const wire = wireMesh(it);
@@ -6005,7 +6048,7 @@ async function shareCard(how, p, s) {
 
 // ------------------------------------------------------------------ Dock Yard (ship library)
 // brand-new sections wear a New badge in the menu until they've been opened once
-const NEW_SECTIONS = { library: 'hse-dockyard-seen', shipwright: 'hse-shipwright-seen', bases: 'hse-bases-seen', companions: 'hse-companions-seen', knowledge: 'hse-knowledge-seen', standing: 'hse-standing-seen', difficulty: 'hse-difficulty-seen', rewards: 'hse-rewards-seen', cargo: 'hse-cargo-seen', traveller: 'hse-traveller-seen' };
+const NEW_SECTIONS = { library: 'hse-dockyard-seen', shipwright: 'hse-shipwright-seen', bases: 'hse-bases-seen', companions: 'hse-companions-seen', knowledge: 'hse-knowledge-seen', standing: 'hse-standing-seen', difficulty: 'hse-difficulty-seen', rewards: 'hse-rewards-seen', cargo: 'hse-cargo-seen', traveller: 'hse-traveller-seen', livelink: 'hse-livelink-seen' };
 const seenSection = (id) => { try { return localStorage.getItem(NEW_SECTIONS[id]) === '1'; } catch (_) { return true; } };
 function markSeen(id) { try { localStorage.setItem(NEW_SECTIONS[id], '1'); } catch (_) {} const pill = document.querySelector(`nav [data-s="${id}"] .new-pill`); if (pill) pill.remove(); }
 const dockyardSeen = () => seenSection('library');
@@ -7314,6 +7357,145 @@ async function liveWriteBase(body, objects, b) {
   } catch (e) { return { ok: false, message: `Put on ${name}, but not written: ${e.message}` }; }
 }
 addEventListener('pagehide', () => { if (LIVE.on && window.NMS_APP) navigator.sendBeacon('/api/live/arm?t=' + encodeURIComponent(window.NMS_APP.token), new Blob([JSON.stringify({ armed: false })], { type: 'application/json' })); });
+
+// ------------------------------------------------------------------ LiveLink page (owner 2026-11-13)
+// Everything LiveLink in one place: is it set up, what's linked, what Blender sent, what it made, and a library of the
+// 3D prints. Shipwright and Bases keep their own small LiveLink box.
+const LL = { setup: null, status: null, prints: null, pics: null, ships: null, glb: new Map() };
+const LL_PANELS = [
+  ['pink', 'LiveLink', 'Shows whether DryDock is open and what LiveLink is on for.'],
+  ['pink', 'Builds: corvettes and bases', 'Which corvette this .blend updates, Send on save (Ctrl+S), Send now, and Send the corvette in 3D.'],
+  ['blue', 'Your traveller', 'Import my traveller (from the save open here), Pose Mode / Object Mode.'],
+  ['blue', 'Poses', 'Ready-made poses that apply as you pick them, your own saved poses, hand shapes.'],
+  ['blue', 'Body parts', 'Pick arms, legs, fingers to turn each at its own joint.'],
+  ['blue', 'Multi-tool', 'Put one of your multi-tools in the traveller\'s hand.'],
+  ['blue', 'Lighting & Rendering', 'A corvette as a backdrop, lighting setups, the traveller camera, Quick or Best quality.'],
+  ['blue', 'Export', 'Send the pose here in 3D, or save it as a picture.'],
+  ['green', '3D print', 'Your traveller, this file\'s corvette or base, or a backdrop as one solid STL, with a preview first.'],
+];
+const llKb = (n) => (n >= 1048576 ? (n / 1048576).toFixed(n >= 104857600 ? 0 : 1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
+const llWhen = (ms) => { const d = new Date(ms), t = Date.now() - ms; return t < 86400000 && new Date().getDate() === d.getDate() ? 'Today ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : d.toLocaleDateString([], { month: 'short', day: 'numeric', year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' }); };
+// "Pastullio print 152mm 2026-11-13 142515.stl" -> "Pastullio, 152 mm"
+const llPrintTitle = (n) => { const m = n.replace(/\.stl$/i, '').match(/^(.*?) (?:print|miniature) (\d+)mm/); return m ? m[1] : n.replace(/\.stl$/i, ''); };
+const llCmp = (a, b) => { const x = String(a || '').split('.').map(Number), y = String(b || '').split('.').map(Number); for (let i = 0; i < 3; i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); return 0; };
+async function llLoad() {
+  const get = (u) => api(u).then((r) => r.json()).catch(() => null);
+  [LL.setup, LL.status, LL.prints, LL.pics, LL.ships] = await Promise.all([get('/api/render-setup'), get('/api/live/status'), get('/api/exports/prints'), get('/api/exports/pictures'), get('/api/exports/ships')]);
+  await liveLoadFiles(true);
+}
+function llStep(state, title, text, act) {
+  const ic = state === 'ok' ? '✓' : state === 'opt' ? '–' : '!';
+  return `<li class="ll-step ${state}"><span class="ll-ic" aria-hidden="true">${ic}</span><div><b>${title}</b><span class="dim">${text}</span></div>${act || ''}</li>`;
+}
+function llSetupHtml() {
+  const su = LL.setup || {}, st = LL.status || {}, latest = st.addonLatest || '';
+  const bl = su.blender ? llStep('ok', 'Blender', `Found${st.blenderVersion ? ', version ' + esc(st.blenderVersion) : ''}: <span class="mono">${esc(su.blender)}</span>`, '<button class="btn small ghost" type="button" data-ll="settings">Change</button>')
+    : llStep('bad', 'Blender', 'Not found. Install Blender 4.2 or newer (free, blender.org), or tell DryDock where it is.', '<span class="ll-acts"><a class="btn small" href="https://www.blender.org/download/" target="_blank" rel="noopener">Get Blender</a><button class="btn small ghost" type="button" data-ll="settings">Choose…</button></span>');
+  let ad;
+  if (!st.everLinked) ad = llStep('bad', 'LiveLink add-on', `Not seen yet. Get it, then in Blender: Edit, Preferences, Add-ons, the ▾ menu, Install from Disk, and tick it. Newest: ${esc(latest)}.`, '<button class="btn small primary" type="button" data-ll="addon">Get LiveLink</button>');
+  else if (st.addon === 'older' || llCmp(st.addon, latest) < 0) ad = llStep('bad', 'LiveLink add-on', `Blender has ${st.addon === 'older' ? 'an older version' : 'version ' + esc(st.addon)}; ${esc(latest)} is ready. Install it again the same way.`, '<button class="btn small primary" type="button" data-ll="addon">Get the new one</button>');
+  else ad = llStep('ok', 'LiveLink add-on', `Version ${esc(st.addon)}, up to date.`, '<button class="btn small ghost" type="button" data-ll="addon">Get it again</button>');
+  const ln = st.blender ? llStep('ok', 'Blender is linked', st.file ? `Working on <b>${esc(st.file)}</b>.` : 'An unsaved file is open.')
+    : llStep(st.everLinked ? 'opt' : 'bad', 'Blender is linked', st.everLinked ? 'Not right now: Blender is closed.' : 'Open Blender with the add-on turned on; it checks in every few seconds.', `<button class="btn small ghost" type="button" data-ll="blender"${su.blender ? '' : ' disabled'}>Open Blender</button>`);
+  const cf = su.charon ? llStep('ok', 'Charon Forge', 'Found. Corvette builds, renders and 3D models work.')
+    : llStep('opt', 'Charon Forge (for corvettes)', 'Not found. Only needed to build corvettes in Blender; bases and your traveller work without it.', '<a class="btn small ghost" href="https://github.com/xX-Charon-Xx/charon_forge" target="_blank" rel="noopener">Get it</a>');
+  const ready = su.blender && st.everLinked && st.addon !== 'older' && llCmp(st.addon, latest) >= 0;
+  return `<section class="panel ll-setup"><h3>Setup${ready ? ' <span class="ll-badge ok">Ready</span>' : ''}</h3><ul class="ll-steps">${bl}${ad}${ln}${cf}</ul>
+    <details class="ll-first"${ready ? '' : ' open'}><summary>First time? Your traveller in Blender in five steps</summary><ol class="steps">
+      <li>Install <b>Blender</b> 4.2 or newer.</li>
+      <li>Press <b>Get LiveLink</b> above. It saves <span class="mono">harmonious_live_link.py</span> to the Exports folder and opens it.</li>
+      <li>In Blender: <b>Edit, Preferences, Add-ons</b>, the ▾ menu in the corner, <b>Install from Disk</b>, pick that file and tick it.</li>
+      <li>Keep DryDock open with your save. In Blender's 3D view press <b>N</b> and open the <b>LiveLink</b> tab.</li>
+      <li>Press <b>Import my traveller</b>. Your traveller arrives in your own colours, ready to pose. Nothing else to download: DryDock reads your own game files.</li></ol>
+      <p class="dim small-print">Building corvettes needs Charon Forge too; bases need the NMS Base Builder add-on.</p></details></section>`;
+}
+function llLinkedHtml() {
+  const corvs = S.save ? ships().filter(({ s }) => slotIsCorvette(s)).map(({ s, i }) => ({ t: i, name: str(g(s, 'Name')) || 'Corvette', where: 'Slot ' + (i + 1), kind: 'corvette' })) : [];
+  const bases = S.save ? playerBases().filter(({ b }) => str(g(b, 'BaseType', 'PersistentBaseTypes')) !== 'FreighterBase').map(({ b }) => ({ t: baseRef(b), name: baseLabel(b), where: 'Base', kind: 'base' })) : [];
+  const row = (x, k) => { const on = liveIsOn(x.t), f = liveFileOf(x.t);
+    return `<li class="ll-target${on ? ' on' : ''}"><div><b>${esc(x.name)}</b><span class="dim small-print">${x.where}${f ? ' · <span title="' + esc(f.file) + '">' + esc(blendName(f.file)) + '</span>' : ' · no .blend linked yet'}</span></div>
+      <span class="ll-acts">${on ? '<span class="live-pill"><span class="live-dot"></span>Live</span>' : ''}${f ? `<button class="link" type="button" data-ll-open="${k}">Open in Blender</button>` : ''}<button class="link" type="button" data-ll-pick="${k}">${f ? 'Change file' : 'Choose .blend…'}</button><button class="btn small${on ? '' : ' primary'}" type="button" data-ll-on="${k}">${on ? 'Turn off' : 'Turn on'}</button></span></li>`; };
+  const all = [...corvs, ...bases]; LL.targets = all;
+  return `<section class="panel ll-linked"><h3>What's linked ${hint('Turn LiveLink on for a corvette or a base, and every save in Blender (Ctrl+S) lands on it in your save, backed up first. Each one remembers the .blend it comes from.')}</h3>
+    ${LIVE.on ? `<p class="live-state"><span class="live-dot"></span>On for <b>${esc(liveTName(liveCur()))}</b> (${liveTWhere(liveCur())}). <span class="${LIVE.blender ? 'ok' : 'dim'}">${liveBlenderText()}</span></p>` : '<p class="dim">Off. Turn it on for a corvette or base below.</p>'}
+    ${!S.save ? '<p class="dim">Open a save to link its corvettes and bases.</p>' : `
+    ${corvs.length ? `<h4>Corvettes</h4><ul class="ll-targets">${corvs.map((x) => row(x, all.indexOf(x))).join('')}</ul>` : '<p class="dim small-print">No corvettes in this save.</p>'}
+    ${bases.length ? `<h4>Bases</h4><ul class="ll-targets">${bases.map((x) => row(x, all.indexOf(x))).join('')}</ul>` : ''}`}
+    <label class="check"><input type="checkbox" id="llWrite"${LIVE.write ? ' checked' : ''}> Write to the game as each build arrives</label></section>`;
+}
+function llActivityHtml() {
+  return `<section class="panel ll-activity"><h3>Activity ${hint('Builds Blender sent while DryDock has been open.')}</h3>${LIVE.log.length ? `<ul class="live-log">${LIVE.log.slice(0, 12).map((e) => `<li class="${e.ok ? '' : 'bad'}"><span class="mono">${esc(e.time)}</span> ${esc(e.text)}</li>`).join('')}</ul>` : '<p class="dim small-print">Nothing yet. Turn LiveLink on for a corvette or base and save in Blender.</p>'}</section>`;
+}
+function llFromBlenderHtml() {
+  const pics = ((LL.pics && LL.pics.pictures) || []), poses = pics.filter((x) => /\.png$/i.test(x.name)), p3 = pics.filter((x) => /\.glb$/i.test(x.name)), sh = ((LL.ships && LL.ships.ships) || []);
+  const list = (xs, kind) => xs.slice(0, 6).map((x) => `<li><span>${esc(x.name.replace(/\.(png|glb)$/i, ''))}</span><span class="dim small-print">${llWhen(x.mtime)}</span></li>`).join('');
+  return `<section class="panel ll-from"><h3>From Blender ${hint('What the add-on sent or saved: pose pictures, 3D poses and corvettes in 3D. They\'re in the Exports folder, and the Traveller page uses them.')}</h3>
+    <div class="ll-from-grid">
+      <div><h4>Pose pictures <span class="count">${poses.length}</span></h4>${poses.length ? `<div class="ll-thumbs">${poses.slice(0, 6).map((x) => `<img alt="${esc(x.name)}" title="${esc(x.name)}" loading="lazy" src="/api/exports/file?name=${encodeURIComponent(x.name)}&t=${encodeURIComponent(APP.token)}">`).join('')}</div>` : '<p class="dim small-print">None yet: Export, Save the pose as a picture.</p>'}</div>
+      <div><h4>3D poses <span class="count">${p3.length}</span></h4>${p3.length ? `<ul class="ll-files">${list(p3)}</ul>` : '<p class="dim small-print">None yet: Export, Send the pose to the editor.</p>'}</div>
+      <div><h4>Corvettes in 3D <span class="count">${sh.length}</span></h4>${sh.length ? `<ul class="ll-files">${list(sh)}</ul>` : '<p class="dim small-print">None sent from Blender yet.</p>'}</div>
+    </div>
+    <div class="toolbar"><button class="btn small" type="button" data-ll="traveller">Make a picture on the Traveller page</button><button class="btn small ghost" type="button" data-ll="exports">Open the Exports folder</button></div></section>`;
+}
+function llPrintsHtml() {
+  const pr = (LL.prints && LL.prints.prints) || [];
+  return `<section class="panel ll-prints"><h3>3D prints <span class="count">${pr.length}</span> ${hint('Every STL the 3D print panel in Blender saved to the Exports folder. The previews are thinned so they turn smoothly; the files themselves keep every triangle.')}</h3>
+    ${pr.length ? `<div class="ll-print-grid">${pr.map((x, k) => `<article class="tc ll-print" data-k="${k}"><div class="tc-art"></div><div class="tc-cap"><span class="k">${x.mm[2] > 0 ? Math.round(Math.max(x.mm[0], x.mm[1], x.mm[2])) + ' mm' : ''}</span><b title="${esc(x.name)}">${esc(llPrintTitle(x.name))}</b>
+        <span class="dim small-print">${Math.round(x.mm[0])} × ${Math.round(x.mm[1])} × ${Math.round(x.mm[2])} mm · ${x.triangles.toLocaleString()} triangles · ${llKb(x.size)}</span><span class="dim small-print">${llWhen(x.mtime)}</span>
+        <span class="ll-acts"><button class="link" type="button" data-pr="show">Show in folder</button><button class="link danger" type="button" data-pr="del">Delete</button></span></div></article>`).join('')}</div>`
+      : '<p class="dim">No prints yet. In Blender, the green <b>3D print</b> panel makes one: your posed traveller, a corvette or a base, as one solid STL ready to slice.</p>'}</section>`;
+}
+function llPanelsHtml() {
+  return `<section class="panel ll-panels"><h3>In Blender ${hint('The LiveLink tab in Blender\'s sidebar (N). Pink is building, blue is your traveller, green is 3D printing.')}</h3>
+    <ul class="ll-panel-list">${LL_PANELS.map(([c, t, d]) => `<li class="${c}"><span class="ll-sw" aria-hidden="true"></span><div><b>${t}</b><span class="dim small-print">${d}</span></div></li>`).join('')}</ul></section>`;
+}
+PAGES.livelink = (el) => {
+  el.innerHTML = `<div class="page-head"><div><h1>LiveLink</h1><p>DryDock and Blender, linked: builds go into your save, and your traveller, poses, pictures and prints come back.</p></div></div>
+    <div class="ll-wrap" id="llWrap"><p class="dim">Looking for Blender…</p></div>`;
+  const draw = () => {
+    const w = $('#llWrap', el); if (!w) return;
+    w.innerHTML = `<div class="ll-cols"><div class="ll-col">${llSetupHtml()}${llLinkedHtml()}${llActivityHtml()}</div><div class="ll-col">${llPrintsHtml()}${llFromBlenderHtml()}${llPanelsHtml()}</div></div>`;
+    w.querySelectorAll('[data-ll]').forEach((b) => b.onclick = async () => {
+      const k = b.dataset.ll;
+      if (k === 'addon') getLiveAddon();
+      else if (k === 'settings') { await renderSettingsDialog(); await llLoad(); draw(); }
+      else if (k === 'blender') liveOpenBlender('');
+      else if (k === 'traveller') go('traveller');
+      else if (k === 'exports') api('/api/exports/print?folder=1', { method: 'POST' }).catch(() => toast('Exports: ' + ((LL.prints && LL.prints.dir) || '')));
+    });
+    const wr = $('#llWrite', w); if (wr) wr.onchange = (e) => { LIVE.write = e.target.checked; };
+    w.querySelectorAll('[data-ll-on]').forEach((b) => b.onclick = () => { const x = LL.targets[+b.dataset.llOn]; if (liveIsOn(x.t)) liveStop(); else { liveStart(x.t); liveOnDialog(x.t); } draw(); });
+    w.querySelectorAll('[data-ll-open]').forEach((b) => b.onclick = () => liveOpenBlender((liveFileOf(LL.targets[+b.dataset.llOpen].t) || {}).file));
+    w.querySelectorAll('[data-ll-pick]').forEach((b) => b.onclick = async () => { const f = await livePickFile(LL.targets[+b.dataset.llPick].t); if (f) draw(); });
+    const pr = (LL.prints && LL.prints.prints) || [];
+    w.querySelectorAll('.ll-print').forEach((card) => {
+      const x = pr[+card.dataset.k], it = { kind: 'print', key: 'print|' + x.name + '|' + x.mtime, name: x.name, cls: '', pitch: 14 };
+      miniCover(card, it, 220);
+      const show = (glb) => { if (glb && card.isConnected) { it.texGlb = glb; miniCover(card, it, 220); } };
+      const ck = x.name + '|' + x.mtime;
+      if (LL.glb.has(ck)) LL.glb.get(ck).then(show);
+      else { card.querySelector('.tc-art').classList.add('trav-loading');
+        const job = api('/api/exports/print?preview=1&name=' + encodeURIComponent(x.name)).then((r) => r.arrayBuffer()).then((b) => GLTEX.parse(b)).catch(() => null);
+        LL.glb.set(ck, job); job.then((glb) => { card.querySelector('.tc-art').classList.remove('trav-loading'); show(glb); }); }
+      card.querySelector('[data-pr="show"]').onclick = () => api('/api/exports/print?reveal=1&name=' + encodeURIComponent(x.name), { method: 'POST' }).catch((e) => toast(e.message, true));
+      card.querySelector('[data-pr="del"]').onclick = async () => {
+        if ((await dialog('Delete this print?', `<p><b>${esc(x.name)}</b> moves to the Deleted folder inside Exports, so you can still get it back.</p>`, [['Cancel', false, 'ghost'], ['Delete', true, 'danger']])) !== true) return;
+        try { await api('/api/exports/print?name=' + encodeURIComponent(x.name), { method: 'DELETE' }); toast('Moved to Exports\\Deleted'); LL.prints = await (await api('/api/exports/prints')).json(); draw(); } catch (e) { toast(e.message, true); }
+      };
+    });
+  };
+  llLoad().then(draw);
+  // Blender checking in, new prints and builds arriving: keep the page current while it's open
+  clearInterval(LL.timer);
+  LL.timer = setInterval(async () => {
+    if (S.section !== 'livelink' || !document.getElementById('llWrap')) { clearInterval(LL.timer); return; }
+    if (document.querySelector('dialog[open]')) return;
+    const before = JSON.stringify([LL.status, (LL.prints && LL.prints.prints || []).map((x) => x.name + x.mtime), (LL.pics && LL.pics.pictures || []).length, (LL.ships && LL.ships.ships || []).length, LIVE.log.length, LIVE.on]);
+    await llLoad();
+    const after = JSON.stringify([LL.status, (LL.prints && LL.prints.prints || []).map((x) => x.name + x.mtime), (LL.pics && LL.pics.pictures || []).length, (LL.ships && LL.ships.ships || []).length, LIVE.log.length, LIVE.on]);
+    if (before !== after) draw();
+  }, 4000);
+};
 
 PAGES.shipwright = (el) => {
   markSeen('shipwright');

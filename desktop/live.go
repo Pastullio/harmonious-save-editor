@@ -52,6 +52,8 @@ var (
 		seen      time.Time       // the page's last poll; a closed page stops being "armed"
 		blender   time.Time       // the add-on's last check-in
 		file      string          // the .blend it's working on
+		addon     string          // the add-on version Blender reported (1.24.0 on; older ones don't say)
+		bver      string          // Blender's version
 		next      chan liveBuild  // builds waiting for the page
 		waiting   map[int]chan liveResult
 		id        int
@@ -131,7 +133,8 @@ func handleLiveNext(w http.ResponseWriter, r *http.Request) {
 func handleLiveStatus(w http.ResponseWriter, r *http.Request) {
 	live.Lock()
 	defer live.Unlock()
-	writeJSON(w, map[string]any{"blender": !live.blender.IsZero() && time.Since(live.blender) < 12*time.Second, "file": live.file})
+	writeJSON(w, map[string]any{"blender": !live.blender.IsZero() && time.Since(live.blender) < 12*time.Second, "file": live.file,
+		"addon": live.addon, "addonLatest": addonVersion, "blenderVersion": live.bver, "everLinked": !live.blender.IsZero()})
 }
 
 // POST from the page: what happened to a build
@@ -158,6 +161,11 @@ func handleLiveBuild(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet { // the add-on's "is the editor there?" check, every few seconds while Blender runs
 		live.Lock()
 		live.blender, live.file = time.Now(), r.URL.Query().Get("file")
+		if v := r.URL.Query().Get("addon"); v != "" {
+			live.addon, live.bver = v, r.URL.Query().Get("blender")
+		} else {
+			live.addon = "older"
+		}
 		live.Unlock()
 		armed, target := liveArmed()
 		live.Lock()

@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 23, 1),
+    "version": (1, 24, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious DryDock every time you save",
@@ -78,7 +78,8 @@ def check_link_now():
         return
     url, token = addr
     try:
-        q = urllib.parse.urlencode({"file": os.path.basename(bpy.data.filepath) if bpy.data.filepath else ""})
+        q = urllib.parse.urlencode({"file": os.path.basename(bpy.data.filepath) if bpy.data.filepath else "",
+                                   "addon": ".".join(map(str, bl_info["version"])), "blender": bpy.app.version_string})
         req = urllib.request.Request(url + "?" + q, headers={"X-Live-Token": token})
         with urllib.request.urlopen(req, timeout=3) as res:
             info = json.loads(res.read().decode("utf-8"))

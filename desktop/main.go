@@ -129,6 +129,8 @@ func main() {
 	mux.HandleFunc("/api/live/tool", handleLiveTool)
 	mux.HandleFunc("/api/live/ship", handleLiveShip)
 	mux.HandleFunc("/api/exports/ships", handleExportShips)
+	mux.HandleFunc("/api/exports/prints", handleExportPrints)
+	mux.HandleFunc("/api/exports/print", handleExportPrint)
 	mux.HandleFunc("/api/patron", handlePatron)
 	mux.HandleFunc("/api/patron/signin", handlePatronSignin)
 	mux.HandleFunc("/patron", handlePatronReturn)

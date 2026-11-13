@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.13.2113",
+  "version": "2026.11.13.2123",
   "date": "2026-11-13",
-  "size": 14814720,
-  "sha256": "d0e81e4ca4e3105b7b329eb70b997f6f71a790b25e830c826b8891b28e258619",
-  "notes": "Harmonious Save Editor is now Harmonious DryDock: same app, same saves, settings and Dock Yard, a name that fits everything it does now. Your folders keep their names. The LiveLink add-on (1.23.1) uses the new name too.",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.2113/HarmoniousSaveEditor.exe",
+  "size": 14959104,
+  "sha256": "f078205e8e6f48bbff41f6536e7b988ad50c1a50533c38e6fe30779192937bdb",
+  "notes": "New LiveLink page (under Shipwright): a setup checklist that shows whether Blender and the add-on are ready, every corvette and base you can link with its .blend, recent builds, what Blender sent back, and a library of your 3D prints with previews you can turn.\nLiveLink add-on 1.24.0 (install it again in Blender: Get LiveLink): it tells DryDock its version, so the LiveLink page can say when it's out of date.",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.2123/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
