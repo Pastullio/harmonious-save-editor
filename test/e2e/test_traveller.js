@@ -310,6 +310,19 @@ lcs = {'part library': left_out}
 fwd = h.body_frame(arm)[0]
 behind = inst is not None and (inst.matrix_world.translation - aw.translation).dot(fwd) < -5
 mover = bpy.context.view_layer.objects.active; mover = mover is not None and mover.name.endswith('(move me)')
+# …and it can be printed: on a flight stand, the asked length, closed
+sc = bpy.context.scene
+targets = [i[0] for i in h.print_targets(None, bpy.context)]
+sc.harmonious_print_target = next(i for i in targets if i.startswith('SHIP:'))
+sc.harmonious_print_ship_size = 'SMALL'; sc.harmonious_print_detail = 'QUICK'; sc.harmonious_print_stand = 'STAND'
+rsp = bpy.ops.harmonious.print_preview()
+spv = next((o for o in bpy.data.objects if o.get(h.PREVIEW_TAG)), None)
+smm = [round(x) for x in spv['harmonious_print_mm']] if spv else [0, 0, 0]
+if spv is not None:
+    bmc = bmesh.new(); bmc.from_mesh(spv.data); sopen = sum(1 for e in bmc.edges if len(e.link_faces) != 2); bmc.free()
+else: sopen = -1
+h.clear_preview(); sc.harmonious_print_target = 'TRAVELLER'
+print('SHIPPRINT', 'FINISHED' in rsp, len(targets), smm[0], smm[2], sopen)
 rr = bpy.ops.harmonious.backdrop(name=got.name, action='REMOVE') if got else None
 gone = not h.backdrops() and not any(o.name.startswith(('ship hull', 'spare part')) for o in bpy.data.objects)
 print('BACKDROP', 'FINISHED' in rb, len(hulls), len(lamps), lcs.get('part library'), bool(behind), mover, gone)
@@ -387,7 +400,7 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
     try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 1200000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
-    console.log(out.split('\n').filter((l) => /^(GAP|WORST|LIMITS|INSTANT|BACKDROP|PRINT|PRINTSIZES|PREVIEW|CAMERA|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|FINGERS|SHIP|Traceback|  File|\w+Error)/.test(l)).join('\n'));
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|LIMITS|INSTANT|BACKDROP|SHIPPRINT|PRINT|PRINTSIZES|PREVIEW|CAMERA|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|FINGERS|SHIP|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
@@ -449,6 +462,8 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     ok('Add a corvette .blend brings its scene in behind the traveller, without its lights, the left-out collection still left out, and it comes out again (' + bk.join(' ') + ')', bk.every((x) => x === 'True' || x === '1' || x === '0') && bk[0] === 'True' && bk[1] === '1' && bk[2] === '0' && bk[3] === 'True' && bk[4] === 'True' && bk[5] === 'True' && bk[6] === 'True');
     const pr = line('PRINT').split(' ');
     ok('Export for 3D printing writes one closed solid STL at the height asked for, on its base (' + pr.join(' ') + ')', pr[0] === 'True' && pr[1] === '1' && +pr[2] > 20000 && Math.abs(+pr[3] - 33) < 1.5 && pr[4] === '0' && pr[5] === 'True');
+    const sp = line('SHIPPRINT').split(' ');
+    ok('a backdrop corvette can be printed too: picked from the list, 100 mm long on a flight stand, closed (' + sp.join(' ') + ')', sp[0] === 'True' && sp[1] === '2' && Math.abs(+sp[2] - 100) <= 2 && +sp[3] > 120 && sp[4] === '0');
     const pvw = line('PREVIEW').split(' ');
     ok('Preview the print stands the grey print model beside the traveller, out of pictures, writes nothing, and × takes it away (' + pvw.join(' ') + ')', pvw[0] === 'True' && pvw[1] === 'True' && Math.abs(+pvw[2] - 33) <= 1 && pvw[3] === 'True' && pvw[4] === 'True');
     const ps = line('PRINTSIZES').split(' ');

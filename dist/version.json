@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.13.1918",
+  "version": "2026.11.13.1943",
   "date": "2026-11-13",
-  "size": 14776832,
-  "sha256": "243dd97a2a6cfdcbc8b73004a588ad6f3717c38eced8cfb9e5dd8ef4d9f6079f",
-  "notes": "Please install the LiveLink add-on again (version 1.21.0).\nLiveLink 3D printing: Preview the print stands the print model beside your traveller in plain grey, with its size in millimetres, so you can look it over before exporting (no printer needed).",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.1918/HarmoniousSaveEditor.exe",
+  "size": 14788096,
+  "sha256": "d93e4f829a816d187a0de7090c7f18f5e37f18972ef9177bdba98c18d9927d51",
+  "notes": "Please install the LiveLink add-on again (version 1.22.0).\nLiveLink 3D printing: ships too. Add a corvette as a backdrop, pick it under Print, choose its length (100, 150 or 250 mm, the traveller's scale or your own) and put it on a flight stand or not; Preview the print shows it before you export.",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.1943/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

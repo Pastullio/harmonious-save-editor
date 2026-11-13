@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 21, 0),
+    "version": (1, 22, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -3199,6 +3199,7 @@ def print_estimate(detail):
     return n, n * 50 / 1048576
 PRINT_WALL_MM = 0.8    # thinnest wall a printer manages well
 PRINT_BASE_MM = 3.0    # base thickness
+PRINT_MAX_INPUT = 1500000   # triangles the solid is made from at most
 
 
 def _print_meshes(arm):
@@ -3237,6 +3238,68 @@ PREVIEW_TAG = "harmonious_print_preview"
 PREVIEW_NAME = "Print preview"
 
 
+PRINT_SHIP_SIZES = (
+    ("SMALL", "Small (100 mm long)", "Fits a desk", 100.0),
+    ("MEDIUM", "Medium (150 mm long)", "A display model", 150.0),
+    ("LARGE", "Large (250 mm long)", "A big display piece", 250.0),
+    ("SAME", "Same scale as the figure", "Matches the traveller's print size (corvettes come out very big)", -1.0),
+    ("CUSTOM", "Custom length", "Any length you type in", 0.0),
+)
+_TARGET_ITEMS = []
+
+
+def print_targets(self, context):
+    """What can be printed: the traveller, then each corvette added as a backdrop."""
+    global _TARGET_ITEMS
+    items = [("TRAVELLER", "Your traveller", "Your posed traveller with the multi-tool in their hand")]
+    for c in backdrops():
+        items.append(("SHIP:" + c.name, c.name, "The backdrop " + c.name))
+    _TARGET_ITEMS = items
+    return items
+
+
+def print_ship(scene):
+    t = scene.harmonious_print_target or "TRAVELLER"
+    return bpy.data.collections.get(t[5:]) if t.startswith("SHIP:") else None
+
+
+def print_size(scene, ship=None, model_size=None):
+    """The print's measured size in mm: the figure's height, or a ship's length."""
+    if ship is None:
+        return print_height(scene)
+    size = next((x for x in PRINT_SHIP_SIZES if x[0] == scene.harmonious_print_ship_size), PRINT_SHIP_SIZES[1])
+    if size[0] == "CUSTOM":
+        return scene.harmonious_print_ship_mm
+    if size[0] == "SAME" and model_size:
+        arm = find_traveller()
+        if arm is not None:
+            fig = traveller_box(arm)[1]
+            return max(20.0, model_size * print_height(scene) / max(fig, 1e-3))
+        return 150.0
+    return size[3]
+
+
+def make_print(context):
+    """The print model for the panel's settings: (solid, scale, measured size, name, offset to stand a preview at)."""
+    sc = context.scene
+    arm = find_traveller()
+    ship = print_ship(sc)
+    fwd, left, up = body_frame(arm) if arm is not None else (None, None, None)
+    if ship is None:
+        h = print_height(sc)
+        solid, scale, H = make_print_mesh(context, arm, h, sc.harmonious_print_base, print_base_mm(sc, h), print_detail(sc, h))
+        name = str(arm.get("harmonious_traveller") or LINK.get("traveller") or "Traveller")
+        return solid, scale, H, h, name, -left * H * 0.9
+    import mathutils
+    box = _bounds([backdrop_empty(ship)]) if backdrop_empty(ship) is not None else None
+    L = max((box[1] - box[0]).x, (box[1] - box[0]).y, (box[1] - box[0]).z) if box else 40.0
+    mm = print_size(sc, ship, L)
+    base = sc.harmonious_print_base_mm if sc.harmonious_print_base_mm > 0 else max(40.0, min(140.0, round(mm * 0.45 / 5) * 5))
+    solid, scale, H = make_print_mesh(context, arm, mm, True, base, print_detail(sc, mm), ship=ship, stand=sc.harmonious_print_stand)
+    side = (-left if left is not None else mathutils.Vector((1, 0, 0)))
+    return solid, scale, H, mm, ship.name, side * (H * 1.1)
+
+
 def print_traveller(context, arm, height_mm, base, base_mm, detail, keep):
     """Make the posed traveller printable and write it; returns (file, triangles, size in mm (w, d, h))."""
     solid, scale, H = make_print_mesh(context, arm, height_mm, base, base_mm, detail)
@@ -3250,10 +3313,8 @@ def print_size_mm(mesh, scale):
     return tuple((max(a) - min(a)) * scale * 1000 for a in (xs, ys, zs))
 
 
-def make_print_mesh(context, arm, height_mm, base, base_mm, detail):
-    """The printable solid (a new mesh in the traveller's own size), the print scale and the figure's model height."""
+def _traveller_bmesh(context, arm):
     import bmesh
-    import mathutils
     dg = context.evaluated_depsgraph_get()
     bm = bmesh.new()
     for o in _print_meshes(arm):
@@ -3262,36 +3323,179 @@ def make_print_mesh(context, arm, height_mm, base, base_mm, detail):
         tmp.transform(o.matrix_world)
         bm.from_mesh(tmp)
         bpy.data.meshes.remove(tmp)
-    if not bm.verts:
-        bm.free()
-        raise RuntimeError("Your traveller has nothing to print")
-    zs = [v.co.z for v in bm.verts]
-    lo_z, hi_z = min(zs), max(zs)
-    H = max(hi_z - lo_z, 1e-3)
-    scale = height_mm / H / 1000.0   # model metres -> print metres
-    to_model = lambda mm: mm / 1000.0 / scale
-    if base:
-        # under the feet: the figure's footprint centre, its top a little above the soles so they fuse with it
-        pts = [v.co for v in bm.verts if v.co.z < lo_z + H * 0.06] or [v.co for v in bm.verts]
-        cx = sum(p.x for p in pts) / len(pts)
-        cy = sum(p.y for p in pts) / len(pts)
-        depth = to_model(PRINT_BASE_MM)
-        top = lo_z + to_model(0.4)
-        bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=96, radius1=to_model(base_mm / 2),
-                              radius2=to_model(base_mm / 2) * 0.97, depth=depth,
-                              matrix=mathutils.Matrix.Translation((cx, cy, top - depth / 2)))
-    me = bpy.data.meshes.new("Miniature")
-    bm.to_mesh(me)
+    return bm
+
+
+def backdrop_empty(holder):
+    return next((o for o in holder.objects if o.instance_type == "COLLECTION" and o.instance_collection is not None), None)
+
+
+def _np_mesh(data, M=None):
+    """A mesh's vertices (n×3, transformed by M), loop vertex indices and polygon loop starts, as numpy arrays."""
+    import numpy as np
+    n = len(data.vertices)
+    co = np.empty(n * 3, dtype=np.float32)
+    data.vertices.foreach_get("co", co)
+    co = co.reshape(n, 3)
+    if M is not None:
+        R = np.array([[M[i][j] for j in range(3)] for i in range(3)], dtype=np.float32)
+        t = np.array([M[i][3] for i in range(3)], dtype=np.float32)
+        co = co @ R.T + t
+    lv = np.empty(len(data.loops), dtype=np.int32)
+    data.loops.foreach_get("vertex_index", lv)
+    ls = np.empty(len(data.polygons), dtype=np.int32)
+    data.polygons.foreach_get("loop_start", ls)
+    return co, lv, ls
+
+
+def _np_join(pieces):
+    import numpy as np
+    cos, lvs, lss = [], [], []
+    nv = nl = 0
+    for co, lv, ls in pieces:
+        cos.append(co)
+        lvs.append(lv + nv)
+        lss.append(ls + nl)
+        nv += len(co)
+        nl += len(lv)
+    return np.concatenate(cos), np.concatenate(lvs), np.concatenate(lss)
+
+
+def _np_to_mesh(name, co, lv, ls):
+    me = bpy.data.meshes.new(name)
+    me.vertices.add(len(co))
+    me.vertices.foreach_set("co", co.ravel())
+    me.loops.add(len(lv))
+    me.loops.foreach_set("vertex_index", lv)
+    me.polygons.add(len(ls))
+    me.polygons.foreach_set("loop_start", ls)
+    me.update()
+    return me
+
+
+def _np_cone(radius1, radius2, depth, at, segments=96):
+    """A capped cylinder (cone) as numpy arrays, centred at `at`."""
+    import bmesh
+    import mathutils
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=segments, radius1=radius1, radius2=radius2, depth=depth,
+                          matrix=mathutils.Matrix.Translation(at))
+    tmp = bpy.data.meshes.new("print cone")
+    bm.to_mesh(tmp)
     bm.free()
+    out = _np_mesh(tmp)
+    bpy.data.meshes.remove(tmp)
+    return out
+
+
+def _ship_arrays(holder):
+    """A backdrop's build as numpy arrays in world space (its parts, collection instances made real). Charon Forge
+    corvettes run to millions of triangles, so this stays in numpy rather than bmesh (bmesh ran out of memory), and
+    nothing is removed while parts are read (that left stale references and crashed Blender)."""
+    import mathutils
+    empty = backdrop_empty(holder)
+    if empty is None:
+        return None
+    parts = []
+
+    def walk(o, M, depth=0):
+        if o.type == "MESH" and o.data is not None and len(o.data.vertices) and not o.hide_render:
+            parts.append((o.data, M @ o.matrix_world))
+        if o.instance_type == "COLLECTION" and o.instance_collection is not None and depth < 6:
+            coll = o.instance_collection
+            inner = M @ o.matrix_world @ mathutils.Matrix.Translation(-coll.instance_offset)
+            for x in list(coll.all_objects):   # (a parented part's matrix_world already holds its parent's)
+                walk(x, inner, depth + 1)
+
+    coll = empty.instance_collection
+    inner = empty.matrix_world @ mathutils.Matrix.Translation(-coll.instance_offset)
+    for x in list(coll.all_objects):
+        walk(x, inner)
+    if not parts:
+        return None
+    return _np_join([_np_mesh(d, M) for d, M in parts])
+
+
+def _flight_stand(co, size_mm, base_mm, to_model):
+    """Lift the ship (co, in place) and return a round base and a peg up to the lowest part of the hull near its
+    middle, as arrays to join."""
+    import numpy as np
+    clear = to_model(max(25.0, size_mm * 0.18))
+    co[:, 2] += clear
+    floor = float(co[:, 2].min()) - clear
+    cx, cy = float(co[:, 0].mean()), float(co[:, 1].mean())
+    span = float(max(np.ptp(co[:, 0]), np.ptp(co[:, 1])))
+    d2 = (co[:, 0] - cx) ** 2 + (co[:, 1] - cy) ** 2
+    hx, hy, hz = cx, cy, float(co[:, 2].min())   # no vertex near the middle (a big flat panel): its lowest level
+    for r in (0.03, 0.06, 0.12, 0.25):
+        near = d2 < (span * r) ** 2
+        if near.any():
+            i = int(np.argmin(np.where(near, co[:, 2], np.inf)))
+            hx, hy, hz = float(co[i][0]), float(co[i][1]), float(co[i][2])
+            break
+    depth = to_model(4.0)
+    base = _np_cone(to_model(base_mm / 2), to_model(base_mm / 2) * 0.95, depth, (hx, hy, floor + depth / 2))
+    top = hz + to_model(2.0)
+    r = max(2.5, size_mm * 0.012)   # a thicker peg for a bigger ship
+    peg = _np_cone(to_model(r), to_model(r * 0.8), top - floor, (hx, hy, floor + (top - floor) / 2), segments=32)
+    return [base, peg]
+
+
+def make_print_mesh(context, arm, height_mm, base, base_mm, detail, ship=None, stand="STAND"):
+    """The printable solid (a new mesh at the model's own size), the print scale and the model's measured size: the
+    traveller's height, or a ship's longest side (ship: a backdrop collection; stand: STAND puts it on a flight stand,
+    FLAT leaves it to rest on the plate)."""
+    import bmesh
+    import mathutils
+    import numpy as np
+    if ship is not None:
+        arr = _ship_arrays(ship)
+        if arr is None:
+            raise RuntimeError("There's nothing to print")
+        co, lv, ls = arr
+        H = max(float(np.ptp(co[:, 0])), float(np.ptp(co[:, 1])), float(np.ptp(co[:, 2])), 1e-3)   # its longest side
+        scale = height_mm / H / 1000.0
+        to_model = lambda mm: mm / 1000.0 / scale
+        pieces = [(co, lv, ls)]
+        if stand == "STAND":
+            pieces += _flight_stand(co, height_mm, base_mm, to_model)
+        me = _np_to_mesh("Miniature", *_np_join(pieces))
+        del co, lv, ls, pieces, arr
+    else:
+        bm = _traveller_bmesh(context, arm)
+        if not bm.verts:
+            bm.free()
+            raise RuntimeError("There's nothing to print")
+        zs = [v.co.z for v in bm.verts]
+        lo_z, hi_z = min(zs), max(zs)
+        H = max(hi_z - lo_z, 1e-3)
+        scale = height_mm / H / 1000.0   # model metres -> print metres
+        to_model = lambda mm: mm / 1000.0 / scale
+        if base:
+            # under the feet: the figure's footprint centre, its top a little above the soles so they fuse with it
+            pts = [v.co for v in bm.verts if v.co.z < lo_z + H * 0.06] or [v.co for v in bm.verts]
+            cx = sum(p.x for p in pts) / len(pts)
+            cy = sum(p.y for p in pts) / len(pts)
+            depth = to_model(PRINT_BASE_MM)
+            top = lo_z + to_model(0.4)
+            bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=96, radius1=to_model(base_mm / 2),
+                                  radius2=to_model(base_mm / 2) * 0.97, depth=depth,
+                                  matrix=mathutils.Matrix.Translation((cx, cy, top - depth / 2)))
+        me = bpy.data.meshes.new("Miniature")
+        bm.to_mesh(me)
+        bm.free()
     ob = bpy.data.objects.new("Miniature", me)
     context.scene.collection.objects.link(ob)
     try:
         if detail == "ORIGINAL":   # the game's own triangles, left for the slicer to fuse
             return me.copy(), scale, H
-        sol = ob.modifiers.new("Wall", "SOLIDIFY")
-        sol.thickness = to_model(PRINT_WALL_MM)
-        sol.offset = 0.0
-        sol.use_even_offset = False   # even thickness throws sharp corners metres out (it ran out of memory)
+        # Thin cloth gets a printable wall; a corvette's millions of triangles go straight to the voxel rebuild
+        # (a wall on 6 million triangles, or thinning them first, ran out of memory; the hull's parts are closed)
+        if len(me.polygons) <= PRINT_MAX_INPUT:
+            sol = ob.modifiers.new("Wall", "SOLIDIFY")
+            sol.thickness = to_model(PRINT_WALL_MM)
+            sol.offset = 0.0
+            sol.use_even_offset = False   # even thickness throws sharp corners metres out (it ran out of memory)
         rem = ob.modifiers.new("Solid", "REMESH")
         rem.mode = "VOXEL"
         rem.voxel_size = H / PRINT_VOXELS.get(detail, 420)
@@ -3306,23 +3510,23 @@ def make_print_mesh(context, arm, height_mm, base, base_mm, detail):
         bpy.data.meshes.remove(me)
 
 
-def _print_out(context, arm, solid, scale, H, height_mm, keep):
+def _print_out(context, arm, solid, scale, H, height_mm, keep, name=None, offset=None):
     """Write the print model as an STL (and keep a copy to look at when asked)."""
     import datetime
     if not len(solid.vertices):
         raise RuntimeError("The solid came out empty")
     zs = [v.co.z for v in solid.vertices]
     shift = (0.0, 0.0, -min(zs))
-    name = str(arm.get("harmonious_traveller") or LINK.get("traveller") or "Traveller")
+    name = name or str(arm.get("harmonious_traveller") or LINK.get("traveller") or "Traveller")
     folder = LINK.get("exports") or (os.path.dirname(bpy.data.filepath) if bpy.data.filepath else os.path.expanduser("~"))
     os.makedirs(folder, exist_ok=True)
-    out = os.path.join(folder, "%s miniature %dmm %s.stl" % (name, round(height_mm), datetime.datetime.now().strftime("%Y-%m-%d %H%M%S")))
+    out = os.path.join(folder, "%s print %dmm %s.stl" % (name, round(height_mm), datetime.datetime.now().strftime("%Y-%m-%d %H%M%S")))
     nt = write_stl(out, solid, scale * 1000.0, shift)
     xs = [v.co.x for v in solid.vertices]
     ys = [v.co.y for v in solid.vertices]
     size = ((max(xs) - min(xs)) * scale * 1000, (max(ys) - min(ys)) * scale * 1000, (max(zs) - min(zs)) * scale * 1000)
     if keep:
-        show_preview(context, arm, solid, scale, H)
+        show_preview(context, arm, solid, scale, H, offset)
     else:
         bpy.data.meshes.remove(solid)
     return out, nt, size
@@ -3336,7 +3540,7 @@ def clear_preview():
             bpy.data.meshes.remove(data)
 
 
-def show_preview(context, arm, solid, scale, H):
+def show_preview(context, arm, solid, scale, H, offset=None):
     """The print model beside the traveller, at the traveller's size, in a plain grey like a printed figure before
     it's painted; left out of pictures, 3D sends and ship sends."""
     clear_preview()
@@ -3360,11 +3564,10 @@ def show_preview(context, arm, solid, scale, H):
     for poly in solid.polygons:
         poly.use_smooth = True
     ob.hide_render = True
-    fwd, left, up = body_frame(arm)
-    c, _h = traveller_box(arm)
-    import mathutils
-    spot = mathutils.Vector((c.x, c.y, arm.matrix_world.translation.z)) - left * H * 0.9
-    ob.location = (spot.x, spot.y, arm.matrix_world.translation.z)
+    if offset is None:   # the model is built where the traveller stands: beside them
+        fwd, left, up = body_frame(arm)
+        offset = -left * H * 0.9
+    ob.location = (offset[0], offset[1], 0.0)
     return ob
 
 
@@ -3388,13 +3591,12 @@ class HARMONIOUS_OT_print_preview(bpy.types.Operator):
         arm = find_traveller()
         if context.mode != "OBJECT":
             bpy.ops.object.mode_set(mode="OBJECT")
-        h = print_height(sc)
         try:
-            solid, scale, H = make_print_mesh(context, arm, h, sc.harmonious_print_base, print_base_mm(sc, h), print_detail(sc, h))
+            solid, scale, H, mm, name, offset = make_print(context)
         except (RuntimeError, ValueError) as error:
             self.report({"ERROR"}, "Couldn't make the print model: %s" % error)
             return {"CANCELLED"}
-        ob = show_preview(context, arm, solid, scale, H)
+        ob = show_preview(context, arm, solid, scale, H, offset)
         for x in context.selected_objects:
             x.select_set(False)
         ob.select_set(True)
@@ -3425,9 +3627,8 @@ class HARMONIOUS_OT_print(bpy.types.Operator):
         if context.mode != "OBJECT":
             bpy.ops.object.mode_set(mode="OBJECT")
         try:
-            h = print_height(sc)
-            out, nt, size = print_traveller(context, arm, h, sc.harmonious_print_base,
-                                            print_base_mm(sc, h), print_detail(sc, h), sc.harmonious_print_keep)
+            solid, scale, H, mm, name, offset = make_print(context)
+            out, nt, size = _print_out(context, arm, solid, scale, H, mm, sc.harmonious_print_keep, name, offset)
         except (RuntimeError, OSError, ValueError) as error:
             self.report({"ERROR"}, "Couldn't make the print: %s" % error)
             return {"CANCELLED"}
@@ -3460,16 +3661,25 @@ class HARMONIOUS_PT_export(LiveLinkPanel, bpy.types.Panel):
         box = layout.box()
         box.label(text="3D print: a miniature", icon="MOD_SOLIDIFY")
         sc = context.scene
+        box.prop(sc, "harmonious_print_target", text="Print")
+        ship = print_ship(sc)
         col = box.column(align=True)
-        col.prop(sc, "harmonious_print_size", text="")
-        if sc.harmonious_print_size == "CUSTOM":
-            col.prop(sc, "harmonious_print_height")
-        h = print_height(sc)
-        row = col.row(align=True)
-        row.prop(sc, "harmonious_print_base", text="Round base")
-        sub = row.row(align=True)
-        sub.enabled = sc.harmonious_print_base
-        sub.prop(sc, "harmonious_print_base_mm", text="Size (mm)" if sc.harmonious_print_base_mm > 0 else "Size: fits (%d mm)" % print_base_mm(sc, h))
+        if ship is None:
+            col.prop(sc, "harmonious_print_size", text="")
+            if sc.harmonious_print_size == "CUSTOM":
+                col.prop(sc, "harmonious_print_height")
+            h = print_height(sc)
+            row = col.row(align=True)
+            row.prop(sc, "harmonious_print_base", text="Round base")
+            sub = row.row(align=True)
+            sub.enabled = sc.harmonious_print_base
+            sub.prop(sc, "harmonious_print_base_mm", text="Size (mm)" if sc.harmonious_print_base_mm > 0 else "Size: fits (%d mm)" % print_base_mm(sc, h))
+        else:
+            col.prop(sc, "harmonious_print_ship_size", text="")
+            if sc.harmonious_print_ship_size == "CUSTOM":
+                col.prop(sc, "harmonious_print_ship_mm")
+            h = print_size(sc, ship) if sc.harmonious_print_ship_size != "SAME" else 150.0
+            col.prop(sc, "harmonious_print_stand", expand=True)
         box.prop(sc, "harmonious_print_detail", text="Detail")
         d = print_detail(sc, h)
         n, mb = print_estimate(d)
@@ -3494,6 +3704,11 @@ class HARMONIOUS_PT_export(LiveLinkPanel, bpy.types.Panel):
                 for line in wrap("The grey figure beside your traveller is the print. Look it over in Solid view, close up for detail.", 40):
                     info.label(text=line)
         box.operator(HARMONIOUS_OT_print.bl_idname, icon="EXPORT")
+        if not backdrops():
+            hint = box.column(align=True)
+            hint.scale_y = 0.8
+            for line in wrap("To print a corvette, add it as a backdrop first (Lighting & Rendering).", 40):
+                hint.label(text=line)
         tip = box.column(align=True)
         tip.scale_y = 0.8
         for line in wrap("One solid STL in millimetres, ready to slice: thin cloth gets a printable wall and the pieces fuse into one. Takes up to a minute. For your own prints; the models are Hello Games'.", 40):
@@ -3560,6 +3775,16 @@ def register():
         description="Lights put round your traveller as soon as you pick them")
     bpy.types.Scene.harmonious_glow = bpy.props.BoolProperty(name="Lenses and screens glow", default=True, update=glow_changed,
         description="The game's lenses, screens and visor give off light (in Cycles they light what's near them)")
+    bpy.types.Scene.harmonious_print_target = bpy.props.EnumProperty(name="Print", items=print_targets,
+        description="Your traveller, or a corvette you added as a backdrop")
+    bpy.types.Scene.harmonious_print_ship_size = bpy.props.EnumProperty(name="Ship size", items=[x[:3] for x in PRINT_SHIP_SIZES], default="MEDIUM",
+        description="How long the printed ship is, along its longest side")
+    bpy.types.Scene.harmonious_print_ship_mm = bpy.props.FloatProperty(name="Length (mm)", default=150.0, min=20.0, max=1000.0,
+        description="The printed ship's longest side, in millimetres")
+    bpy.types.Scene.harmonious_print_stand = bpy.props.EnumProperty(name="Stand", default="STAND", items=(
+        ("STAND", "On a stand", "A round base with a peg up into the hull, so the ship flies"),
+        ("FLAT", "No stand", "Just the ship, to print resting on its underside")),
+        description="How the ship stands")
     bpy.types.Scene.harmonious_print_size = bpy.props.EnumProperty(name="Size", items=[x[:3] for x in PRINT_SIZES], default="TABLETOP",
         description="How tall the printed figure is, from the soles to the top of the head")
     bpy.types.Scene.harmonious_print_height = bpy.props.FloatProperty(name="Figure height (mm)", default=100.0, min=10.0, max=1000.0,
@@ -3625,7 +3850,7 @@ def unregister():
     del bpy.types.Scene.harmonious_curl_l
     del bpy.types.Scene.harmonious_pose
     del bpy.types.Scene.harmonious_blend
-    for k in ("size", "height", "base", "base_mm", "detail", "keep"):
+    for k in ("target", "ship_size", "ship_mm", "stand", "size", "height", "base", "base_mm", "detail", "keep"):
         delattr(bpy.types.Scene, "harmonious_print_" + k)
     del bpy.types.Scene.harmonious_quality
     del bpy.types.Scene.harmonious_lighting
