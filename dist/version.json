@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.12.2204",
-  "date": "2026-11-12",
-  "size": 14697984,
-  "sha256": "cdd9109c90ecf0e49f47cd35d6d2bb1fc20fa2559776ab083c719b7a1e5861c7",
-  "notes": "Every page: the page's description now sits to the right of its title.\nSettings: a gear at the bottom of the sidebar opens the settings (Blender and Charon Forge for corvette covers), instead of Cover settings on the Garage and Dock Yard.\nShipwright: LiveLink sits under the corvette's picture, and Copy all, Paste all, Load file, Load from a .blend and Save as are on one line.\nCoordinates: You are here is a slimmer bar with Start from here beside it, and Favourite places opens and closes.\nDock Yard: the view and action buttons are one row, the type and tag filters sit beside Cover Flow / Grid, the ship count is under the title, a corvette build offers Copy corvette, and favourites are a star (filled when it's a favourite).",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.12.2204/HarmoniousSaveEditor.exe",
+  "version": "2026.11.13.1323",
+  "date": "2026-11-13",
+  "size": 14698496,
+  "sha256": "fa0ea08344be2d3a67e683447e61499ad44715137aa01531c94bf82598aeceb9",
+  "notes": "Coordinates: removed a stray empty circle under the address boxes (it was the hidden spot for address errors showing when it shouldn't).",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.1323/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

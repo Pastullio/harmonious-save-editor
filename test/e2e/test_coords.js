@@ -95,6 +95,8 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const re = await p.evaluate(() => ({ ua: Place.fromUA(g(ps(), 'UniverseAddress')), st: str(g(S.ctx, 'SpawnStateData', 'LastKnownPlayerState')) }));
   ok('the warp is saved to the game', re.ua.sys === 1049 && re.ua.gi === 0 && re.st === 'InShip');
   await p.evaluate(() => go('coords')); await p.waitForSelector('#keypad');
+  // the address error line stays out of sight until there is an error (owner 2026-11-13: an empty circle showed there)
+  ok('no empty error mark under the address boxes', await p.evaluate(() => { const e = document.querySelector('#destErr'); return e && (e.hidden ? e.getBoundingClientRect().height === 0 : e.textContent.trim().length > 0); }));
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
   await p.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark')); await p.click('#gClear');
   for (const d of '1079') await p.click(`#keypad button[data-d="${d}"]`);

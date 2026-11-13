@@ -699,6 +699,7 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .warp-row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-top: 18px; }
 .warp-row .dim { flex: 1 1 280px; font-size: 13.5px; }
 .bad-hint { color: var(--spark); margin: 0; }
+.bad-hint[hidden] { display: none; }
 .pred { margin: 14px 0 6px; }
 .pred-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
 .pred-head > div { display: grid; gap: 2px; }
@@ -10425,7 +10426,7 @@ PAGES.coords = (el) => {
           <label class="field"><span>Galaxy</span><select class="input" id="fGalaxy">${GALAXIES.map((n, i) => `<option value="${i}">${i + 1}. ${esc(n)}</option>`).join('')}</select></label>
           <label class="field"><span>Your places</span><select class="input" id="fPlaces"><option value="">Pick a base or station…</option>${knownPlaces().map((k, i) => `<option value="${i}">${esc(k.name)} (${esc(k.kind)}, ${esc(GALAXIES[k.p.gi] || '')})</option>`).join('')}</select></label>
         </div>
-        <p class="hint bad-hint" id="destErr" hidden></p>
+        <p class="bad-hint dest-err" id="destErr" hidden></p>
       </div></div>
     <div class="panel"><h3>About this system</h3><div id="destInfo"></div></div>`;
   const places = knownPlaces();

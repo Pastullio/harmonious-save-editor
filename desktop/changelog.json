@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.13.1323",
+  "date": "2026-11-13",
+  "notes": [
+   "Coordinates: removed a stray empty circle under the address boxes (it was the hidden spot for address errors showing when it shouldn't)."
+  ]
+ },
+ {
   "version": "2026.11.12.2204",
   "date": "2026-11-12",
   "notes": [
