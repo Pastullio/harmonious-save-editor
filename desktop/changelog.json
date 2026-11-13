@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.13.1521",
+  "date": "2026-11-13",
+  "notes": [
+   "Exocraft: every exocraft bay in your save is listed now (some saves showed only the Colossus).",
+   "Add exocraft explains that the save already has a bay for each exocraft, and each row has an Open button that takes you to it."
+  ]
+ },
+ {
   "version": "2026.11.13.1458",
   "date": "2026-11-13",
   "notes": [

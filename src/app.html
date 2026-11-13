@@ -840,6 +840,7 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .legend .legend-tip { margin-left: auto; color: var(--faint); display: inline-flex; align-items: center; }
 .fr-acts { margin-top: 12px; gap: 6px; }
 .exo-list { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 6px; }
+.exo-acts { display: flex; align-items: center; gap: 8px; }
 .exo-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 10px; border-radius: 10px; background: var(--well); }
 .exo-known { font-size: 12.5px; color: var(--ok, var(--dim)); }
 .small-print { font-size: 12px; margin: 0; }
@@ -1876,7 +1877,9 @@ function render() { const f = PAGES[S.section]; $('#page').innerHTML = ''; f($('
 const isInv = (v) => v instanceof Map && Array.isArray(g(v, 'Slots')) && Array.isArray(g(v, 'ValidSlotIndices'));
 function ships() { return (g(ps(), 'ShipOwnership') || []).map((s, i) => ({ s, i })).filter(({ s }) => str(g(s, 'Resource', 'Filename'))); }
 function tools() { return (g(ps(), 'Multitools') || []).map((s, i) => ({ s, i })).filter(({ s }) => { const sd = g(s, 'Seed'); return (Array.isArray(sd) && sd[0] === true) || (g(s, 'Store', 'Slots') || []).length; }); }
-function vehicles() { return (g(ps(), 'VehicleOwnership') || []).map((s, i) => ({ s, i })).filter(({ s }) => str(g(s, 'Resource', 'Filename')) || (g(s, 'Inventory', 'Slots') || []).length); }
+// every exocraft has a fixed bay (EXOCRAFT order); the save fills the bay's tech slots, so a bay with any slots is listed
+const vehHas = (s) => s instanceof Map && !!(str(g(s, 'Resource', 'Filename')) || (g(s, 'Inventory', 'Slots') || []).length || (g(s, 'Inventory_TechOnly', 'Slots') || []).length);
+function vehicles() { return (g(ps(), 'VehicleOwnership') || []).map((s, i) => ({ s, i })).filter(({ s }) => vehHas(s)); }
 const COVERED = new Set(['Inventory', 'Inventory_TechOnly', 'Inventory_Cargo', 'FreighterInventory', 'FreighterInventory_TechOnly', 'FreighterInventory_Cargo']);
 function storageInvs() {
   const out = []; const p = ps();
@@ -3033,7 +3036,7 @@ const EXOCRAFT = [['Roamer', 'buggy/buggy'], ['Nomad', 'bike/bike'], ['Colossus'
 const exoName = (s, i) => str(g(s, 'Name')) || (EXOCRAFT[i] || ['Exocraft ' + (i + 1)])[0];
 const exoScene = (s, i) => str(g(s, 'Resource', 'Filename')) || (EXOCRAFT[i] ? `MODELS/COMMON/VEHICLES/${EXOCRAFT[i][1].toUpperCase()}.SCENE.MBIN` : '');
 PAGES.vehicles = (el) => ownedPage(el, {
-  title: 'Exocraft', intro: 'Cargo and technology for each exocraft you have summoned.', list: vehicles(), key: 'veh', primaryKey: 'PrimaryVehicle',
+  title: 'Exocraft', intro: 'Cargo and technology for each exocraft bay in your save.', list: vehicles(), key: 'veh', primaryKey: 'PrimaryVehicle',
   label: (s, i) => exoName(s, i), sub: (s, i) => (EXOCRAFT[i] ? EXOCRAFT[i][0] + ', ' : '') + 'bay ' + (i + 1),
   invs: (s) => [[g(s, 'Inventory_TechOnly'), 'Technology'], [g(s, 'Inventory'), 'Cargo']],
   picture: (s, i) => { const model = modelName(g(s, 'Resource', 'Filename')); return { kind: 'ship', type: 'Exocraft', name: exoName(s, i), cls: '', key: 'veh|' + i + '|' + model, seed: str((seedOf(s) || [])[1]), scene: exoScene(s, i) }; },
@@ -6856,19 +6859,23 @@ async function addExoDialog() {
   const bayFor = (n) => bays.find((b) => new RegExp('\\b' + n + '\\b', 'i').test(b.name)) || null;
   const vs = g(ps(), 'VehicleOwnership') || [];
   const rows = EXOCRAFT.map(([n], i) => {
-    const v = vs[i], has = v instanceof Map && ((g(v, 'Inventory_TechOnly', 'Slots') || []).length || (g(v, 'Inventory', 'Slots') || []).length), b = bayFor(n);
-    const learn = !b ? '' : known.has(b.id) ? `<span class="exo-known">Blueprint known</span>` : `<button class="btn small primary" type="button" data-learn="${esc(b.id)}" title="Learn the ${esc(b.name)} blueprint">Learn ${esc(b.name)}</button>`;
-    return `<li class="exo-row"><span><b>${n}</b> <span class="dim">${has ? '(set up)' : '(not yet)'}</span></span>${learn}</li>`;
+    const v = vs[i], has = vehHas(v), b = bayFor(n);
+    const learn = !b ? `<span class="dim">No geobay in the item library</span>` : known.has(b.id) ? `<span class="exo-known">Blueprint known</span>` : `<button class="btn small primary" type="button" data-learn="${esc(b.id)}" title="Learn the ${esc(b.name)} blueprint">Learn ${esc(b.name)}</button>`;
+    const open = has ? `<button class="btn small" type="button" data-open="${i}" title="Edit its technology and cargo">Open</button>` : `<span class="dim">No bay in this save</span>`;
+    return `<li class="exo-row"><span><b>${n}</b></span><span class="exo-acts">${learn}${open}</span></li>`;
   }).join('');
   const missing = bays.filter((b) => !known.has(b.id));
-  const body = `<p>Exocraft are summoned from the geobay you build for each one. Learning a geobay's blueprint lets you build it at any base, then summon that exocraft. (Learn all base parts on the Knowledge page learns them too.)</p><ul class="exo-list">${rows}</ul>`
+  const body = `<p>Your save already has a bay for each exocraft, so there's nothing to add here. In the game you build an exocraft's geobay at a base and summon it from there; this page lets you learn the geobay blueprints (Learn all base parts on the Knowledge page learns them too) and open each exocraft to set up its technology and cargo beforehand.</p><ul class="exo-list">${rows}</ul>`
     + (!S.db ? '<p class="dim">The item library isn\'t loaded, so the blueprints can\'t be listed here.</p>' : !bays.length ? '<p class="dim">No geobays found in the item library.</p>' : '');
   const learn = (ids) => { const kp = g(ps(), 'KnownProducts'); let n = 0; for (const id of ids) if (!known.has(id)) { kp.push(id); known.add(id); n++; } if (n) markDirty(); return n; };
-  const host = $('#dlgBody');
-  const onClick = (e) => { const b = e.target.closest('[data-learn]'); if (!b) return; learn([b.dataset.learn]); b.replaceWith(Object.assign(document.createElement('span'), { className: 'exo-known', textContent: 'Blueprint known' })); toast((S.db.byId.get(b.dataset.learn) || {}).name + ' learnt. Build it in the game to summon the exocraft.'); };
+  const host = $('#dlgBody'); let openI = null;
+  const onClick = (e) => {
+    const o = e.target.closest('[data-open]'); if (o) { openI = +o.dataset.open; $('#dlgX').click(); return; }
+    const b = e.target.closest('[data-learn]'); if (!b) return; learn([b.dataset.learn]); b.replaceWith(Object.assign(document.createElement('span'), { className: 'exo-known', textContent: 'Blueprint known' })); toast((S.db.byId.get(b.dataset.learn) || {}).name + ' learnt. Build it in the game to summon the exocraft.'); };
   host.addEventListener('click', onClick);
   const res = await dialog('Add exocraft', body, missing.length > 1 ? [['Close', false, 'ghost'], ['Learn every geobay', true, 'primary']] : [['Close', false]]);
   host.removeEventListener('click', onClick);
+  if (openI != null) { S.pick.veh = openI; S.sel = null; go('vehicles'); return; }
   if (!res) return;
   const n = learn(missing.map((b) => b.id));
   toast(n ? `${plural(n, 'blueprint')} learned. Build the geobays in the game to summon them.` : 'You already know every geobay blueprint');
@@ -8169,7 +8176,7 @@ function findIndex() {
   for (const [id, l] of SECTIONS) push(l, 'Section', 'Page', () => go(id));
   ships().forEach(({ s, i }) => push(str(g(s, 'Name')) || 'Ship ' + (i + 1), 'Starship, ' + modelName(g(s, 'Resource', 'Filename')), 'Ship', () => { S.pick.ship = i; go('ships'); }));
   tools().forEach(({ s, i }) => push(str(g(s, 'Name')) || 'Multi-tool ' + (i + 1), 'Multi-tool', 'Multi-tool', () => { S.pick.tool = i; go('tools'); }));
-  vehicles().forEach(({ s, i }) => push(str(g(s, 'Name')) || modelName(g(s, 'Resource', 'Filename')) || 'Exocraft', 'Exocraft', 'Exocraft', () => { S.pick.vehicle = i; go('vehicles'); }));
+  vehicles().forEach(({ s, i }) => push(str(g(s, 'Name')) || modelName(g(s, 'Resource', 'Filename')) || 'Exocraft', 'Exocraft', 'Exocraft', () => { S.pick.veh = i; go('vehicles'); }));
   playerBases().forEach(({ b, i }) => push(baseLabel(b), BASE_KINDS[str(g(b, 'BaseType', 'PersistentBaseTypes'))] || 'Base', 'Base', () => { (S.bases || (S.bases = {})).tab = 'bases'; S.bases.pick = i; go('bases'); }));
   (g(p, 'PersistentPlayerBases') || []).forEach((b, i) => { if (str(g(b, 'BaseType', 'PersistentBaseTypes')) === 'PlayerShipBase') push(str(g(b, 'Name')) || 'Corvette', 'Corvette build', 'Corvette', () => { const slot = num(g(b, 'UserData')); (S.wright || (S.wright = { q: '', sel: new Set(), auto: true, json: false })).slot = slot; go('shipwright'); }); });
   (g(p, 'SettlementStatesV2') || []).forEach((s, i) => { const n = str(g(s, 'Name')); if (n) push(n, 'Settlement', 'Settlement', () => { (S.bases || (S.bases = {})).tab = 'settlements'; S.bases.set = i; go('bases'); }); });
@@ -8183,7 +8190,7 @@ function findIndex() {
   standardInvs(p, 'Freighter').forEach(([inv, t]) => where.push([inv, 'Freighter ' + t.toLowerCase(), () => go('freighter')]));
   ships().forEach(({ s, i }) => standardInvs(s, '').forEach(([inv, t]) => where.push([inv, (str(g(s, 'Name')) || 'Ship ' + (i + 1)) + ', ' + t.toLowerCase(), () => { S.pick.ship = i; go('ships'); }])));
   tools().forEach(({ s, i }) => where.push([g(s, 'Store'), str(g(s, 'Name')) || 'Multi-tool ' + (i + 1), () => { S.pick.tool = i; go('tools'); }]));
-  vehicles().forEach(({ s, i }) => [['Inventory', 'cargo'], ['Inventory_TechOnly', 'technology']].forEach(([k, t]) => where.push([g(s, k), (str(g(s, 'Name')) || 'Exocraft') + ', ' + t, () => { S.pick.vehicle = i; go('vehicles'); }])));
+  vehicles().forEach(({ s, i }) => [['Inventory', 'cargo'], ['Inventory_TechOnly', 'technology']].forEach(([k, t]) => where.push([g(s, k), (str(g(s, 'Name')) || 'Exocraft') + ', ' + t, () => { S.pick.veh = i; go('vehicles'); }])));
   storageInvs().forEach(({ name, inv }) => where.push([inv, prettyInvName(name), () => { S.pick.storage = name; go('storage'); }]));
   for (const [inv, label, open] of where) {
     if (!isInv(inv)) continue;
@@ -8416,7 +8423,7 @@ function cargoPlaces() {
   add(g(p, 'Inventory'), 'Exosuit cargo', 'Exosuit', () => go('exosuit')); legacy(p, '', 'Exosuit', () => go('exosuit'), 'Exosuit');
   ships().forEach(({ s, i }) => { const n = str(g(s, 'Name')) || 'Ship ' + (i + 1), open = () => { S.pick.ship = i; go('ships'); }; add(g(s, 'Inventory'), n + ' cargo', 'Starships', open); legacy(s, '', n, open, 'Starships'); });
   add(g(p, 'FreighterInventory'), 'Freighter cargo', 'Freighter', () => go('freighter')); legacy(p, 'Freighter', 'Freighter', () => go('freighter'), 'Freighter');
-  vehicles().forEach(({ s, i }) => add(g(s, 'Inventory'), exoName(s, i) + ' cargo', 'Exocraft', () => { S.pick.vehicle = i; go('vehicles'); }));
+  vehicles().forEach(({ s, i }) => add(g(s, 'Inventory'), exoName(s, i) + ' cargo', 'Exocraft', () => { S.pick.veh = i; go('vehicles'); }));
   storageInvs().forEach(({ name, inv }) => add(inv, prettyInvName(name), 'Storage', () => { S.pick.storage = name; go('storage'); }, !/^Chest\d+Inventory$/.test(name)));
   return out;
 }

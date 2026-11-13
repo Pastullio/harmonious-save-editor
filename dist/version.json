@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.13.1458",
+  "version": "2026.11.13.1521",
   "date": "2026-11-13",
-  "size": 14714368,
-  "sha256": "84998a44b5175b34a0ee1ea95f4360b4bcf44f9624c4b03b1916354c84402b68",
-  "notes": "Garage, Starships and Dock Yard: Render corvettes sits right beside Cover Flow / Grid; on the Dock Yard, Import files and Add this save's ships sit beside Manage folders.\nInventories: the how-to line under each grid is a ? at the end of the colour key, so the page is shorter.\nFrigates: Max out (one or every frigate), Copy frigate and Paste onto another, Duplicate, frigate profiles (save one and put it on any frigate, in any save), and Delete (not while it's out on an expedition).\nExocraft: Choose parts is in the gear on the picture.\nAdd exocraft: each exocraft has its own Learn button for its geobay blueprint (it wrongly said the item library wasn't loaded).\nExosuit: your traveller stands on the card, built from your save like the Blender model, unless you've set your own picture.",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.1458/HarmoniousSaveEditor.exe",
+  "size": 14715392,
+  "sha256": "63ce7eb937b543b58bcf94c45c38a386281e1a55558eceb9526d333e7e4fa100",
+  "notes": "Exocraft: every exocraft bay in your save is listed now (some saves showed only the Colossus).\nAdd exocraft explains that the save already has a bay for each exocraft, and each row has an Open button that takes you to it.",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.1521/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

@@ -66,7 +66,14 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   ok('…with a Learn button beside the Roamer for its geobay', (await p.textContent('#dlgBody .exo-list li:first-child')).includes('Learn ' + bay.name));
   await p.click(`#dlgBody [data-learn="${bay.id}"]`);
   ok('…which learns the blueprint', await p.evaluate((id) => (g(ps(), 'KnownProducts') || []).map(str).includes(id), bay.id) && /Blueprint known/.test(await p.textContent('#dlgBody .exo-list li:first-child')));
-  await p.click('#dlgX');
+  // every bay in the save is on the page, and Open takes you to it (owner 2026-11-13: only the Colossus was listed)
+  const bays = await p.evaluate(() => (g(ps(), 'VehicleOwnership') || []).filter(vehHas).length);
+  ok('the Exocraft page lists every bay the save has', (await p.evaluate(() => vehicles().length)) === bays);
+  const lastOpen = await p.$$eval('#dlgBody [data-open]', (bs) => bs.length ? +bs[bs.length - 1].dataset.open : -1);
+  if (lastOpen >= 0) {
+    await p.click(`#dlgBody [data-open="${lastOpen}"]`); await p.waitForTimeout(300);
+    ok('…and Open shows that exocraft', !(await p.$('#dlg[open]')) && (await p.evaluate(() => S.pick.veh)) === lastOpen);
+  } else await p.click('#dlgX');
   await p.evaluate(() => go('companions')); await p.waitForSelector('#addPet');
   const n0 = await p.evaluate(() => g(ps(), 'Pets').filter(isPet).length);
   await p.click('#addPet'); await confirm();
