@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.13.1842",
+  "date": "2026-11-13",
+  "notes": [
+   "Please install the LiveLink add-on again (version 1.19.0).",
+   "LiveLink: Export for 3D printing makes your posed traveller (and their multi-tool) into one solid miniature on a round base, at the height you choose, saved as an STL ready for your slicer."
+  ]
+ },
+ {
   "version": "2026.11.13.1829",
   "date": "2026-11-13",
   "notes": [

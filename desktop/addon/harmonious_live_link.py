@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 18, 0),
+    "version": (1, 19, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -3146,6 +3146,161 @@ class HARMONIOUS_PT_share(LiveLinkPanel, bpy.types.Panel):
                 tip.label(text=line)
 
 
+# ------------------------------------------------------------------ 3D printing (owner 2026-11-13, a Discord idea:
+# miniatures of your traveller). The game's model is many overlapping pieces with paper-thin cloth and open edges,
+# which slicers can't print, so the posed traveller is made into one solid: every piece thickened (Solidify, so cloth
+# gets a printable wall), then rebuilt as one closed surface (voxel Remesh, which also fuses the overlaps), standing on
+# a round base, scaled so the figure is the height asked for, and written as a binary STL in millimetres.
+PRINT_DETAIL = (
+    ("QUICK", "Quick", "Coarser, small file, fast (good for a test print)"),
+    ("NORMAL", "Normal", "Fine enough for a resin or a good filament printer at miniature size"),
+    ("FINE", "Fine", "Sharper details, a bigger file, slower to make"),
+)
+PRINT_VOXELS = {"QUICK": 250, "NORMAL": 420, "FINE": 650}   # voxels over the figure's height
+PRINT_WALL_MM = 0.8    # thinnest wall a printer manages well
+PRINT_BASE_MM = 3.0    # base thickness
+
+
+def _print_meshes(arm):
+    out = list(traveller_meshes(arm))
+    for t in held_tools(arm):
+        out.extend(o for o in [t] + list(t.children_recursive) if o.type == "MESH")
+    return [o for o in out if o.visible_get() or not o.hide_render]
+
+
+def write_stl(path, mesh, scale, shift):
+    """Binary STL of a mesh's triangles, coordinates × scale after adding shift (so millimetres, resting on z = 0)."""
+    import struct
+    import numpy as np
+    mesh.calc_loop_triangles()
+    nv, nt = len(mesh.vertices), len(mesh.loop_triangles)
+    co = np.empty(nv * 3, dtype=np.float32)
+    mesh.vertices.foreach_get("co", co)
+    co = (co.reshape(nv, 3) + np.array(shift, dtype=np.float32)) * np.float32(scale)
+    tri = np.empty(nt * 3, dtype=np.int32)
+    mesh.loop_triangles.foreach_get("vertices", tri)
+    tri = tri.reshape(nt, 3)
+    a, b, c = co[tri[:, 0]], co[tri[:, 1]], co[tri[:, 2]]
+    n = np.cross(b - a, c - a)
+    ln = np.linalg.norm(n, axis=1)
+    n = n / np.where(ln > 0, ln, 1)[:, None]
+    rec = np.zeros(nt, dtype=[("n", "<f4", 3), ("a", "<f4", 3), ("b", "<f4", 3), ("c", "<f4", 3), ("x", "<u2")])
+    rec["n"], rec["a"], rec["b"], rec["c"] = n, a, b, c
+    with open(path, "wb") as f:
+        f.write(b"Harmonious LiveLink miniature".ljust(80, b" "))
+        f.write(struct.pack("<I", nt))
+        f.write(rec.tobytes())
+    return nt
+
+
+def print_traveller(context, arm, height_mm, base, base_mm, detail, keep):
+    """Make the posed traveller printable and write it; returns (file, triangles, size in mm (w, d, h))."""
+    import datetime
+    import bmesh
+    import mathutils
+    dg = context.evaluated_depsgraph_get()
+    bm = bmesh.new()
+    for o in _print_meshes(arm):
+        ev = o.evaluated_get(dg)
+        tmp = bpy.data.meshes.new_from_object(ev, preserve_all_data_layers=False, depsgraph=dg)
+        tmp.transform(o.matrix_world)
+        bm.from_mesh(tmp)
+        bpy.data.meshes.remove(tmp)
+    if not bm.verts:
+        bm.free()
+        raise RuntimeError("Your traveller has nothing to print")
+    zs = [v.co.z for v in bm.verts]
+    lo_z, hi_z = min(zs), max(zs)
+    H = max(hi_z - lo_z, 1e-3)
+    scale = height_mm / H / 1000.0   # model metres -> print metres
+    to_model = lambda mm: mm / 1000.0 / scale
+    if base:
+        # under the feet: the figure's footprint centre, its top a little above the soles so they fuse with it
+        pts = [v.co for v in bm.verts if v.co.z < lo_z + H * 0.06] or [v.co for v in bm.verts]
+        cx = sum(p.x for p in pts) / len(pts)
+        cy = sum(p.y for p in pts) / len(pts)
+        depth = to_model(PRINT_BASE_MM)
+        top = lo_z + to_model(0.4)
+        bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=96, radius1=to_model(base_mm / 2),
+                              radius2=to_model(base_mm / 2) * 0.97, depth=depth,
+                              matrix=mathutils.Matrix.Translation((cx, cy, top - depth / 2)))
+    me = bpy.data.meshes.new("Miniature")
+    bm.to_mesh(me)
+    bm.free()
+    ob = bpy.data.objects.new("Miniature", me)
+    context.scene.collection.objects.link(ob)
+    try:
+        sol = ob.modifiers.new("Wall", "SOLIDIFY")
+        sol.thickness = to_model(PRINT_WALL_MM)
+        sol.offset = 0.0
+        sol.use_even_offset = False   # even thickness throws sharp corners metres out (it ran out of memory)
+        rem = ob.modifiers.new("Solid", "REMESH")
+        rem.mode = "VOXEL"
+        rem.voxel_size = H / PRINT_VOXELS.get(detail, 420)
+        rem.adaptivity = 0.0
+        rem.use_smooth_shade = True
+        context.view_layer.update()
+        dg = context.evaluated_depsgraph_get()
+        solid = bpy.data.meshes.new_from_object(ob.evaluated_get(dg), preserve_all_data_layers=False, depsgraph=dg)
+        if not len(solid.vertices):
+            raise RuntimeError("The solid came out empty")
+        zs = [v.co.z for v in solid.vertices]
+        shift = (0.0, 0.0, -min(zs))
+        name = str(arm.get("harmonious_traveller") or LINK.get("traveller") or "Traveller")
+        folder = LINK.get("exports") or (os.path.dirname(bpy.data.filepath) if bpy.data.filepath else os.path.expanduser("~"))
+        os.makedirs(folder, exist_ok=True)
+        out = os.path.join(folder, "%s miniature %dmm %s.stl" % (name, round(height_mm), datetime.datetime.now().strftime("%Y-%m-%d %H%M%S")))
+        nt = write_stl(out, solid, scale * 1000.0, shift)
+        xs = [v.co.x for v in solid.vertices]
+        ys = [v.co.y for v in solid.vertices]
+        size = ((max(xs) - min(xs)) * scale * 1000, (max(ys) - min(ys)) * scale * 1000, (max(zs) - min(zs)) * scale * 1000)
+        if keep:
+            # a copy to look over, beside the traveller, at the traveller's size
+            old = bpy.data.objects.get("Miniature to check")
+            if old is not None:
+                data = old.data
+                bpy.data.objects.remove(old, do_unlink=True)
+                if data.users == 0:
+                    bpy.data.meshes.remove(data)
+            chk = bpy.data.objects.new("Miniature to check", solid)
+            context.scene.collection.objects.link(chk)
+            fwd, left, up = body_frame(arm)
+            chk.location = -left * H * 0.8
+        else:
+            bpy.data.meshes.remove(solid)
+        return out, nt, size
+    finally:
+        bpy.data.objects.remove(ob, do_unlink=True)
+        bpy.data.meshes.remove(me)
+
+
+class HARMONIOUS_OT_print(bpy.types.Operator):
+    bl_idname = "harmonious.print"
+    bl_label = "Export for 3D printing"
+    bl_description = ("Make your posed traveller (and the multi-tool in their hand) one solid, printable model on a round base, "
+                      "at the height you set, and save it as an STL in millimetres to the Exports folder")
+
+    @classmethod
+    def poll(cls, context):
+        return find_traveller() is not None
+
+    def execute(self, context):
+        sc = context.scene
+        arm = find_traveller()
+        if context.mode != "OBJECT":
+            bpy.ops.object.mode_set(mode="OBJECT")
+        try:
+            out, nt, size = print_traveller(context, arm, sc.harmonious_print_height, sc.harmonious_print_base,
+                                            sc.harmonious_print_base_mm, sc.harmonious_print_detail, sc.harmonious_print_keep)
+        except (RuntimeError, OSError, ValueError) as error:
+            self.report({"ERROR"}, "Couldn't make the print: %s" % error)
+            return {"CANCELLED"}
+        msg = "Saved %s (%s triangles, %.0f × %.0f × %.0f mm)" % (os.path.basename(out), "{:,}".format(nt), *size)
+        set_status(msg)
+        self.report({"INFO"}, msg)
+        return {"FINISHED"}
+
+
 class HARMONIOUS_PT_export(LiveLinkPanel, bpy.types.Panel):
     bl_label = "Export"
     bl_idname = "HARMONIOUS_PT_export"
@@ -3165,6 +3320,23 @@ class HARMONIOUS_PT_export(LiveLinkPanel, bpy.types.Panel):
         tip = layout.column(align=True)
         tip.scale_y = 0.8
         for line in wrap("The 3D pose turns on the Traveller page; the picture is what the camera sees, with the lights and quality above.", 40):
+            tip.label(text=line)
+        box = layout.box()
+        box.label(text="3D print: a miniature", icon="MOD_SOLIDIFY")
+        sc = context.scene
+        col = box.column(align=True)
+        col.prop(sc, "harmonious_print_height")
+        row = col.row(align=True)
+        row.prop(sc, "harmonious_print_base", text="Round base")
+        sub = row.row(align=True)
+        sub.enabled = sc.harmonious_print_base
+        sub.prop(sc, "harmonious_print_base_mm", text="")
+        box.prop(sc, "harmonious_print_detail", expand=True)
+        box.prop(sc, "harmonious_print_keep")
+        box.operator(HARMONIOUS_OT_print.bl_idname, icon="EXPORT")
+        tip = box.column(align=True)
+        tip.scale_y = 0.8
+        for line in wrap("One solid STL in millimetres, ready to slice: thin cloth gets a printable wall and the pieces fuse into one. Takes up to a minute. For your own prints; the models are Hello Games'.", 40):
             tip.label(text=line)
 
 
@@ -3206,7 +3378,7 @@ _KEYMAPS = []
 CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_OT_pick_part, HARMONIOUS_OT_show_bones, HARMONIOUS_OT_pose, HARMONIOUS_OT_pose_reset,
            HARMONIOUS_OT_pose_save, HARMONIOUS_OT_poses_folder, HARMONIOUS_OT_hold_tool, HARMONIOUS_OT_drop_tool, HARMONIOUS_OT_send_pose, HARMONIOUS_OT_picture,
            HARMONIOUS_OT_body_part, HARMONIOUS_OT_body_parts_clear, HARMONIOUS_OT_pose_mode, HARMONIOUS_OT_light, HARMONIOUS_OT_select_light, HARMONIOUS_OT_send_ship,
-           HARMONIOUS_OT_tip, HARMONIOUS_OT_camera, HARMONIOUS_OT_add_blend, HARMONIOUS_OT_backdrop, HARMONIOUS_OT_camera_view, HARMONIOUS_OT_clean_view,
+           HARMONIOUS_OT_tip, HARMONIOUS_OT_camera, HARMONIOUS_OT_add_blend, HARMONIOUS_OT_backdrop, HARMONIOUS_OT_print, HARMONIOUS_OT_camera_view, HARMONIOUS_OT_clean_view,
            HARMONIOUS_PT_live, HARMONIOUS_PT_build, HARMONIOUS_PT_traveller, HARMONIOUS_PT_poses, HARMONIOUS_PT_parts,
            HARMONIOUS_PT_tool, HARMONIOUS_PT_share, HARMONIOUS_PT_export, HARMONIOUS_PT_support)
 
@@ -3228,6 +3400,15 @@ def register():
         description="Lights put round your traveller as soon as you pick them")
     bpy.types.Scene.harmonious_glow = bpy.props.BoolProperty(name="Lenses and screens glow", default=True, update=glow_changed,
         description="The game's lenses, screens and visor give off light (in Cycles they light what's near them)")
+    bpy.types.Scene.harmonious_print_height = bpy.props.FloatProperty(name="Figure height (mm)", default=32.0, min=10.0, max=300.0,
+        description="Height of the figure from the soles to the top of the head, in millimetres (28-32 is tabletop scale)")
+    bpy.types.Scene.harmonious_print_base = bpy.props.BoolProperty(name="Round base", default=True,
+        description="Stand the figure on a round base, so it stays up")
+    bpy.types.Scene.harmonious_print_base_mm = bpy.props.FloatProperty(name="Base (mm)", default=25.0, min=10.0, max=200.0,
+        description="The base's diameter in millimetres (25 is the usual tabletop size)")
+    bpy.types.Scene.harmonious_print_detail = bpy.props.EnumProperty(name="Detail", items=PRINT_DETAIL, default="NORMAL")
+    bpy.types.Scene.harmonious_print_keep = bpy.props.BoolProperty(name="Show me the print model", default=False,
+        description="Also put the solid print model beside your traveller, to look it over")
     bpy.types.Scene.harmonious_blend = bpy.props.EnumProperty(name="Corvette file", items=blend_items,
         description="Your corvettes' .blend files that the editor knows (sent from Blender or linked in Shipwright)")
     bpy.types.Scene.harmonious_pose = bpy.props.EnumProperty(name="Pose", items=pose_items, update=pose_changed,
@@ -3281,6 +3462,8 @@ def unregister():
     del bpy.types.Scene.harmonious_curl_l
     del bpy.types.Scene.harmonious_pose
     del bpy.types.Scene.harmonious_blend
+    for k in ("height", "base", "base_mm", "detail", "keep"):
+        delattr(bpy.types.Scene, "harmonious_print_" + k)
     del bpy.types.Scene.harmonious_quality
     del bpy.types.Scene.harmonious_lighting
     del bpy.types.Scene.harmonious_glow

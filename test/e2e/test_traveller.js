@@ -314,6 +314,26 @@ rr = bpy.ops.harmonious.backdrop(name=got.name, action='REMOVE') if got else Non
 gone = not h.backdrops() and not any(o.name.startswith(('ship hull', 'spare part')) for o in bpy.data.objects)
 print('BACKDROP', 'FINISHED' in rb, len(hulls), len(lamps), lcs.get('part library'), bool(behind), mover, gone)
 os.remove(shipblend)
+# a miniature for 3D printing (owner 2026-11-13): one closed solid on a round base, the asked height, an STL in mm
+import struct
+sc = bpy.context.scene
+sc.harmonious_print_detail = 'QUICK'; sc.harmonious_print_keep = True; sc.harmonious_print_height = 30.0
+before_stl = set(os.listdir(h.LINK.get('exports') or '.'))
+rp = bpy.ops.harmonious.print()
+stl = [f for f in set(os.listdir(h.LINK.get('exports') or '.')) - before_stl if f.endswith('.stl')]
+tri, zmax, open_edges = 0, 0, -1
+if stl:
+    data = open(os.path.join(h.LINK['exports'], stl[0]), 'rb').read(); tri = struct.unpack('<I', data[80:84])[0]
+    import numpy as np
+    rec = np.frombuffer(data[84:84 + tri * 50], dtype=[('n', '<f4', 3), ('v', '<f4', 9), ('x', '<u2')])
+    zs = rec['v'][:, 2::3]; zmax = float(zs.max() - zs.min())
+    os.remove(os.path.join(h.LINK['exports'], stl[0]))
+chk = bpy.data.objects.get('Miniature to check')
+if chk is not None:
+    bmc = bmesh.new(); bmc.from_mesh(chk.data); open_edges = sum(1 for e in bmc.edges if len(e.link_faces) != 2); bmc.free()
+    bpy.data.objects.remove(chk)
+print('PRINT', 'FINISHED' in rp, len(stl), tri, round(zmax, 1), open_edges, not any(o.name.startswith('Miniature') and o.name != 'Miniature to check' for o in bpy.data.objects))
+sc.harmonious_print_keep = False; sc.harmonious_print_height = 32.0
 # Body parts: pick several, each turns at its own joint; picking one again lets go of it
 have = [q[0] for q in h.BODY_PARTS if h.part_bones(arm, q)[0]]
 bpy.ops.harmonious.body_parts_clear(); bpy.ops.harmonious.body_part(part='front'); bpy.ops.harmonious.body_part(part='backpack')
@@ -345,7 +365,7 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
     try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 600000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
-    console.log(out.split('\n').filter((l) => /^(GAP|WORST|LIMITS|INSTANT|BACKDROP|CAMERA|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|FINGERS|SHIP|Traceback|  File|\w+Error)/.test(l)).join('\n'));
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|LIMITS|INSTANT|BACKDROP|PRINT|CAMERA|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|FINGERS|SHIP|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
@@ -405,6 +425,8 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     ok('…and no piece of a finger is shared by both fingers, so they don\'t stretch (' + fg[7] + ' shared)', fg[7] === '0');
     const bk = line('BACKDROP').split(' ');
     ok('Add a corvette .blend brings its scene in behind the traveller, without its lights, the left-out collection still left out, and it comes out again (' + bk.join(' ') + ')', bk.every((x) => x === 'True' || x === '1' || x === '0') && bk[0] === 'True' && bk[1] === '1' && bk[2] === '0' && bk[3] === 'True' && bk[4] === 'True' && bk[5] === 'True' && bk[6] === 'True');
+    const pr = line('PRINT').split(' ');
+    ok('Export for 3D printing writes one closed solid STL at the height asked for, on its base (' + pr.join(' ') + ')', pr[0] === 'True' && pr[1] === '1' && +pr[2] > 20000 && Math.abs(+pr[3] - 33) < 1.5 && pr[4] === '0' && pr[5] === 'True');
     const parts = line('PARTS');
     ok('Body parts lists the traveller\'s parts (' + parts.split(' ')[0] + ')', ['head', 'torso', 'r_arm', 'l_leg', 'backpack', 'front', 'whole'].every((k) => parts.split(' ')[0].split(',').includes(k)));
     ok('…several can be picked at once, each turning at its own joint, and picking one again lets go of it only', / True 4 INDIVIDUAL_ORIGINS \[True, False\] 0$/.test(parts) || / True 4 INDIVIDUAL_ORIGINS \[False, True\] 0$/.test(parts), parts);

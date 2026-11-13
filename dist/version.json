@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.13.1829",
+  "version": "2026.11.13.1842",
   "date": "2026-11-13",
-  "size": 14756864,
-  "sha256": "09deddeface3256f04e518dd7fa4ff4fbe0e6d8e8844cb2e5e903c0ed8e96198",
-  "notes": "Please install the LiveLink add-on again (version 1.18.0).\nLiveLink: a corvette added as a backdrop no longer draws a dotted line from every part; it shows through one empty you move, turn and scale. Remove it and add it again to get the tidy version.",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.1829/HarmoniousSaveEditor.exe",
+  "size": 14767616,
+  "sha256": "80c90ce24987a89fc05f7bf3b32cabb572f9066262e6825d01b7c820176ba0a6",
+  "notes": "Please install the LiveLink add-on again (version 1.19.0).\nLiveLink: Export for 3D printing makes your posed traveller (and their multi-tool) into one solid miniature on a round base, at the height you choose, saved as an STL ready for your slicer.",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.1842/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
