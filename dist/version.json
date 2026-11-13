@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.13.1842",
+  "version": "2026.11.13.1849",
   "date": "2026-11-13",
-  "size": 14767616,
-  "sha256": "80c90ce24987a89fc05f7bf3b32cabb572f9066262e6825d01b7c820176ba0a6",
-  "notes": "Please install the LiveLink add-on again (version 1.19.0).\nLiveLink: Export for 3D printing makes your posed traveller (and their multi-tool) into one solid miniature on a round base, at the height you choose, saved as an STL ready for your slicer.",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.1842/HarmoniousSaveEditor.exe",
+  "size": 14771712,
+  "sha256": "04ee5d3d721d07aaddb09ffa7a4cfede64d2b51108d7f18b52f5bc05264d7ede",
+  "notes": "Please install the LiveLink add-on again (version 1.20.0).\nLiveLink 3D printing: pick the size (tabletop, heroic, action figure, collector or your own height), and the detail grows with it (Auto), or choose Quick, Normal, High or Ultra yourself, or the game's mesh as is to sort out in your slicer. The base fits the figure.",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.1849/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

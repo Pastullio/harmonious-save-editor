@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.13.1849",
+  "date": "2026-11-13",
+  "notes": [
+   "Please install the LiveLink add-on again (version 1.20.0).",
+   "LiveLink 3D printing: pick the size (tabletop, heroic, action figure, collector or your own height), and the detail grows with it (Auto), or choose Quick, Normal, High or Ultra yourself, or the game's mesh as is to sort out in your slicer. The base fits the figure."
+  ]
+ },
+ {
   "version": "2026.11.13.1842",
   "date": "2026-11-13",
   "notes": [

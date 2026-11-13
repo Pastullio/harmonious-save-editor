@@ -317,7 +317,7 @@ os.remove(shipblend)
 # a miniature for 3D printing (owner 2026-11-13): one closed solid on a round base, the asked height, an STL in mm
 import struct
 sc = bpy.context.scene
-sc.harmonious_print_detail = 'QUICK'; sc.harmonious_print_keep = True; sc.harmonious_print_height = 30.0
+sc.harmonious_print_size = 'CUSTOM'; sc.harmonious_print_detail = 'QUICK'; sc.harmonious_print_keep = True; sc.harmonious_print_height = 30.0
 before_stl = set(os.listdir(h.LINK.get('exports') or '.'))
 rp = bpy.ops.harmonious.print()
 stl = [f for f in set(os.listdir(h.LINK.get('exports') or '.')) - before_stl if f.endswith('.stl')]
@@ -333,7 +333,20 @@ if chk is not None:
     bmc = bmesh.new(); bmc.from_mesh(chk.data); open_edges = sum(1 for e in bmc.edges if len(e.link_faces) != 2); bmc.free()
     bpy.data.objects.remove(chk)
 print('PRINT', 'FINISHED' in rp, len(stl), tri, round(zmax, 1), open_edges, not any(o.name.startswith('Miniature') and o.name != 'Miniature to check' for o in bpy.data.objects))
-sc.harmonious_print_keep = False; sc.harmonious_print_height = 32.0
+sc.harmonious_print_keep = False
+# an action figure with the game's own triangles: the preset's height, the base fitted to it, Auto detail by size
+sc.harmonious_print_size = 'FIGURE'; sc.harmonious_print_detail = 'ORIGINAL'
+before_stl = set(os.listdir(h.LINK.get('exports') or '.'))
+rp2 = bpy.ops.harmonious.print()
+stl2 = [f for f in set(os.listdir(h.LINK.get('exports') or '.')) - before_stl if f.endswith('.stl')]
+z2 = 0
+if stl2:
+    data = open(os.path.join(h.LINK['exports'], stl2[0]), 'rb').read(); t2 = struct.unpack('<I', data[80:84])[0]
+    rec = np.frombuffer(data[84:84 + t2 * 50], dtype=[('n', '<f4', 3), ('v', '<f4', 9), ('x', '<u2')]); zs = rec['v'][:, 2::3]; z2 = float(zs.max() - zs.min())
+    os.remove(os.path.join(h.LINK['exports'], stl2[0]))
+sc.harmonious_print_detail = 'AUTO'
+print('PRINTSIZES', 'FINISHED' in rp2, round(z2), h.print_base_mm(sc), h.print_detail(sc), h.print_detail(sc, 32), h.print_detail(sc, 60))
+sc.harmonious_print_size = 'TABLETOP'
 # Body parts: pick several, each turns at its own joint; picking one again lets go of it
 have = [q[0] for q in h.BODY_PARTS if h.part_bones(arm, q)[0]]
 bpy.ops.harmonious.body_parts_clear(); bpy.ops.harmonious.body_part(part='front'); bpy.ops.harmonious.body_part(part='backpack')
@@ -365,7 +378,7 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
     try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 600000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
-    console.log(out.split('\n').filter((l) => /^(GAP|WORST|LIMITS|INSTANT|BACKDROP|PRINT|CAMERA|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|FINGERS|SHIP|Traceback|  File|\w+Error)/.test(l)).join('\n'));
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|LIMITS|INSTANT|BACKDROP|PRINT|PRINTSIZES|CAMERA|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|FINGERS|SHIP|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
@@ -427,6 +440,8 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     ok('Add a corvette .blend brings its scene in behind the traveller, without its lights, the left-out collection still left out, and it comes out again (' + bk.join(' ') + ')', bk.every((x) => x === 'True' || x === '1' || x === '0') && bk[0] === 'True' && bk[1] === '1' && bk[2] === '0' && bk[3] === 'True' && bk[4] === 'True' && bk[5] === 'True' && bk[6] === 'True');
     const pr = line('PRINT').split(' ');
     ok('Export for 3D printing writes one closed solid STL at the height asked for, on its base (' + pr.join(' ') + ')', pr[0] === 'True' && pr[1] === '1' && +pr[2] > 20000 && Math.abs(+pr[3] - 33) < 1.5 && pr[4] === '0' && pr[5] === 'True');
+    const ps = line('PRINTSIZES').split(' ');
+    ok('…sizes: an action figure is 152 mm on a fitted base, the game mesh as is, and Auto gives bigger prints more detail (' + ps.join(' ') + ')', ps[0] === 'True' && Math.abs(+ps[1] - 155) <= 2 && ps[2] === '90' && ps[3] === 'ULTRA' && ps[4] === 'NORMAL' && ps[5] === 'HIGH');
     const parts = line('PARTS');
     ok('Body parts lists the traveller\'s parts (' + parts.split(' ')[0] + ')', ['head', 'torso', 'r_arm', 'l_leg', 'backpack', 'front', 'whole'].every((k) => parts.split(' ')[0].split(',').includes(k)));
     ok('…several can be picked at once, each turning at its own joint, and picking one again lets go of it only', / True 4 INDIVIDUAL_ORIGINS \[True, False\] 0$/.test(parts) || / True 4 INDIVIDUAL_ORIGINS \[False, True\] 0$/.test(parts), parts);

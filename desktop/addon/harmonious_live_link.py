@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 19, 0),
+    "version": (1, 20, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious Save Editor every time you save",
@@ -3151,12 +3151,51 @@ class HARMONIOUS_PT_share(LiveLinkPanel, bpy.types.Panel):
 # which slicers can't print, so the posed traveller is made into one solid: every piece thickened (Solidify, so cloth
 # gets a printable wall), then rebuilt as one closed surface (voxel Remesh, which also fuses the overlaps), standing on
 # a round base, scaled so the figure is the height asked for, and written as a binary STL in millimetres.
-PRINT_DETAIL = (
-    ("QUICK", "Quick", "Coarser, small file, fast (good for a test print)"),
-    ("NORMAL", "Normal", "Fine enough for a resin or a good filament printer at miniature size"),
-    ("FINE", "Fine", "Sharper details, a bigger file, slower to make"),
+# Sizes (owner 2026-11-13: a 32 mm figure lacks detail; let people print bigger, with the detail growing with it)
+PRINT_SIZES = (
+    ("TABLETOP", "Tabletop miniature (32 mm)", "Board-game size", 32.0),
+    ("HEROIC", "Heroic miniature (54 mm)", "Bigger display miniature", 54.0),
+    ("FIGURE", "Action figure (6 in, 152 mm)", "Action figure size", 152.0),
+    ("COLLECTOR", "Collector figure (12 in, 305 mm)", "Large statue size", 305.0),
+    ("CUSTOM", "Custom height", "Any height you type in", 0.0),
 )
-PRINT_VOXELS = {"QUICK": 250, "NORMAL": 420, "FINE": 650}   # voxels over the figure's height
+PRINT_DETAIL = (
+    ("AUTO", "Auto", "Picked for the size: more detail the bigger the print"),
+    ("QUICK", "Quick", "Coarse and fast: a test print"),
+    ("NORMAL", "Normal", "Good for miniatures"),
+    ("HIGH", "High", "Sharper, for bigger prints"),
+    ("ULTRA", "Ultra", "As sharp as the game's model allows; a big file, slower to make (needs plenty of memory)"),
+    ("ORIGINAL", "Game mesh as is", "Every triangle of the game's model, not fused into one solid: the most detail, but thin cloth "
+                 "and overlapping pieces are left for your slicer or a mesh-repair tool to sort out"),
+)
+PRINT_VOXELS = {"QUICK": 250, "NORMAL": 420, "HIGH": 700, "ULTRA": 1000}   # voxels over the figure's height
+
+
+def print_height(scene):
+    size = next((x for x in PRINT_SIZES if x[0] == scene.harmonious_print_size), None)
+    return size[3] if size and size[3] > 0 else scene.harmonious_print_height
+
+
+def print_detail(scene, height_mm=None):
+    d = scene.harmonious_print_detail
+    if d != "AUTO":
+        return d
+    h = height_mm or print_height(scene)
+    return "NORMAL" if h <= 40 else "HIGH" if h <= 100 else "ULTRA"
+
+
+def print_base_mm(scene, height_mm=None):
+    """The base's diameter: the size typed in, or one that fits the figure (25 mm for tabletop)."""
+    if scene.harmonious_print_base_mm > 0:
+        return scene.harmonious_print_base_mm
+    h = height_mm or print_height(scene)
+    return max(25.0, round(h * 0.6 / 5) * 5)
+
+
+def print_estimate(detail):
+    """Rough triangles and STL size for a detail level (measured on the owner's traveller)."""
+    n = 150000 if detail == "ORIGINAL" else int(6.5 * PRINT_VOXELS.get(detail, 420) ** 2)
+    return n, n * 50 / 1048576
 PRINT_WALL_MM = 0.8    # thinnest wall a printer manages well
 PRINT_BASE_MM = 3.0    # base thickness
 
@@ -3230,6 +3269,8 @@ def print_traveller(context, arm, height_mm, base, base_mm, detail, keep):
     ob = bpy.data.objects.new("Miniature", me)
     context.scene.collection.objects.link(ob)
     try:
+        if detail == "ORIGINAL":   # the game's own triangles, left for the slicer to fuse
+            return _print_out(context, arm, me.copy(), scale, H, height_mm, keep)
         sol = ob.modifiers.new("Wall", "SOLIDIFY")
         sol.thickness = to_model(PRINT_WALL_MM)
         sol.offset = 0.0
@@ -3242,36 +3283,42 @@ def print_traveller(context, arm, height_mm, base, base_mm, detail, keep):
         context.view_layer.update()
         dg = context.evaluated_depsgraph_get()
         solid = bpy.data.meshes.new_from_object(ob.evaluated_get(dg), preserve_all_data_layers=False, depsgraph=dg)
-        if not len(solid.vertices):
-            raise RuntimeError("The solid came out empty")
-        zs = [v.co.z for v in solid.vertices]
-        shift = (0.0, 0.0, -min(zs))
-        name = str(arm.get("harmonious_traveller") or LINK.get("traveller") or "Traveller")
-        folder = LINK.get("exports") or (os.path.dirname(bpy.data.filepath) if bpy.data.filepath else os.path.expanduser("~"))
-        os.makedirs(folder, exist_ok=True)
-        out = os.path.join(folder, "%s miniature %dmm %s.stl" % (name, round(height_mm), datetime.datetime.now().strftime("%Y-%m-%d %H%M%S")))
-        nt = write_stl(out, solid, scale * 1000.0, shift)
-        xs = [v.co.x for v in solid.vertices]
-        ys = [v.co.y for v in solid.vertices]
-        size = ((max(xs) - min(xs)) * scale * 1000, (max(ys) - min(ys)) * scale * 1000, (max(zs) - min(zs)) * scale * 1000)
-        if keep:
-            # a copy to look over, beside the traveller, at the traveller's size
-            old = bpy.data.objects.get("Miniature to check")
-            if old is not None:
-                data = old.data
-                bpy.data.objects.remove(old, do_unlink=True)
-                if data.users == 0:
-                    bpy.data.meshes.remove(data)
-            chk = bpy.data.objects.new("Miniature to check", solid)
-            context.scene.collection.objects.link(chk)
-            fwd, left, up = body_frame(arm)
-            chk.location = -left * H * 0.8
-        else:
-            bpy.data.meshes.remove(solid)
-        return out, nt, size
+        return _print_out(context, arm, solid, scale, H, height_mm, keep)
     finally:
         bpy.data.objects.remove(ob, do_unlink=True)
         bpy.data.meshes.remove(me)
+
+
+def _print_out(context, arm, solid, scale, H, height_mm, keep):
+    """Write the print model as an STL (and keep a copy to look at when asked)."""
+    import datetime
+    if not len(solid.vertices):
+        raise RuntimeError("The solid came out empty")
+    zs = [v.co.z for v in solid.vertices]
+    shift = (0.0, 0.0, -min(zs))
+    name = str(arm.get("harmonious_traveller") or LINK.get("traveller") or "Traveller")
+    folder = LINK.get("exports") or (os.path.dirname(bpy.data.filepath) if bpy.data.filepath else os.path.expanduser("~"))
+    os.makedirs(folder, exist_ok=True)
+    out = os.path.join(folder, "%s miniature %dmm %s.stl" % (name, round(height_mm), datetime.datetime.now().strftime("%Y-%m-%d %H%M%S")))
+    nt = write_stl(out, solid, scale * 1000.0, shift)
+    xs = [v.co.x for v in solid.vertices]
+    ys = [v.co.y for v in solid.vertices]
+    size = ((max(xs) - min(xs)) * scale * 1000, (max(ys) - min(ys)) * scale * 1000, (max(zs) - min(zs)) * scale * 1000)
+    if keep:
+        # a copy to look over, beside the traveller, at the traveller's size
+        old = bpy.data.objects.get("Miniature to check")
+        if old is not None:
+            data = old.data
+            bpy.data.objects.remove(old, do_unlink=True)
+            if data.users == 0:
+                bpy.data.meshes.remove(data)
+        chk = bpy.data.objects.new("Miniature to check", solid)
+        context.scene.collection.objects.link(chk)
+        fwd, left, up = body_frame(arm)
+        chk.location = -left * H * 0.8
+    else:
+        bpy.data.meshes.remove(solid)
+    return out, nt, size
 
 
 class HARMONIOUS_OT_print(bpy.types.Operator):
@@ -3290,8 +3337,9 @@ class HARMONIOUS_OT_print(bpy.types.Operator):
         if context.mode != "OBJECT":
             bpy.ops.object.mode_set(mode="OBJECT")
         try:
-            out, nt, size = print_traveller(context, arm, sc.harmonious_print_height, sc.harmonious_print_base,
-                                            sc.harmonious_print_base_mm, sc.harmonious_print_detail, sc.harmonious_print_keep)
+            h = print_height(sc)
+            out, nt, size = print_traveller(context, arm, h, sc.harmonious_print_base,
+                                            print_base_mm(sc, h), print_detail(sc, h), sc.harmonious_print_keep)
         except (RuntimeError, OSError, ValueError) as error:
             self.report({"ERROR"}, "Couldn't make the print: %s" % error)
             return {"CANCELLED"}
@@ -3325,13 +3373,26 @@ class HARMONIOUS_PT_export(LiveLinkPanel, bpy.types.Panel):
         box.label(text="3D print: a miniature", icon="MOD_SOLIDIFY")
         sc = context.scene
         col = box.column(align=True)
-        col.prop(sc, "harmonious_print_height")
+        col.prop(sc, "harmonious_print_size", text="")
+        if sc.harmonious_print_size == "CUSTOM":
+            col.prop(sc, "harmonious_print_height")
+        h = print_height(sc)
         row = col.row(align=True)
         row.prop(sc, "harmonious_print_base", text="Round base")
         sub = row.row(align=True)
         sub.enabled = sc.harmonious_print_base
-        sub.prop(sc, "harmonious_print_base_mm", text="")
-        box.prop(sc, "harmonious_print_detail", expand=True)
+        sub.prop(sc, "harmonious_print_base_mm", text="Size (mm)" if sc.harmonious_print_base_mm > 0 else "Size: fits (%d mm)" % print_base_mm(sc, h))
+        box.prop(sc, "harmonious_print_detail", text="Detail")
+        d = print_detail(sc, h)
+        n, mb = print_estimate(d)
+        note = box.column(align=True)
+        note.scale_y = 0.8
+        if sc.harmonious_print_detail == "AUTO":
+            note.label(text="Auto picks %s for %d mm" % (next(x[1] for x in PRINT_DETAIL if x[0] == d), round(h)))
+        note.label(text="About %s triangles, %d MB" % ("{:,}".format(round(n, -4)), max(1, round(mb))))
+        if d == "ORIGINAL":
+            for line in wrap("Not one solid: your slicer or a mesh-repair tool fuses the pieces.", 40):
+                note.label(text=line, icon="INFO" if line.startswith("Not") else "NONE")
         box.prop(sc, "harmonious_print_keep")
         box.operator(HARMONIOUS_OT_print.bl_idname, icon="EXPORT")
         tip = box.column(align=True)
@@ -3400,13 +3461,16 @@ def register():
         description="Lights put round your traveller as soon as you pick them")
     bpy.types.Scene.harmonious_glow = bpy.props.BoolProperty(name="Lenses and screens glow", default=True, update=glow_changed,
         description="The game's lenses, screens and visor give off light (in Cycles they light what's near them)")
-    bpy.types.Scene.harmonious_print_height = bpy.props.FloatProperty(name="Figure height (mm)", default=32.0, min=10.0, max=300.0,
+    bpy.types.Scene.harmonious_print_size = bpy.props.EnumProperty(name="Size", items=[x[:3] for x in PRINT_SIZES], default="TABLETOP",
+        description="How tall the printed figure is, from the soles to the top of the head")
+    bpy.types.Scene.harmonious_print_height = bpy.props.FloatProperty(name="Figure height (mm)", default=100.0, min=10.0, max=1000.0,
         description="Height of the figure from the soles to the top of the head, in millimetres (28-32 is tabletop scale)")
     bpy.types.Scene.harmonious_print_base = bpy.props.BoolProperty(name="Round base", default=True,
         description="Stand the figure on a round base, so it stays up")
-    bpy.types.Scene.harmonious_print_base_mm = bpy.props.FloatProperty(name="Base (mm)", default=25.0, min=10.0, max=200.0,
-        description="The base's diameter in millimetres (25 is the usual tabletop size)")
-    bpy.types.Scene.harmonious_print_detail = bpy.props.EnumProperty(name="Detail", items=PRINT_DETAIL, default="NORMAL")
+    bpy.types.Scene.harmonious_print_base_mm = bpy.props.FloatProperty(name="Base (mm)", default=0.0, min=0.0, max=500.0,
+        description="The base's diameter in millimetres; 0 makes it fit the figure (25 mm for tabletop size)")
+    bpy.types.Scene.harmonious_print_detail = bpy.props.EnumProperty(name="Detail", items=PRINT_DETAIL, default="AUTO",
+        description="How finely the solid is made; Auto gives bigger prints more detail")
     bpy.types.Scene.harmonious_print_keep = bpy.props.BoolProperty(name="Show me the print model", default=False,
         description="Also put the solid print model beside your traveller, to look it over")
     bpy.types.Scene.harmonious_blend = bpy.props.EnumProperty(name="Corvette file", items=blend_items,
@@ -3462,7 +3526,7 @@ def unregister():
     del bpy.types.Scene.harmonious_curl_l
     del bpy.types.Scene.harmonious_pose
     del bpy.types.Scene.harmonious_blend
-    for k in ("height", "base", "base_mm", "detail", "keep"):
+    for k in ("size", "height", "base", "base_mm", "detail", "keep"):
         delattr(bpy.types.Scene, "harmonious_print_" + k)
     del bpy.types.Scene.harmonious_quality
     del bpy.types.Scene.harmonious_lighting
