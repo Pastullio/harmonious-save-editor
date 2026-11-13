@@ -140,7 +140,13 @@ bpy.ops.harmonious.pose_save('EXEC_DEFAULT', name='Test pose')
 bpy.ops.harmonious.pose_reset()
 back = h.pose_traveller(bpy.context, 'saved:Test pose')
 print('POSES', len(names), moved, floored, back == '' and (aw @ arm.pose.bones['r_arm_Wrist'].head - wrist).length < 1e-3, os.path.exists(os.path.join(h.poses_dir(), 'Test pose.json')))
-bpy.context.scene.harmonious_pose = 'ready:Waving'; bpy.ops.harmonious.pose()
+# picking a pose in the list puts it on at once (owner 2026-11-13: no Pose button)
+h.clear_pose(arm); bpy.context.view_layer.update()
+w0 = (aw @ arm.pose.bones['r_arm_Wrist'].head).copy()
+bpy.context.scene.harmonious_pose = 'ready:Waving'; bpy.context.view_layer.update()
+w1 = (aw @ arm.pose.bones['r_arm_Wrist'].head).copy()
+thumbs = sorted(pb.name for pb in arm.pose.bones if '_hand_05_' in pb.name and 'harmonious_hinge' in pb)
+print('INSTANT', (w1 - w0).length > 0.2, (w1.z - w0.z) > 0.3, len(thumbs))
 print('SENDPOSE', bpy.ops.harmonious.send_pose(), bpy.context.mode)
 print('PICTURE', bpy.ops.harmonious.pose_picture())
 print('STATUS', h.STATE['status'])
@@ -153,7 +159,7 @@ r = bpy.ops.harmonious.pose_picture()
 coll = bpy.data.collections.get('Harmonious lights')
 newpng = [f for f in set(os.listdir(h.LINK.get('exports') or '.')) - before if f.endswith('.png')]
 glowing = sum(1 for o in h.traveller_meshes(arm) for m in o.data.materials if m and m.use_nodes and any(x.type == 'BSDF_PRINCIPLED' and (x.inputs.get('Emission Strength') is not None and x.inputs['Emission Strength'].default_value > 0) for x in m.node_tree.nodes))
-sc.harmonious_lighting = 'STUDIO'; bpy.ops.harmonious.light(); n2 = len(bpy.data.collections['Harmonious lights'].objects)
+sc.harmonious_lighting = 'STUDIO'; n2 = len(bpy.data.collections['Harmonious lights'].objects)   # picking it places them
 sc.harmonious_glow = False
 glow_off = sum(1 for o in h.traveller_meshes(arm) for m in o.data.materials if m and m.use_nodes and any(x.type == 'BSDF_PRINCIPLED' and (x.inputs.get('Emission Strength') is not None and x.inputs['Emission Strength'].default_value > 0) for x in m.node_tree.nodes))
 print('LIGHTS', 'FINISHED' in r, sc.render.engine, len(coll.objects) if coll else 0, len(newpng), glowing, n2, glow_off, sc.get('harmonious_lit'))
@@ -189,11 +195,17 @@ for c in panels:
         inst = stand_in(c, lay)
         c.draw(inst, bpy.context)
         if hasattr(c, 'draw_header'): c.draw_header(inst, bpy.context)
+        if hasattr(c, 'draw_header_preset'): c.draw_header_preset(inst, bpy.context)
         drawn.append(c.bl_label)
     except Exception as e:
         drawn.append('ERR ' + c.bl_label + ': ' + repr(e))
 m0 = bpy.context.mode; bpy.ops.harmonious.pose_mode(); m1 = bpy.context.mode; bpy.ops.harmonious.pose_mode(); m2 = bpy.context.mode
-print('MODES', m0, m1, m2)
+bpy.ops.harmonious.pose_mode(mode='POSE'); m3 = bpy.context.mode; bpy.ops.harmonious.pose_mode(mode='POSE'); m4 = bpy.context.mode
+bpy.ops.harmonious.pose_mode(mode='OBJECT'); m5 = bpy.context.mode
+print('MODES', m0, m1, m2, m3, m4, m5)
+cams = [o for o in bpy.data.objects if o.type == 'CAMERA']
+rc = bpy.ops.harmonious.camera()
+print('CAMERA', 'FINISHED' in rc, bpy.context.view_layer.objects.active is not None and bpy.context.view_layer.objects.active.type == 'CAMERA', len([o for o in bpy.data.objects if o.type == 'CAMERA']) == max(1, len(cams)), bpy.context.scene.camera.data.show_passepartout)
 print('ICONS', len(h.ICONS), 'icon_value' in h.ic('build'), 'icon_value' in h.ic('pose'), 'icon_value' in h.ic('logo'))
 print('PANELS', '|'.join(drawn), '|parents:' + ','.join(c.bl_label for c in panels if getattr(c, 'bl_parent_id', None)))
 # the hand's two fingers have joints of their own, and fingers, elbows and knees bend like real ones
@@ -205,7 +217,7 @@ mesh = h.traveller_meshes(arm)[0]
 def tips(group):
     g = mesh.vertex_groups[group]; ids = [v.index for v in mesh.data.vertices if any(e.group == g.index and e.weight > .5 for e in v.groups)]
     dg = bpy.context.evaluated_depsgraph_get(); em = mesh.evaluated_get(dg).to_mesh()
-    c = sum((em.vertices[i].co for i in ids), mathutils.Vector()) / max(1, len(ids)); mesh.evaluated_get(dg).to_mesh_clear(); return c
+    c = sum((em.vertices[i].co for i in ids), mathutils.Vector()) / max(1, len(ids)); mesh.evaluated_get(dg).to_mesh_clear(); return mesh.matrix_world @ c
 bpy.context.scene.harmonious_pose = 'ready:Standing'; bpy.ops.harmonious.pose(); bpy.context.view_layer.update()
 a0, b0 = tips('r_hand_03_03'), tips('r_hand_03b_03')
 pb = arm.pose.bones['r_hand_03b_01']; e = list(pb.rotation_euler); e[pb['harmonious_hinge']] += h.curl_sign(arm, pb) * math.radians(60); pb.rotation_euler = e; bpy.context.view_layer.update()
@@ -303,14 +315,17 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
     try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 600000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
-    console.log(out.split('\n').filter((l) => /^(GAP|WORST|LIMITS|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|FINGERS|SHIP|Traceback|  File|\w+Error)/.test(l)).join('\n'));
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|LIMITS|INSTANT|CAMERA|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|FINGERS|SHIP|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
     ok('turning a bone moves the body', +line('MOVED') > 100);
     ok('bones keep the body\'s proportions (only the root moves), and that can be turned off', line('KEEP') === 'True True True');
     const [np, nm, nf, same, file] = line('POSES').split(' ');
-    ok('ready-made poses: every one moves the body and keeps the feet on the floor', +np >= 10 && nm === np && nf === np);
+    ok('ready-made poses: every one moves the body and keeps the feet on the floor', +np >= 15 && nm === np && nf === np);
+    const ins = line('INSTANT').split(' ');
+    ok('picking a pose in the list puts it on at once (Waving raises the right hand)', ins[0] === 'True' && ins[1] === 'True');
+    ok('…and the thumbs bend like hinges too (' + ins[2] + ')', +ins[2] === 6);
     ok('…and a saved pose goes to the Poses folder and comes back the same', same === 'True' && file === 'True');
     const g3 = fs.readdirSync(path.join(home, 'Documents', 'Harmonious Save Editor', 'Exports')).find((f) => / 3D pose .*\.glb$/.test(f));
     const gj3 = (() => { try { const bb = fs.readFileSync(path.join(home, 'Documents', 'Harmonious Save Editor', 'Exports', g3)); return JSON.parse(bb.subarray(20, 20 + bb.readUInt32LE(12)).toString()); } catch { return {}; } })();
@@ -329,7 +344,7 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     ok('…and shows just that stick', /^1 /.test(line('SHOWNAFTER')) && line('SHOWNAFTER').endsWith(got));
     const lt = line('LIGHTS').split(' ');
     ok('Best quality renders with Cycles, the Hero lights placed round the traveller and the lenses glowing (' + lt.join(' ') + ')', lt[0] === 'True' && lt[1] === 'CYCLES' && lt[2] === '3' && lt[3] === '1' && +lt[4] > 3);
-    ok('…Light it puts the Studio lights there instead, and the glow turns off', lt[5] === '3' && lt[6] === '0' && lt[7] === 'STUDIO');
+    ok('…picking Studio puts its lights there at once, and the glow turns off', lt[5] === '3' && lt[6] === '0' && lt[7] === 'STUDIO');
     const sl = line('SELLIGHT').split(' ');
     ok('a light picked in the panel leaves Pose mode and is selected, ready for G and R (' + sl.join(' ') + ')', sl[0] === 'POSE' && sl[1] === 'OBJECT' && sl[2] === 'True' && +sl[3] >= 3);
     const ics = line('ICONS').split(' ');
@@ -340,9 +355,11 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     if (shipFile !== '-') { const g = fs.readFileSync(path.join(exp, shipFile)), jl = g.readUInt32LE(12), j = JSON.parse(g.slice(20, 20 + jl).toString()); shipMeshes = (j.meshes || []).length; fs.rmSync(path.join(exp, shipFile)); }
     ok('Send the corvette in 3D sends the file\'s meshes (instances too, not the traveller) and tidies up after (' + sh.join(' ') + ', ' + shipMeshes + ' meshes)', sh[0] === 'True' && /^Test Corvette 3D ship .*\.glb$/.test(shipFile) && shipMeshes === 2 && sh[sh.length - 1] === '0');
     const pn = line('PANELS').replace(' |parents:', '|parents:');
-    ok('the add-on\'s sections are panels of their own that draw: ' + pn, ['LiveLink', 'Builds: corvettes and bases', 'Your traveller', 'Poses', 'Body parts', 'Multi-tool', 'Picture and 3D', 'Support the creator'].every((l) => pn.split('|').includes(l)) && !/ERR/.test(pn) && /\|parents:$/.test(pn));
+    ok('the add-on\'s sections are panels of their own that draw: ' + pn, ['LiveLink', 'Builds: corvettes and bases', 'Your traveller', 'Poses', 'Body parts', 'Multi-tool', 'Lighting & Rendering', 'Export', 'Support the creator'].every((l) => pn.split('|').includes(l)) && !/ERR/.test(pn) && /\|parents:$/.test(pn));
     const md = line('MODES').split(' ');
-    ok('Pose the traveller / Done posing switch between Pose and Object mode (' + md.join(' ') + ')', md[1] !== md[0] && md[2] === md[0] && md.includes('POSE') && md.includes('OBJECT'));
+    ok('Pose Mode / Object Mode switch between Pose and Object mode (' + md.join(' ') + ')', md[1] !== md[0] && md[2] === md[0] && md[3] === 'POSE' && md[4] === 'POSE' && md[5] === 'OBJECT');
+    const cm = line('CAMERA').split(' ');
+    ok('Traveller camera selects the camera (one only), its outside darkened in the camera view (' + cm.join(' ') + ')', cm.every((x) => x === 'True'));
     const fg = line('FINGERS').split(' ');
     ok('each hand\'s second finger has joints of its own (' + fg.join(' ') + ')', fg[0] === '6');
     ok('…fingers bend one way only, like real ones', +fg[1] >= 12 && fg[2] === 'True');

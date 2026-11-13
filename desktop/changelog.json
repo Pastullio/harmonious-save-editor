@@ -1,5 +1,16 @@
 [
  {
+  "version": "2026.11.13.1636",
+  "date": "2026-11-13",
+  "notes": [
+   "Please install the LiveLink add-on again (version 1.16.0).",
+   "LiveLink: Pose Mode and Object Mode buttons; picking a pose puts it on straight away, and Start pose is now Reset pose.",
+   "LiveLink: hands on hips, waving, pointing, salute, arms raised and sitting on the ground are fixed; new poses: thumbs up, arms crossed, hero and running.",
+   "LiveLink: every finger and thumb bends like a real one, on every race's hands (five-fingered ones too), and the sliver of finger that moved with the other finger is fixed.",
+   "LiveLink: Picture and 3D is now Lighting & Rendering (with a ? tip): lighting changes as soon as you pick it, a Traveller camera button, See what the camera sees and a Clean view that hides the camera and light lines. Send the pose and Save the pose as a picture are in a new Export panel."
+  ]
+ },
+ {
   "version": "2026.11.13.1527",
   "date": "2026-11-13",
   "notes": [
