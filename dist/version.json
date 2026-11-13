@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.13.2047",
+  "version": "2026.11.13.2108",
   "date": "2026-11-13",
-  "size": 14811136,
-  "sha256": "14cd6efa44c358ef9245d271e2740036f8687a4a32a0c5bfbd8eb28ddc4ad90b",
-  "notes": "LiveLink add-on 1.23.0 (install it again in Blender: Get LiveLink): 3D printing has its own panel, in green, and works without a traveller. Open a corvette's or base's own .blend and print it from there, on a flight stand or flat.",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.2047/HarmoniousSaveEditor.exe",
+  "size": 14813696,
+  "sha256": "a6e4f783ec177ba62c957d3aa4ca192b3fce08e2500850784f89cf91c22278aa",
+  "notes": "Check for updates now shows a \"You're up to date\" pop-up when there's nothing newer (it closes by itself after 3 seconds, or with its ×).",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.2108/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.13.2108",
+  "date": "2026-11-13",
+  "notes": [
+   "Check for updates now shows a \"You're up to date\" pop-up when there's nothing newer (it closes by itself after 3 seconds, or with its ×)."
+  ]
+ },
+ {
   "version": "2026.11.13.2047",
   "date": "2026-11-13",
   "notes": [

@@ -941,6 +941,14 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); opacity: 0; background: var(--ink); color: var(--bg); padding: 11px 20px; border-radius: 999px; transition: .2s; pointer-events: none; z-index: 40; max-width: 90vw; box-shadow: 0 10px 30px rgba(0, 0, 0, .25); }
 #toast.show { opacity: 1; transform: translateX(-50%); }
 #toast.bad { background: var(--danger); color: #fff; }
+.upd-ok { position: fixed; left: 50%; top: 24px; transform: translate(-50%, -12px); opacity: 0; transition: .22s; z-index: 60; display: flex; align-items: center; gap: 12px; padding: 12px 10px 12px 16px; border-radius: 14px; background: var(--surface); color: var(--ink); border: 1px solid var(--ok); box-shadow: 0 14px 40px rgba(0, 0, 0, .35); max-width: min(420px, calc(100vw - 32px)); }
+.upd-ok.show { opacity: 1; transform: translate(-50%, 0); }
+.upd-ok svg { color: var(--ok); flex: none; }
+.upd-ok div { display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; }
+.upd-ok b { font-weight: 600; }
+.upd-ok span { opacity: .75; }
+.upd-ok-x { background: none; border: 0; color: inherit; font-size: 20px; line-height: 1; width: 28px; height: 28px; border-radius: 8px; cursor: pointer; opacity: .7; flex: none; }
+.upd-ok-x:hover { opacity: 1; background: color-mix(in srgb, currentColor 12%, transparent); }
 #dlg { position: fixed; }
 .dlg-x { position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 50%; border: 0; background: none; color: var(--dim); font-size: 22px; line-height: 1; cursor: pointer; z-index: 2; }
 .dlg-x:hover { background: var(--hover); color: var(--ink); }
@@ -11032,12 +11040,31 @@ async function appWrite(out) {
 // ------------------------------------------------------------------ updates
 // The app compares itself with the published version.json. A newer build is offered once per version
 // ("Not now" remembers it); About has "Check for updates" to ask again.
+// "You're up to date" after a manual check (owner 2026-11-13: the toast sat behind the About window, so nothing
+// seemed to happen): a small pop-up in the open dialog (the top layer) or the page, gone after 3 s, with its own ×
+function upToDatePop(version) {
+  document.querySelectorAll('.upd-ok').forEach((x) => x.remove());
+  const el = document.createElement('div'); el.className = 'upd-ok'; el.setAttribute('role', 'status');
+  el.innerHTML = `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor" opacity=".18"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div><b>You're up to date</b><span>Version ${esc(version || appVer() || '')} is the latest.</span></div><button type="button" class="upd-ok-x" aria-label="Close">&times;</button>`;
+  (document.querySelector('dialog[open]') || document.body).appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  const close = () => { clearTimeout(t); el.classList.remove('show'); setTimeout(() => el.remove(), 250); };
+  const t = setTimeout(close, 3000);
+  el.querySelector('.upd-ok-x').onclick = close;
+  return el;
+}
 async function checkForUpdate(manual) {
   if (!APP) return;
+  const btn = manual ? $('#aboutUpd') : null;
+  if (btn) { btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = 'Checking…'; }
+  try { return await checkForUpdateNow(manual); } finally { if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = btn.dataset.label; } }
+}
+async function checkForUpdateNow(manual) {
   let u; try { u = await (await api('/api/update')).json(); } catch (e) { if (manual) toast("Couldn't check for updates: " + e.message, true); return; }
   if (u.dev) { if (manual) toast('This is a development build, so it doesn\'t update itself.'); return; }
   if (u.error) { if (manual) toast("Couldn't check for updates: " + u.error, true); return; }
-  if (!u.newer) { if (manual) toast(`You have the newest version (${u.current}).`); return; }
+  if (!u.newer) { if (manual) upToDatePop(u.current); return; }
   let skipped = ''; try { skipped = localStorage.getItem('hse-skip-version') || ''; } catch (_) {}
   if (!manual && skipped === u.latest) return;
   const dirty = S.dirty || (S.acct && S.acct.dirty);
