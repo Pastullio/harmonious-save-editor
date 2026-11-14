@@ -2796,7 +2796,7 @@ const GLTEX = (() => {
 })();
 
 // ------------------------------------------------------------------ Traveller page (owner, 2026-11-10)
-// A card made from your posed picture (Blender's "Save the pose as a picture" puts it in Exports): a background
+// A card made from your posed picture (Blender's "Render a picture" puts it in Exports): a background
 // (starfield, colours, a screenshot or any image), a ship or corvette, portal glyphs and your name, laid out by
 // dragging on the picture and saved as a PNG.
 const TC_SIZES = { portrait: [1080, 1350, 'Portrait'], square: [1080, 1080, 'Square'], wide: [1920, 1080, 'Wide'] };
@@ -3084,7 +3084,7 @@ async function tcDraw(cv, preview) {
       else if (preview) {
         ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = `400 ${Math.round(U * .028)}px "Jost", sans-serif`; ctx.textAlign = 'center';
         ctx.fillText('Your posed traveller goes here', W / 2, H * .5); ctx.font = `400 ${Math.round(U * .02)}px "Jost", sans-serif`;
-        ctx.fillText('In Blender: LiveLink panel, Send the pose to the editor', W / 2, H * .5 + U * .04); ctx.textAlign = 'left';
+        ctx.fillText('In Blender: LiveLink panel, Send the pose to DryDock (3D)', W / 2, H * .5 + U * .04); ctx.textAlign = 'left';
       }
     },
     glyphs: async () => {
@@ -3220,14 +3220,15 @@ PAGES.traveller = (el) => {
   const sideHtml = () => {
     const [W, H] = tcSize(st), ships = items.filter((x) => x.kind !== 'tool'), tools = items.filter((x) => x.kind === 'tool');
     const isCorv = st.ship && TC.shipItem && TC.shipItem.kind === 'corvette';
-    const travIn = `${TC.pics.length ? `<select id="tcPose">${TC.pics.map((q) => `<option value="${esc(q.name)}"${q.name === st.pose && !TC.imp.trav ? ' selected' : ''}>${esc(q.name.replace(/\.(png|glb)$/i, ''))}${/\.glb$/i.test(q.name) ? ' (3D)' : ''}</option>`).join('')}${TC.imp.trav ? '<option value="@imp" selected>Your image</option>' : ''}<option value=""${!st.pose && !TC.imp.trav ? ' selected' : ''}>No traveller</option></select>` : `${TC.imp.trav ? '<p class="small-print" data-keep>Your image</p>' : ''}<p class="dim small-print" data-keep>No poses yet. Pose your traveller in Blender, then in LiveLink press Send the pose to the editor (3D, to turn here) or Save the pose as a picture; it shows here by itself.</p>`}
+    const travIn = `${TC.pics.length ? `<select id="tcPose">${TC.pics.map((q) => `<option value="${esc(q.name)}"${q.name === st.pose && !TC.imp.trav ? ' selected' : ''}>${esc(q.name.replace(/\.(png|glb)$/i, ''))}${/\.glb$/i.test(q.name) ? ' (3D)' : ''}</option>`).join('')}${TC.imp.trav ? '<option value="@imp" selected>Your image</option>' : ''}<option value=""${!st.pose && !TC.imp.trav ? ' selected' : ''}>No traveller</option></select>` : `${TC.imp.trav ? '<p class="small-print" data-keep>Your image</p>' : ''}<p class="dim small-print" data-keep>No poses yet. Pose your traveller in Blender, then in LiveLink press Send the pose to DryDock (3D) (3D, to turn here) or Render a picture; it shows here by itself.</p>`}
       ${tcIs3d('trav') ? turnHtml('trav') : ''}${placeHtml('trav')}${cutHtml('trav')}${objActs('trav', { imp: true, has: !!(TC.imp.trav || TC.m3d || TC.img.trav) })}${APP ? '<button class="link addon-btn" type="button">Get LiveLink</button>' : ''}`;
     const shipIn = `<select id="tcShip"><option value="">No ship</option>${TC.imp.ship ? '<option value="@imp" selected>Your image</option>' : ''}${ships.map((x) => `<option value="${esc(x.key)}"${x.key === st.ship && !TC.imp.ship ? ' selected' : ''}>${esc(x.name)} (${esc(x.type.toLowerCase())})</option>`).join('')}</select>
+      ${!st.ship && !TC.imp.ship ? '<p class="dim small-print" data-keep>Not a ship, like a prop or a base? Import image takes any picture. For one rendered with your traveller, put it behind them in Blender (Lighting &amp; Rendering, Backdrop) and Render a picture.</p>' : ''}
       ${st.ship && !TC.imp.ship && tcShipModes().length > 1 ? `<div class="seg tc-show">${tcShipModes().map((m) => `<button type="button" data-show="${m}" aria-pressed="${tcShipMode() === m}">${{ '3d': '3D model', renders: 'Renders', pic: 'Your picture' }[m]}</button>`).join('')}</div>` : ''}
       ${tcIs3d('ship') ? turnHtml('ship') : ''}
       ${APP && isCorv && !TC.imp.ship && TC.shipGlb && tcShipMode() === '3d' ? `<div class="tc-renderangle"><button class="btn small primary" type="button" id="tcRenderAngle"${TC.angleBusy ? ' disabled' : ''} title="Blender renders the corvette from this angle with all its textures and colours">Render this angle</button><p class="tc-note" id="tcAngleNote" data-keep>${TC.angleBusy ? hseSpinner() + 'Blender is rendering it with its textures. It can take a minute or two; it takes this spot on the picture when it is done.' : 'Turn it to the angle you want, then render it with all its textures and colours.'}</p></div>` : ''}
       ${isCorv && !TC.imp.ship && TC.shipViews.length > 1 && tcShipMode() === 'renders' ? `<label class="field"><span>Angle</span><select id="tcView">${TC.shipViews.map(([v, l]) => `<option value="${v}"${v === (st.shipView || TC.shipViews[0][0]) ? ' selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
-      ${isCorv && !TC.imp.ship && !TC.shipGlb ? `<p class="tc-note" id="tc3dNote" data-keep>${TC.making3d === st.ship ? hseSpinner() + 'Making it in 3D in the background (Blender works out of sight). It takes a minute or two; then it turns like your traveller.' : TC.no3d ? 'To turn a corvette, the editor needs Blender and Charon Forge on this PC (set them in the Garage\'s Cover settings). It runs them for you, out of sight.' : ''}</p>` : ''}
+      ${isCorv && !TC.imp.ship && !TC.shipGlb ? `<p class="tc-note" id="tc3dNote" data-keep>${TC.making3d === st.ship ? hseSpinner() + 'Making it in 3D in the background (Blender works out of sight). It takes a minute or two; then it turns like your traveller.' : TC.no3d ? 'To turn a corvette, the editor needs Blender and Charon Forge on this PC (set them in Settings, the gear at the bottom of the sidebar). It runs them for you, out of sight.' : ''}</p>` : ''}
       ${APP && isCorv && !TC.imp.ship && TC.shipViews.filter(([v]) => !/^a-?\d/.test(v)).length < COVER_VIEWS.length && tcShipMode() !== 'pic' && tcShipMode() !== '3d' ? `<p class="tc-note" id="tcRenderNote" data-keep>${TC.rendering === st.ship ? hseSpinner() + 'Blender is drawing the front, side, back and top. It can take a few minutes; the angles show here when they are ready.' : ''}</p><button class="btn small" type="button" id="tcRenderViews"${TC.rendering === st.ship ? ' disabled' : ''} title="Blender renders the corvette from the front, side, back and top (needs Blender and Charon Forge)">Render the angles</button>` : ''}
       ${st.ship || TC.imp.ship ? placeHtml('ship') + cutHtml('ship') : ''}${objActs('ship', { imp: true, has: !!(st.ship || TC.imp.ship) })}`;
     const toolIn = `<select id="tcTool"><option value="">No multi-tool</option>${tools.map((x) => `<option value="${esc(x.key)}"${x.key === st.tool ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
@@ -3303,7 +3304,7 @@ PAGES.traveller = (el) => {
     if (rv) rv.onclick = async () => {
       const it = TC.shipItem, key = st.ship;
       const setup = await renderSetup().catch(() => null);
-      if (!setup || !setup.ready) { toast("Renders need Blender and Charon Forge. Set them up in the Garage's Cover settings.", true); return; }
+      if (!setup || !setup.ready) { toast("Renders need Blender and Charon Forge. Set them up in Settings (the gear at the bottom of the sidebar).", true); return; }
       TC.rendering = key; wire();
       const note = (t) => { const n = $('#tcRenderNote'); if (n) n.innerHTML = hseSpinner() + esc(t); };
       const busyNote = 'Blender is drawing the front, side, back and top. It can take a few minutes; the angles show here when they are ready.';
@@ -3319,7 +3320,7 @@ PAGES.traveller = (el) => {
         st.shipShow = 'renders'; st.shipView = 'front'; tcSave();
         TC.img.ship = await tcShipImage(it); TC.cache.ship = null;
         if (TC.shipViews.length > 1) toast('The front, side, back and top are ready: pick one under Angle.');
-        else toast("Blender didn't make the other angles. Check Cover settings in the Garage.", true);
+        else toast("Blender didn't make the other angles. Check Settings (the gear at the bottom of the sidebar).", true);
       } catch (e) { TC.rendering = null; toast('Could not render it: ' + e.message, true); }
       wire(); redraw();
     };
@@ -3327,7 +3328,7 @@ PAGES.traveller = (el) => {
     if (ra) ra.onclick = async () => {
       const it = TC.shipItem, key = st.ship, l = st.layers.ship;
       const setup = await renderSetup().catch(() => null);
-      if (!setup || !setup.ready) { toast("Rendering needs Blender and Charon Forge. Set them up in the Garage's Cover settings.", true); return; }
+      if (!setup || !setup.ready) { toast("Rendering needs Blender and Charon Forge. Set them up in Settings (the gear at the bottom of the sidebar).", true); return; }
       TC.angleBusy = true; wire();
       const note = (t) => { const n = $('#tcAngleNote'); if (n) n.innerHTML = hseSpinner() + esc(t); };
       try {
@@ -3429,7 +3430,7 @@ PAGES.traveller = (el) => {
     { const it = st.ship && TC.shipItem && TC.shipItem.key === st.ship ? TC.shipItem : null; if (it && it.kind === 'corvette' && !TC.shipGlb && !TC.imp.ship) make3d(it); }
     if (st.tool && !TC.toolGlb && !TC.toolModel) { const it = items.find((x) => x.key === st.tool); if (it) await tcToolModel(it); }
     if (!el.isConnected) return; tcSave(); wire(); redraw();
-    // Blender's "Save the pose as a picture" and "Send the pose to the editor" land here by themselves while the page is open
+    // Blender's "Render a picture" and "Send the pose to DryDock (3D)" land here by themselves while the page is open
     const watch = setInterval(async () => {
       if (!el.isConnected) { clearInterval(watch); return; }
       const pics = await tcPictures(), n = pics[0];
@@ -4882,7 +4883,7 @@ async function pickScreenshot() {
   const src = (sh, thumb) => `/api/screenshot?account=${account}&d=${sh.d}&name=${encodeURIComponent(sh.name)}${thumb ? '&thumb=1' : ''}&t=${encodeURIComponent(APP.token)}`;
   if (!res.shots.length) {
     await dialog('No screenshots found', `<p>${res.dirs.length ? 'Looked in ' + res.dirs.map((d) => `<span class="mono">${esc(d)}</span>`).join(' and ') + '.' : 'Steam\'s screenshot folder for No Man\'s Sky wasn\'t found.'}</p>
-      <p>Take a photo-mode shot in No Man's Sky with Steam's screenshot key (F12 by default), or set a screenshot folder in Cover settings.</p>`, [['OK', true, 'primary']]);
+      <p>Take a photo-mode shot in No Man's Sky with Steam's screenshot key (F12 by default), or set a screenshot folder in Settings (the gear at the bottom of the sidebar).</p>`, [['OK', true, 'primary']]);
     return null;
   }
   const pick = await customDialog({
@@ -9084,14 +9085,14 @@ addEventListener('pagehide', () => { if (LIVE.on && window.NMS_APP) navigator.se
 // 3D prints. Shipwright and Bases keep their own small LiveLink box.
 const LL = { setup: null, status: null, prints: null, pics: null, ships: null, glb: new Map() };
 const LL_PANELS = [
-  ['pink', 'LiveLink', 'Shows whether DryDock is open and what LiveLink is on for.'],
+  ['pink', 'LiveLink', 'Shows that DryDock is open and what LiveLink is on for. Your traveller works without turning it on.'],
   ['pink', 'Builds: corvettes and bases', 'Which corvette this .blend updates, Send on save (Ctrl+S), Send now, and Send the corvette in 3D.'],
-  ['blue', 'Your traveller', 'Import my traveller (from the save open here), Pose Mode / Object Mode.'],
+  ['blue', 'Your traveller', 'Import my traveller (from the save open here), Pose Mode / Object Mode, and Move hands and feet: drag a hand or foot with G and the limb follows.'],
   ['blue', 'Poses', 'Ready-made poses that apply as you pick them, your own saved poses, hand shapes.'],
   ['blue', 'Body parts', 'Pick arms, legs, fingers to turn each at its own joint.'],
   ['blue', 'Multi-tool', 'Put one of your multi-tools in the traveller\'s hand.'],
-  ['blue', 'Lighting & Rendering', 'A corvette as a backdrop, lighting setups, the traveller camera, Quick or Best quality.'],
-  ['blue', 'Export', 'Send the pose here in 3D, or save it as a picture.'],
+  ['blue', 'Lighting & Rendering', 'A corvette, base or any .blend as a backdrop, lighting setups, the traveller camera, Quick or Best quality.'],
+  ['blue', 'Export', 'Render a picture (a finished image), or send the pose to DryDock in 3D. Make a picture, step by step, shows the whole way.'],
   ['green', '3D print', 'Your traveller, this file\'s corvette or base, or a backdrop as one solid STL, with a preview first.'],
 ];
 const llKb = (n) => (n >= 1048576 ? (n / 1048576).toFixed(n >= 104857600 ? 0 : 1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
@@ -9152,8 +9153,8 @@ function llFromBlenderHtml() {
   const list = (xs, kind) => xs.slice(0, 6).map((x) => `<li><span>${esc(x.name.replace(/\.(png|glb)$/i, ''))}</span><span class="dim small-print">${llWhen(x.mtime)}</span></li>`).join('');
   return `<section class="panel ll-from"><h3>From Blender ${hint('What the add-on sent or saved: pose pictures, 3D poses and corvettes in 3D. They\'re in the Exports folder, and the Traveller page uses them.')}</h3>
     <div class="ll-from-grid">
-      <div><h4>Pose pictures <span class="count">${poses.length}</span></h4>${poses.length ? `<div class="ll-thumbs">${poses.slice(0, 6).map((x) => `<img alt="${esc(x.name)}" title="${esc(x.name)}" loading="lazy" src="/api/exports/file?name=${encodeURIComponent(x.name)}&t=${encodeURIComponent(APP.token)}">`).join('')}</div>` : '<p class="dim small-print">None yet: Export, Save the pose as a picture.</p>'}</div>
-      <div><h4>3D poses <span class="count">${p3.length}</span></h4>${p3.length ? `<ul class="ll-files">${list(p3)}</ul>` : '<p class="dim small-print">None yet: Export, Send the pose to the editor.</p>'}</div>
+      <div><h4>Pose pictures <span class="count">${poses.length}</span></h4>${poses.length ? `<div class="ll-thumbs">${poses.slice(0, 6).map((x) => `<img alt="${esc(x.name)}" title="${esc(x.name)}" loading="lazy" src="/api/exports/file?name=${encodeURIComponent(x.name)}&t=${encodeURIComponent(APP.token)}">`).join('')}</div>` : '<p class="dim small-print">None yet: in Blender, Export, Render a picture.</p>'}</div>
+      <div><h4>3D poses <span class="count">${p3.length}</span></h4>${p3.length ? `<ul class="ll-files">${list(p3)}</ul>` : '<p class="dim small-print">None yet: Export, Send the pose to DryDock (3D).</p>'}</div>
       <div><h4>Corvettes in 3D <span class="count">${sh.length}</span></h4>${sh.length ? `<ul class="ll-files">${list(sh)}</ul>` : '<p class="dim small-print">None sent from Blender yet.</p>'}</div>
     </div>
     <div class="toolbar"><button class="btn small" type="button" data-ll="traveller">Make a picture on the Traveller page</button><button class="btn small ghost" type="button" data-ll="exports">Open the Exports folder</button></div></section>`;

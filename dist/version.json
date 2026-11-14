@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.14.2142",
+  "version": "2026.11.14.2213",
   "date": "2026-11-14",
-  "size": 14976000,
-  "sha256": "84a14e0676f073330380a79995f7ee15eeeeb894b5ccb44ebfca4c0ddef093a4",
-  "notes": "LiveLink add-on 1.25.0 (install it again in Blender: Get LiveLink): the waist now bends right over, leans back, tips sideways and turns; arms, wrists and the neck move further too; fingers curl into a fist without folding backwards, knuckles spread and the thumb swings across the palm.\nNew in Your traveller: Move hands and feet. Click a hand or foot and press G, and the arm or leg follows it; click an elbow or knee to steer which way it bends. Turning it off keeps the pose.",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.14.2142/HarmoniousSaveEditor.exe",
+  "size": 14980608,
+  "sha256": "d4a94ec3b17296c03a465763c7395d71e62d648b4a6bdb03ff96abdd82e3b977",
+  "notes": "LiveLink add-on 1.26.0 (install it again in Blender: Get LiveLink): clearer names and help. Save the pose as a picture is now Render a picture, and Export has Make a picture, step by step. The backdrop takes a corvette, base or any .blend, like a prop. The LiveLink panel no longer says LiveLink is off when your traveller already works.\nTraveller page: the Ship box says how to bring in something that isn't a ship (Import image, or a Blender backdrop).",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.14.2213/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

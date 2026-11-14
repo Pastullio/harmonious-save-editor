@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 25, 0),
+    "version": (1, 26, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious DryDock every time you save",
@@ -332,7 +332,7 @@ class HARMONIOUS_OT_send(bpy.types.Operator):
 
 def switch_warning(armed, name):
     return ["LiveLink in the editor is on for %s." % armed,
-            "Turn it on for %s in Shipwright," % name,
+            "Turn it on for %s on DryDock's LiveLink page," % name,
             "or the editor will ask before writing to it."]
 
 
@@ -461,15 +461,20 @@ class HARMONIOUS_PT_live(bpy.types.Panel):
             up = layout.box()
             up.alert = True
             up.label(text="A newer add-on (%s) is ready" % newer_addon(), icon="ERROR")
-            up.label(text="Get it on Shipwright and install it over this one")
+            up.label(text="Get LiveLink on DryDock's LiveLink page,")
+            up.label(text="then install it over this one")
         # the link, first and clearest
         link = layout.box()
         if LINK["state"] == "on":
             link.label(text="Linked to " + LINK["target"], **ic("link", "LINKED"))
             link.label(text="Each save sends the build there")
         elif LINK["state"] == "off":
-            link.label(text="Editor open, LiveLink off", icon="UNLINKED")
-            link.label(text="Turn it on in Shipwright or on Bases")
+            # owner 2026-11-14: "LiveLink off" read as if nothing worked; only sending builds waits for it
+            link.label(text="DryDock is open", icon="LINKED")
+            t = link.column(align=True)
+            t.scale_y = 0.8
+            for line in wrap("Your traveller, poses, pictures and prints work now. To send a build into your save, turn LiveLink on for that corvette or base on DryDock's LiveLink page.", 40):
+                t.label(text=line)
         else:
             link.label(text="Harmonious DryDock isn't running", icon="ERROR")
 
@@ -2510,7 +2515,7 @@ class HARMONIOUS_OT_drop_tool(bpy.types.Operator):
 
 class HARMONIOUS_OT_send_pose(bpy.types.Operator):
     bl_idname = "harmonious.send_pose"
-    bl_label = "Send the pose to the editor"
+    bl_label = "Send the pose to DryDock (3D)"
     bl_description = "Send your posed traveller to Harmonious DryDock in 3D, to turn and place on the Traveller page"
 
     @classmethod
@@ -2757,8 +2762,9 @@ def glow_changed(self, context):
 
 class HARMONIOUS_OT_picture(bpy.types.Operator):
     bl_idname = "harmonious.pose_picture"
-    bl_label = "Save the pose as a picture"
-    bl_description = "Render the scene's camera (one is added looking at your traveller if there's none) to a PNG with a transparent background"
+    bl_label = "Render a picture"
+    bl_description = ("Render what the camera sees, with your lights, backdrop and quality, to a PNG with a transparent background in "
+                      "the Exports folder (a camera looking at your traveller is added if there's none). It shows on DryDock's Traveller page")
 
     def execute(self, context):
         import datetime
@@ -2896,11 +2902,15 @@ class HARMONIOUS_PT_poses(LiveLinkPanel, bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        layout.prop(context.scene, "harmonious_pose", text="")
+        layout.prop(context.scene, "harmonious_pose", text="Pose")
         layout.operator(HARMONIOUS_OT_pose_reset.bl_idname, text="Reset pose", icon="LOOP_BACK")
         row = layout.row(align=True)
         row.operator(HARMONIOUS_OT_pose_save.bl_idname, icon="FILE_TICK")
         row.operator(HARMONIOUS_OT_poses_folder.bl_idname, text="", icon="FILE_FOLDER")
+        tip = layout.column(align=True)
+        tip.scale_y = 0.8
+        for line in wrap("Picking a pose puts it on at once. Change it by clicking parts of the body; Save my pose keeps yours in the list.", 40):
+            tip.label(text=line)
 
 
 class HARMONIOUS_PT_parts(LiveLinkPanel, bpy.types.Panel):
@@ -2946,10 +2956,14 @@ class HARMONIOUS_PT_tool(LiveLinkPanel, bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        layout.prop(context.scene, "harmonious_tool", text="")
+        layout.prop(context.scene, "harmonious_tool", text="Multi-tool")
         row = layout.row(align=True)
         row.operator(HARMONIOUS_OT_hold_tool.bl_idname, **ic("tool", "HAND"))
         row.operator(HARMONIOUS_OT_drop_tool.bl_idname, icon="X")
+        tip = layout.column(align=True)
+        tip.scale_y = 0.8
+        for line in wrap("One of your multi-tools, in the right hand; it follows the pose.", 40):
+            tip.label(text=line)
 
 
 # ------------------------------------------------------------------ a corvette (or any .blend) behind the traveller
@@ -3326,7 +3340,7 @@ class HARMONIOUS_PT_share(LiveLinkPanel, bpy.types.Panel):
         layout = self.layout
         scene = context.scene
         box = layout.box()
-        box.label(text="Backdrop: a corvette behind you", icon="SCENE_DATA")
+        box.label(text="Backdrop: a corvette, base or any .blend", icon="SCENE_DATA")
         row = box.row(align=True)
         row.prop(scene, "harmonious_blend", text="")
         add = row.row(align=True)
@@ -3969,6 +3983,16 @@ class HARMONIOUS_OT_print(bpy.types.Operator):
         return {"FINISHED"}
 
 
+PICTURE_STEPS = (
+    "Pose your traveller: pick a pose in Poses, or click parts of the body in Pose Mode and turn them (R).",
+    "Optional: put a corvette, base or any prop behind them: Lighting & Rendering, Backdrop, Choose a .blend file.",
+    "Pick a lighting in Lighting & Rendering.",
+    "Press Traveller camera, then See what the camera sees, and move the view to frame the picture.",
+    "Rendering: Best for the finished picture (slower), Quick to check.",
+    "Press Render a picture. It's saved to the Exports folder and shows on DryDock's Traveller page, ready for a background, glyphs and text.",
+)
+
+
 class HARMONIOUS_PT_export(LiveLinkPanel, bpy.types.Panel):
     bl_label = "Export"
     bl_idname = "HARMONIOUS_PT_export"
@@ -3981,14 +4005,27 @@ class HARMONIOUS_PT_export(LiveLinkPanel, bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
+        big = layout.row()
+        big.scale_y = 1.3
+        big.operator(HARMONIOUS_OT_picture.bl_idname, **ic("picture", "RENDER_STILL"))
         send = layout.row()
         send.enabled = LINK["state"] != "none"
         send.operator(HARMONIOUS_OT_send_pose.bl_idname, **ic("send3d", "EXPORT"))
-        layout.operator(HARMONIOUS_OT_picture.bl_idname, **ic("picture", "RENDER_STILL"))
         tip = layout.column(align=True)
         tip.scale_y = 0.8
-        for line in wrap("The 3D pose turns on the Traveller page; the picture is what the camera sees, with the lights and quality above.", 40):
+        for line in wrap("Render a picture: a finished image of what the camera sees. Send the pose: your traveller in 3D, to turn and place on DryDock's Traveller page.", 40):
             tip.label(text=line)
+        # owner 2026-11-14 (a tester "barely figured out how to get that image to show up"): the whole way, in order
+        sc = context.scene
+        steps = layout.box()
+        steps.prop(sc, "harmonious_show_steps", text="Make a picture, step by step", icon="TRIA_DOWN" if sc.harmonious_show_steps else "TRIA_RIGHT", emboss=False)
+        if sc.harmonious_show_steps:
+            for n, text in enumerate(PICTURE_STEPS, 1):
+                lines = wrap(text, 37)
+                col = steps.column(align=True)
+                col.scale_y = 0.8
+                for k, line in enumerate(lines):
+                    col.label(text=("%d.  " % n if k == 0 else "     ") + line)
 
 
 class HARMONIOUS_PT_print(LiveLinkPanel, bpy.types.Panel):
@@ -4026,7 +4063,7 @@ class HARMONIOUS_PT_print(LiveLinkPanel, bpy.types.Panel):
             row.prop(sc, "harmonious_print_base", text="Round base")
             sub = row.row(align=True)
             sub.enabled = sc.harmonious_print_base
-            sub.prop(sc, "harmonious_print_base_mm", text="Size (mm)" if sc.harmonious_print_base_mm > 0 else "Size: fits (%d mm)" % print_base_mm(sc, h))
+            sub.prop(sc, "harmonious_print_base_mm", text="Base (mm)" if sc.harmonious_print_base_mm > 0 else "Base: fits (%d mm)" % print_base_mm(sc, h))
         else:
             size = col.row(align=True)
             size.label(text="", **ic("printsize", "FIXED_SIZE"))
@@ -4163,6 +4200,7 @@ def register():
     bpy.types.Object.harmonious_keep_shape = bpy.props.BoolProperty(
         name="Keep the body's proportions", default=True, update=keep_shape_changed,
         description="Bones only turn, so arms and legs never stretch. Turn off to move and scale bones freely")
+    bpy.types.Scene.harmonious_show_steps = bpy.props.BoolProperty(name="Make a picture, step by step", default=False)
     bpy.types.Object.harmonious_reach = bpy.props.BoolProperty(
         name="Move hands and feet", default=False, update=reach_changed,
         description="On: a hand or foot moves with G and the arm or leg bends to follow; elbows and knees get a guide "
@@ -4210,6 +4248,7 @@ def unregister():
     del bpy.types.Object.harmonious_keep_shape
     del bpy.types.Object.harmonious_natural
     del bpy.types.Object.harmonious_reach
+    del bpy.types.Scene.harmonious_show_steps
     del bpy.types.Scene.harmonious_curl_r
     del bpy.types.Scene.harmonious_curl_l
     del bpy.types.Scene.harmonious_pose

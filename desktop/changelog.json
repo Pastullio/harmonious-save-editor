@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.14.2213",
+  "date": "2026-11-14",
+  "notes": [
+   "LiveLink add-on 1.26.0 (install it again in Blender: Get LiveLink): clearer names and help. Save the pose as a picture is now Render a picture, and Export has Make a picture, step by step. The backdrop takes a corvette, base or any .blend, like a prop. The LiveLink panel no longer says LiveLink is off when your traveller already works.",
+   "Traveller page: the Ship box says how to bring in something that isn't a ship (Import image, or a Blender backdrop)."
+  ]
+ },
+ {
   "version": "2026.11.14.2142",
   "date": "2026-11-14",
   "notes": [
