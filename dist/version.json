@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.14.2213",
+  "version": "2026.11.14.2216",
   "date": "2026-11-14",
-  "size": 14980608,
-  "sha256": "d4a94ec3b17296c03a465763c7395d71e62d648b4a6bdb03ff96abdd82e3b977",
-  "notes": "LiveLink add-on 1.26.0 (install it again in Blender: Get LiveLink): clearer names and help. Save the pose as a picture is now Render a picture, and Export has Make a picture, step by step. The backdrop takes a corvette, base or any .blend, like a prop. The LiveLink panel no longer says LiveLink is off when your traveller already works.\nTraveller page: the Ship box says how to bring in something that isn't a ship (Import image, or a Blender backdrop).",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.14.2213/HarmoniousSaveEditor.exe",
+  "size": 14982144,
+  "sha256": "b1d38081b24dfabd78820e075d987a92f054e1bc8753d7a83b5564e205734dc1",
+  "notes": "LiveLink add-on 1.27.0 (install it again in Blender: Get LiveLink): Body parts are grouped into Body, Hands and Outfit; Show every stick is now Show all bones; in a file with only your traveller, the Builds panel just says to open your corvette's or base's .blend.",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.14.2216/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

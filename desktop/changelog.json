@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.14.2216",
+  "date": "2026-11-14",
+  "notes": [
+   "LiveLink add-on 1.27.0 (install it again in Blender: Get LiveLink): Body parts are grouped into Body, Hands and Outfit; Show every stick is now Show all bones; in a file with only your traveller, the Builds panel just says to open your corvette's or base's .blend."
+  ]
+ },
+ {
   "version": "2026.11.14.2213",
   "date": "2026-11-14",
   "notes": [

@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 26, 0),
+    "version": (1, 27, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious DryDock every time you save",
@@ -513,6 +513,14 @@ class HARMONIOUS_PT_build(LiveLinkPanel, bpy.types.Panel):
                 warn.label(text="The editor is on for " + ("a corvette" if LINK.get("kind") != "base" else "another base"), icon="ERROR")
                 warn.label(text="It will ask before writing")
             self.draw_send(context, layout)
+            return
+        # a picture file with only the traveller (and maybe a backdrop) has no build to send (owner 2026-11-14: "Choose a
+        # corvette" there was confusing)
+        if scene.harmonious_target_slot < 0 and has_traveller() and not scene_build_objects(scene, first=True):
+            note = layout.column(align=True)
+            note.scale_y = 0.8
+            for line in wrap("No corvette or base in this file. Open your corvette's or base's .blend to send it into your save.", 40):
+                note.label(text=line)
             return
         # which corvette this .blend updates (saved in the file, so each version keeps its corvette)
         col = layout.column(align=True)
@@ -1607,6 +1615,13 @@ BODY_PARTS = (
 )
 
 
+_HAND_KEYS = ("r_hand", "l_hand", "r_thumb", "l_thumb")
+PART_GROUPS = (
+    ("Body", lambda k: k in ("whole", "head", "torso", "r_arm", "l_arm", "r_leg", "l_leg")),
+    ("Hands", lambda k: k in _HAND_KEYS or (len(k) > 3 and k[1:3] == "_f")),
+    ("Outfit", lambda k: k in ("backpack", "drone", "collar", "front", "back")),
+)
+
 ORDINALS = ("first", "second", "third", "fourth", "fifth")
 
 
@@ -1691,7 +1706,7 @@ class HARMONIOUS_OT_body_part(bpy.types.Operator):
 class HARMONIOUS_OT_body_parts_clear(bpy.types.Operator):
     bl_idname = "harmonious.body_parts_clear"
     bl_label = "Let go of all"
-    bl_description = "Deselect every part and hide the sticks"
+    bl_description = "Deselect every part and hide its bones"
     bl_options = {"REGISTER", "UNDO"}
 
     @classmethod
@@ -1706,7 +1721,7 @@ class HARMONIOUS_OT_body_parts_clear(bpy.types.Operator):
 
 class HARMONIOUS_OT_show_bones(bpy.types.Operator):
     bl_idname = "harmonious.show_bones"
-    bl_label = "Show every stick"
+    bl_label = "Show all bones"
     bl_description = "Show all the bones of the traveller, or hide them again so only the part you click shows"
 
     @classmethod
@@ -2887,7 +2902,7 @@ class HARMONIOUS_PT_traveller(LiveLinkPanel, bpy.types.Panel):
             for line in wrap("Click a hand or foot, then G moves it and the arm or leg follows. Click an elbow or knee to steer which way it bends.", 40):
                 t.label(text=line)
         shown = not any(is_hidden(arm, b) for b in body_bones(arm))
-        layout.operator(HARMONIOUS_OT_show_bones.bl_idname, text="Hide the sticks" if shown else "Show every stick", icon="HIDE_OFF" if not shown else "HIDE_ON")
+        layout.operator(HARMONIOUS_OT_show_bones.bl_idname, text="Hide the bones" if shown else "Show all bones", icon="HIDE_OFF" if not shown else "HIDE_ON")
 
 
 class HARMONIOUS_PT_poses(LiveLinkPanel, bpy.types.Panel):
@@ -2931,11 +2946,15 @@ class HARMONIOUS_PT_parts(LiveLinkPanel, bpy.types.Panel):
         tip.scale_y = 0.8
         for line in wrap("Pick one part or several, then R turns them, each at its own joint.", 40):
             tip.label(text=line)
-        grid = layout.grid_flow(row_major=True, columns=2, even_columns=True, align=True)
-        for part in BODY_PARTS:
-            if not part_bones(arm, part)[0]:
+        # grouped so the list scans (owner 2026-11-14): the body, the hands and fingers, and what's worn
+        for title, keys in PART_GROUPS:
+            parts = [p for p in BODY_PARTS if keys(p[0]) and part_bones(arm, p)[0]]
+            if not parts:
                 continue
-            grid.operator(HARMONIOUS_OT_body_part.bl_idname, text=part_label(arm, part), depress=part_on(arm, part)).part = part[0]
+            layout.label(text=title)
+            grid = layout.grid_flow(row_major=True, columns=2, even_columns=True, align=True)
+            for part in parts:
+                grid.operator(HARMONIOUS_OT_body_part.bl_idname, text=part_label(arm, part), depress=part_on(arm, part)).part = part[0]
         layout.operator(HARMONIOUS_OT_body_parts_clear.bl_idname, icon="X")
         hands = layout.box()
         hands.label(text="Hands: open to fist", **ic("bone", "HAND"))
