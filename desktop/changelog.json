@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.14.2142",
+  "date": "2026-11-14",
+  "notes": [
+   "LiveLink add-on 1.25.0 (install it again in Blender: Get LiveLink): the waist now bends right over, leans back, tips sideways and turns; arms, wrists and the neck move further too; fingers curl into a fist without folding backwards, knuckles spread and the thumb swings across the palm.",
+   "New in Your traveller: Move hands and feet. Click a hand or foot and press G, and the arm or leg follows it; click an elbow or knee to steer which way it bends. Turning it off keeps the pose."
+  ]
+ },
+ {
   "version": "2026.11.13.2123",
   "date": "2026-11-13",
   "notes": [

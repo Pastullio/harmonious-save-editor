@@ -212,7 +212,9 @@ print('PANELS', '|'.join(drawn), '|parents:' + ','.join(c.bl_label for c in pane
 import math
 split = sorted(b.name for b in arm.data.bones if '_03b_' in b.name)
 hinges = {pb.name: pb['harmonious_hinge'] for pb in arm.pose.bones if 'harmonious_hinge' in pb}
-locked_ok = all(sum(arm.pose.bones[n].lock_rotation) == 2 and arm.pose.bones[n].rotation_mode == 'XYZ' for n in hinges)
+# middle and tip joints: two axes locked; knuckles and the thumb's base (1.25.0): only the twist, the sideways swing in a range
+import re as _re
+locked_ok = all(sum(arm.pose.bones[n].lock_rotation) == (1 if _re.search(r'_hand_0[0-9]b?_01$', n) else 2) and arm.pose.bones[n].rotation_mode == 'XYZ' for n in hinges)
 mesh = h.traveller_meshes(arm)[0]
 def tips(group):
     g = mesh.vertex_groups[group]; ids = [v.index for v in mesh.data.vertices if any(e.group == g.index and e.weight > .5 for e in v.groups)]
@@ -381,6 +383,24 @@ if stl2:
 sc.harmonious_print_detail = 'AUTO'
 print('PRINTSIZES', 'FINISHED' in rp2, round(z2), h.print_base_mm(sc), h.print_detail(sc), h.print_detail(sc, 32), h.print_detail(sc, 60))
 sc.harmonious_print_size = 'TABLETOP'
+# Move hands and feet (owner 2026-11-14: Move did the same as Rotate): handles on the hands and feet, G on one and the
+# limb follows; on and off leave the pose where it is; clicks on a hand or an elbow pick its handle or guide
+WM = arm.matrix_world
+def RP(n): return WM @ arm.pose.bones[n].head
+look0 = {n: RP(n).copy() for n in ('r_arm_Elbow', 'r_arm_Wrist', 'l_leg_Knee', 'l_leg_Ankle')}
+arm.harmonious_reach = True; bpy.context.view_layer.update()
+jump = max((RP(n) - look0[n]).length for n in look0)
+picks = (h.pivot_bone(arm, 'r_arm_Wrist'), h.pivot_bone(arm, 'l_arm_Elbow'), h.pivot_bone(arm, 'r_leg_Ball'))
+hd = arm.pose.bones['IK r hand']; fwd_r, left_r, up_r = h.body_frame(arm)
+m = hd.matrix.copy(); m.translation = m.translation + fwd_r * 0.12; hd.matrix = m; bpy.context.view_layer.update()
+follow = (RP('r_arm_Wrist') - WM @ hd.head).length
+moved = (RP('r_arm_Wrist') - look0['r_arm_Wrist']).length
+look1 = {n: RP(n).copy() for n in look0}
+arm.harmonious_reach = False; bpy.context.view_layer.update()
+kept = max((RP(n) - look1[n]).length for n in look1)
+left_over = [b.name for b in arm.data.bones if h.is_handle(b.name)]
+print('REACH', round(jump * 1000, 1), picks == ('IK r hand', 'Bend l elbow', 'IK r foot'), round(follow * 1000, 1), round(moved * 1000), round(kept * 1000, 1), len(left_over))
+h.clear_pose(arm); h.apply_natural(arm); bpy.context.view_layer.update()
 # Body parts: pick several, each turns at its own joint; picking one again lets go of it
 have = [q[0] for q in h.BODY_PARTS if h.part_bones(arm, q)[0]]
 bpy.ops.harmonious.body_parts_clear(); bpy.ops.harmonious.body_part(part='front'); bpy.ops.harmonious.body_part(part='backpack')
@@ -412,7 +432,7 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
 `);
     let out = '';
     try { out = execFileSync(py, [script], { env: { ...process.env, HSE_LIVE_FILE: path.join(cfg, 'HarmoniousSaveEditor', 'live.json') }, timeout: 1200000 }).toString(); } catch (e) { out = String(e.stdout || '') + e.message; }
-    console.log(out.split('\n').filter((l) => /^(GAP|WORST|LIMITS|INSTANT|BACKDROP|SHIPPRINT|SCENEPRINT|PRINT|PRINTSIZES|PREVIEW|CAMERA|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|FINGERS|SHIP|Traceback|  File|\w+Error)/.test(l)).join('\n'));
+    console.log(out.split('\n').filter((l) => /^(GAP|WORST|LIMITS|INSTANT|BACKDROP|SHIPPRINT|SCENEPRINT|PRINT|PRINTSIZES|REACH|PREVIEW|CAMERA|FINGER|KEEP|HEADPICK|POSES|SENDPOSE|PICK|SHOWN|HOLD|PARTS|PANELS|MODES|LIGHTS|SELLIGHT|ICONS|FINGERS|SHIP|Traceback|  File|\w+Error)/.test(l)).join('\n'));
     const line = (k) => (out.match(new RegExp('^' + k + ' (.*)$', 'm')) || [])[1] || '';
     ok('the add-on sees the traveller in the editor', line('TRAVELLER') === 'Pastullio');
     ok('Import my traveller brings in the skeleton', line('IMPORT').includes('FINISHED') && +line('BONES') > 200);
@@ -480,6 +500,8 @@ h.unregister(); sys.stdout.flush(); os._exit(0)
     ok('the 3D print panel also prints the file\'s own build (not the traveller), 100 mm long on a stand (' + scp.join(' ') + ')', scp[0] === 'True' && scp[1] === 'True' && scp[2] === 'True' && Math.abs(+scp[3] - 100) <= 2 && scp[4] === 'TRAVELLER');
     const pvw = line('PREVIEW').split(' ');
     ok('Preview the print stands the grey print model beside the traveller, out of pictures, writes nothing, and × takes it away (' + pvw.join(' ') + ')', pvw[0] === 'True' && pvw[1] === 'True' && Math.abs(+pvw[2] - 33) <= 1 && pvw[3] === 'True' && pvw[4] === 'True');
+    const rc = line('REACH').split(' ');
+    ok('Move hands and feet: on without a jump, clicks pick the handles, the hand follows its handle, off keeps the pose (' + rc.join(' ') + ')', +rc[0] < 2 && rc[1] === 'True' && +rc[2] < 3 && +rc[3] > 80 && +rc[4] < 20 && rc[5] === '0');
     const ps = line('PRINTSIZES').split(' ');
     ok('…sizes: an action figure is 152 mm on a fitted base, the game mesh as is, and Auto gives bigger prints more detail (' + ps.join(' ') + ')', ps[0] === 'True' && Math.abs(+ps[1] - 155) <= 2 && ps[2] === '90' && ps[3] === 'ULTRA' && ps[4] === 'NORMAL' && ps[5] === 'HIGH');
     const parts = line('PARTS');

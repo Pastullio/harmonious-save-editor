@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 24, 0),
+    "version": (1, 25, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious DryDock every time you save",
@@ -618,6 +618,8 @@ def apply_keep_shape(arm):
     length and size stay; the root still moves the whole traveller. Off: bones move and scale freely."""
     on = bool(getattr(arm, "harmonious_keep_shape", True))
     for pb in arm.pose.bones:
+        if is_handle(pb.name):
+            continue
         lock = on and not free_bone(pb)
         pb.lock_location = (lock, lock, lock)
         pb.lock_scale = (on, on, on)
@@ -960,13 +962,17 @@ def hinge_axes(arm):
 # when the bone bends the other way, so it always bends forwards (back for knees). None leaves an axis free.
 NATURAL = "Harmonious natural"
 JOINT_LIMITS = (
-    (r"spine_0[12]|spine_Top", (-15, 30), (-15, 15), (-20, 20), "fwd"),
-    (r"neck_01_0[12]", (-30, 40), (-25, 25), (-45, 45), "fwd"),
-    (r"head_Top", (-15, 15), (-10, 10), (-15, 15), None),
-    (r"[lr]_arm_Clavicle", (-20, 20), (-25, 25), (-10, 10), None),
-    (r"[lr]_arm_Shoulder", None, None, (-90, 90), None),
-    (r"[lr]_arm_Elbow", (0, 150), (-5, 5), (-85, 85), "fwd"),
-    (r"[lr]_arm_Wrist", (-75, 75), (-30, 30), (-15, 15), None),
+    # the waist (owner 2026-11-14: "very limited"): a click picks ONE spine bone, so each one alone can bend as far as
+    # a person's whole waist does (touch the toes, lean back, side bends, turn to look behind); together they go further
+    (r"spine_01", (-35, 95), (-40, 40), (-60, 60), "fwd"),
+    (r"spine_02", (-30, 70), (-35, 35), (-50, 50), "fwd"),
+    (r"spine_Top", (-25, 50), (-30, 30), (-45, 45), "fwd"),
+    (r"neck_01_0[12]", (-45, 60), (-40, 40), (-75, 75), "fwd"),
+    (r"head_Top", (-20, 20), (-15, 15), (-20, 20), None),
+    (r"[lr]_arm_Clavicle", (-30, 35), (-35, 35), (-15, 15), None),
+    (r"[lr]_arm_Shoulder", None, None, (-110, 110), None),
+    (r"[lr]_arm_Elbow", (0, 155), (-8, 8), (-95, 95), "fwd"),
+    (r"[lr]_arm_Wrist", (-85, 85), (-40, 40), (-20, 20), None),
     (r"[lr]_leg_Hip", (-30, 135), (-45, 45), (-55, 55), "fwd"),
     (r"[lr]_leg_Knee", (0, 150), (-10, 10), (-25, 25), "back"),
     (r"[lr]_leg_Ankle", (-45, 45), (-30, 30), (-20, 20), None),
@@ -1030,12 +1036,15 @@ def natural_mute(arm, mute):
 
 
 def apply_natural(arm):
-    """Natural joints on: fingers bend round one axis only (Euler, the other two locked), every other joint turns
-    within a person's range (JOINT_LIMITS). Off: free again."""
+    """Natural joints on: fingers bend round one axis only (Euler, the other two locked; the knuckles and the thumb's
+    base also swing sideways a little), every other joint turns within a person's range (JOINT_LIMITS). Off: free
+    again."""
+    import re
     on = bool(getattr(arm, "harmonious_natural", True))
     W3i = arm.matrix_world.inverted().to_3x3()
     hinges = finger_hinges(arm) if on else {}
     limits = joint_limits(arm) if on else {}
+    reach_bones = {n for limb in reach_limbs(arm) for n in limb[:3]} if reach_on(arm) else set()
     for pb in arm.pose.bones:
         c = pb.constraints.get(NATURAL)
         lim = limits.get(pb.name)
@@ -1047,7 +1056,7 @@ def apply_natural(arm):
                 c = pb.constraints.new("LIMIT_ROTATION")
                 c.name = NATURAL
             c.owner_space = "LOCAL"
-            c.mute = False
+            c.mute = pb.name in reach_bones
             if hasattr(c, "euler_order"):
                 c.euler_order = "XYZ"
             if hasattr(c, "use_legacy_behavior"):
@@ -1084,7 +1093,42 @@ def apply_natural(arm):
         pb.lock_rotation = tuple(i != idx for i in range(3))
         pb["harmonious_hinge"] = idx
         pb["harmonious_curl"] = 1 if local[idx] > 0 else -1   # turning this way curls it towards the palm
-
+        # a finger curls in about as far as a fist and bends back a little; the knuckles also spread a little and the
+        # thumb's base swings across the palm (owner 2026-11-14: hands felt stiff, and fingers folded back 170°):
+        # those open the sideways axis within a range and lock only the twist
+        name = pb.name.rsplit(":", 1)[-1]
+        m = re.fullmatch(r"[lr]_hand_(0\d)b?_(0\d)", name)
+        spread = 0
+        if m:
+            thumb, seg = m.group(1) == "05", m.group(2)
+            curl_in, back = (70, 35) if thumb and seg == "01" else (90, 20) if thumb else (100, 30) if seg == "01" else (110, 12)
+            sgn = pb["harmonious_curl"]
+            lo, hi = (-back, curl_in) if sgn > 0 else (-curl_in, back)
+            if seg == "01":
+                spread = 40 if thumb else 18
+            sp = None
+            if spread:
+                child = pb.bone.children[0] if pb.bone.children else None
+                d = (child.head_local - pb.bone.head_local) if child else (pb.bone.tail_local - pb.bone.head_local)
+                dl = pb.bone.matrix_local.to_3x3().transposed() @ d
+                tw = max((i for i in range(3) if i != idx), key=lambda i: abs(dl[i]) if dl.length else (i == 1))
+                sp = 3 - idx - tw
+                pb.lock_rotation = tuple(i == tw for i in range(3))
+            c = pb.constraints.new("LIMIT_ROTATION")
+            c.name = NATURAL
+            c.owner_space = "LOCAL"
+            if hasattr(c, "euler_order"):
+                c.euler_order = "XYZ"
+            if hasattr(c, "use_legacy_behavior"):
+                c.use_legacy_behavior = False
+            c.use_transform_limit = True
+            for i, k in enumerate("xyz"):
+                setattr(c, "use_limit_" + k, i == idx or i == sp)
+            setattr(c, "min_" + "xyz"[idx], math.radians(lo))
+            setattr(c, "max_" + "xyz"[idx], math.radians(hi))
+            if sp is not None:
+                setattr(c, "min_" + "xyz"[sp], -math.radians(spread))
+                setattr(c, "max_" + "xyz"[sp], math.radians(spread))
 
 def natural_changed(self, context):
     if self.type == "ARMATURE":
@@ -1194,6 +1238,7 @@ PIVOT_FROM_PARENT = ("head_Top",)
 
 
 def pivot_bone(arm, name):
+    name = _reach_pick(arm, name)
     b = arm.data.bones.get(name) if name else None
     if b is not None and b.parent is not None and any(name == n or name.endswith("_" + n) for n in PIVOT_FROM_PARENT):
         return b.parent.name
@@ -1215,6 +1260,175 @@ def show_bone(arm, name, extend=False):
                 set_hidden(arm, b, True)
     if name:
         arm.data.bones.active = arm.data.bones[name]
+
+
+# ---------------------------------------------------------------- move hands and feet (owner 2026-11-14)
+# "The Move tool does the same as Rotate": every joint only turns (Keep the body's proportions), so G had nothing to
+# move. With Move hands and feet on, each hand and foot gets a handle ("IK r hand"…) and each elbow and knee a guide
+# ("Bend r elbow"…): clicking a hand picks its handle, G drags it and the arm bends to follow (IK, two joints); clicking
+# an elbow, knee, upper arm or thigh picks its guide, which steers which way it bends. Off bakes the pose into the
+# joints and takes the handles away. Poses, saving and Reset pose work either way.
+REACH = (("r", "arm", "Shoulder", "Elbow", "Wrist", "hand", "elbow"), ("l", "arm", "Shoulder", "Elbow", "Wrist", "hand", "elbow"),
+         ("r", "leg", "Hip", "Knee", "Ankle", "foot", "knee"), ("l", "leg", "Hip", "Knee", "Ankle", "foot", "knee"))
+REACH_IK, REACH_ROT = "Harmonious reach", "Harmonious reach turn"
+
+
+def reach_limbs(arm):
+    """(upper, mid, end, handle, guide) bone names for each limb this traveller has."""
+    out = []
+    for s, limb, a, b, c, what, joint in REACH:
+        names = ("%s_%s_%s" % (s, limb, a), "%s_%s_%s" % (s, limb, b), "%s_%s_%s" % (s, limb, c))
+        if all(arm.data.bones.get(n) for n in names):
+            out.append(names + ("IK %s %s" % (s, what), "Bend %s %s" % (s, joint)))
+    return out
+
+
+def is_handle(name):
+    return name.startswith("IK ") or name.startswith("Bend ")
+
+
+def reach_on(arm):
+    return any(c.name == REACH_IK for pb in arm.pose.bones for c in pb.constraints)
+
+
+def _reach_pick(arm, name):
+    """With the handles on: the handle or guide that moves the part that was clicked."""
+    if not name or not reach_on(arm):
+        return name
+    for up, mid, end, handle, guide in reach_limbs(arm):
+        if name == end or (end.endswith("Ankle") and name.startswith(end[:-5]) and name[len(end) - 5:] in ("Ball", "Toe")):
+            return handle
+        if name in (up, mid):
+            return guide
+    return name
+
+
+def _set_visual(arm, pb, m):
+    pb.matrix = m
+    bpy.context.view_layer.update()
+
+
+def set_reach(arm, on):
+    """Turns the hand and foot handles on or off without the pose moving."""
+    import mathutils
+    if bool(on) == reach_on(arm):
+        return
+    ctx = bpy.context
+    limbs = reach_limbs(arm)
+    mode = ctx.mode
+    if ctx.view_layer.objects.active != arm:
+        ctx.view_layer.objects.active = arm
+    if not on:
+        # bake: remember how every joint looks, drop the IK, put the look back into the joints
+        order = [n for up, mid, end, _h, _g in limbs for n in (up, mid, end)]
+        keep = {n: arm.pose.bones[n].matrix.copy() for n in order}
+        for n in order:
+            pb = arm.pose.bones[n]
+            for c in [c for c in pb.constraints if c.name in (REACH_IK, REACH_ROT)]:
+                pb.constraints.remove(c)
+        bpy.context.view_layer.update()
+        for n in order:
+            pb = arm.pose.bones[n]
+            pb.use_ik_limit_x = pb.use_ik_limit_y = pb.use_ik_limit_z = False
+            _set_visual(arm, pb, keep[n])
+        bpy.ops.object.mode_set(mode="EDIT")
+        for *_x, handle, guide in limbs:
+            for n in (handle, guide, handle + " tip"):
+                eb = arm.data.edit_bones.get(n)
+                if eb is not None:
+                    arm.data.edit_bones.remove(eb)
+        bpy.ops.object.mode_set(mode="POSE" if mode == "POSE" else "OBJECT")
+        apply_natural(arm)
+        return
+    look = {n: arm.pose.bones[n].matrix.copy() for up, mid, end, _h, _g in limbs for n in (up, mid, end)}
+    bpy.ops.object.mode_set(mode="EDIT")
+    ebs = arm.data.edit_bones
+    root = ebs.get("ROOT")
+    body = arm.data.collections.get("Body") if hasattr(arm.data, "collections") else None
+    for up, mid, end, handle, guide in limbs:
+        e = ebs[end]
+        h = ebs.new(handle)
+        h.head, h.tail, h.roll = e.head.copy(), e.tail.copy(), e.roll
+        g = ebs.new(guide)
+        g.head = ebs[mid].head.copy()
+        g.tail = g.head + mathutils.Vector((0, 0, max(0.05, (e.tail - e.head).length * 0.6)))
+        for b in (h, g):
+            b.parent, b.use_connect, b.use_deform = root, False, False
+            if body is not None:
+                body.assign(b)
+        # the IK's tip: a tiny bone on the forearm/shin sitting where the wrist/ankle starts (Blender's IK reaches with
+        # a bone's tail, and the game's forearm and shin bones don't end at the hand and foot)
+        t = ebs.new(handle + " tip")
+        t.head = e.head.copy()
+        t.tail = e.head + (e.tail - e.head).normalized() * 0.001
+        t.parent, t.use_connect, t.use_deform = ebs[mid], False, False
+    bpy.ops.object.mode_set(mode="POSE")
+    fwd, left, up_v = body_frame(arm)
+    limits = joint_limits(arm) if getattr(arm, "harmonious_natural", True) else {}
+    for up, mid, end, handle, guide in limbs:
+        ph, pg = arm.pose.bones[handle], arm.pose.bones[guide]
+        for pb in (ph, pg):
+            pb.rotation_mode = "QUATERNION"
+            pb.lock_location = pb.lock_rotation = (False, False, False)
+            pb.lock_scale = (True, True, True)
+            if hasattr(pb, "color"):
+                pb.color.palette = "THEME04" if pb is ph else "THEME09"
+        _set_visual(arm, ph, look[end])
+        S, E, Wp = look[up].translation, look[mid].translation, look[end].translation
+        bend = E - (S + Wp) / 2
+        if bend.length < 0.02 * max(1e-6, (Wp - S).length):   # a straight limb: elbows bend back, knees forward
+            bend = -fwd if "arm" in mid else fwd
+        span = (E - S).length + (Wp - E).length
+        m = pg.matrix.copy()
+        m.translation = E + bend.normalized() * span * 0.6
+        _set_visual(arm, pg, m)
+        pm, pe = arm.pose.bones[mid], arm.pose.bones[end]
+        for n in (up, mid, end):
+            for c in arm.pose.bones[n].constraints:
+                if c.name == NATURAL:
+                    c.mute = True   # the IK and the limits would fight; the guide keeps the bend the right way
+        tip = arm.pose.bones[handle + " tip"]
+        tip.lock_ik_x = tip.lock_ik_y = tip.lock_ik_z = True
+        ik = tip.constraints.new("IK")
+        ik.name = REACH_IK
+        ik.target, ik.subtarget = arm, handle
+        ik.pole_target, ik.pole_subtarget = arm, guide
+        ik.chain_count, ik.use_tail, ik.use_stretch = 3, True, False   # the tip, the forearm/shin, the upper arm/thigh
+        pm.ik_stretch = arm.pose.bones[up].ik_stretch = 0.0
+        # the IK keeps to a person's range too, so turning the handles off (back to the limits) doesn't move the pose
+        for n in (up, mid):
+            pb = arm.pose.bones[n]
+            for k, r in zip("xyz", limits.get(n) or (None, None, None)):
+                setattr(pb, "use_ik_limit_" + k, r is not None)
+                if r is not None:
+                    setattr(pb, "ik_min_" + k, max(-math.pi, r[0]))
+                    setattr(pb, "ik_max_" + k, min(math.pi, r[1]))
+        # the pole angle that leaves the limb where it was (it depends on each bone's roll)
+        def miss(deg):
+            ik.pole_angle = math.radians(deg)
+            bpy.context.view_layer.update()
+            return (pe.matrix.translation - look[end].translation).length + (pm.matrix.translation - look[mid].translation).length
+        best = min(range(-180, 180, 10), key=miss)
+        best = min((best + d / 2 for d in range(-10, 11)), key=miss)
+        miss(best)
+        cr = pe.constraints.new("COPY_ROTATION")
+        cr.name = REACH_ROT
+        cr.target, cr.subtarget = arm, handle
+        bpy.context.view_layer.update()
+    for _u, _m, _e, handle, guide in limbs:
+        for n in (handle, guide):
+            set_hidden(arm, arm.data.bones[n], False)
+        set_hidden(arm, arm.data.bones[handle + " tip"], True)
+    if mode != "POSE":
+        bpy.ops.object.mode_set(mode="OBJECT")
+
+
+def reach_changed(self, context):
+    if self.type == "ARMATURE" and self.get("harmonious_traveller"):
+        try:
+            set_reach(self, self.harmonious_reach)
+        except Exception as error:
+            print("LiveLink: move hands and feet:", error)
 
 
 class HARMONIOUS_OT_traveller(bpy.types.Operator):
@@ -1636,6 +1850,11 @@ def body_frame(arm):
 
 
 def clear_pose(arm):
+    if reach_on(arm):   # the handles go back with the limbs
+        set_reach(arm, False)
+        clear_pose(arm)
+        set_reach(arm, True)
+        return
     for pb in arm.pose.bones:
         pb.location = (0, 0, 0)
         pb.rotation_quaternion = (1, 0, 0, 0)
@@ -1836,7 +2055,10 @@ def touch_down(arm, contacts):
 def pose_data(arm):
     out = {"harmonious_pose": 1, "bones": {}}
     for pb in arm.pose.bones:
-        q = pb.matrix_basis.to_quaternion()
+        if is_handle(pb.name):
+            continue
+        # what shows (the IK's result when the handles are on), as this joint's own turn
+        q = arm.convert_space(pose_bone=pb, matrix=pb.matrix, from_space="POSE", to_space="LOCAL").to_quaternion()
         if abs(q.w - 1) > 1e-6 or (free_bone(pb) and pb.location.length > 1e-6):
             e = {"rotation": [round(x, 6) for x in q]}
             if free_bone(pb):
@@ -1864,6 +2086,9 @@ def apply_pose_data(arm, data):
 def pose_traveller(context, key):
     """Puts the pose on with the joint limits off, then turns them on again (also when the pose can't be read)."""
     arm = find_traveller()
+    reach = arm is not None and reach_on(arm)
+    if reach:
+        set_reach(arm, False)
     try:
         return _pose_traveller(context, key)
     finally:
@@ -1874,6 +2099,8 @@ def pose_traveller(context, key):
             spec = next((p for p in POSES if "ready:" + p[0] == key), None)
             if spec is not None and spec[3]:
                 touch_down(arm, spec[3])
+            if reach:
+                set_reach(arm, True)
 
 
 def _pose_traveller(context, key):
@@ -2647,6 +2874,12 @@ class HARMONIOUS_PT_traveller(LiveLinkPanel, bpy.types.Panel):
             tip.label(text=line)
         layout.prop(arm, "harmonious_keep_shape")
         layout.prop(arm, "harmonious_natural")
+        layout.prop(arm, "harmonious_reach", **ic("move", "CON_KINEMATIC"))
+        if arm.harmonious_reach:
+            t = layout.column(align=True)
+            t.scale_y = 0.8
+            for line in wrap("Click a hand or foot, then G moves it and the arm or leg follows. Click an elbow or knee to steer which way it bends.", 40):
+                t.label(text=line)
         shown = not any(is_hidden(arm, b) for b in body_bones(arm))
         layout.operator(HARMONIOUS_OT_show_bones.bl_idname, text="Hide the sticks" if shown else "Show every stick", icon="HIDE_OFF" if not shown else "HIDE_ON")
 
@@ -3930,6 +4163,10 @@ def register():
     bpy.types.Object.harmonious_keep_shape = bpy.props.BoolProperty(
         name="Keep the body's proportions", default=True, update=keep_shape_changed,
         description="Bones only turn, so arms and legs never stretch. Turn off to move and scale bones freely")
+    bpy.types.Object.harmonious_reach = bpy.props.BoolProperty(
+        name="Move hands and feet", default=False, update=reach_changed,
+        description="On: a hand or foot moves with G and the arm or leg bends to follow; elbows and knees get a guide "
+                    "that steers the bend. Off: every joint turns with R")
     bpy.types.Object.harmonious_natural = bpy.props.BoolProperty(
         name="Natural joints", default=True, update=natural_changed,
         description="Every joint turns as far as a person's can: elbows and knees bend one way and twist a little, fingers bend like hinges, the neck, back, wrists and ankles stay in reach. Turn off to turn them any way")
@@ -3972,6 +4209,7 @@ def unregister():
     del bpy.types.Scene.harmonious_target_name
     del bpy.types.Object.harmonious_keep_shape
     del bpy.types.Object.harmonious_natural
+    del bpy.types.Object.harmonious_reach
     del bpy.types.Scene.harmonious_curl_r
     del bpy.types.Scene.harmonious_curl_l
     del bpy.types.Scene.harmonious_pose
@@ -4003,6 +4241,7 @@ ICONS = {
     "light": "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",
     "import": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFLklEQVR42u2bT2xURRzHP79573W3LbQUxINnL9ST0RIhQP/EBIJA9LA1hhMHOfTg1Zior2u8ePTgBRNjTDTaTQyJCDQQ2CUYQ0g0IZEY9aInDthi47b7Z978POwWSmHbpbt9u8j7XTbZy8z3M7/5zcx35kESSSSRRBLxR6hqMjPqLf8+WepVpan/Ygi/I+JFdP93utvv4x1VBrCcyot8Q6iGrLg4u2PiTnsEDpzVEb+PgknxqgmY8Af5+sBZnSIrLu7pECuAmzkEREXImjTp6r+Uo0WqdhEnhum9p3VrLoOLczrECmA4gwIo9KhF61PQJ8KoErg0ASL6v82AfL7WnlF+NAGC1oAgIAbnWzTukmToTNgHiyMdWQU6AkClM2K7KQNIACQAEgAJgARAAiABkABIADz+AFQyusLa2tSjbPvbaoMjJJoTovv7WXN92g+g/W1tHECd/mgeT6q87fUy4cr84UqEBZFboarJSpvsLVUJp5H8GOZhbbUCYcNTIARhGqHE5z3b+dBZJrytnJQ0l/ad0aGsiAtVTTvEZ3KYbFacVPgiGKq15W/lpARceum8btcVAxILgMyMelkRt38PL3q9HC/fphqViSpzVEwPu/w0s22BUBefm5RobFZPeVt4Y7mt8hzlYJBdaTghIjqax4u/CEZsEQPOIQKeCD22iPXSjLQMYZV4f4A3qwtYEQIBD8WoAo5tsa8CuQwuDNWkfa7ZJX5KbcNXV3N5RPCrCy1DeEB85Q5WpFaz1OG8FIFdpKiGL1GVQh4XXwaIaBa4cFCKtsxr0RLXg4EVEMzDIfQuNZemo/l1xKcxwLxb4mjhkPwaTiMbvU/Y+BTIiiNU88Mx+at6i4NRaX0I5w9Lea1iVa5gUJXCuNg1xSvzUZGDV47I5cyMetkWLlNaqwH1i4yrx2XeltaHMPKt7qgvV/6DUx6T6sEhomOz+um64o/J9dHL6ucmJWppZ9GOZXp5zd93Rof8NLNempHqAlbM3c7bYAA/KvGzeuzVEm/1DPFRZR4r4EmAaJV50jxNlY+DAaYq8+uLL4yL7YqzwHKRu3pk7Uzw+3meMqdFeEYtsMIdVqhQ5iu/j6lmRr4d4tuWAU1nguK8FMZVa4pX98RLgV3CidQGZrPFtx1AMxAA1yjzVOMVvykAmoSw9h4oJvGb5gesVxO6RfymGiIbgRC3+E13hB4FQifEx2KJNYSgVFcUv6gT4jetCDZTGP1+Rir/EKGo34+v1fjFx2qKrsyE0hyH7CLnvBSe34fvIn7phPjORHjvWDxxUXcfuKjjo6H6y0bLk+FFq8rqU2EYakcs+o6+1Fge8VymdgrsagD3dbaLI5Or1bXcJA7aBbVDz1jj6Hdz9wIiOnFRd1tLf+Bxo1zu3iwwhmf9PrZc+oQriETr3RnImvSmkeHn8HcO8pnXy3GNICrxjwhOFRFBu2ewa/0Rw5DXB67MNeD1yy/Ln+H7ahrZZg0BZFS9nEg0ek7fSz3FB6XbWMAYv7svVDVC1WFTOwgqc1wgzeGxMVyjW6qGU2CYu684j9olLIIIGLXdM+oNclpE8Ct3iBT2B5bBrMjfjaZCQwA372XHDS/FiC1SVrpcPHedpsjvJWWL/G59iqoq0qAONASQo/5q+3verS6wJ7Wd4bqP1+WFv+ZBRiUWEKYK41KarC3h0aPvA+pp88KMDg7u5ISLGHQWRLsTgwjqDOoFuOoiM1dfkd9a/wjjcd0DrDp3tLYTVJWN3r52Kgp5XNyf3ySRRBJJPHbxH9VbkSuXXYRsAAAAAElFTkSuQmCC",
     "send3d": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFLElEQVR42u2by29bRRTGf2fm2m7cR5rSIv4AYFE2SGlBICVOK6ANgaXbRVdIUAQsEBLiIQHGbGGBkJCACthUXdgLEJA2FW1TBzZILYtKVOIhIba81LQUkvje+Vg4CekjIU3Sa7e5n2RZsi3PfL9z5sy542vIlClTpkyZUldFcuWa/MzzanPvrnhNslXhvTSqCKDvc92z47g+GTim4wMj2jv3vTRlaZtv7LC4/zPd59dywhVYowRcHqbO8ezYoL3Te0q509usedMBmGN+u1/HiAKb1KQpcDgUrSFK/mJ/Y8gOzHz2pgFwifm1HMXoSSYJZrRqgRAO+S5cciFdCK4t5ifmmG+FwQhYMkHi1/NBaVhPNHZYnEZNcG0x764yrmEkuLQhuI4w30YIrmPMCwFKG4Jrg/lw1eB7DDCUbia4tM27Au4yCDIHIWF8GoRQepngUjTfzPfgkgnexjjuiyBIBMEXwWBMsM8XMTwhLQguDfMSca6b3NQ4H44N2nMSbm4HogAYG8Z226GpcZ7ya/BpQXBpmM9vJIrPc6DxkD2OZIgIXVEEQ0VyXw3Ze8kF9i8GQu8p5doKoFyTX6z5k7tsf+/7ymEmm6cQVs3C7sMqNIbswP9CGNETp7dZc7mX0ksGUJFcfY8l/cN60K/nKCxsvlyTX3fnFXG/QvcO0ux9X7kFIfxD8F180HdYz9f3WFKRXLoAJKuCSl/oNhdxCOhJpkgWMl8vEwYGrh75y3X6SWuWRhXNCyFgySRJfj1v9h3VzqpZWGomLAlAuY7DTETc7Ytsjv8mNodfyDxmupYxZgrdJRDcJVtksIjEBwYBft2ytAu7JQGof9dKZSd+DhPELsKT0EQ0893LN78ABDedCU0ZMsMLzgDc+htKbwlUWyk3OmjfhyYvR0Us6iaX6yHXvEDt5C7bX5HccszPhdB7arYmvBB14aMN5PIbyU+do3brBQ5VKq16tJTvX/JeWt9jSaUiV33Y3uob1rf5TfQ3x/mpscsOUpGrgpZrfrYmTFf7+iP2Zt+wTs+OtdsOzjSTnXXAucDOAVA6ohM7x6T+EcX9I4p3jkmlIzox9zPLHeu6Z8Dly2GmCF3XU5zrMNaKtJNLXX+dMJZjlSsDkAHIAGQAMgAZgAxABiADkAFos8TijstuDgD23+mNCReaYHDH/Z9qfdUspHm/UNSmcEcYAREAUyBgbHZR+vNJNQPO1mcPLt9zEc7lyOFwhU144OOvhzhXrsmv1EnS4pIxbVXkqFroO6JnojwvSRQNDgbPi40BJluzSg9Amypea433fqZiaVQbb4g5l2vy5Zp867e95T/m/rhZGlVERW4lvnd2nit6UHqj3sW5iHkvruqaaecx3RPHrM15zkxOtmfPXlRVd9weFVl34l3GMEuQbKGaYgvSex3behfRlm4+8l3sUwLJBONmBAkzQ50T7NZ8zNHjixAm+QbYO/qA/VJ5Ta5atXBNAMqSr5slpSN6tbCZNyZ+Jwacizq7fVaCFIgLt5Cb+pMvWcPDAwOEql0dwLxLYCvT0TUejf8hxjADp5jO3qIMMyOaOkci6MvFdFfN/phvKcwL4Ox/2XHGF9geX2RS0Pn7c2uGSdRFIb7Ij3HERUlm89SBeQHUodWTD/NK8zz3FTaxVXFbWqdrrQWYI0omOI/xdGOHTexp3TuQXHsnOJ02vTV1d2/hsZDQHWIwdSYGMxQc8jlC829qXw/ZDzOd5+rrAWba7hW5FpCsdJIb6n89jZOE5UU+U6ZMmVaB/gVCF6UB9mfGSAAAAABJRU5ErkJggg==",
+    "move": "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",
     "print": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAEbklEQVR42u2aPWwcRRTHf29m9s7nfNiBigKJOkg0RrJDwRVpkZCQzh0KDUGkCQVSSAHrzQdSlIYmDTWisGmoERImwVZQoqBIqaBECghIIMax925mHsVeFARYuTvv3sVk/801p52Z/7yv/3sDNWrUeJIhla+gurs1RLS+pj1rAaoyx4WDLX43lqYG8oHXK/4/JZbtjVXJfFVbdJWZvYi2eWemy6EbgekZTwCmBv5EDzQhSg/zKnC5o8t2RRbD3iCgj0BLFJ62mAOKDmVwiiJYlJhUuUc3Bh/rKUGVoCAyOAFEJRgh6p4moDi1SHH7IsNxJ5VnKfOkZ4GagJqAmoCagJqAiuuAXeRxVcHoniXAk4tCE1RHO7wVqbhWqYYAEU01NU0O3gO+MTRFIQ7xhWhwxpP/LGzdQpEVOnFPWUAGrErmm+ixQPcXgzMMSIKCGqxE/OuX5cPbHZZNVX2B6lxAstjRZbsq2U8QThicKBIfffjoE1o2sP3RVTn7RVUqcDz9AKCtqVuVzC/oB5caHDjRZcMLxu2gAINjynry757l8IsAK3RilV2hyrPAKkuho8vWsPWeZ+umpemUGHcIeihhw6HHVmQxHOaWVt0Sq74O6B9gTS5uKN03FA2Ci4qGQvISKX59QstGuqevSHazranLJItVb28shdCKLIa2pm5dzt2I5O8mTDtLwzoaxtEwBmeaHEy6bH62LmcuPXCbcexNGCf6rbIjevZlIdqH9YJniv14uLYmpzYe/I8a/zcL6KOjHQudf7tKxRG/Ro0aY4oBqtJmyZZbUBEZQ13weGO3g9b/gCt9gyK6oOlTjuRtj3emqPFH3rhCtEyZyObn6yI3Uk1NmRViqYymmpqvoJEjXzaZeSmSl1BsFiMyz/27ge78Vc79AKmU5Q6uzNvPROKCptPAC13ueYiqpUx3NDimDgn6HML3HX3erDyWLgA4cvW0nCAmMuREdAcTjSgGSxyuqzQxFzA5cqnBvuOBLrLLJRTFkBDY/taw9cpRGr9lLJUmk11pwQ/IWIJCxb21oOc/LQSPL+GWnORsXrsuF/44qqkpes2Pi2DSdHKzhRLSYikuMKenZlrMGst2/xnMDDlq4hBPYh6FBKIjV3j4fOaKnL47MQJSTU3Gkh5h6U1D83ykKzqmBoug0dIwAb88w+zJee70Rq0NZGTTE9G2npzNOfSjJdmn+LGqa0VJaNFjs70u2dejdo93FQRzZg3Qi/gSc/7AiBFvDaY5mSygiOF+L7LvfsL0bKTL+Gat2l8rIsgdgMN0dHwE9EdfmWQb8/r+a4HumUDPFj6gUn0MkGBp2kD+ybpk14u9yJhiwN+k7p/cluvycW+SWXhOjyf7eUZryTxibeCG+nDJUrfEiDCyZB5489VI3fIoGFUyu0FvvzqpWxoJI0lmN5y/lCt1y5S0o0rmYV2gVKlbZlU4qmSWodxMigdP/5ztTRqBqE2mxfPrtTW5+ITPFnU4sxzJhnea7U0a9WyxRo0aNWrUGAp/ARDKKOIh2LzHAAAAAElFTkSuQmCC",
     "printeye": "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",
     "printsize": "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAD70lEQVR42u2Yz2skRRTHP6+qu5Pszq4H2QX/AXHxpOKyhoW4J9mLt97jSi6eBdkfKjppWRBcPHjdq7fZkyAe1oMOSHLQsAdJLgoigoLij2R/ODNdVc9DT5vJbEw6mAxJrA8MzMzrb3fXq/eqXj2IRCKRSCQSiUQikUgkEolEIv8nZFurIqBHYJSy+0Hk2rFHZZZz7VhUZdcRcE4/mEkYTFt66unLYRq0ZUoB7jOjy3J9rXEKqKossCB3MG8K9lXFH1eC7JQtBzS/FawX9JMUf7VL8RvoppSQ8VC5LZf8rC68lfLYjZJ7hz78FSXjBH3W77yEXgQopAiPOkBVQJjlSitw/DuDfTzgEMQoGgRCdUOMIGZkcXSbH3jg7IA4Q5oG3NklaX9VTzRAMhYzGtSlIBmorUJIxZJZQ2oBAiWBwdB3QsJ0Wn1XQA6Y/R+nWEHUwsnxCEke/WNK/cZsB0tmA4NuYPDF8JIXDdlcoETRnufhhwo9xRghhANkD4AZnV7F+B0dMMwbEQSBYMisMvh0UYr3AWa1fdWQzgVKBB4uSnF9VHsw7Nmcpwyy2QFUi3kDB4y7I0BrTtsJQB9adphfCnJe3zhlyf7oczKdYr0skRNsY5+kvgmm4XYSulK4rhSuXgxHHOS6UriSlutK4SD0NnSi4/ZJ6puQ7NV20+InHc7Kk0oIoKIgrmEBtff6PYyA8cJ6h+PDE4bEGDIRUENSVmeKyektqQFN9sUBQhhsDtGK0zytKCL4a47+CsjPwGuLcvNem7bUM7T/envN0fvGYNdpsBg0coCCybVjc+1YRc7oRhomIEmuuf2FFcnpmCW5cfdPymd7rJ1ZkoWPcu3YVVbl9PAe+69/526PH54z2FcsqSj47RyRNFoCkb/qyumctqerEsSghN+/lPd+HVesSjEABgC1jupFJqJfllvleX33xybDS3bIJ1EcQnhqVosL1b9hMeBeNtjU4T8/q29fMBhrRoqMer8VjG4uUQn7rQ8EKxA84RlTRYrsOgLq3BLUevoI6WWDvVw9wBFwCoIg8xkz8w3TCJmA3oxUL9VZBqPV1qmNCiHLlDrUgvj6fopTh6/daUZXYsfA76L7pBPQ19fJxvsTQBK7RSlsRttGuXZsl2JN4OOMllXUKwQdWW2r3xufXZ1MJ6OvrxteG1zGscTT/3aGY1+rqtwmD1tGQG3I0NdLHpyyTF2sT1WHrx1S9QIEMZ5yBfz8Z3LlwYLeN2zZD9iCF7R4Xkhajh7J3hWNE3ZC5gd8v7Qst0pUpVmDVFX+rYl4eFtDbbPrpmiuuYX80I/9NpcCchT6+5FIJBKJRCKRSCQSiUQikUjkv/I3mKn72u5wF14AAAAASUVORK5CYII=",

@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.13.2123",
-  "date": "2026-11-13",
-  "size": 14959104,
-  "sha256": "f078205e8e6f48bbff41f6536e7b988ad50c1a50533c38e6fe30779192937bdb",
-  "notes": "New LiveLink page (under Shipwright): a setup checklist that shows whether Blender and the add-on are ready, every corvette and base you can link with its .blend, recent builds, what Blender sent back, and a library of your 3D prints with previews you can turn.\nLiveLink add-on 1.24.0 (install it again in Blender: Get LiveLink): it tells DryDock its version, so the LiveLink page can say when it's out of date.",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.13.2123/HarmoniousSaveEditor.exe",
+  "version": "2026.11.14.2142",
+  "date": "2026-11-14",
+  "size": 14976000,
+  "sha256": "84a14e0676f073330380a79995f7ee15eeeeb894b5ccb44ebfca4c0ddef093a4",
+  "notes": "LiveLink add-on 1.25.0 (install it again in Blender: Get LiveLink): the waist now bends right over, leans back, tips sideways and turns; arms, wrists and the neck move further too; fingers curl into a fist without folding backwards, knuckles spread and the thumb swings across the palm.\nNew in Your traveller: Move hands and feet. Click a hand or foot and press G, and the arm or leg follows it; click an elbow or knee to steer which way it bends. Turning it off keeps the pose.",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.14.2142/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

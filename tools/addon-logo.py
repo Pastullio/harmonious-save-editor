@@ -140,6 +140,14 @@ def ruler(d, c):
         line(d, [(x, 100), (x, 128 if k % 2 else 140)], c, 14)
 
 
+def mover(d, c):   # four arrows: move a hand or foot
+    line(d, [(128, 40), (128, 216)], c, 18)
+    line(d, [(40, 128), (216, 128)], c, 18)
+    for (x, y), pts in (((128, 30), [(96, 66), (128, 30), (160, 66)]), ((128, 226), [(96, 190), (128, 226), (160, 190)]),
+                        ((30, 128), [(66, 96), (30, 128), (66, 160)]), ((226, 128), [(190, 96), (226, 128), (190, 160)])):
+        line(d, pts, c, 18)
+
+
 def stand(d, c):   # a ship on a flight stand
     d.polygon([(28, 92), (128, 44), (228, 92), (128, 112)], fill=c)
     line(d, [(128, 112), (128, 196)], c, 18)
@@ -148,7 +156,7 @@ def stand(d, c):   # a ship on a flight stand
 
 ICONS = {"link": (link, PINK), "build": (build, PINK), "corvette": (corvette, PINK), "send": (send, PINK), "info": (info, PINK), "base": (base, PINK),
          "traveller": (person, BLUE), "pose": (pose, BLUE), "bone": (bone, BLUE), "tool": (tool, BLUE), "picture": (picture, BLUE),
-         "light": (light, BLUE), "import": (importer, BLUE), "send3d": (send, BLUE),
+         "light": (light, BLUE), "import": (importer, BLUE), "send3d": (send, BLUE), "move": (mover, BLUE),
          "print": (printer, GREEN), "printeye": (eye, GREEN), "printsize": (ruler, GREEN), "printstand": (stand, GREEN),
          "printsave": (send, GREEN), "printship": (corvette, GREEN), "printme": (person, GREEN)}
 
