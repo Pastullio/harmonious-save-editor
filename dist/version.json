@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.14.2216",
-  "date": "2026-11-14",
+  "version": "2026.11.15.1845",
+  "date": "2026-11-15",
   "size": 14982144,
-  "sha256": "b1d38081b24dfabd78820e075d987a92f054e1bc8753d7a83b5564e205734dc1",
-  "notes": "LiveLink add-on 1.27.0 (install it again in Blender: Get LiveLink): Body parts are grouped into Body, Hands and Outfit; Show every stick is now Show all bones; in a file with only your traveller, the Builds panel just says to open your corvette's or base's .blend.",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.14.2216/HarmoniousSaveEditor.exe",
+  "sha256": "879b0f47a02680e10c01df48d9e96dda53c563c22c9b5ae0f9c67f8a47a94be7",
+  "notes": "To the Dock Yard on the ship you're flying now says plainly that it can only be copied, and how to move it instead",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.15.1845/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

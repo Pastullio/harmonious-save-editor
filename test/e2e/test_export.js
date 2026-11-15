@@ -37,7 +37,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   // the current ship can only be copied
   await p.evaluate(() => { S.pick.ship = num(g(ps(), 'PrimaryShip')); render(); }); await p.waitForTimeout(500);
   await p.click('[data-k="tolib"]'); await p.waitForSelector('#dlg[open]');
-  ok('the current ship can only be copied, not moved', !/Move it/.test(await p.textContent('#dlgActs')) && /current ship/.test(await p.textContent('#dlgBody')));
+  ok('the current ship can only be copied, not moved', !/Move it/.test(await p.textContent('#dlgActs')) && /ship you're flying/.test(await p.textContent('#dlgBody')));
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
   await b.close(); proc.kill();
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS'); process.exit(fails.length ? 1 : 0);

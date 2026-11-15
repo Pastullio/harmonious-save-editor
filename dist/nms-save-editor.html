@@ -3641,7 +3641,9 @@ function entityDetails(ed, o, i, kind) {
   if ($k('tolib')) $k('tolib').onclick = async () => {
     const nm = entityName(o, i, kind), current = num(g(ps(), 'PrimaryShip')) === i;
     const v = await dialog('Put ' + nm + ' in the Dock Yard', `<p>Ship storage in the Dock Yard keeps ${esc(nm)}${shipBuild(i) ? ' and its corvette build' : ''} as a file, ready to put back into this save or any other.</p>
-      <p><b>Keep a copy</b> leaves it in this save too. <b>Move it</b> also takes it out of this save, freeing the slot.${current ? ' It can\'t be moved while it\'s your current ship: switch ships in the game first.' : ''}</p>`,
+      ${current
+        ? `<p>It's the ship you're flying, so it can only be copied: <b>Keep a copy</b> leaves it in this save too.</p><p>To move it out of this save and free the slot, switch to another ship in the game, save there, then do this again.</p>`
+        : `<p><b>Keep a copy</b> leaves it in this save too. <b>Move it</b> also takes it out of this save, freeing the slot.</p>`}`,
       [['Cancel', false, 'ghost'], ...(current ? [] : [['Move it', 'move']]), ['Keep a copy', 'copy', 'primary']]);
     if (!v) return;
     try { await saveShipToLibrary(i, v === 'move'); } catch (e) { toast(e.message, true); return; }
