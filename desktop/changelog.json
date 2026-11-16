@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.16.1613",
+  "date": "2026-11-16",
+  "notes": [
+   "Shipwright: Manage sits right after the corvette's name, before its slot and part count"
+  ]
+ },
+ {
   "version": "2026.11.16.1606",
   "date": "2026-11-16",
   "notes": [
