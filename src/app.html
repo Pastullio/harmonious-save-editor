@@ -2163,6 +2163,8 @@ async function travellerShare() {
   const tools = [];
   try { for (const it of coverItems().filter((x) => x.kind === 'tool' && x.scene)) tools.push({ name: it.name, scene: it.scene, seed: it.seed || '', picks: { ...(it.picks || {}), ...(await partsOf(it.key)) } }); } catch (_) {}
   api('/api/live/traveller', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groups, name: travellerName(), look: travellerLook(), tools }) }).catch(() => {});
+  // build (or find) the textured traveller in the background now, so the Exosuit card doesn't wait for it later
+  setTimeout(() => { if (S.save && !document.hidden) api(travGlbUrl(groups, travellerName(), travellerLook())).then((r) => r.arrayBuffer()).catch(() => {}); }, 4000);
 }
 async function travellerExport(btn) {
   const groups = travellerGroups(), name = travellerName();
@@ -2179,12 +2181,22 @@ async function travellerExport(btn) {
 // empty backdrop): the rigged .glb in its rest pose, in the save's colours, facing the viewer. Kept for the session.
 const TRAV_STILL = new Map();
 // the traveller as the game builds them, textured (GLTEX), for the Exosuit card's turntable
+const travGlbUrl = (groups, name, look) => '/api/model/traveller/glb?groups=' + encodeURIComponent(groups.join(',')) + '&name=' + encodeURIComponent(name) + (look ? '&look=' + encodeURIComponent(JSON.stringify(look)) : '');
+// a picture of the textured traveller, kept between runs, shown at once while the model loads (owner 2026-11-16:
+// the Exosuit card took 20-30 s to fill in every start)
+const travStillKey = (groups, name) => 'travstill:' + groups.join(',') + '|' + name + '|' + JSON.stringify(travellerLook() || null);
+async function travStillSave(sk, glb) {
+  try {
+    const cv = GLTEX.render(glb, 480, -12 * Math.PI / 180, 4 * Math.PI / 180, 'studio'); if (!cv) return;
+    const blob = await new Promise((r) => cv.toBlob(r, 'image/png')); if (blob) await IDB.put(sk, blob);
+  } catch (_) {}
+}
 async function travellerGlb(groups, name) {
   const look = travellerLook(), key = groups.join(',') + '|' + JSON.stringify(look || null);
   if (TRAV_STILL.has(key)) return TRAV_STILL.get(key);
   const job = (async () => {
     if (!APP || !groups.length || !GLTEX.ok()) return null;
-    const r = await api('/api/model/traveller/glb?groups=' + encodeURIComponent(groups.join(',')) + '&name=' + encodeURIComponent(name) + (look ? '&look=' + encodeURIComponent(JSON.stringify(look)) : ''));
+    const r = await api(travGlbUrl(groups, name, look));
     if (!r.ok) return null;
     return GLTEX.parse(await r.arrayBuffer());
   })().catch(() => null);
@@ -2201,11 +2213,23 @@ function travellerCard(el) {
   // (owner 2026-11-13: the textured still sat over the turning hologram; now the textured model is the cover)
   const stand = async () => {
     if (it.texGlb || await customCover(it.key).catch(() => null)) return;
-    const art = card.querySelector('.tc-art'); art.classList.add('trav-loading');
+    const art = card.querySelector('.tc-art'), sk = travStillKey(groups, name);
+    // the picture from last time first, so the card isn't a hologram while the model loads
+    let still = null; try { still = await IDB.get(sk); } catch (_) {}
+    if (still && card.isConnected && !it.texGlb) {
+      try {
+        const bmp = await createImageBitmap(still), W = Math.round(240 * Math.min(2, devicePixelRatio || 1)), cv = document.createElement('canvas'); cv.width = cv.height = W;
+        const ctx = cv.getContext('2d'); paintNebula(ctx, W, it.key);
+        const m = W * .03; ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = W * .04; ctx.shadowOffsetY = W * .015; ctx.drawImage(bmp, m, m * .4, W - 2 * m, W - 2 * m); ctx.restore();
+        if (card.isConnected && !it.texGlb) art.replaceChildren(cv);
+      } catch (_) { still = null; }
+    }
+    if (!still) art.classList.add('trav-loading');
     const glb = await travellerGlb(groups, name);
     art.classList.remove('trav-loading');
     if (!glb || !card.isConnected || await customCover(it.key).catch(() => null)) return;
     it.texGlb = glb; card.dataset.tex = '1'; miniCover(card, it, 240);
+    if (!still) travStillSave(sk, glb);
   };
   card.onPaint = () => setTimeout(stand, 50);
   stand();

@@ -19,7 +19,9 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/sha1"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"image"
@@ -264,7 +266,8 @@ func handleTravellerGLB(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		name = "Traveller"
 	}
-	glb, err := travellerGLB(names, name, r.URL.Query().Get("textures") != "0", parseLook(r.URL.Query().Get("look")))
+	textures, look := r.URL.Query().Get("textures") != "0", parseLook(r.URL.Query().Get("look"))
+	glb, err := travellerGLBCached(names, name, textures, look)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -272,6 +275,74 @@ func handleTravellerGLB(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "model/gltf-binary")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", safeFileName(name)+".glb"))
 	w.Write(glb)
+}
+
+// travellerGLBVersion changes whenever travellerGLB writes something different, so older cached files are rebuilt.
+const travellerGLBVersion = 1
+
+// travellerGLBCached keeps each finished traveller in the app folder's "traveller" cache (owner 2026-11-16: the
+// Exosuit page took 20-30 s every start while the textures and the save's colour layers were worked out again).
+// The key is the traveller's parts, name, colours and the game's archives (size and date), so a game update, a
+// new outfit or new colours makes a new file; only the newest few are kept.
+var travGLBMu sync.Mutex
+
+func travellerGLBCached(names []string, name string, textures bool, look *travLook) ([]byte, error) {
+	h := sha1.New()
+	fmt.Fprintf(h, "v%d|%s|%s|%v|%s|", travellerGLBVersion, strings.Join(names, ","), name, textures, look.key())
+	if banks := gameBanks(); banks != "" {
+		paks, _ := filepath.Glob(filepath.Join(banks, "*.pak"))
+		sort.Strings(paks)
+		for _, p := range paks {
+			if fi, err := os.Stat(p); err == nil {
+				fmt.Fprintf(h, "%s=%d/%d;", filepath.Base(p), fi.Size(), fi.ModTime().Unix())
+			}
+		}
+	}
+	dir := filepath.Join(appDir, "traveller")
+	file := filepath.Join(dir, hex.EncodeToString(h.Sum(nil)[:10])+".glb")
+	if b, err := os.ReadFile(file); err == nil && len(b) > 12 {
+		now := time.Now()
+		os.Chtimes(file, now, now)
+		return b, nil
+	}
+	travGLBMu.Lock() // one build at a time: the card and the add-on often ask together
+	defer travGLBMu.Unlock()
+	if b, err := os.ReadFile(file); err == nil && len(b) > 12 {
+		return b, nil
+	}
+	glb, err := travellerGLB(names, name, textures, look)
+	if err != nil {
+		return nil, err
+	}
+	if os.MkdirAll(dir, 0o755) == nil {
+		tmp := file + ".tmp"
+		if os.WriteFile(tmp, glb, 0o644) == nil {
+			os.Rename(tmp, file)
+		}
+		pruneTravellerCache(dir, 6)
+	}
+	return glb, nil
+}
+
+func pruneTravellerCache(dir string, keep int) {
+	m, _ := filepath.Glob(filepath.Join(dir, "*.glb"))
+	if len(m) <= keep {
+		return
+	}
+	type f struct {
+		p string
+		t time.Time
+	}
+	var fs []f
+	for _, p := range m {
+		if fi, err := os.Stat(p); err == nil {
+			fs = append(fs, f{p, fi.ModTime()})
+		}
+	}
+	sort.Slice(fs, func(i, j int) bool { return fs[i].t.After(fs[j].t) })
+	for _, x := range fs[keep:] {
+		os.Remove(x.p)
+	}
 }
 
 func safeFileName(s string) string {

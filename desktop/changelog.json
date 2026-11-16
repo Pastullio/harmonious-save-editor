@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.16.1741",
+  "date": "2026-11-16",
+  "notes": [
+   "Exosuit: your textured traveller is kept on disk once it's made, so after the first time it appears in a moment instead of 20-30 seconds; last time's picture shows straight away while the 3D model loads"
+  ]
+ },
+ {
   "version": "2026.11.16.1734",
   "date": "2026-11-16",
   "notes": [
