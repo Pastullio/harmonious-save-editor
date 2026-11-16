@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.16.1839",
+  "date": "2026-11-16",
+  "notes": [
+   "Companions: Export saves a companion (with its accessories) as a .pet.json file you can keep or share; Import a companion… puts one into an empty slot or over another"
+  ]
+ },
+ {
   "version": "2026.11.16.1749",
   "date": "2026-11-16",
   "notes": [

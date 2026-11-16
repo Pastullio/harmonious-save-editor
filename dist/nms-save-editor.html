@@ -9982,6 +9982,54 @@ async function addPetDialog(pets, slots) {
   if (kOf(ent, 'BirthTime') != null) set(ent, 'BirthTime', now);
   pets[slot] = ent; markDirty(); (S.pets || (S.pets = {})).pick = slot; renderSide(); render(); toast(`Added to slot ${slot + 1}. Press Save to game to keep it.`);
 }
+// Companions in and out as files (owner 2026-11-16, a tester's request: "import and export companions the same way we
+// have for ship files"). A .pet.json holds the Pets entry and its PetAccessoryCustomisation entry (same index), in plain
+// key names (toPlain) so it goes into obfuscated and plaintext saves alike; a bare Pets entry (anything with a
+// CreatureID) imports too. On the way in, the keys are put in the order of a companion already in the save.
+const orderLike = (ent, like) => {
+  if (!(ent instanceof Map) || !(like instanceof Map)) return ent;
+  const out = new Map();
+  for (const k of like.keys()) if (ent.has(k)) out.set(k, ent.get(k));
+  for (const [k, v] of ent) if (!out.has(k)) out.set(k, v);
+  return out;
+};
+function exportPet(i) {
+  const pets = g(ps(), 'Pets') || [], p = pets[i]; if (!isPet(p)) return;
+  const acc = (g(ps(), 'PetAccessoryCustomisation') || [])[i];
+  const doc = mapOf({ Harmonious: mapOf({ kind: 'companion', version: N(1), exported: new Date().toISOString() }) });
+  doc.set('Companion', toPlain(p));
+  if (acc instanceof Map) doc.set('Accessories', toPlain(acc));
+  downloadText(safeFile(petName(p, i)) + '.pet.json', C.stringifyJSON(doc));
+  if (!APP) toast('Exported ' + petName(p, i));
+}
+function readPetFile(text) {
+  let doc; try { doc = C.parseJSON(text); } catch (e) { throw new Error('That file is not valid JSON: ' + e.message); }
+  let ent = doc instanceof Map && doc.get('Companion'), acc = doc instanceof Map ? doc.get('Accessories') : null;
+  if (!ent && doc instanceof Map && g(doc, 'CreatureID') != null) ent = doc;
+  if (!(ent instanceof Map) || !str(g(ent, 'CreatureID')) || str(g(ent, 'CreatureID')) === '^') throw new Error("That file doesn't hold a companion.");
+  return { ent, acc: acc instanceof Map ? acc : null };
+}
+async function importPetDialog(pets, slots, file) {
+  if (!file) return;
+  let got; try { got = readPetFile(await file.text()); } catch (e) { toast(e.message, true); return; }
+  const name = petName(got.ent, 0);
+  const free = pets.map((q, i) => i).filter((i) => !isPet(pets[i]) && (!Array.isArray(slots) || slots[i] !== false));
+  const have = pets.map((q, i) => ({ q, i })).filter(({ q }) => isPet(q));
+  if (!free.length && !have.length) { toast('This save has no companion slots to put it in.', true); return; }
+  const opts = [...(free.length ? [`<option value="${free[0]}">Empty slot ${free[0] + 1}</option>`] : []), ...have.map(({ q, i }) => `<option value="${i}">Replace ${esc(petName(q, i))} (slot ${i + 1})</option>`)];
+  const ok = await dialog('Import ' + name, `<p><b>${esc(name)}</b>, ${esc(humanize(str(g(got.ent, 'CreatureID')).replace(/^\^/, '').toLowerCase().replace(/_/g, ' ')))}: its look, size, trust, temperament, mood and battle stats${got.acc ? ', and its accessories' : ''}.</p>
+    <label class="field"><span>Put it in</span><select class="input" id="petWhere">${opts.join('')}</select></label>
+    ${free.length ? '' : `<p class="dim" style="margin-top:10px">Every unlocked slot is taken${Array.isArray(slots) && slots.includes(false) ? ' (unlock more slots on this page)' : ''}, so it can only replace one.</p>`}
+    <p class="dim" style="margin-top:10px">Nothing is written to your game until you press Save to game.</p>`, [['Cancel', false, 'ghost'], ['Import', true, 'primary']]);
+  if (!ok) return;
+  const slot = +$('#petWhere').value, like = have.length ? have[0].q : pets[slot];
+  pets[slot] = orderLike(fromPlain(got.ent), like);
+  const accs = g(ps(), 'PetAccessoryCustomisation');
+  if (got.acc && Array.isArray(accs) && slot < accs.length) accs[slot] = orderLike(fromPlain(got.acc), accs[slot]);
+  markDirty(); (S.pets || (S.pets = {})).pick = slot; renderSide(); render();
+  toast(`${name} is in slot ${slot + 1}. Press Save to game to keep it.`);
+}
+
 // a companion as a cover item: the picture is the owner's own (a screenshot from photo mode, say), kept by this key
 function petItem(p, i) {
   const id = str(g(p, 'CreatureID')).replace(/^\^/, ''), seed = str((g(p, 'CreatureSeed') || [])[1]);
@@ -10000,7 +10048,9 @@ PAGES.companions = (el) => {
   const { side, main } = listDetail(el, { title: 'Companions', pick: String(P.pick), onPick: (k) => { P.pick = +k; render(); }, empty: 'No companions yet.',
     items: list.map(({ p, i }) => ({ key: String(i), name: petName(p, i), sub: humanize(str(g(p, 'CreatureID')).replace(/^\^/, '').toLowerCase().replace(/_/g, ' ')) + ' · ' + Math.round(num(g(p, 'Trust')) * 100) + '% trust' })),
     extra: `<p class="dim sw-tip">${plural(list.length, 'companion')}${eggs ? ', ' + plural(eggs, 'egg') : ''}${Array.isArray(slots) ? `, ${slots.length - locked} of ${slots.length} slots unlocked` : ''}.</p>${APP && S.lib && S.lib.game && list.length ? '<p class="dim sw-tip" data-keep>Companion models are new. If one looks wrong, <button class="link" type="button" id="pSample">save creature files for the developer</button>.</p>' : ''}${locked ? '<div class="sw-side-acts"><button class="btn" type="button" id="pSlots">Unlock every slot</button></div>' : ''}` });
-  el.querySelector('.page-head').after(pageActs([['Add a companion', 'addPet', () => addPetDialog(pets, slots)]], false));
+  const petFile = () => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json,application/json'; inp.onchange = () => importPetDialog(pets, slots, inp.files[0]); inp.click(); };
+  el.querySelector('.page-head').after(pageActs([['Add a companion', 'addPet', () => addPetDialog(pets, slots)], ['Import a companion…', 'importPet', petFile, ''],
+    ...(P.pick != null ? [['Export ' + petName(pets[P.pick], P.pick), 'exportPet', () => exportPet(P.pick), '']] : [])], false));
   const us = $('#pSlots', side); if (us) us.onclick = () => { for (let k = 0; k < slots.length; k++) slots[k] = true; markDirty(); toast('Every companion slot unlocked'); render(); };
   if (P.pick == null) return;
   // small pictures in the list, for the companions that have one, so they're easy to tell apart
