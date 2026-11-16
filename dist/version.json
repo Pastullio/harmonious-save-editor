@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.16.1741",
+  "version": "2026.11.16.1749",
   "date": "2026-11-16",
-  "size": 14931968,
-  "sha256": "e529a401bbe667df939e49a6655c8291d7e7e0e92d13435e8bb10b14863ffbf6",
-  "notes": "Exosuit: your textured traveller is kept on disk once it's made, so after the first time it appears in a moment instead of 20-30 seconds; last time's picture shows straight away while the 3D model loads",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.16.1741/HarmoniousSaveEditor.exe",
+  "size": 15026688,
+  "sha256": "0fbf3bc73190477a8b9ad95d3062442b78f5cbdf10274ed56e0c30dc08e1f738",
+  "notes": "About shows the new Harmonious DryDock logo and fits on screen without scrolling\nShipwright's Manage card: Full refit is now called Workbench",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.16.1749/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

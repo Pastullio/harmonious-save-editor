@@ -143,7 +143,7 @@ body:not(.on-landing) .land-corner, body:not(.on-landing) .land-theme { display:
 .land-theme:hover { color: var(--accent); border-color: var(--accent); }
 .land-theme svg { width: 18px; height: 18px; }
 /* About: the logo sits on its own night-sky panel so it looks the same in light and dark mode */
-.about-sky { margin: -4px 0 14px; padding: 18px 18px 10px; border-radius: var(--r-lg); background: radial-gradient(120% 90% at 50% 20%, #12305a 0%, #0a1630 55%, #050a18 100%); text-align: center; }
+.about-sky { margin: -4px 0 12px; padding: 14px 14px 10px; border-radius: var(--r-lg); background: radial-gradient(120% 90% at 50% 20%, #12305a 0%, #0a1630 55%, #050a18 100%); text-align: center; }
 .about-sky img { width: min(420px, 100%); height: auto; display: block; margin: 0 auto; }
 .about-sky .ver { color: #b9d6ff; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; margin-top: 6px; }
 .about-version { margin: 14px 0 0; padding-top: 14px; border-top: 1px solid var(--line); font-size: 14px; display: grid; gap: 10px; }
@@ -156,7 +156,14 @@ body:not(.on-landing) .land-corner, body:not(.on-landing) .land-theme { display:
 .about-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; margin: 12px 0; }
 .about-links .btn { justify-content: center; text-align: center; white-space: nowrap; padding-inline: 8px; }
 .about-credits { font-size: 13px; color: var(--dim); line-height: 1.55; margin: 0; padding-left: 18px; }
-#dlg:has(.about-sky) { width: min(620px, calc(100vw - 32px)); }
+#dlg:has(.about-sky) { width: min(980px, calc(100vw - 32px)); max-width: none; }
+/* two columns, so it all fits without scrolling (owner 2026-11-16); one column on small windows */
+.about-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 26px; align-items: start; }
+.about-grid > div > p:first-of-type { margin-top: 0; }
+.about-r > p:first-child { margin: 0; }
+.about-l .about-links { margin-bottom: 0; }
+.about-r .about-version { margin-top: 12px; }
+@media (max-width: 760px) { .about-grid { grid-template-columns: 1fr; gap: 10px; } }
 
 /* ---------------- app shell */
 #app { display: grid; grid-template-columns: 248px 1fr; height: 100%; }
@@ -1478,13 +1485,14 @@ drawResources();
 const LINKS = [['GitHub', 'https://github.com/Pastullio/harmonious-save-editor'], ['Discord', 'https://discord.gg/3PfZfPYDn'], ['YouTube', 'https://www.youtube.com/@PastullioTheHarmonious'], ['Patreon', 'https://www.patreon.com/pastullio'], ['Buy me a coffee', 'https://buymeacoffee.com/pastullio']];
 function aboutDialog() {
   const ver = window.NMS_APP ? 'Desktop app' + (window.NMS_APP.version && window.NMS_APP.version !== '1' ? ' · version ' + window.NMS_APP.version : '') : 'Browser version';
-  dialog('About', `<div class="about-sky"><img src="@@LOGO@@" alt="Harmonious DryDock"><div class="ver">${ver}</div></div>
-    <p>A save editor, ship library and Blender toolkit for No Man's Sky on PC (Steam and GOG), by Pastullio the Harmonious. It reads your own game files for item names, icons and models, and backs up every save before it changes it.</p>
+  dialog('About', `<div class="about-grid"><div class="about-l"><div class="about-sky"><img src="@@LOGO@@" alt="Harmonious DryDock"><div class="ver">${ver}</div></div>
     <div class="about-links"><a class="btn small primary" href="${GUIDE_URL}" target="_blank" rel="noopener">User guide</a>${APP ? '<button class="btn small addon-btn" type="button">LiveLink</button>' : ''}${LINKS.map(([t, u]) => `<a class="btn small" href="${u}" target="_blank" rel="noopener">${t}</a>`).join('')}</div>
+    </div><div class="about-r">
+    <p>A save editor, ship library and Blender toolkit for No Man's Sky on PC (Steam and GOG), by Pastullio the Harmonious. It reads your own game files for item names, icons and models, and backs up every save before it changes it.</p>
     <p class="dim" style="margin:12px 0 6px">Built with thanks to</p>
     <ul class="about-credits"><li>libNOM.map and libNOM.io by zencq (save keys and format)</li><li>MBINCompiler by monkeyman192 and contributors (game table layouts)</li><li>HGPAKtool by monkeyman192 (game archive format)</li><li>Charon Forge by xX-Charon-Xx (corvette renders)</li><li>nms_namegen by Stuart Coyle, hadsh and GoodGuysFree, and its JavaScript port nms-core by elegra1965 (system and planet prediction; MIT)</li><li>Pillow (texture decoding), klauspost/compress (zstd), Jost by indestructible type* (typeface)</li></ul>
     <p class="dim" style="font-size:13px;margin:12px 0 0">Free software under the GPL-3.0 licence. Not affiliated with Hello Games.</p>
-    <div class="about-version">${window.NMS_APP && appVer() ? `<p>Harmonious DryDock version: <b class="mono">${esc(appVer())}</b></p><div class="about-ver-acts"><button class="link" type="button" id="aboutNew">What's new</button><button class="btn primary" type="button" id="aboutUpd">Check for updates</button></div>` : '<p>Harmonious DryDock, browser version</p>'}</div>`, [['Close', false]]);
+    <div class="about-version">${window.NMS_APP && appVer() ? `<p>Harmonious DryDock version: <b class="mono">${esc(appVer())}</b></p><div class="about-ver-acts"><button class="link" type="button" id="aboutNew">What's new</button><button class="btn primary" type="button" id="aboutUpd">Check for updates</button></div>` : '<p>Harmonious DryDock, browser version</p>'}</div></div></div>`, [['Close', false]]);
 }
 document.addEventListener('click', (e) => { if (e.target.closest('.about-btn')) aboutDialog(); if (e.target.closest('#aboutNew')) whatsNew(true); if (e.target.closest('#aboutUpd')) checkForUpdate(true); });
 document.querySelectorAll('.guide-btn').forEach((a) => { a.href = GUIDE_URL; });
@@ -7575,7 +7583,7 @@ async function manageShipDialog(i) {
         <button class="menu-item" type="button" data-mg="profile"><b>Save as profile</b><span>Its class, stats and every technology module in place, to put the same fit on another ship</span></button>
         <button class="menu-item" type="button" data-mg="apply"><b>Apply a profile</b><span>Give it the fit from a profile you saved before</span></button>
         <button class="menu-item" type="button" data-mg="dock"><b>Put in the Dock Yard</b><span>Keep ${esc(nm)} and its build as a file, to load back into this save or any other</span></button>
-        <button class="menu-item mg-refit" type="button" data-mg="refit"><b>Full refit</b><span>Class, stats, inventories, colours, seed and the rest, on the Starships page</span></button>
+        <button class="menu-item mg-refit" type="button" data-mg="refit"><b>Workbench</b><span>Class, stats, inventories, colours, seed and the rest, on the Starships page</span></button>
       </div></div>`,
     actions: [['Close', null]],
     wire: (body, finish) => {

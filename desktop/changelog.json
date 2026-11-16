@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.16.1749",
+  "date": "2026-11-16",
+  "notes": [
+   "About shows the new Harmonious DryDock logo and fits on screen without scrolling",
+   "Shipwright's Manage card: Full refit is now called Workbench"
+  ]
+ },
+ {
   "version": "2026.11.16.1741",
   "date": "2026-11-16",
   "notes": [
