@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.16.1545",
+  "date": "2026-11-16",
+  "notes": [
+   "Shipwright: a Manage button beside the corvette's name to rename it, save or apply a profile, put it in the Dock Yard, or open Full refit on the Starships page"
+  ]
+ },
+ {
   "version": "2026.11.15.1845",
   "date": "2026-11-15",
   "notes": [

@@ -32,6 +32,17 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   ok('…and stays closed after picking another corvette', await p.evaluate(async () => { document.querySelectorAll('.sw-corv')[1].click(); await new Promise((r) => setTimeout(r, 300)); return !document.querySelector('details.sw-parts').open; }));
   await p.evaluate(() => { S.wright.parts = true; document.querySelectorAll('.sw-corv')[0].click(); }); await p.waitForTimeout(300);
   ok('lists the save\'s corvettes', corvs.join() === 'Formula1c,Yautja Claw,Max,The Cutting Remark');
+  // Manage (owner 2026-11-16): beside the name, a card with Rename, profiles, the Dock Yard and Full refit
+  ok('Manage sits beside the corvette\'s name', await p.evaluate(() => !!document.querySelector('.sw-title #swManage')));
+  await p.click('#swManage'); await p.waitForSelector('#mgName');
+  if (process.env.SHOTS) await p.screenshot({ path: process.env.SHOTS + '/manage.png' });
+  ok('…offers rename, save and apply a profile, the Dock Yard and Full refit', await p.evaluate(() => ['profile', 'apply', 'dock', 'refit'].every((k) => document.querySelector(`#dlgBody [data-mg="${k}"]`))));
+  await p.fill('#mgName', 'Formula1d'); await p.click('#mgRename'); await p.waitForTimeout(300);
+  ok('…renames the corvette', await p.evaluate(() => str(g(g(ps(), 'ShipOwnership')[S.wright.slot], 'Name')) === 'Formula1d' && document.querySelector('.sw-title b').textContent === 'Formula1d' && S.dirty));
+  await p.evaluate(() => set(g(ps(), 'ShipOwnership')[S.wright.slot], 'Name', 'Formula1c'));
+  await p.click('#swManage'); await p.waitForSelector('#dlgBody [data-mg="refit"]'); await p.click('#dlgBody [data-mg="refit"]'); await p.waitForTimeout(400);
+  ok('…and Full refit opens that ship on Starships', await p.evaluate(() => S.section === 'ships'));
+  await p.click('nav button[data-s="shipwright"]'); await p.waitForSelector('.sw-corv');
   const named = await p.evaluate(() => [partGroup('^B_GEN_1'), partGroup('^B_WNG_O_0'), partGroup('^B_WNG_A'), partGroup('^B_TUR_A'), partGroup('^B_SHL_C'), partGroup('^B_LND_B'), partGroup('^B_ALK_B'), partGroup('^B_HAB1_C'), partGroup('^B_COK_D'), partGroup('^U_MINIPORTAL'), partGroup('^B_ROOF_M'), (dbItem('^B_GEN_1') || {}).name].join());
   console.log(named);
   ok('parts are grouped by what they are', named === 'reactor,rockhopper,engine,weapon,shield,gear,bay,other,cockpit,other,other,Medusa-Class Reactor');

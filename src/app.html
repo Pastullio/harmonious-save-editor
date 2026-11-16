@@ -472,6 +472,14 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 @media (max-width: 1100px) { .sw-top { grid-template-columns: 1fr; } .sw-pic { max-width: 280px; } }
 .sw-title { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
 .sw-title b { font-family: var(--display); font-weight: 300; font-size: 24px; letter-spacing: .06em; }
+.sw-manage { display: inline-flex; align-items: center; gap: 6px; align-self: center; }
+.sw-manage svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.mg { display: grid; gap: 14px; min-width: min(460px, 80vw); }
+.mg-name { display: flex; gap: 8px; } .mg-name .input { flex: 1; min-width: 0; }
+.mg-list { display: grid; gap: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
+.mg-list .menu-item { padding: 11px 12px; }
+.mg-refit { border-top: 1px solid var(--line); border-radius: 0 0 var(--r-sm) var(--r-sm); margin-top: 4px; padding-top: 14px; }
+.mg-refit b { color: var(--accent); } .mg-refit b::after { content: " →"; }
 .sw-acts { display: flex; gap: 8px 10px; flex-wrap: wrap; align-items: center; }
 .sw-acts .check { padding: 0; }
 .sw-gap { flex: 1; }
@@ -3197,19 +3205,22 @@ function entityDetails(ed, o, i, kind) {
   if ($k('so')) $k('so').onclick = () => downloadBlob(safeFile(entityName(o, i, kind)) + '.so', new Blob([soJSON(toPlain(cloneJSON(o)))]));
   // Ship storage keeps the ship for later; moving it also frees the slot in this save (it can go back into any save)
   if ($k('dyvers')) $k('dyvers').onclick = () => showInDockYard(i);
-  if ($k('tolib')) $k('tolib').onclick = async () => {
-    const nm = entityName(o, i, kind), current = num(g(ps(), 'PrimaryShip')) === i;
-    const v = await dialog('Put ' + nm + ' in the Dock Yard', `<p>Ship storage in the Dock Yard keeps ${esc(nm)}${shipBuild(i) ? ' and its corvette build' : ''} as a file, ready to put back into this save or any other.</p>
-      ${current
-        ? `<p>It's the ship you're flying, so it can only be copied: <b>Keep a copy</b> leaves it in this save too.</p><p>To move it out of this save and free the slot, switch to another ship in the game, save there, then do this again.</p>`
-        : `<p><b>Keep a copy</b> leaves it in this save too. <b>Move it</b> also takes it out of this save, freeing the slot.</p>`}`,
-      [['Cancel', false, 'ghost'], ...(current ? [] : [['Move it', 'move']]), ['Keep a copy', 'copy', 'primary']]);
-    if (!v) return;
-    try { await saveShipToLibrary(i, v === 'move'); } catch (e) { toast(e.message, true); return; }
-    if (v === 'move' && (await deleteEntity(o, i, kind, false))) toast(`${nm} moved to Ship storage in the Dock Yard. Press Save to game to free the slot.`);
-  };
+  if ($k('tolib')) $k('tolib').onclick = () => toDockYard(o, i, kind);
   $k('import').onchange = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importEntity(o, i, kind, await f.text()); };
   $k('delete').onclick = () => deleteEntity(o, i, kind);
+}
+
+// Ship storage keeps the ship for later; moving it also frees the slot in this save (it can go back into any save)
+async function toDockYard(o, i, kind) {
+  const nm = entityName(o, i, kind), current = num(g(ps(), 'PrimaryShip')) === i;
+  const v = await dialog('Put ' + nm + ' in the Dock Yard', `<p>Ship storage in the Dock Yard keeps ${esc(nm)}${shipBuild(i) ? ' and its corvette build' : ''} as a file, ready to put back into this save or any other.</p>
+    ${current
+      ? `<p>It's the ship you're flying, so it can only be copied: <b>Keep a copy</b> leaves it in this save too.</p><p>To move it out of this save and free the slot, switch to another ship in the game, save there, then do this again.</p>`
+      : `<p><b>Keep a copy</b> leaves it in this save too. <b>Move it</b> also takes it out of this save, freeing the slot.</p>`}`,
+    [['Cancel', false, 'ghost'], ...(current ? [] : [['Move it', 'move']]), ['Keep a copy', 'copy', 'primary']]);
+  if (!v) return;
+  try { await saveShipToLibrary(i, v === 'move'); } catch (e) { toast(e.message, true); return; }
+  if (v === 'move' && (await deleteEntity(o, i, kind, false))) toast(`${nm} moved to Ship storage in the Dock Yard. Press Save to game to free the slot.`);
 }
 
 // plain-name copies (for files) and back (for this save's key style)
@@ -7500,6 +7511,35 @@ PAGES.livelink = (el) => {
   }, 4000);
 };
 
+// Shipwright's Manage card (owner 2026-11-16): the everyday ship jobs without leaving the page, and the way to the full editor
+async function manageShipDialog(i) {
+  const o = g(ps(), 'ShipOwnership')[i]; if (!o) return;
+  const nm = entityName(o, i, 'ship');
+  const pick = await customDialog({
+    title: 'Manage ' + nm,
+    html: `<div class="mg"><label class="field"><span>Name</span><span class="mg-name"><input class="input" id="mgName" maxlength="42" value="${esc(str(g(o, 'Name')))}"><button class="btn primary small" type="button" id="mgRename">Rename</button></span></label>
+      <div class="mg-list">
+        <button class="menu-item" type="button" data-mg="profile"><b>Save as profile</b><span>Its class, stats and every technology module in place, to put the same fit on another ship</span></button>
+        <button class="menu-item" type="button" data-mg="apply"><b>Apply a profile</b><span>Give it the fit from a profile you saved before</span></button>
+        <button class="menu-item" type="button" data-mg="dock"><b>Put in the Dock Yard</b><span>Keep ${esc(nm)} and its build as a file, to load back into this save or any other</span></button>
+        <button class="menu-item mg-refit" type="button" data-mg="refit"><b>Full refit</b><span>Class, stats, inventories, colours, seed and the rest, on the Starships page</span></button>
+      </div></div>`,
+    actions: [['Close', null]],
+    wire: (body, finish) => {
+      const inp = $('#mgName', body);
+      const rename = () => { const v = inp.value.trim(); if (!v) { toast('Give it a name first.', true); inp.focus(); return; } if (v !== str(g(o, 'Name'))) { set(o, 'Name', v); markDirty(); toast(`Renamed to ${v}. Press Save to game to keep it.`); } finish('renamed'); };
+      $('#mgRename', body).onclick = rename;
+      inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); rename(); } };
+      body.querySelectorAll('[data-mg]').forEach((b) => b.onclick = () => finish(b.dataset.mg));
+    },
+  });
+  if (pick === 'renamed') { renderSide(); render(); }
+  else if (pick === 'profile') await saveProfileDialog(o, i, 'ship');
+  else if (pick === 'apply') { await applyProfileDialog(o, i, 'ship'); render(); }
+  else if (pick === 'dock') { await toDockYard(o, i, 'ship'); renderSide(); render(); }
+  else if (pick === 'refit') { S.pick.ship = i; go('ships'); }
+}
+
 PAGES.shipwright = (el) => {
   markSeen('shipwright');
   const corvs = ships().filter(({ s }) => /\/BIGGS\//i.test(str(g(s, 'Resource', 'Filename'))));
@@ -7531,7 +7571,7 @@ PAGES.shipwright = (el) => {
   const main = document.createElement('div'); main.className = 'sw-main'; wrap.appendChild(main);
   const i = W.slot, ship = g(ps(), 'ShipOwnership')[i], H = corvetteHealth(i), base = H.base;
   main.innerHTML = `<div class="sw-top"><div class="sw-pic"></div><div class="sw-topr"><div class="panel sw-bar">
-      <div class="sw-title"><b>${esc(str(g(ship, 'Name')) || 'Corvette')}</b><span class="dim">Slot ${i + 1}${base ? ' · ' + plural(H.objs.length, 'part') : ''}</span></div>
+      <div class="sw-title"><b>${esc(str(g(ship, 'Name')) || 'Corvette')}</b><span class="dim">Slot ${i + 1}${base ? ' · ' + plural(H.objs.length, 'part') : ''}</span><button class="btn small sw-manage" type="button" id="swManage" title="Rename, profiles, Dock Yard and the full ship editor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Manage</button></div>
       <div class="sw-acts">
         <span class="sw-tune-wrap"><button class="btn primary sw-tune" type="button" data-a="tune"${base ? '' : ' disabled'}>Tune up</button><button class="btn icon-only sw-tune-set" type="button" id="swTuneSet" title="Tune-up order${isDefaultTune() ? '' : ' (your own)'}" aria-label="Tune-up order"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>${isDefaultTune() ? '' : '<span class="sw-tune-dot"></span>'}</button></span>
         <label class="check"><input type="checkbox" id="swAuto"${W.auto ? ' checked' : ''}> Tune up when pasting or loading</label>
@@ -7555,6 +7595,7 @@ PAGES.shipwright = (el) => {
   if (APP) { const lb = document.createElement('div'); lb.className = 'panel sw-livebox'; lb.innerHTML = livePanelHtml(W.slot); $('.sw-pic', main).appendChild(lb); wireLivePanel(lb, W.slot); }
   const $m = (q) => main.querySelector(q);
   $m('#swTuneSet').onclick = () => tuneOrderDialog(base ? g(base, 'Objects') : []);
+  $m('#swManage').onclick = () => manageShipDialog(i);
   const commit = (objs, msg) => { set(base, 'Objects', objs); markDirty(); if (msg) toast(msg); W.sel = new Set(); render(); };
   // replace the build with new parts, keeping the slot's own base (UserData, BaseType, name, owner)
   const replaceBuild = async (b, how) => {

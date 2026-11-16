@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.15.1845",
-  "date": "2026-11-15",
-  "size": 14982144,
-  "sha256": "879b0f47a02680e10c01df48d9e96dda53c563c22c9b5ae0f9c67f8a47a94be7",
-  "notes": "To the Dock Yard on the ship you're flying now says plainly that it can only be copied, and how to move it instead",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.15.1845/HarmoniousSaveEditor.exe",
+  "version": "2026.11.16.1545",
+  "date": "2026-11-16",
+  "size": 14986752,
+  "sha256": "c11da269a5b046dedf9685bbc9c4ec0ed5774f0974985aa37c0ebfc669edffbb",
+  "notes": "Shipwright: a Manage button beside the corvette's name to rename it, save or apply a profile, put it in the Dock Yard, or open Full refit on the Starships page",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.16.1545/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
