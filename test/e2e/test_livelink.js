@@ -41,7 +41,7 @@ stl(${JSON.stringify(path.join(exp, 'The Cutting Remark print 100mm 2026-11-13 1
   await p.click('nav button[data-s="livelink"]'); await p.waitForSelector('.ll-setup', { timeout: 15000 });
   const steps = await p.$$eval('.ll-step', (xs) => xs.map((x) => x.className.split(' ')[1] + ':' + x.querySelector('b').textContent));
   ok('Setup: Blender (found or not), the add-on not seen yet, not linked, Charon Forge optional (' + steps.join(' | ') + ')', steps.length === 4 && /^(ok|bad):Blender/.test(steps[0]) && /^bad:LiveLink add-on/.test(steps[1]) && /^bad:Blender is linked/.test(steps[2]) && /^opt:Charon/.test(steps[3]));
-  ok('…with the first-time steps open', await p.$eval('.ll-first', (d) => d.open && /Import my traveller/.test(d.textContent)));
+  ok('…with the first-time steps closed until opened', await p.$eval('.ll-first', (d) => !d.open && /Import my traveller/.test(d.textContent)));
   // the add-on checks in, as Blender would (an older one doesn't say its version)
   const lj = JSON.parse(fs.readFileSync(path.join(cfg, 'HarmoniousSaveEditor', 'live.json'), 'utf8'));
   const checkIn = (q) => new Promise((ok2) => http.get({ host: '127.0.0.1', port: lj.port, path: '/api/live/build?' + q, headers: { 'X-Live-Token': lj.token } }, (r) => { r.resume(); r.on('end', ok2); }));

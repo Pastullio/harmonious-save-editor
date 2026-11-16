@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.16.1545",
+  "version": "2026.11.16.1606",
   "date": "2026-11-16",
-  "size": 14986752,
-  "sha256": "c11da269a5b046dedf9685bbc9c4ec0ed5774f0974985aa37c0ebfc669edffbb",
-  "notes": "Shipwright: a Manage button beside the corvette's name to rename it, save or apply a profile, put it in the Dock Yard, or open Full refit on the Starships page",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.16.1545/HarmoniousSaveEditor.exe",
+  "size": 14987776,
+  "sha256": "2ced4af77e4e9f91bb6b421246bd0df5ed215a4b94666819404071af434526d6",
+  "notes": "Every card that folds (Parts and Build JSON on Shipwright, Quick fixes, Favourite places, Ship slots, the Traveller page's boxes and the rest) starts closed and remembers whether you left it open or closed, even after a restart",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.16.1606/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

@@ -1281,7 +1281,7 @@ nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .
 
       <div id="appLanding" class="hidden">
         <div class="app-where" id="appWhere"></div>
-        <details class="other-folder"><summary>Use a different folder</summary>
+        <details class="other-folder" data-fold="other-folder"><summary>Use a different folder</summary>
           <form class="row" id="otherForm"><label class="field"><span>Folder that holds save.hg and mf_save.hg (GOG, a copy, or a backup)</span><input class="input mono" id="otherPath" placeholder="C:\Users\you\AppData\Roaming\HelloGames\NMS\DefaultUser"></label><button class="btn">Open folder</button></form>
         </details>
       </div>
@@ -2461,7 +2461,7 @@ PAGES.overview = (el) => {
   el.innerHTML = `
     <div class="page-head"><div><h1>Overview</h1><p>Your traveller at a glance, currencies, and the save's name as it appears in the load menu.</p></div></div>
     <div class="trav" id="trav"></div>
-    <details class="panel qf-box" id="qfBox"${qfOpen() ? ' open' : ''}><summary><h3>Quick fixes</h3><span class="dim qf-sum">Repair, recharge and fill, units, nanites and quicksilver</span></summary>
+    <details class="panel qf-box" id="qfBox"${foldAttr('qf')}><summary><h3>Quick fixes</h3><span class="dim qf-sum">Repair, recharge and fill, units, nanites and quicksilver</span></summary>
       <div class="qf-body">
         <div class="qf-row"><p class="dim small-print" data-keep>These apply to every inventory: exosuit, ships, multi-tools, freighter, exocraft and storage.</p>
           <div class="toolbar"><button class="btn" id="repairAll">Repair all technology</button><button class="btn" id="rechargeAll">Recharge all technology</button><button class="btn" id="refillAll">Fill every stack</button></div></div>
@@ -2482,7 +2482,6 @@ PAGES.overview = (el) => {
   travellerCards($('#trav', el), $('#journey', el));
   // the save's own details sit with the journey (owner 2026-11-12: they hung loose under the page)
   $('#journey', el).insertAdjacentHTML('beforeend', facts.map(([b, s]) => `<div><b>${esc(b)}</b><span>${s}</span></div>`).join(''));
-  $('#qfBox', el).addEventListener('toggle', (e) => { try { localStorage.setItem('hse-qf-open', e.target.open ? '1' : '0'); } catch (_) {} });
   el.querySelectorAll('[data-cur]').forEach((inp) => inp.onchange = () => { const v = clampU32(inp.value); inp.value = v; set(p, inp.dataset.cur, N(v)); });
   el.querySelectorAll('[data-add]').forEach((b) => b.onclick = () => {
     const inp = el.querySelector(`[data-cur="${b.dataset.add}"]`);
@@ -2495,8 +2494,23 @@ PAGES.overview = (el) => {
   $('#rechargeAll', el).onclick = () => { let n = 0; all().forEach((inv) => slotsOf(inv).forEach((s) => { if (typeOf(s) === 'Technology' && refill(s)) n++; })); toast(n + ' technologies recharged'); };
   $('#refillAll', el).onclick = () => { let n = 0; all().forEach((inv) => slotsOf(inv).forEach((s) => { if (typeOf(s) !== 'Technology' && refill(s)) n++; })); toast(n + ' stacks filled'); };
 };
-// Quick fixes opens and closes (owner 2026-11-12); closed until opened, then remembered
-function qfOpen() { try { return localStorage.getItem('hse-qf-open') === '1'; } catch (_) { return false; } }
+// Folding cards (owner 2026-11-16): every details card with data-fold is closed until opened, then stays as the
+// owner left it, across runs (localStorage hse-folds). data-fold-forced marks one opened for them (a problem to fix,
+// nothing else to do there): that opening isn't remembered, only what they do with it afterwards.
+const FOLDS = (() => {
+  let f = {}; try { f = JSON.parse(localStorage.getItem('hse-folds') || '{}') || {}; } catch (_) {}
+  try { for (const [k, old] of [['qf', 'hse-qf-open'], ['favourites', 'hse-fav-open']]) { const v = localStorage.getItem(old); if (v != null && f[k] == null) f[k] = v === '1'; } } catch (_) {}
+  return f;
+})();
+function foldOpen(k) { return FOLDS[k] === true; }
+function foldSet(k, on) { if (FOLDS[k] === on) return; FOLDS[k] = on; try { localStorage.setItem('hse-folds', JSON.stringify(FOLDS)); } catch (_) {} }
+const foldAttr = (k, force) => ` data-fold="${k}"${foldOpen(k) || force ? ' open' : ''}${force && !foldOpen(k) ? ' data-fold-forced' : ''}`;
+function foldForce(d) { if (d && !d.open) { d.setAttribute('data-fold-forced', ''); d.open = true; } }
+document.addEventListener('toggle', (e) => {
+  const d = e.target; if (!(d instanceof HTMLDetailsElement) || !d.dataset.fold) return;
+  if (d.hasAttribute('data-fold-forced')) { if (d.open) return; d.removeAttribute('data-fold-forced'); }
+  foldSet(d.dataset.fold, d.open);
+}, true);
 const GEAR_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>';
 function travellerCards(host, journey) {
   const p = ps(), items = coverItems(), disc = discoveryCounts(), st = globalStats();
@@ -2824,7 +2838,7 @@ const TC_SPACE_CACHE = {};
 function tcSpaceImg(k) { return TC_SPACE_CACHE[k] || (TC_SPACE_CACHE[k] = TC_SPACE_IMGS[k] ? tcImage(TC_SPACE_IMGS[k]) : Promise.resolve(null)); }
 const TC_SWATCHES = ['#07131a', '#0d1b2a', '#1d4f5e', '#14324a', '#2a1b3d', '#3b0d2a', '#10271c', '#3a2a1c', '#000000', '#2b2f33', '#e6f0f5', '#ffffff'];
 const TC_DEFAULT = () => ({ v: 2, size: 'portrait', cw: 1600, ch: 900, bg: 'stars', c1: '#07131a', c2: '#1d4f5e', solid: '#07131a', pose: '', ship: '', tool: '', place: 'here', name: travellerName(), title: '', caption: '', font: 'jost',
-  watermark: true, open: { size: true, trav: true }, order: TC_ORDER.slice(), cut: {},
+  watermark: true, open: {}, order: TC_ORDER.slice(), cut: {},
   layers: { trav: { x: .5, y: .55, s: .7, yaw: 0, pitch: 0 }, ship: { x: .76, y: .3, s: .3, yaw: -55, pitch: 20 }, tool: { x: .3, y: .62, s: .22, yaw: 35, pitch: 10 }, glyphs: { x: .5, y: .93, s: .7 }, text: { x: .07, y: .07, s: 1 }, logo: { x: .88, y: .1, s: .12 } } });
 const TC = { state: null, img: { trav: null, bg: null, ship: null, logo: null }, imp: { trav: null, ship: null }, m3d: null, shipModel: null, shipGlb: null, shipPic: null, shipItem: null, shipViews: [], toolGlb: null, toolModel: null, toolKey: null,
   cache: {}, sel: null, hits: [], pics: [], shipKey: null, patron: null };
@@ -5829,7 +5843,7 @@ function addForm(panel, inv, x, y, rerender) {
   panel.innerHTML = `<div class="title">Add an item</div><div class="sub"><span id="aSub">${subLine()}</span> · slot ${x + 1}, ${y + 1}${tech && fit && fit.cats && known ? ' · <button type="button" class="link" id="aAll">Show all technology</button>' : ''}</div>
     ${S.db ? `<label class="field"><span>Search by name</span><input class="input" id="aQ" type="search" autocomplete="off" placeholder="${tech ? (fit && fit.what === 'multi-tool' ? 'e.g. S-Class Scanner, Plasma Launcher' : fit && fit.what === 'exosuit' ? 'e.g. S-Class Movement, Hazard Protection' : 'e.g. S-Class Hyperdrive, Pulse Engine') : 'e.g. Carbon, Orbital Exocraft Materialiser'}"></label><div class="results add-res" id="aRes" role="listbox"></div>`
            : `<p class="dim" style="margin:0;font-size:14px">Item names aren't loaded yet, so you can only add by item ID (such as <span class="mono">FUEL1</span>). Open <b>Item names</b> to build them from your game.</p>`}
-    <details class="add-by-id"${S.db ? '' : ' open'}><summary>Add by item ID</summary>
+    <details class="add-by-id"${foldAttr('add-by-id', !S.db)}><summary>Add by item ID</summary>
       <label class="field"><span>Item ID</span><input class="input mono" id="aId" placeholder="^FUEL1"></label>
       <label class="field"><span>Type</span><select class="input" id="aType">${['Substance', 'Product', 'Technology'].map((o) => `<option ${o === (tech ? 'Technology' : 'Substance') ? 'selected' : ''}>${o}</option>`).join('')}</select></label>
       <div class="two"><label class="field"><span>Amount</span><input class="input" id="aAmt" type="number"></label><label class="field"><span>Max</span><input class="input" id="aMax" type="number"></label></div>
@@ -8820,7 +8834,7 @@ function shipSlotsPanel(el) {
   const issues = shipSlotIssues(), used = list.filter(slotHasShip).length, cur = num(g(ps(), 'PrimaryShip'));
   const SL = S.slots || (S.slots = { open: false, pick: null });
   const builds = new Map(); for (const b of shipBuilds()) builds.set(num(g(b, 'UserData')), b);
-  const d = document.createElement('details'); d.className = 'panel slots'; d.id = 'shipSlots'; d.open = SL.open || issues.length > 0;
+  const d = document.createElement('details'); d.className = 'panel slots'; d.id = 'shipSlots'; d.dataset.fold = 'ship-slots'; d.open = foldOpen('ship-slots'); if (SL.open || issues.length > 0) foldForce(d);
   d.innerHTML = `<summary><span class="k">Ship slots</span><span class="dim">${used} of ${list.length} used</span>${issues.length ? `<span class="slots-bad">${plural(issues.length, 'problem')} to fix</span>` : ''}<span class="sw-gap"></span><span class="dim slots-hint">Arrange and repair</span></summary>
     <p class="dim ed-note">Drag a ship onto another slot to swap them, or click one ship and then the slot it should go to. Its corvette build, colours, customisation and current-ship marker move with it.</p>
     <div class="slot-grid" role="list">${list.map((s, i) => {
@@ -8834,7 +8848,7 @@ function shipSlotsPanel(el) {
     ${issues.length ? `<div class="slot-issues"><h3>Problems</h3><ul>${issues.map(([t, fixes], k) => `<li><span class="sw-ic"></span><span>${esc(t)}</span><span class="fixes">${fixes.map(([l, , cls], f) => `<button class="btn small${cls ? ' ' + cls : ''}" type="button" data-fix="${k}:${f}">${esc(l)}</button>`).join('')}</span></li>`).join('')}</ul></div>` : '<p class="dim ed-note slots-ok" data-keep>Every slot checks out: each corvette has one build, and no build points at the wrong slot.</p>'}`;
   el.appendChild(d);
   d.ontoggle = () => { SL.open = d.open; };
-  const done = (msg) => { SL.pick = null; renderSide(); toast(msg); render(); requestAnimationFrame(() => { const x = $('#shipSlots'); if (x) x.open = true; }); };
+  const done = (msg) => { SL.pick = null; renderSide(); toast(msg); render(); requestAnimationFrame(() => foldForce($('#shipSlots'))); };
   const move = (a, b) => { if (a === b) return; try { swapShips(a, b); SL.open = true; done(`Slots ${a + 1} and ${b + 1} swapped`); } catch (e) { toast(e.message, true); } };
   d.querySelectorAll('.slot-tile').forEach((t) => {
     const i = +t.dataset.slot;
@@ -9136,7 +9150,7 @@ function llSetupHtml() {
     : llStep('opt', 'Charon Forge (for corvettes)', 'Not found. Only needed to build corvettes in Blender; bases and your traveller work without it.', '<a class="btn small ghost" href="https://github.com/xX-Charon-Xx/charon_forge" target="_blank" rel="noopener">Get it</a>');
   const ready = su.blender && st.everLinked && st.addon !== 'older' && llCmp(st.addon, latest) >= 0;
   return `<section class="panel ll-setup"><h3>Setup${ready ? ' <span class="ll-badge ok">Ready</span>' : ''}</h3><ul class="ll-steps">${bl}${ad}${ln}${cf}</ul>
-    <details class="ll-first"${ready ? '' : ' open'}><summary>First time? Your traveller in Blender in five steps</summary><ol class="steps">
+    <details class="ll-first"${foldAttr('ll-first')}><summary>First time? Your traveller in Blender in five steps</summary><ol class="steps">
       <li>Install <b>Blender</b> 4.2 or newer.</li>
       <li>Press <b>Get LiveLink</b> above. It saves <span class="mono">harmonious_live_link.py</span> to the Exports folder and opens it.</li>
       <li>In Blender: <b>Edit, Preferences, Add-ons</b>, the ▾ menu in the corner, <b>Install from Disk</b>, pick that file and tick it.</li>
@@ -9305,11 +9319,11 @@ PAGES.shipwright = (el) => {
         <button class="btn small" type="button" data-a="saveas"${base ? '' : ' disabled'}>Save as…</button>
       </div></div>
     <div class="panel sw-health"><h3>Build check</h3><ul>${H.out.map(([k, t, fix]) => `<li class="${k}"><span class="sw-ic"></span><span>${esc(t)}</span>${fix ? `<button class="btn small" type="button" data-a="${fix}">${fix === 'tune' ? 'Tune up' : 'Remove them'}</button>` : ''}</li>`).join('')}</ul></div></div></div>
-    ${base ? `<details class="panel sw-parts"${W.parts === false ? '' : ' open'}><summary>Parts <span class="dim sw-count">${plural(H.objs.length, 'part')}</span></summary><div class="sw-parts-head"><input class="input" id="swQ" type="search" placeholder="Search parts" value="${esc(W.q)}">
+    ${base ? `<details class="panel sw-parts"${foldAttr('sw-parts')}><summary>Parts <span class="dim sw-count">${plural(H.objs.length, 'part')}</span></summary><div class="sw-parts-head"><input class="input" id="swQ" type="search" placeholder="Search parts" value="${esc(W.q)}">
       <span class="sw-move"><button class="btn small" type="button" data-m="top" title="Move to the top">Top</button><button class="btn small" type="button" data-m="up" title="Move up">Up</button><button class="btn small" type="button" data-m="down" title="Move down">Down</button><button class="btn small" type="button" data-m="bottom" title="Move to the bottom">Bottom</button><button class="btn small" type="button" data-m="copy1" title="Copy the selected parts">Copy</button><button class="btn small danger" type="button" data-m="del">Delete</button></span></div>
       <p class="dim sw-hint">Click a part to select it; Ctrl-click and Shift-click select several. The game reads parts from the top down: the first cockpit is the camera, the second the boarding cockpit, and the first landing bay is where you beam up.</p>
       <div class="sw-rows" id="swRows"></div></details>
-    <details class="panel sw-json"${W.json ? ' open' : ''}><summary>Build JSON</summary><p class="dim">The whole build as text, for Blender, the Base Building App or any JSON tool. Edit it here and press Apply; the build's link to this slot is kept.</p><textarea class="input mono" id="swJson" spellcheck="false" rows="18"></textarea><div class="toolbar"><button class="btn" type="button" data-a="apply">Apply</button></div></details>` : ''}`;
+    <details class="panel sw-json"${foldAttr('sw-json')}><summary>Build JSON</summary><p class="dim">The whole build as text, for Blender, the Base Building App or any JSON tool. Edit it here and press Apply; the build's link to this slot is kept.</p><textarea class="input mono" id="swJson" spellcheck="false" rows="18"></textarea><div class="toolbar"><button class="btn" type="button" data-a="apply">Apply</button></div></details>` : ''}`;
   // the corvette's picture, as on the Garage page: its render, its parts as a hologram, or a picture of the owner's
   { const it = coverItems().find((x) => x.kind === 'corvette' && x.i === i); if (it) pictureCard($('.sw-pic', main), it, 'Corvette'); }
   // LiveLink under the picture (owner 2026-11-12: it fills the space below the corvette's picture)
@@ -9354,8 +9368,7 @@ PAGES.shipwright = (el) => {
   $m('#swAuto').onchange = (e) => { W.auto = e.target.checked; };
   $m('#swFile').onchange = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { await replaceBuild(await buildFromInput(await f.arrayBuffer(), f.name), 'from ' + f.name); } catch (err) { toast(err.message, true); } };
   if (!base) return;
-  const pd = $m('.sw-parts'); pd.ontoggle = () => { W.parts = pd.open; };
-  const det = $m('.sw-json'); det.ontoggle = () => { W.json = det.open; if (det.open && !$m('#swJson').value) $m('#swJson').value = plainBuild(base); };
+  const det = $m('.sw-json'); const fillJson = () => { if (det.open && !$m('#swJson').value) $m('#swJson').value = plainBuild(base); }; det.ontoggle = fillJson; fillJson();
   if (det.open) $m('#swJson').value = plainBuild(base);
   // the parts list
   const objs = g(base, 'Objects'), rows = $m('#swRows');
@@ -10501,7 +10514,7 @@ PAGES.cargo = (el) => {
   panel.innerHTML = `<div class="tidy-top"><label class="field"><span>Move into</span><select class="input" id="tdDest">${places.map((pl, k) => `<option value="${k}"${k === CG.dest ? ' selected' : ''}>${esc(pl.label)}</option>`).join('')}</select></label>
       <label class="check"><input type="checkbox" id="tdHave"${CG.onlyHave ? ' checked' : ''}> Only items it already has</label>
       <span class="dim">${plural(freeSpots(dest.inv).length, 'free slot')}</span></div>
-    <details class="tidy-src"${CG.srcOpen ? ' open' : ''}><summary>Take from ${plural(sources.length, 'inventory', 'inventories')}</summary><div class="tidy-groups">${groups.map((gr) => `<div><b>${esc(gr)}</b>${places.map((pl, k) => pl.group !== gr || k === CG.dest ? '' : `<label class="check"><input type="checkbox" data-src="${esc(pl.label)}"${!CG.off.has(pl.label) && !pl.special ? ' checked' : ''}${pl.special ? ' disabled title="Special storage that only takes certain items"' : ''}> ${esc(pl.label)}</label>`).join('')}</div>`).join('')}</div></details>
+    <details class="tidy-src"${foldAttr('cargo-sources')}><summary>Take from ${plural(sources.length, 'inventory', 'inventories')}</summary><div class="tidy-groups">${groups.map((gr) => `<div><b>${esc(gr)}</b>${places.map((pl, k) => pl.group !== gr || k === CG.dest ? '' : `<label class="check"><input type="checkbox" data-src="${esc(pl.label)}"${!CG.off.has(pl.label) && !pl.special ? ' checked' : ''}${pl.special ? ' disabled title="Special storage that only takes certain items"' : ''}> ${esc(pl.label)}</label>`).join('')}</div>`).join('')}</div></details>
     <h3 class="tidy-h">The plan</h3>
     ${plan.length ? `<div class="know-rows tidy-rows">${plan.map((r) => { const it = dbItem(r.id); return `<label class="know-row tidy-row${r.off ? ' off' : ''}"><input type="checkbox" data-skip="${esc(r.id)}"${r.off ? '' : ' checked'}><span class="ic">${it && it.icon ? `<img data-icon="${esc(it.icon)}" alt="">` : ''}</span><span class="nm">${esc(it ? it.name : idLabel(r.id))}</span>
         <span class="dim">${r.off ? 'Left where it is' : r.moving ? `${r.moving.toLocaleString()} from ${esc(r.from.join(', '))}` : 'Merge its partial stacks'}</span><span class="mono">${r.off ? '' : `${plural(r.finalStacks, 'stack')} of up to ${r.max.toLocaleString()}`}${!r.off && r.left ? `<span class="warn"> · ${r.left.toLocaleString()} won't fit</span>` : ''}</span></label>`; }).join('')}</div>`
@@ -10511,7 +10524,6 @@ PAGES.cargo = (el) => {
   loadIcons(panel);
   $('#tdDest', panel).onchange = (e) => { CG.dest = +e.target.value; CG.skip = new Set(); render(); };
   $('#tdHave', panel).onchange = (e) => { CG.onlyHave = e.target.checked; render(); };
-  panel.querySelector('.tidy-src').ontoggle = (e) => { CG.srcOpen = e.target.open; };
   panel.querySelectorAll('[data-src]').forEach((c) => c.onchange = () => { c.checked ? CG.off.delete(c.dataset.src) : CG.off.add(c.dataset.src); render(); });
   panel.querySelectorAll('[data-skip]').forEach((c) => c.onchange = () => { c.checked ? CG.skip.delete(c.dataset.skip) : CG.skip.add(c.dataset.skip); render(); });
   $('#tdGo', panel).onclick = () => { const r = applyPlan(dest.inv, plan); CG.skip = new Set(); toast(`${plural(r.items, 'item')} consolidated into ${dest.label}${r.moved ? `, ${r.moved.toLocaleString()} moved` : ''}`); render(); };
@@ -10788,7 +10800,6 @@ async function favImport(file) {
 // a favourite's base spot, for "Arrive at a base" in its system
 const favSpots = (p) => (FAVS.list || []).filter((f) => f.spot && Place.sameSystem(Place.fromPortal(f.portal, f.gi), p)).map((f) => ({ name: f.name, kind: 'Favourite', planet: f.spot.planet, local: f.spot.local, face: f.spot.face, fav: true }));
 // Favourite places opens and closes (owner 2026-11-12); open when you have favourites, until you close it
-function favOpen() { try { const v = localStorage.getItem('hse-fav-open'); return v == null ? !!(FAVS.list && FAVS.list.length) : v === '1'; } catch (_) { return false; } }
 function favPanelHtml(C) {
   const all = FAVS.list || [], q = FAVS.q.trim().toLowerCase();
   const list = q ? all.filter((f) => (f.name + ' ' + f.kind + ' ' + (f.note || '') + ' ' + f.portal + ' ' + (GALAXIES[f.gi] || '')).toLowerCase().includes(q)) : all;
@@ -10824,7 +10835,7 @@ PAGES.coords = (el) => {
       <div class="here-row"><span class="here-globe" id="hereGlobe"></span><div class="here-txt"><span class="label">You are here</span><span><span id="hereStar"></span><b id="hereName"></b><b>${esc(GALAXIES[here.gi] || 'Galaxy ' + (here.gi + 1))}</b><span class="dim"> · galaxy ${here.gi + 1} of 256</span></span><span class="here-planet dim" id="herePlanet"></span></div>
       ${glyphRow(Place.portal(here), 'small')}<span class="here-codes"><span class="mono">${Place.portal(here)}</span><span class="mono dim">${Place.galactic(here)}</span></span>
       <button class="btn small" id="hereUse">Start from here</button></div></div>
-    <details class="panel fav-panel" id="favWrap"${favOpen() ? ' open' : ''}><summary><span class="label">Favourite places</span><span class="dim fav-sum" id="favSum">${(FAVS.list || []).length ? plural(FAVS.list.length, 'place') : 'Star places to keep them here'}</span></summary><div id="favBox">${favPanelHtml(C)}</div></details>
+    <details class="panel fav-panel" id="favWrap"${foldAttr('favourites')}><summary><span class="label">Favourite places</span><span class="dim fav-sum" id="favSum">${(FAVS.list || []).length ? plural(FAVS.list.length, 'place') : 'Star places to keep them here'}</span></summary><div id="favBox">${favPanelHtml(C)}</div></details>
     <div class="panel" id="destPanel"><div class="dest-head"><h3>Destination</h3><span class="dim" id="warpTopNote"></span><span id="destStar"></span><button class="btn primary warp-top" id="warpTop" type="button" disabled>Warp here</button></div>
       <div class="dest">
         <div class="dest-glyphs" id="destGlyphs" aria-label="Portal code as glyphs"></div>
@@ -10931,7 +10942,6 @@ PAGES.coords = (el) => {
   };
   const setDigits = (d, from, fav) => { C.digits = d.toUpperCase().replace(/[^0-9A-F]/g, '').slice(0, 12); C.fav = fav || null; $$('#destErr').hidden = true; show(from); drawFavs(); };
   const favBox = $$('#favBox');
-  const fw = $$('#favWrap'); if (fw) fw.addEventListener('toggle', () => { try { localStorage.setItem('hse-fav-open', fw.open ? '1' : '0'); } catch (_) {} });
   const drawFavs = () => { const fs = $$('#favSum'); if (fs) fs.textContent = (FAVS.list || []).length ? plural(FAVS.list.length, 'place') : 'Star places to keep them here'; favBox.innerHTML = favPanelHtml(C); wireFavPanel(favBox, C, (f) => { C.p = Place.fromPortal(f.portal, f.gi); setDigits(f.portal, null, f); $$('#destPanel').scrollIntoView({ behavior: 'smooth', block: 'start' }); }); };
   drawFavs();
   $$('#keypad').onclick = (e) => { const b = e.target.closest('button[data-d]'); if (b && C.digits.length < 12) setDigits(C.digits + b.dataset.d); };
@@ -10985,7 +10995,7 @@ PAGES.items = (el) => {
         <form class="row db-form" id="gameForm"><label class="field"><span>No Man's Sky folder</span><input class="input mono" id="gamePath" placeholder="C:\\Program Files (x86)\\Steam\\steamapps\\common\\No Man's Sky" value="${esc(lib.gameSet || (lib.game || '').replace(/[\\/]GAMEDATA[\\/]PCBANKS$/i, ''))}"></label><button class="btn" type="submit">Use this folder</button></form>
         <div class="toolbar"><button class="btn primary" id="libBuild"${building ? ' disabled' : ''}>${lib.items ? 'Rebuild from the game' : 'Build item library'}</button></div>
       </div>
-      <details class="panel gf-panel"${fromLib ? '' : ' open'}><summary><h3>Goatfungus's item database (optional)</h3></summary>
+      <details class="panel gf-panel"${foldAttr('itemdb-jar')}><summary><h3>Goatfungus's item database (optional)</h3></summary>
         <p class="dim">Used only until your own library is built.</p>${gfBlock()}<p class="err" id="dbErr"></p></details>`;
     if (building && !S.libWatch) { S.libWatch = true; setTimeout(async () => { S.libWatch = false; if (!el.isConnected) return; await libStatus().catch(() => {}); if (S.section === 'items') render(); }, 800); }
     $('#libBuild', el).onclick = async () => {
@@ -11212,7 +11222,7 @@ async function appLoadRoots() {
     box.innerHTML = accts.map((a, i) => `<button class="pick" data-i="${i}" aria-pressed="false"><span class="pn">${esc(a.label)}</span><span class="ps">${a.saves} saves, last played ${esc(fmtWhen(a.newest))}</span></button>`).join('');
     box.querySelectorAll('.pick').forEach((b) => b.onclick = () => appListAccount(accts[+b.dataset.i]));
   }
-  if (!accts.length) { $('.other-folder').open = true; $('#slotList').innerHTML = ''; return; }
+  if (!accts.length) { foldForce($('.other-folder')); $('#slotList').innerHTML = ''; return; }
   const newest = accts.reduce((a, b) => (b.newest > a.newest ? b : a));
   await appListAccount(newest);
 }

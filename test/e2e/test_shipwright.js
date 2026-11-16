@@ -27,10 +27,12 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   ok('the file buttons are on one line', await p.evaluate(() => { const t = [...document.querySelectorAll('.sw-files .btn')].map((b) => Math.round(b.getBoundingClientRect().top)); return t.length >= 4 && new Set(t).size === 1; }));
   ok('…with no Change picture link, a gear instead', await p.evaluate(() => !/Change picture/.test(document.querySelector('.sw-pic').textContent) && !!document.querySelector('.sw-pic .tc-gear')));
   ok('Copy all is on the row with Paste all, Load file and Save as', await p.evaluate(() => { const r = document.querySelector('.sw-files'); return ['Copy all', 'Paste all', 'Load file', 'Save as'].every((t) => r.textContent.includes(t)) && !document.querySelector('.sw-gap'); }));
-  ok('Parts opens and closes', await p.evaluate(() => { const d = document.querySelector('details.sw-parts'); return d && d.open && /PARTS|Parts/.test(d.querySelector('summary').textContent); }));
+  // every folding card starts closed and remembers what the owner did with it (owner 2026-11-16)
+  ok('Parts starts closed', await p.evaluate(() => { const d = document.querySelector('details.sw-parts'); return d && !d.open && /PARTS|Parts/.test(d.querySelector('summary').textContent); }));
   await p.click('details.sw-parts > summary'); await p.waitForTimeout(200);
-  ok('…and stays closed after picking another corvette', await p.evaluate(async () => { document.querySelectorAll('.sw-corv')[1].click(); await new Promise((r) => setTimeout(r, 300)); return !document.querySelector('details.sw-parts').open; }));
-  await p.evaluate(() => { S.wright.parts = true; document.querySelectorAll('.sw-corv')[0].click(); }); await p.waitForTimeout(300);
+  ok('…stays open after picking another corvette', await p.evaluate(async () => { document.querySelectorAll('.sw-corv')[1].click(); await new Promise((r) => setTimeout(r, 300)); return document.querySelector('details.sw-parts').open; }));
+  ok('…and is remembered for next time', await p.evaluate(() => JSON.parse(localStorage.getItem('hse-folds') || '{}')['sw-parts'] === true));
+  await p.evaluate(() => { document.querySelectorAll('.sw-corv')[0].click(); }); await p.waitForTimeout(300);
   ok('lists the save\'s corvettes', corvs.join() === 'Formula1c,Yautja Claw,Max,The Cutting Remark');
   // Manage (owner 2026-11-16): beside the name, a card with Rename, profiles, the Dock Yard and Full refit
   ok('Manage sits beside the corvette\'s name', await p.evaluate(() => !!document.querySelector('.sw-title #swManage')));
@@ -133,6 +135,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   ok('it all survives saving and reopening', st.y === 938 && st.max === 2091 && st.tuned && st.nw === 2091 && st.nm === 'New corvette');
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
   await p.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark')); await p.click('nav button[data-s="shipwright"]'); await p.waitForTimeout(800);
+  ok('Parts and Build JSON open as they were left, after reopening', await p.evaluate(() => document.querySelector('details.sw-parts').open && document.querySelector('details.sw-json').open && !!$('#swJson').value));
   await p.screenshot({ path: SP + '/shots/sw3-dark.png' });
   await b.close(); proc.kill();
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL PASS'); process.exit(fails.length ? 1 : 0);

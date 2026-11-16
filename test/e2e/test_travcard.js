@@ -52,9 +52,9 @@ im.save(${JSON.stringify(file)})`]);
   ok('the card starts portrait 1080 × 1350 with the name from the save', await p.evaluate(() => { const c = $('#tcCanvas'); return c.width === 1080 && c.height === 1350 && TC.state.name === travellerName(); }));
   ok('…and the glyphs of where you are now', await p.evaluate(() => TC.state.place === 'here' && TC.hits.some((h) => h.id === 'glyphs')));
   ok('the page has the add-on button', !!(await p.$('#tcSide .addon-btn')));
-  // the options sit in boxes that open and close: Size and Traveller open at first
+  // the options sit in boxes that open and close, all closed at first (owner 2026-11-16)
   const boxes = await p.$$eval('#tcSide details.tc-box', (d) => d.map((x) => x.dataset.box + (x.open ? '+' : '')));
-  ok('the options are in boxes: Size, Traveller, Ship, Multi-tool, Background, Text, Portal glyphs', boxes.join() === 'size+,trav+,ship,tool,bg,text,glyphs');
+  ok('the options are in boxes: Size, Traveller, Ship, Multi-tool, Background, Text, Portal glyphs', boxes.join() === 'size,trav,ship,tool,bg,text,glyphs');
   await p.click('details[data-box="ship"] > summary'); await p.waitForTimeout(100);
   ok('…a box opens with a click and is remembered', await p.evaluate(() => $('details[data-box="ship"]').open && TC.state.open.ship));
   await p.click('details[data-box="ship"] > summary'); await p.waitForTimeout(100);

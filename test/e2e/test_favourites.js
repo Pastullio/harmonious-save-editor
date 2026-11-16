@@ -63,7 +63,9 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   await b.close(); proc.kill(); await wait(500);
   ({ proc, url } = await start());
   const b2 = await chromium.launch(); p = await b2.newPage({ viewport: { width: 1440, height: 1000 } }); p.on('pageerror', (e) => errs.push(e.message));
-  await open(); await p.evaluate(() => go('coords')); await p.waitForSelector('#favBox .fav-list li');
+  await open(); await p.evaluate(() => go('coords')); await p.waitForSelector('#favWrap');
+  ok('a fresh profile starts with Favourite places closed', !(await p.evaluate(() => document.querySelector('#favWrap').open)));
+  await p.click('#favWrap > summary'); await p.waitForSelector('#favBox .fav-list li');
   ok('favourites are there after a restart', (await p.$$('#favBox .fav-list li')).length === 2);
   // warp from a favourite
   await p.click('#favBox .fav-list li:last-child [data-fgo]'); await wait(400);

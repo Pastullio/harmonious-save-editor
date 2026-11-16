@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.16.1606",
+  "date": "2026-11-16",
+  "notes": [
+   "Every card that folds (Parts and Build JSON on Shipwright, Quick fixes, Favourite places, Ship slots, the Traveller page's boxes and the rest) starts closed and remembers whether you left it open or closed, even after a restart"
+  ]
+ },
+ {
   "version": "2026.11.16.1545",
   "date": "2026-11-16",
   "notes": [
