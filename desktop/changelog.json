@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.16.1734",
+  "date": "2026-11-16",
+  "notes": [
+   "The Garage page is retired: what's in your save is now a Garage card on Overview, above Quick fixes (click it to open)",
+   "Starships: bigger Cover Flow, with a corvette's colour key, Render with Blender and its camera angles right under the covers"
+  ]
+ },
+ {
   "version": "2026.11.16.1613",
   "date": "2026-11-16",
   "notes": [

@@ -1185,14 +1185,17 @@ ol.steps { padding-left: 20px; display: grid; gap: 6px; }
 .holo-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 12px 0 0; font-size: 12.5px; color: var(--dim); }
 .holo-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .holo-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
-.hangar-detail { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
-.hangar-detail .stats { display: flex; flex-wrap: wrap; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
-.hangar-detail .stats div { background: var(--surface); padding: 12px 16px; flex: 1 1 120px; }
-.hangar-detail .stats b { display: block; font-family: var(--display); font-size: 16px; font-weight: 500; }
-.hangar-detail .stats span { font-size: 11.5px; color: var(--dim); }
-.hangar-detail .stats .badge { display: inline-block; color: var(--cls-ink); font-size: 15px; font-weight: 600; min-width: 26px; text-align: center; }
-.hangar-detail .acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: start; }
-@media (max-width: 760px) { .hangar-detail { grid-template-columns: 1fr; } .hangar-detail .acts { justify-content: start; } }
+.garage-body { padding: 0 20px 18px; display: grid; gap: 16px; }
+.garage-grp h4 { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
+.garage-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.garage-tile { display: grid; grid-template-rows: auto 1fr; text-align: left; padding: 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); overflow: hidden; cursor: pointer; font: inherit; color: var(--ink); }
+.garage-tile:hover, .garage-tile:focus-visible { border-color: var(--accent); }
+.garage-tile .gt-txt { display: grid; gap: 2px; padding: 8px 10px 10px; min-width: 0; }
+.garage-tile .gt-txt b { font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.garage-tile .gt-txt .dim { font-size: 12px; }
+.gt-cur { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.flow-extra:empty { display: none; } .flow-extra { margin: -4px 0 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.flow-extra .view-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; }
 @media (max-width: 1100px) { .inspector { position: static; } }
 /* narrower windows: the section list moves above the page so the inventories keep the full width */
 @media (max-width: 960px) {
@@ -1806,7 +1809,7 @@ function download(bytes, name) { const u = URL.createObjectURL(new Blob([bytes])
 
 // ------------------------------------------------------------------ navigation
 const SECTIONS = [
-  ['overview', 'Overview'], ['shipwright', 'Shipwright'], ['livelink', 'LiveLink'], ['coords', 'Coordinates'], ['hangar', 'Garage'], ['library', 'Dock Yard'],
+  ['overview', 'Overview'], ['shipwright', 'Shipwright'], ['livelink', 'LiveLink'], ['coords', 'Coordinates'], ['library', 'Dock Yard'],
   ['exosuit', 'Exosuit'], ['traveller', 'Traveller'], ['tools', 'Multi-tools'], ['ships', 'Starships'], ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['companions', 'Companions'],
   ['bases', 'Bases'], ['storage', 'Storage'], ['cargo', 'Cargo'],
   ['knowledge', 'Knowledge'], ['rewards', 'Rewards'], ['standing', 'Standing'], ['difficulty', 'Difficulty'],
@@ -1814,7 +1817,7 @@ const SECTIONS = [
 ];
 // The sidebar in groups of related pages, each with a faint tint of its own colour behind it.
 const NAV_GROUPS = [
-  { tint: '#2fc3d6', ids: ['overview', 'shipwright', 'livelink', 'coords', 'hangar', 'library'] },          // getting around and your fleet
+  { tint: '#2fc3d6', ids: ['overview', 'shipwright', 'livelink', 'coords', 'library'] },          // getting around and your fleet
   { tint: '#a37bff', ids: ['exosuit', 'traveller', 'tools', 'ships', 'freighter', 'vehicles', 'companions'] }, // what you carry and ride
   { tint: '#ff8a70', ids: ['bases', 'storage', 'cargo'] },                                         // where things are kept
   { tint: '#7ba2ff', ids: ['knowledge', 'rewards', 'standing', 'difficulty'] },                   // progress and settings
@@ -1823,7 +1826,7 @@ const NAV_GROUPS = [
 // Spectrum: each section's colour sweeps down the sidebar, teal and aqua through blue, violet, magenta, rose and coral
 // (owner's pick), then sky, periwinkle and steel for progress and settings, mint (item names) and slate (raw data).
 // One bright base per section; light mode darkens it automatically.
-const SECTION_COLORS = { overview: '#2fc3d6', shipwright: '#36d6c3', livelink: '#38c4e2', coords: '#3cb6ea', hangar: '#4ea8ff', library: '#6598ff', exosuit: '#7d8bff', traveller: '#9083ff', tools: '#a37bff', ships: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', companions: '#ff7690', bases: '#ff8079', storage: '#ff8a70', cargo: '#ffa086', knowledge: '#5ab8f0', rewards: '#7ba2ff', standing: '#9a8cff', difficulty: '#a3b3cf', items: '#3fd9a3', raw: '#8fb3c4' };
+const SECTION_COLORS = { overview: '#2fc3d6', shipwright: '#36d6c3', livelink: '#38c4e2', coords: '#3cb6ea', library: '#6598ff', exosuit: '#7d8bff', traveller: '#9083ff', tools: '#a37bff', ships: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', companions: '#ff7690', bases: '#ff8079', storage: '#ff8a70', cargo: '#ffa086', knowledge: '#5ab8f0', rewards: '#7ba2ff', standing: '#9a8cff', difficulty: '#a3b3cf', items: '#3fd9a3', raw: '#8fb3c4' };
 const secColor = (id) => SECTION_COLORS[id];
 function applySection(id) {
   const c = secColor(id);
@@ -1868,7 +1871,7 @@ function renderSide() {
   const bits = [S.src.dataName];
   if (m) bits.push(fmtPlay(num(g(common() || p, 'TotalPlayTime')) || m.totalPlayTime));
   $('#saveMeta').textContent = bits.join(', ');
-  const counts = { hangar: ships().length + tools().length, ships: ships().length, tools: tools().length, storage: storageInvs().length };
+  const counts = { ships: ships().length, tools: tools().length, storage: storageInvs().length };
   const label = Object.fromEntries(SECTIONS);
   const btn = (id) => `<button data-s="${id}" ${S.section === id ? 'aria-current="page"' : ''} style="--dot:${secColor(id) || 'var(--line-2)'}"><span class="dot" aria-hidden="true"></span><span class="lbl">${label[id]}</span>${LIVE.on && (id === 'livelink' || id === (LIVE.kind === 'base' ? 'bases' : 'shipwright')) ? '<span class="live-pill" title="LiveLink from Blender is on"><span class="live-dot"></span>Live</span>' : NEW_SECTIONS[id] && APP && !seenSection(id) ? '<span class="new-pill">New</span>' : counts[id] != null ? `<span class="count">${counts[id]}</span>` : ''}</button>`;
   const L = navLayout();
@@ -1926,6 +1929,7 @@ function renderNavEdit(L, label) {
 }
 $('#navEditBtn').onclick = () => { S.navEdit = !S.navEdit; renderSide(); if (S.navEdit) $('#nav').scrollIntoView({ block: 'nearest' }); };
 function go(section) {
+  if (section === 'hangar') section = 'ships'; // the Garage page was retired (owner 2026-11-16); its card is on Overview
   S.section = section; S.sel = null; applySection(section);
   $('#nav').querySelectorAll('button').forEach((b) => { if (b.dataset.s === section) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   render(); $('#main').scrollTop = 0;
@@ -2020,6 +2024,7 @@ PAGES.overview = (el) => {
   el.innerHTML = `
     <div class="page-head"><div><h1>Overview</h1><p>Your traveller at a glance, currencies, and the save's name as it appears in the load menu.</p></div></div>
     <div class="trav" id="trav"></div>
+    ${garageBoxHtml()}
     <details class="panel qf-box" id="qfBox"${foldAttr('qf')}><summary><h3>Quick fixes</h3><span class="dim qf-sum">Repair, recharge and fill, units, nanites and quicksilver</span></summary>
       <div class="qf-body">
         <div class="qf-row"><p class="dim small-print" data-keep>These apply to every inventory: exosuit, ships, multi-tools, freighter, exocraft and storage.</p>
@@ -2039,6 +2044,7 @@ PAGES.overview = (el) => {
   const ver = num(g(S.save.json, 'Version')); if (ver) facts.push([ver, 'Save version']);
   if (S.save.meta) facts.push([S.save.meta.info.length === 432 ? 'Worlds Part II' : S.save.meta.info.length === 384 ? 'Worlds Part I' : 'Waypoint era', 'Meta format']);
   travellerCards($('#trav', el), $('#journey', el));
+  wireGarageBox(el);
   // the save's own details sit with the journey (owner 2026-11-12: they hung loose under the page)
   $('#journey', el).insertAdjacentHTML('beforeend', facts.map(([b, s]) => `<div><b>${esc(b)}</b><span>${s}</span></div>`).join(''));
   el.querySelectorAll('[data-cur]').forEach((inp) => inp.onchange = () => { const v = clampU32(inp.value); inp.value = v; set(p, inp.dataset.cur, N(v)); });
@@ -2097,9 +2103,8 @@ function travellerCards(host, journey) {
     ['Use the default picture', async () => { await setCustomCover(me.key, null); showMe(); }, 'ghost', { hidden: () => !mine }],
   ]);
   g0.gear.id = 'meGear'; g0.pop.id = 'meGearPop';
-  const toHangar = (it) => () => { S.hangar = { filter: 'all', key: it.key }; go('hangar'); };
-  if (ship) miniCover(host.querySelector('#tcShip'), ship, 220, toHangar(ship));
-  if (tool) miniCover(host.querySelector('#tcTool'), tool, 220, toHangar(tool));
+  if (ship) miniCover(host.querySelector('#tcShip'), ship, 220, () => openLoadout(ship));
+  if (tool) miniCover(host.querySelector('#tcTool'), tool, 220, () => openLoadout(tool));
   const km = (m) => (m / 1000).toLocaleString(undefined, { maximumFractionDigits: m < 100000 ? 1 : 0 }) + ' km';
   const c = disc.counts, tiles = [
     [c.Planet, 'Planets discovered'], [c.SolarSystem, 'Systems discovered'], [st.get('DISC_CREATURES') || c.Animal, 'Creatures discovered'],
@@ -3045,7 +3050,7 @@ function pageActs(actions, withSwitch) {
   for (const [, id, fn] of actions) row.querySelector('#' + id).onclick = (e) => fn(e.currentTarget);
   return row;
 }
-function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, nameKey, flow, picture, details, top, actions = [] }) {
+function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, nameKey, flow, flowSize, flowExtra, picture, details, top, actions = [] }) {
   actions = actions.filter(Boolean);
   el.innerHTML = `<div class="page-head"><div><h1>${title}</h1><p>${intro}</p></div></div>`;
   if (top) top(el);
@@ -3057,8 +3062,12 @@ function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, 
   if (flow) {
     const items = Array.isArray(flow) ? flow : coverItems().filter((x) => (flow === 'tool' ? x.kind === 'tool' : x.kind !== 'tool'));
     const host = document.createElement('div'); el.appendChild(host);
-    Covers(host, items, { size: 170, gridSize: 180, index: Math.max(0, items.findIndex((x) => x.i === S.pick[key])), label: title, noSwitch: true,
-      onChange: (n) => { S.pick[key] = items[n].i; S.sel = null; editor(); }, onOpen: () => ed.scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth' }) });
+    const size = flowSize ? flowSize() : 170, extra = flowExtra ? document.createElement('div') : null;
+    if (extra) extra.className = 'flow-extra';
+    const at = Math.max(0, items.findIndex((x) => x.i === S.pick[key]));
+    Covers(host, items, { size, gridSize: Math.max(180, Math.round(size * 0.82)), index: at, label: title, noSwitch: true,
+      onChange: (n) => { S.pick[key] = items[n].i; S.sel = null; if (extra) flowExtra(extra, items[n]); editor(); }, onOpen: () => ed.scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth' }) });
+    if (extra) { el.appendChild(extra); if (items[at]) flowExtra(extra, items[at]); }
   } else {
     const pick = document.createElement('div'); pick.className = 'picker';
     pick.innerHTML = list.map(({ s, i }) => `<button class="pick" data-i="${i}" aria-pressed="${i === S.pick[key]}"><span class="pn">${esc(label(s, i))}${i === primary ? ' <span class="dim">(current)</span>' : ''}</span><span class="ps">${esc(sub(s, i))}</span></button>`).join('');
@@ -3094,6 +3103,8 @@ PAGES.ships = (el) => ownedPage(el, {
   label: (s, i) => str(g(s, 'Name')) || 'Ship ' + (i + 1), sub: (s) => [modelName(g(s, 'Resource', 'Filename')), invClass(g(s, 'Inventory'))].filter(Boolean).join(', ') + ' class',
   invs: (s) => standardInvs(s, ''),
   details: (ed, s, i) => entityDetails(ed, s, i, 'ship'), top: shipSlotsPanel,
+  // a bigger Cover Flow (owner 2026-11-16: make it prominent), and a corvette's render angles under it (from the old Garage page)
+  flowSize: () => Math.max(230, Math.min(360, Math.round((($('#main').clientWidth || 1000) - 80) / 3.4))), flowExtra: coverViewChips,
   actions: [['Add a ship', 'addShip', addShipDialog], APP && ships().some((x) => isCorvetteEntry(x.s)) && ['Render corvettes', 'renderCorv', renderAllCorvettes, '', { right: true }]],
 });
 PAGES.tools = (el) => ownedPage(el, {
@@ -3235,6 +3246,79 @@ async function toDockYard(o, i, kind) {
   if (!v) return;
   try { await saveShipToLibrary(i, v === 'move'); } catch (e) { toast(e.message, true); return; }
   if (v === 'move' && (await deleteEntity(o, i, kind, false))) toast(`${nm} moved to Ship storage in the Dock Yard. Press Save to game to free the slot.`);
+}
+
+// Corvette render angles (front, side, back, top), as chips under a corvette's cover; on Starships since the Garage
+// page was retired (owner 2026-11-16)
+function coverViewChips(box, it) {
+  box.innerHTML = '';
+  if (it.kind !== 'corvette' || it.custom) return;
+  const ask = box.dataset.ask = it.key + ':' + Date.now();
+  customCover(it.key).then((url) => { if (url && box.dataset.ask === ask) { it.custom = true; box.innerHTML = ''; } });
+  const legend = it.holo && it.holo.ids && !it.renderImg ? holoLegend(it) : '';
+  const renderBtn = APP ? `<button class="btn small" type="button" id="hRender">${it.renderImg ? 'Render again' : 'Render with Blender'}</button>` : '';
+  if (!it.renderImg) {
+    box.innerHTML = legend + (renderBtn ? `<div class="view-chips">${renderBtn}</div><p class="dim" id="renderState" style="margin:6px 0 0;font-size:14px" aria-live="polite"></p>` : '');
+    wireRenderBtn(box, it); return;
+  }
+  if (!APP) return;
+  box.innerHTML = `<div class="view-chips" id="hViews"><span class="k">View</span>${COVER_VIEWS.map(([v, l]) => `<button class="chip" type="button" data-v="${v}"${v === 'hero' ? '' : ' disabled'}>${l}</button>`).join('')}<button class="link" type="button" id="hMoreViews" hidden>Render the other angles</button>${renderBtn}</div><p class="dim" id="renderState" style="margin:6px 0 0;font-size:14px" aria-live="polite"></p>`;
+  wireRenderBtn(box, it);
+  const hv = $('#hViews', box);
+  (async () => {
+    const p = await buildPayload(it); if (!p || !hv.isConnected) return;
+    const mark = () => hv.querySelectorAll('[data-v]').forEach((b) => b.classList.toggle('on', b.dataset.v === viewOf(p.key)));
+    const ready = (yes) => { hv.querySelectorAll('[data-v]').forEach((b) => { if (b.dataset.v !== 'hero') b.disabled = !yes; }); $('#hMoreViews', hv).hidden = yes; };
+    let st; try { st = await (await api('/api/render-status?key=' + p.key + '&views=1')).json(); } catch (_) { st = {}; }
+    if (!hv.isConnected) return;
+    ready(st.state === 'done'); mark();
+    hv.querySelectorAll('[data-v]').forEach((b) => b.onclick = async () => {
+      const img = await renderImg(p.key, b.dataset.v); if (!img) { toast("That angle hasn't been rendered yet.", true); return; }
+      setViewOf(p.key, b.dataset.v); it.renderImg = img; mark();
+      document.dispatchEvent(new CustomEvent('cover-render', { detail: { key: it.key, img } }));
+    });
+    $('#hMoreViews', hv).onclick = async (e) => {
+      const btn = e.target, stEl = $('#renderState', box); btn.disabled = true;
+      const say = (t) => { if (stEl && stEl.isConnected) stEl.textContent = t; };
+      try {
+        await renderCorvette(it, false, (state) => say(state === 'queued' ? 'Waiting for Blender…' : `Blender is rendering ${it.name} from ${COVER_VIEWS.length - 1} more angles. This takes a few minutes.`), true);
+        say(''); ready(true); toast(it.name + ': more angles rendered. Pick one above.');
+      } catch (err) { say(err.message); toast('Render failed: ' + err.message, true); }
+      finally { btn.disabled = false; }
+    };
+  })();
+}
+
+function wireRenderBtn(box, it) {
+  const rb = $('#hRender', box); if (!rb) return;
+  rb.onclick = async () => {
+    const st = $('#renderState', box); rb.disabled = true;
+    const say = (t) => { if (st && st.isConnected) st.textContent = t; };
+    try {
+      await renderCorvette(it, !!it.renderImg, (state) => say(state === 'queued' ? 'Waiting for Blender…' : 'Blender is rendering ' + it.name + '. This usually takes 10 to 60 seconds.'));
+      say(''); toast(it.name + ' rendered'); coverViewChips(box, it);
+    } catch (e) { say(e.message); toast('Render failed: ' + e.message, true); }
+    finally { rb.disabled = false; }
+  };
+}
+
+// The Garage (owner 2026-11-16): a folding card on Overview listing what's in this save, instead of its own page.
+// Tiles are drawn the first time it opens (each cover can load a model).
+function garageBoxHtml() {
+  const all = coverItems(), n = (k) => all.filter((x) => (k === 'tool' ? x.kind === 'tool' : k === 'corvette' ? x.kind === 'corvette' : x.kind === 'ship')).length;
+  const sum = [[n('corvette'), 'corvette'], [n('ship'), 'starship'], [n('tool'), 'multi-tool']].filter(([c]) => c).map(([c, w]) => plural(c, w)).join(', ') || 'Nothing in this save yet';
+  return `<details class="panel qf-box garage-box" id="garageBox"${foldAttr('garage')}><summary><h3>Garage</h3><span class="dim qf-sum">${esc(sum)}</span></summary><div class="garage-body" id="garageBody"></div></details>`;
+}
+function wireGarageBox(el) {
+  const d = $('#garageBox', el); if (!d) return;
+  const fill = () => {
+    if (!d.open || d.dataset.filled) return; d.dataset.filled = '1';
+    const all = coverItems(), body = $('#garageBody', d);
+    const groups = [['Corvettes', all.filter((x) => x.kind === 'corvette')], ['Starships', all.filter((x) => x.kind === 'ship')], ['Multi-tools', all.filter((x) => x.kind === 'tool')]].filter(([, l]) => l.length);
+    body.innerHTML = groups.map(([t, l], gi) => `<div class="garage-grp"><h4>${t} <span class="dim">${l.length}</span></h4><div class="garage-tiles">${l.map((it, k) => `<button type="button" class="garage-tile" data-g="${gi}:${k}" title="Open ${esc(it.name)}"><span class="tc-art"></span><span class="gt-txt"><b>${esc(it.name)}</b><span class="dim">${esc([it.type, it.cls && /^[SABC]$/.test(it.cls) ? it.cls + ' class' : ''].filter(Boolean).join(' · '))}</span>${it.current ? `<span class="gt-cur">${it.kind === 'tool' ? 'Equipped' : 'Current ship'}</span>` : ''}</span></button>`).join('')}</div></div>`).join('') || '<p class="dim">Nothing in this save yet.</p>';
+    body.querySelectorAll('.garage-tile').forEach((b) => { const [gi, k] = b.dataset.g.split(':').map(Number), it = groups[gi][1][k]; miniCover(b, it, 132, () => openLoadout(it)); b.onclick = (e) => { if (!e.target.closest('.tc-art')) openLoadout(it); }; });
+  };
+  d.addEventListener('toggle', fill); fill();
 }
 
 // plain-name copies (for files) and back (for this save's key style)
@@ -4558,75 +4642,6 @@ async function chooseCover(it, blob) {
 }
 
 // ------------------------------------------------------------------ Hangar page
-PAGES.hangar = (el) => {
-  const all = coverItems();
-  const groups = [['all', 'All', all], ['corvette', 'Corvettes', all.filter((x) => x.kind === 'corvette')], ['ship', 'Starships', all.filter((x) => x.kind === 'ship')], ['tool', 'Multi-tools', all.filter((x) => x.kind === 'tool')]];
-  S.hangar = S.hangar || { filter: 'all', key: null };
-  let list = (groups.find((gr) => gr[0] === S.hangar.filter) || groups[0])[2];
-  el.innerHTML = `<div class="page-head"><div><h1>Garage</h1><p>Scroll, drag or use the arrow keys. Click the centre cover to open its loadout. To change a cover, drop a picture on it or choose one of your screenshots below.</p></div></div><div id="cfHost"></div><div class="panel" id="hangarDetail"></div>`;
-  $('#cfHost', el).before(pageActs(APP ? [['Render all corvettes', 'renderAll', () => {}, ' ', { right: true }]] : [], true));
-  const chips = `<div class="cf-chips">${groups.map(([id, label, l]) => `<button class="chip" data-f="${id}" aria-pressed="${S.hangar.filter === id}">${label}<span class="n">${l.length}</span></button>`).join('')}</div>`;
-  const start = Math.max(0, list.findIndex((x) => x.key === S.hangar.key));
-  const big = Math.max(180, Math.min(340, Math.round((($('#main').clientWidth || 1000) - 80) / 3.6)));
-  const flow = Covers($('#cfHost', el), list, { size: big, index: start, label: 'Garage', chips, noSwitch: true, onChange: (i) => { S.hangar.key = list[i].key; detail(); }, onOpen: (i) => openLoadout(list[i]) });
-  el.querySelectorAll('.chip').forEach((c) => c.onclick = () => { S.hangar.filter = c.dataset.f; render(); });
-  function detail() {
-    const it = list[flow.index], box = $('#hangarDetail', el);
-    if (!it) { box.innerHTML = '<p class="dim" style="margin:0">Nothing in this group.</p>'; return; }
-    S.hangar.key = it.key;
-    const inv = it.kind === 'tool' ? g(it.obj, 'Store') : g(it.obj, 'Inventory_TechOnly');
-    const stats = [[it.type, 'Type'], [it.cls || '?', 'Class'], [slotsOf(inv).length, 'Tech modules']];
-    if (it.kind !== 'tool') stats.push([slotsOf(g(it.obj, 'Inventory')).length + slotsOf(g(it.obj, 'Inventory_Cargo')).length, 'Items carried']);
-    if (it.holo) stats.push([it.holo.objs.toLocaleString(), 'Build parts']);
-    stats.push([it.current ? 'Yes' : 'No', it.kind === 'tool' ? 'Equipped' : 'Current ship']);
-    box.innerHTML = `<div class="hangar-detail"><div><h2 style="margin-bottom:10px">${esc(it.name)}</h2><div class="stats">${stats.map(([b, s]) => `<div><b>${s === 'Class' && /^[SABC]$/.test(b) ? `<span class="badge big cls-${b}">${b}</span>` : esc(b)}</b><span>${s}</span></div>`).join('')}</div></div>
-      <div class="acts"><button class="btn primary" id="hOpen">Open loadout</button>${APP && it.scene && S.lib && S.lib.game ? '<button class="btn" id="hParts">Choose parts</button>' : ''}${APP && it.kind === 'corvette' ? `<button class="btn" id="hRender">${it.renderImg ? 'Render again' : 'Render with Blender'}</button>` : ''}${APP ? '<button class="btn" id="hShot">Choose a screenshot</button>' : ''}<label class="btn">Use an image file<input type="file" accept="image/*" id="hCover" hidden></label>${it.custom ? '<button class="btn ghost" id="hReset">Use generated cover</button>' : ''}</div></div>
-      ${it.holo && it.holo.ids && !it.renderImg && !it.custom ? holoLegend(it) : ''}
-      ${APP && it.kind === 'corvette' && it.renderImg && !it.custom ? `<div class="view-chips" id="hViews"><span class="k">View</span>${COVER_VIEWS.map(([v, l]) => `<button class="chip" type="button" data-v="${v}"${v === 'hero' ? '' : ' disabled'}>${l}</button>`).join('')}<button class="link" type="button" id="hMoreViews" hidden>Render the other angles</button></div>` : ''}
-      <p class="dim" id="renderState" style="margin:10px 0 0;font-size:14px" aria-live="polite"></p>`;
-    $('#hOpen', box).onclick = () => openLoadout(it);
-    const hp = $('#hParts', box); if (hp) hp.onclick = () => partsDialog(it, () => { flow.refresh(); setTimeout(detail, 50); });
-    $('#hCover', box).onchange = async (e) => { const f = e.target.files[0]; e.target.value = ''; if (f && await chooseCover(it, f)) { flow.refresh(); setTimeout(detail, 50); } };
-    const hs = $('#hShot', box); if (hs) hs.onclick = async () => { const b = await pickScreenshot(); if (b && await chooseCover(it, b)) { flow.refresh(); setTimeout(detail, 50); } };
-    const rs = $('#hReset', box); if (rs) rs.onclick = async () => { if (await setCustomCover(it.key, null)) { flow.refresh(); setTimeout(detail, 50); } };
-    const hv = $('#hViews', box);
-    if (hv) (async () => {
-      const p = await buildPayload(it); if (!p || !hv.isConnected) return;
-      const mark = () => hv.querySelectorAll('[data-v]').forEach((b) => b.classList.toggle('on', b.dataset.v === viewOf(p.key)));
-      const ready = (yes) => { hv.querySelectorAll('[data-v]').forEach((b) => { if (b.dataset.v !== 'hero') b.disabled = !yes; }); $('#hMoreViews', hv).hidden = yes; };
-      let st; try { st = await (await api('/api/render-status?key=' + p.key + '&views=1')).json(); } catch (_) { st = {}; }
-      ready(st.state === 'done'); mark();
-      hv.querySelectorAll('[data-v]').forEach((b) => b.onclick = async () => {
-        const img = await renderImg(p.key, b.dataset.v); if (!img) { toast("That angle hasn't been rendered yet.", true); return; }
-        setViewOf(p.key, b.dataset.v); it.renderImg = img; mark();
-        document.dispatchEvent(new CustomEvent('cover-render', { detail: { key: it.key, img } }));
-      });
-      $('#hMoreViews', hv).onclick = async (e) => {
-        const btn = e.target, stEl = $('#renderState', box); btn.disabled = true;
-        const say = (t) => { if (stEl.isConnected) stEl.textContent = t; };
-        try {
-          await renderCorvette(it, false, (state) => say(state === 'queued' ? 'Waiting for Blender…' : `Blender is rendering ${it.name} from ${COVER_VIEWS.length - 1} more angles. This takes a few minutes.`), true);
-          say(''); ready(true); toast(it.name + ': more angles rendered. Pick one above.');
-        } catch (err) { say(err.message); toast('Render failed: ' + err.message, true); }
-        finally { btn.disabled = false; }
-      };
-    })();
-    const rb = $('#hRender', box);
-    if (rb) rb.onclick = async () => {
-      const st = $('#renderState', box); rb.disabled = true;
-      const say = (t) => { if (st.isConnected) st.textContent = t; };
-      try {
-        await renderCorvette(it, !!it.renderImg, (state) => say(state === 'queued' ? 'Waiting for Blender…' : 'Blender is rendering ' + it.name + '. This usually takes 10 to 60 seconds.'));
-        say(''); toast(it.name + ' rendered');
-      } catch (e) { say(e.message); toast('Render failed: ' + e.message, true); }
-      finally { if (rb.isConnected) rb.disabled = false; }
-    };
-  }
-  detail(); flow.focus();
-  const ra = $('#renderAll', el), rc = $('#renderCfg', el);
-  if (rc) rc.onclick = renderSettingsDialog;
-  if (ra) ra.onclick = () => renderAllCorvettes(ra);
-};
 // renders every corvette's cover with Blender (Hangar and Starships)
 async function renderAllCorvettes(btn) {
   const setup = await renderSetup().catch(() => null);
@@ -4639,7 +4654,7 @@ async function renderAllCorvettes(btn) {
   }
   if (btn.isConnected) { btn.disabled = false; btn.textContent = label; }
   toast(failed ? `${done} rendered, ${failed} failed. Open a corvette in the Garage and choose Render with Blender to see why.` : `${done} corvettes rendered`, !!failed);
-  if (S.section === 'ships' || S.section === 'hangar') render();
+  if (S.section === 'ships' || S.section === 'overview') render();
 }
 // ------------------------------------------------------------------ corvette renders (desktop app + Blender + Charon Forge)
 const renderImgs = new Map(); // build hash|view -> loaded Image, or null when there's no render yet
@@ -4747,7 +4762,7 @@ async function renderSettingsDialog() {
     const r = await (await api('/api/render-setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ blender: $('#rsB').value, charon: $('#rsC').value, shots: $('#rsSh').value, size: +$('#rsS').value, samples: +$('#rsQ').value, autoRender: $('#rsAuto').checked }) })).json();
     toast(r.ready ? 'Render settings saved' : 'Saved, but Blender or Charon Forge still wasn\'t found', !r.ready);
   } catch (e) { toast(e.message, true); }
-  if (S.section === 'hangar') render();
+  if (S.section === 'ships') render();
 }
 
 function openLoadout(it) {

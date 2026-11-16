@@ -20,11 +20,11 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   ok('the cockpit has a size too, and unknown parts are left out', !!boxes.B_COK_D && !('NOT_A_PART' in boxes));
   const g = await p.evaluate(() => { const it = coverItems().find((x) => x.kind === 'corvette'); return { groups: [...new Set(it.holo.groups)], n: it.holo.n, ids: it.holo.ids.length }; });
   ok('every part of a corvette has a type for its colour', g.ids === g.n && g.groups.includes('cockpit') && g.groups.length >= 3);
-  // Hangar: the corvette's cover is drawn as blocks, with a key to the colours
-  await p.click('nav button[data-s="hangar"]'); await p.waitForTimeout(800);
+  // Starships: the corvette's cover is drawn as blocks, with a key to the colours under it (the Garage page was retired)
+  await p.evaluate(() => { S.pick.ship = coverItems().find((x) => x.kind === 'corvette').i; go('ships'); }); await p.waitForTimeout(800);
   await p.evaluate(() => { const i = [...document.querySelectorAll('.cf-item')].findIndex((e) => /Formula|Corvette/.test(e.textContent)); });
   const hasLegend = await p.evaluate(async () => { for (let k = 0; k < 12; k++) { if (document.querySelector('.holo-legend')) return true; document.querySelector('.cf-next, [aria-label="Next"]')?.click(); await new Promise((r) => setTimeout(r, 300)); } return false; });
-  ok('the Hangar shows what the hologram colours mean', hasLegend && /Cockpit/.test(await p.textContent('.holo-legend')));
+  ok('Starships shows what the hologram colours mean', hasLegend && /Cockpit/.test(await p.textContent('.holo-legend')));
   await p.waitForTimeout(1500);
   await p.screenshot({ path: SP + '/shots/corvette-holo.png' });
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);

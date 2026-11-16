@@ -31,10 +31,9 @@ const URL = process.argv[2] || 'http://127.0.0.1:48100/', OUT = path.join(__dirn
   await p.click('.slot-row'); await p.waitForSelector('#app:not(.hidden)'); await wait(4000); await shot('overview');
   const pages = { shipwright: 'shipwright', coords: 'coords', tools: 'tools', ships: 'ships', freighter: 'freighter', vehicles: 'vehicles', companions: 'companions', bases: 'bases', storage: 'storage', cargo: 'cargo', knowledge: 'knowledge', rewards: 'rewards', standing: 'standing', difficulty: 'difficulty', items: 'items', raw: 'raw' };
   for (const [s, name] of Object.entries(pages)) { await go(s); await shot(name); }
-  await go('hangar', 2000); await p.click('.chip[data-f="corvette"]'); await wait(2500); await shot('hangar-corvettes');
+  await p.evaluate(() => { S.pick.ship = coverItems().find((x) => x.kind === 'corvette').i; }); await go('ships', 2500); await shot('hangar-corvettes');
   const front = await p.$('#hViews button:nth-child(3)'); if (front) { await front.click(); await wait(1500); await shot('hangar-views'); }
-  await p.click('.chip[data-f="tool"]'); await wait(1500); if (await p.$('#hParts')) { await p.click('#hParts'); await p.waitForSelector('#dlg[open]'); await wait(9000); await shot('parts'); await p.click('#dlgX'); }
-  await p.evaluate(() => localStorage.setItem('hse-cover-view', 'grid')); await go('hangar'); await shot('hangar-grid');
+  await go('tools', 1500); if (await p.evaluate(() => !!(S.lib && S.lib.game))) { await p.evaluate(() => { partsDialog(coverItems().find((x) => x.kind === 'tool'), () => {}); }); await p.waitForSelector('#dlg[open]'); await wait(9000); await shot('parts'); await p.click('#dlgX'); }
   await go('library', 3000); await p.click('.dy-tabs [data-v="garage"]'); await wait(3500); await shot('dockyard-garage');
   for (const c of await p.$$('.lib-card')) if (/versions/.test(await c.textContent())) { await c.click(); await p.waitForSelector('#dlg[open] .lib-detail'); await wait(2500); await shot('dockyard-card'); await p.click('#dlgX'); break; }
   await p.evaluate(() => localStorage.setItem('hse-cover-view', 'flow')); await go('library', 3000); await p.click('.dy-tabs [data-v="garage"]'); await wait(3500); await shot('dockyard-flow');

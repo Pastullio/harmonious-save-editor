@@ -39,7 +39,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const shown = await p.$$eval('#nav a:not(.hide)', (a) => a.map((x) => x.textContent.trim()));
   console.log(shown); ok('search narrows the contents', shown.includes('Blender') && shown.length < info.pages.length / 2);
   // picture viewer
-  await p.goto(url + 'guide#hangar'); await p.click('.page.on figure img'); ok('pictures open full size', await p.isVisible('#zoom.on')); await p.keyboard.press('Escape'); ok('and close', !(await p.isVisible('#zoom.on')));
+  await p.goto(url + 'guide#starships'); await p.click('.page.on figure img'); ok('pictures open full size', await p.isVisible('#zoom.on')); await p.keyboard.press('Escape'); ok('and close', !(await p.isVisible('#zoom.on')));
   await p.screenshot({ path: path.join(T, 'guide-desktop.png') });
   // theme
   await p.click('#theme'); const th = await p.evaluate(() => document.documentElement.dataset.theme); await p.screenshot({ path: path.join(T, 'guide-theme.png') });

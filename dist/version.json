@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.16.1613",
+  "version": "2026.11.16.1734",
   "date": "2026-11-16",
-  "size": 14988288,
-  "sha256": "11b2130a5e51c10a1d910d321e1d843a9ca638c8e75b24c56823ed05d312d9e3",
-  "notes": "Shipwright: Manage sits right after the corvette's name, before its slot and part count",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.16.1613/HarmoniousSaveEditor.exe",
+  "size": 14923264,
+  "sha256": "b25ce61fc23aff58c41786d29f9c7776273416e2e5728016e45ce3a665449b31",
+  "notes": "The Garage page is retired: what's in your save is now a Garage card on Overview, above Quick fixes (click it to open)\nStarships: bigger Cover Flow, with a corvette's colour key, Render with Blender and its camera angles right under the covers",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.16.1734/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

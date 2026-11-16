@@ -36,7 +36,20 @@ fs.copyFileSync(SP + '/real/save.hg', ACC + '/save2.hg'); fs.copyFileSync(SP + '
   await p.setViewportSize({ width: 900, height: 1000 }); await p.waitForTimeout(400);
   await p.screenshot({ path: SP + '/shots/a3-overview-900.png' });
   await p.click('#tcShip'); await p.waitForTimeout(800);
-  ok('ship card opens hangar on it', await p.evaluate(() => S.section === 'hangar'));
+  ok('ship card opens it on Starships', await p.evaluate(() => S.section === 'ships'));
+  // the Garage is a folding card on Overview now (owner 2026-11-16), above Quick fixes
+  await p.setViewportSize({ width: 1440, height: 1000 });
+  await p.evaluate(() => go('overview')); await p.waitForSelector('#garageBox');
+  ok('Garage sits above Quick fixes, closed at first', await p.evaluate(() => { const gb = $('#garageBox'), qf = $('#qfBox'); return !gb.open && !!(gb.compareDocumentPosition(qf) & Node.DOCUMENT_POSITION_FOLLOWING) && /starship|corvette/.test(gb.querySelector('summary').textContent); }));
+  await p.click('#garageBox > summary'); await p.waitForSelector('.garage-tile');
+  const tiles = await p.evaluate(() => ({ n: document.querySelectorAll('.garage-tile').length, want: coverItems().length, groups: [...document.querySelectorAll('.garage-grp h4')].map((h) => h.firstChild.textContent.trim()) }));
+  console.log(tiles);
+  ok('…lists every ship and multi-tool in the save, grouped', tiles.n === tiles.want && tiles.groups.includes('Multi-tools'));
+  await p.waitForTimeout(1500); await p.screenshot({ path: SP + '/shots/garage-card.png' });
+  await p.click('.garage-tile .gt-txt >> nth=0'); await p.waitForTimeout(500);
+  ok('…and a tile opens that ship on Starships', await p.evaluate(() => S.section === 'ships'));
+  await p.evaluate(() => go('overview')); await p.waitForSelector('#garageBox');
+  ok('…and it stays open next time', await p.evaluate(() => $('#garageBox').open));
   ok('no page errors', errs.length === 0); if (errs.length) console.log(errs);
   await b.close(); proc.kill();
 })();

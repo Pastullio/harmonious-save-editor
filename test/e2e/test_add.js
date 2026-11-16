@@ -17,7 +17,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   const confirm = async () => { await p.waitForSelector('#dlg[open]'); await p.click('#dlgActs .btn.primary'); await p.waitForTimeout(250); };
   const shipsNow = () => p.evaluate(() => g(ps(), 'ShipOwnership').map((s) => str(g(s, 'Name'))));
   // ---- nav order
-  ok('Hangar sits above Dock Yard', await p.evaluate(() => { const ids = [...document.querySelectorAll('#nav button')].map((x) => x.dataset.s); return ids.indexOf('hangar') === ids.indexOf('library') - 1; }));
+  ok('the Garage page is retired: Coordinates is followed by the Dock Yard', await p.evaluate(() => { const ids = [...document.querySelectorAll('#nav button')].map((x) => x.dataset.s); return !ids.includes('hangar') && ids.indexOf('coords') === ids.indexOf('library') - 1; }));
   // ---- dialogs close from the top-right corner
   await p.click('#side .about-btn'); await p.waitForSelector('#dlg[open]');
   const x = await p.$eval('#dlgX', (e) => { const r = e.getBoundingClientRect(), d = document.querySelector('#dlg').getBoundingClientRect(); return { right: d.right - r.right, top: r.top - d.top }; });
@@ -84,10 +84,9 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.click('#addPet'); await confirm();
   ok('a companion copy is added', (await p.evaluate(() => g(ps(), 'Pets').filter(isPet).length)) === n0 + 1);
   // ---- cover flow or grid
-  await p.evaluate(() => go('hangar')); await p.waitForSelector('.view-switch');
+  await p.evaluate(() => go('tools')); await p.waitForSelector('.view-switch');
   await p.click('.view-switch [data-view="grid"]'); await p.waitForSelector('.cg-card');
-  const cards = await p.$$('.cg-card'); await cards[1].click(); await p.waitForTimeout(200);
-  ok('grid view: cards instead of Cover Flow, picking one shows its details', !(await p.$('.cf-stage')) && (await p.$eval('.cg-card[aria-pressed="true"] b', (e) => e.textContent)) === (await p.$eval('#hangarDetail h2', (e) => e.textContent)));
+  ok('grid view: cards instead of Cover Flow', !(await p.$('.cf-stage')));
   await p.evaluate(() => go('ships')); await p.waitForSelector('.cg-card');
   ok('the choice is remembered on other pages', !(await p.$('.cf-stage')));
   await p.click('.view-switch [data-view="flow"]'); await p.waitForSelector('.cf-stage'); ok('and switches back', true);

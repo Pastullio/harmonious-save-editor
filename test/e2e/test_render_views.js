@@ -30,8 +30,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.waitForFunction(() => /rendered in the background/.test(document.querySelector('#toast').textContent), null, { timeout: 30000 }).catch(() => {});
   ok('and it says so when done', /corvette covers? rendered in the background/.test(await p.textContent('#toast')));
   // Hangar: the extra angles
-  await p.click('nav button[data-s="hangar"]'); await p.waitForTimeout(800);
-  await p.click('.chip[data-f="corvette"]'); await p.waitForTimeout(800);
+  await p.evaluate(() => { S.pick.ship = coverItems().find((x) => x.kind === 'corvette').i; go('ships'); }); await p.waitForTimeout(800);
   await p.waitForSelector('#hViews', { timeout: 20000 });
   ok('a rendered corvette shows its views, the extra ones not rendered yet', await p.$eval('#hViews', (v) => !v.querySelector('[data-v="hero"]').disabled && v.querySelector('[data-v="top"]').disabled && !v.querySelector('#hMoreViews').hidden));
   await p.click('#hMoreViews');
@@ -47,7 +46,7 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   // after a reload the chosen view is the cover
   await p.click('#hViews [data-v="top"]'); await p.waitForTimeout(500);
   await p.goto(url); await p.waitForSelector('.slot-row'); await p.click('.slot-row'); await p.waitForSelector('#app:not(.hidden)');
-  await p.click('nav button[data-s="hangar"]'); await p.waitForTimeout(800); await p.click('.chip[data-f="corvette"]'); await p.waitForTimeout(2500);
+  await p.evaluate(() => go('overview')); await p.evaluate(() => { S.pick.ship = coverItems().find((x) => x.kind === 'corvette').i; go('ships'); }); await p.waitForTimeout(800); await p.waitForTimeout(1700);
   ok('after reopening, the chosen view is still the cover', await p.evaluate(() => !!document.querySelector('#hViews [data-v="top"].on')));
   // turning it off
   await p.evaluate(() => api('/api/render-setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ size: 256, samples: 4, autoRender: false }) }));
