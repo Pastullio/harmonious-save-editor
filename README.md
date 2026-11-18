@@ -11,13 +11,13 @@ Nothing is uploaded anywhere. Item names and icons come from your own copy of th
 - [Getting started](#getting-started)
 - [How saving keeps your data safe](#how-saving-keeps-your-data-safe)
 - [The sections](#the-sections)
-  - [Overview](#overview) · [Shipwright](#shipwright) · [Coordinates](#coordinates) · [Garage](#hangar) · [Dock Yard](#dock-yard)
-  - [Exosuit](#exosuit) · [Multi-tools](#multi-tools) · [Starships](#starships) · [Freighter](#freighter) · [Exocraft](#exocraft) · [Companions](#companions)
+  - [Overview](#overview) · [Shipwright](#shipwright) · [LiveLink](#livelink) · [Coordinates](#coordinates) · [Dock Yard](#dock-yard)
+  - [Exosuit](#exosuit) · [Traveller](#traveller) · [Multi-tools](#multi-tools) · [Starships](#starships) · [Freighter](#freighter) · [Exocraft](#exocraft) · [Companions](#companions)
   - [Bases](#bases) · [Storage](#storage) · [Cargo](#cargo)
   - [Knowledge](#knowledge) · [Rewards](#rewards) · [Standing](#standing) · [Difficulty](#difficulty)
   - [Item names](#item-names) · [Raw data](#raw-data)
 - [Things that work everywhere](#things-that-work-everywhere)
-- [Blender: renders and LiveLink](#blender-renders-and-livelink)
+- [Blender: renders, LiveLink, posing and 3D prints](#blender-renders-livelink-posing-and-3d-prints)
 - [The browser version](#the-browser-version)
 - [For developers](#for-developers)
 - [Credits](#credits)
@@ -62,21 +62,33 @@ Your traveller at a glance.
 
 - **Traveller cards**: your portrait (pick one of your screenshots or any image), current ship, multi-tool and location, with portal glyphs and galactic address.
 - **Journey**: discoveries and the milestones the game counts.
-- **Currencies**: units, nanites and quicksilver, with +1M, +100M and Max buttons.
 - **Save name** as it appears in the game's load menu.
-- **Quick fixes** for every inventory in the save at once: **Repair all technology**, **Recharge all technology** and **Fill every stack**.
+- **Garage** (click to open): every corvette, starship and multi-tool in this save, grouped, each with its picture, class and whether it's the one you're using. Click one to edit it.
+- **Quick fixes** (click to open) for every inventory in the save at once: **Repair all technology**, **Recharge all technology** and **Fill every stack**, plus units, nanites and quicksilver with +1M, +100M and Max buttons.
 
 ### Shipwright
 
 Corvette build tools.
 
+- **Manage**, beside the corvette's name: rename it, save or apply a profile, put it in the Dock Yard, or **Workbench** to open it on Starships for everything else (class, stats, inventories, colours, seed).
 - **Tune up** puts a corvette's parts in the order the game reads them, so performance parts aren't listed too late and lose stats. The order follows TAZmd's documented priority list; the camera cockpit, boarding cockpit and beam-up bay stay where they are. The gear beside Tune up lets you set your own order of groups (arrows or drag); **Standard order** puts TAZmd's back.
 - **Health check** for each build: no cockpit, no landing bay, a beam-up bay scaled too small to work, parts out of order, or parts stacked exactly on top of an identical part (with a one-click fix).
 - **Copy and paste builds**: copy all parts or just the build, and paste a build from TAZ's tools, another corvette or a file. Pasting replaces only the parts; the corvette keeps its name, class and owner.
 - **Save to a file** and **Save as…** for builds.
-- **Load from a .blend…** reads a Charon Forge corvette file straight from Blender (see [Blender](#blender-renders-and-livelink)).
+- **Load from a .blend…** reads a Charon Forge corvette file straight from Blender (see [Blender](#blender-renders-livelink-posing-and-3d-prints)).
 - **Add corvette** creates a new corvette in an empty ship slot with a starter build.
 - **LiveLink** from Blender: save your `.blend` and the corvette updates in your save.
+
+### LiveLink
+
+Everything to do with Blender, on one page (desktop app).
+
+- **Setup**: whether Blender, the LiveLink add-on (and its version) and Charon Forge are found, with first-time steps.
+- **What's linked**: every corvette and base with the `.blend` it was built from. Turn LiveLink on or off, **Open in Blender**, or choose another file.
+- **Activity**: each build Blender sent, and what happened to it.
+- **3D prints**: every miniature and ship print you've exported, as a turning grey preview with its size in mm. Show it in its folder or delete it.
+- **From Blender**: your rendered pose pictures, 3D poses and corvettes sent in 3D.
+- **In Blender**: what each panel of the add-on does.
 
 ### Coordinates
 
@@ -93,17 +105,6 @@ Find a place by its portal glyphs or galactic address, see what your save knows 
 - **Favourite places**: star a base, space station, settlement or system (here or on the Bases page) and it's kept outside your saves. **Go here** loads its glyphs, ready to warp. Export and import to share a list.
 - **Warp here** asks how you arrive: in your ship, aboard your freighter, or on foot at a base in the system (yours or one you've visited). A favourite base goes straight there. **Places here** lists every base and station in the system once, with a star and **Arrive here**.
 - **You are here** shows the planet you're on as a small turning globe in its biome's colours, with its moon when the save shows one.
-
-### Garage
-
-Your ships, multi-tools and corvettes as cover art.
-
-- **Cover Flow** (scroll, drag or use the arrow keys) or a **Grid**, with filters for corvettes, starships and multi-tools.
-- **Covers**: a 3D model of each ship and multi-tool read from your game's files, which spins on hover and turns when you drag it. **Change picture** to drop in an image or choose one of your in-game screenshots.
-- **Choose parts** picks which hull, wings and other options the model shows. Each choice appears as a tile with its own picture.
-- **Corvettes** show as a hologram of their build: each part as a block at its real size, coloured by type (cockpit, engines and wings, weapons, shields, reactors, landing gear, bays, hull and decor). With Blender and Charon Forge installed you get real renders instead, with **front, side, back and top views** (see [Blender](#blender-renders-and-livelink)).
-- **Render all corvettes**, and **Cover settings** to point the app at Blender and choose automatic renders.
-- **Open loadout** jumps to that ship's editor.
 
 ### Dock Yard
 
@@ -124,7 +125,11 @@ Every ship you own, build or download, in one place, kept in `Documents\Harmonio
 
 Your exosuit's technology and cargo, laid out as in the game. Everything in [Inventories](#inventories) works here, including supercharged slots.
 
-**Your traveller** sits at the top: your character built from your save and your game files, with exactly the parts you wear. **Export for Blender (.glb)** saves them with their skeleton, ready to pose (File > Import > glTF in Blender), or press **Import my traveller** in Blender's LiveLink panel, then click a part of the body to show the bone that moves it. Pick a ready-made pose (sitting, kneeling, waving and more) or save and share your own. The **Traveller** page turns the posed picture into a card with a background, your ship, portal glyphs and your name. **Save the pose as a picture** renders the pose to a transparent PNG. It comes with the game's own textures, painted in the colours and markings you picked in the game.
+**Your traveller** sits at the top: your character in 3D, built from your save and your game files, with exactly the parts you wear, in the game's own textures painted in your colours and markings. It turns when you point at it or drag it. The first time takes a little while; after that it's kept on your PC and appears straight away. **Export for Blender (.glb)** saves it with its skeleton, ready to pose (File > Import > glTF), or press **Import my traveller** in Blender's LiveLink panel (see [Blender](#blender-renders-livelink-posing-and-3d-prints)).
+
+### Traveller
+
+Make a picture card of your traveller: your posed picture (or 3D pose) from Blender, a space or plain background, your ship and multi-tool, portal glyphs and your name. Drag and resize anything on the card, turn 3D models to any angle, then **Save picture** or **Copy picture**.
 
 ### Multi-tools
 
@@ -134,12 +139,14 @@ Every multi-tool you own.
 - **Base stats**: damage, mining and scanning.
 - **Profiles**: **Save as profile** keeps a loadout as a file; **Apply a profile** puts it on another multi-tool. Share a profile by sending the file.
 - **Export** a `.json` backup and **Import** it again; **Delete multi-tool** (works even when all six slots are full: the slot is left empty, the way the game leaves one).
-- **Add a multi-tool** and **Choose parts** for the cover model.
+- **Add a multi-tool** (a copy of one you own into an empty slot; then change its type, seed and class) and **Choose parts** for the cover model.
 
 ### Starships
 
 Every ship you own.
 
+- **Cover Flow** of your ships (scroll, drag or use the arrow keys) or a **Grid**: each ship's 3D model from your game's files, which spins when you point at it and turns when you drag it. **Change picture** drops in an image or one of your screenshots, and **Choose parts** picks the hull, wings and other options the model shows.
+- **Corvettes** show as a hologram of their build, each part a block at its real size coloured by type, with a key under the covers. With Blender and Charon Forge you get real renders instead: **Render corvettes** or **Render with Blender**, and front, side, back and top views under the covers.
 - **Name, type** (hauler, explorer, shuttle, fighter, exotic, living ship, solar, interceptor, corvette and the special ships), **class**, **seed** and **use old colours**.
 - **Base stats**: damage, shields, hyperdrive and maneuverability, plus ship health and shield.
 - **Ship slots** at the top: drag ships into a new order (corvette builds, colours and your current ship move with them), **Close the gaps**, and fixes for problems such as a build that points at the wrong slot.
@@ -170,6 +177,7 @@ Your creature companions.
 - **Fed, happy and fully trusting** in one click.
 - **Creature battles**: change a companion's type (greyed out for species the game fixes, such as robots, which are always Mechanical) and set its health, agility and combat effectiveness classes, or make them all S class.
 - **Add a companion** to an empty slot.
+- **Export** saves a companion (with its accessories) as a `.pet.json` file to keep or share; **Import a companion…** puts one into an empty slot or over another.
 
 ### Bases
 
@@ -253,16 +261,23 @@ Press **Ctrl+K** (or use the box at the top of the sidebar) to jump to any ship,
 
 ### Look
 
-A dark mode and a light mode (the theme button at the bottom of the sidebar), and a "?" beside anything that has more to say.
+A dark mode and a light mode (the theme button at the bottom of the sidebar), and a "?" beside anything that has more to say. Cards that fold (Parts on Shipwright, Quick fixes, Favourite places…) start closed and stay the way you leave them, even next time.
 
-## Blender: renders and LiveLink
+### Settings
 
-These need [Blender](https://www.blender.org) (4.2 or newer) with [Charon Forge](https://github.com/xX-Charon-Xx/charon_forge) for corvettes, or NMS Base Builder for bases. The app finds both on your PC and never includes anything from them.
+The gear at the bottom of the sidebar: where Blender is, and whether new corvettes are rendered automatically.
 
-- **Corvette renders**: real pictures of your corvettes, made by your Blender in the background. Renders are cached, so a build is only rendered once. Turn on **automatic renders** in Cover settings and new corvettes get a picture a few seconds after a save opens. **Render the other angles** adds front, side, back and top views.
-- **Your traveller**: **Import my traveller** in the LiveLink panel brings in your character with their skeleton to pose, and **Save the pose as a picture** renders it to a transparent PNG (see [Exosuit](#exosuit)).
-- **Load from a .blend…**: on the Shipwright and Bases pages, read a corvette or base straight from a `.blend` file, without opening Blender yourself.
-- **LiveLink**: get the Blender add-on from the LiveLink panel (**Get the Blender add-on**). Turn LiveLink on for a corvette or base, then every time you save in Blender (or press **Send now** in the LiveLink tab), the build goes into your save. The app backs up the save each time. Both sides show that they're linked. Each `.blend` remembers which corvette or base it's for, and the editor asks before putting a build somewhere else. **Open in Blender** opens the file a corvette was last built from. Blender keeps the add-on you installed, so when a new one comes out, get it again and install it over the old one.
+## Blender: renders, LiveLink, posing and 3D prints
+
+These need [Blender](https://www.blender.org) (4.2 or newer). Corvettes need [Charon Forge](https://github.com/xX-Charon-Xx/charon_forge), and bases NMS Base Builder. The app finds them on your PC and never includes anything from them. The LiveLink page in the app shows what's set up.
+
+- **The add-on**: press **Get LiveLink** (LiveLink page, About, Exosuit or Shipwright) and install the file in Blender (Edit > Preferences > Add-ons > Install from Disk). Its panels are in the 3D view's sidebar, tab **LiveLink**. Blender keeps the add-on you installed, so when a new one comes out, install it again over the old one.
+- **LiveLink**: turn it on for a corvette or base, then every time you press Ctrl+S in Blender (or **Send now**), the build goes into your save. The app backs up the save each time. Each `.blend` remembers which corvette or base it's for, and the editor asks before putting a build anywhere else.
+- **Load from a .blend…**: on Shipwright and Bases, read a corvette or base straight from a `.blend` file, without opening Blender yourself.
+- **Corvette renders**: real pictures of your corvettes, made by your Blender in the background and kept so a build is only rendered once. Turn on automatic renders in Settings and new corvettes get a picture a few seconds after a save opens.
+- **Posing your traveller**: **Import my traveller** brings in your character with a skeleton. In Pose Mode, click a part of the body to turn it, or turn on **Move hands and feet** to drag a hand or foot and let the arm or leg follow. Joints and fingers bend the way a person's do, on every race. Pick a ready-made pose (hero, salute, waving, pointing, sitting and more) or save and share your own, and put a multi-tool in your hand.
+- **Lighting and pictures**: ready-made lighting (Studio, Hero, Sunset, Space), a backdrop from any `.blend` (a corvette, a base…), Quick or Best quality, then **Render a picture** saves a PNG to your Exports folder. **Send the pose to DryDock (3D)** sends it to the Traveller page in 3D.
+- **3D prints**: your posed traveller as a miniature, heroic figure, action figure or collector's figure, or a corvette on a flight stand, as one solid STL sized in mm and ready for your slicer. **Preview** stands the print beside your model first, so you can check it without a printer.
 
 ## The browser version
 

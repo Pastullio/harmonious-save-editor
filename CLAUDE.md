@@ -64,6 +64,7 @@ Name (owner 2026-11-13): shown as **Harmonious DryDock** (`appTitle` in desktop/
 - `vendor/libnom/` — key mapping and hashed-tech list from libNOM.map / libNOM.io. Refresh `mapping_mbincompiler.json` when the game adds keys.
 - User guide (`docs/guide/guide.html`, screenshots `docs/guide/shots/*.webp`): one page per section in the editor's sidebar groups, hash-routed (`#coordinates`…), search, picture viewer, light/dark shared with the editor's `hse-theme`. `build.js` inlines the fonts, icon and screenshots into `dist/Harmonious Save Editor Guide.html` and `desktop/guide.html` (embedded; served at `/guide`, outside the token like the page itself). Linked from the save list (`.guide-btn`), the sidebar's Other resources (`GUIDE_URL`; the browser version points at GitHub's dist folder) and About. Retake the screenshots with `tools/guide-shots.js <app url>` (instructions at its top; paths from the machine are swapped for Windows-looking ones). When a page changes, update its guide page. `test/e2e/test_guide.js <dir>`.
 - `ROADMAP.md` — the owner's wishlist sorted into phases. Check it before starting new work and tick items off as they ship.
+- GitHub page: `README.md` (logo `docs/logo.png`, the owner's DryDock emblem since 2026-11-18) and `docs/social-preview.png` (1280×640, for Settings > Social preview, which these sessions can't set; nor the repo description or topics). Keep the README's sections in step with the sidebar.
 - `dist/` — built outputs: `nms-save-editor.html` (browser version) and `Harmonious Save Editor.exe`.
 
 ## Build
