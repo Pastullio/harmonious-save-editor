@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.19.1520",
+  "date": "2026-11-19",
+  "notes": [
+   "Overview: a Build parts row in Journey counts every placed part, for corvettes, planet bases, space stations and the freighter, with the total"
+  ]
+ },
+ {
   "version": "2026.11.16.1839",
   "date": "2026-11-16",
   "notes": [

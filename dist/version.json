@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.16.1839",
-  "date": "2026-11-16",
-  "size": 15031808,
-  "sha256": "2cb21481237e45065f6bf299aa64d1a3a0d497fbe0b3ec0e983efd579704546b",
-  "notes": "Companions: Export saves a companion (with its accessories) as a .pet.json file you can keep or share; Import a companion… puts one into an empty slot or over another",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.16.1839/HarmoniousSaveEditor.exe",
+  "version": "2026.11.19.1520",
+  "date": "2026-11-19",
+  "size": 15033856,
+  "sha256": "d91928e763d9cd5a658f95aae44593b9880aa237c2deb4fd4cce5beb380c22fd",
+  "notes": "Overview: a Build parts row in Journey counts every placed part, for corvettes, planet bases, space stations and the freighter, with the total",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.19.1520/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

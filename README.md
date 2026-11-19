@@ -62,6 +62,7 @@ Your traveller at a glance.
 
 - **Traveller cards**: your portrait (pick one of your screenshots or any image), current ship, multi-tool and location, with portal glyphs and galactic address.
 - **Journey**: discoveries and the milestones the game counts.
+- **Build parts**: every part placed in the save (corvettes, planet bases, space stations, freighter) and the total, so you can check before loading a big build.
 - **Save name** as it appears in the game's load menu.
 - **Garage** (click to open): every corvette, starship and multi-tool in this save, grouped, each with its picture, class and whether it's the one you're using. Click one to edit it.
 - **Quick fixes** (click to open) for every inventory in the save at once: **Repair all technology**, **Recharge all technology** and **Fill every stack**, plus units, nanites and quicksilver with +1M, +100M and Max buttons.

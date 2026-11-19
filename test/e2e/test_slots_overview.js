@@ -37,6 +37,12 @@ fs.copyFileSync(SP + '/real/save.hg', ACC + '/save2.hg'); fs.copyFileSync(SP + '
   await p.screenshot({ path: SP + '/shots/a3-overview-900.png' });
   await p.click('#tcShip'); await p.waitForTimeout(800);
   ok('ship card opens it on Starships', await p.evaluate(() => S.section === 'ships'));
+  // build parts by kind on the Journey card (owner 2026-11-19)
+  await p.evaluate(() => go('overview')); await p.waitForSelector('#journey .parts-total');
+  const parts = await p.evaluate(() => { const want = partCounts(); const tiles = [...document.querySelectorAll('#journey .parts-h ~ div')].map((d) => [d.querySelector('b').textContent, d.querySelector('span').textContent]); let sum = 0; for (const b of g(ps(), 'PersistentPlayerBases')) sum += (g(b, 'Objects') || []).length; return { want, tiles, sum }; });
+  console.log(parts.tiles.map((t) => t.join(' ')).join(' | '));
+  ok('Journey shows corvette, base, station and total parts, and the total is every placed part', parts.tiles.length >= 4 && parts.want.total === parts.sum && parts.tiles[parts.tiles.length - 1][0] === parts.sum.toLocaleString() && /Corvette parts/.test(parts.tiles[0][1]) && /Base parts/.test(parts.tiles[1][1]) && /Space station parts/.test(parts.tiles[2][1]));
+  await p.setViewportSize({ width: 1440, height: 1100 }); await p.$eval('#journey', (e) => e.scrollIntoView()); await p.waitForTimeout(300); await (await p.$('#journey')).screenshot({ path: SP + '/shots/journey-parts.png' });
   // the Garage is a folding card on Overview now (owner 2026-11-16), above Quick fixes
   await p.setViewportSize({ width: 1440, height: 1000 });
   await p.evaluate(() => go('overview')); await p.waitForSelector('#garageBox');

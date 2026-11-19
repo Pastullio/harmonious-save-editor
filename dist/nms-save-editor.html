@@ -742,6 +742,8 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .journey { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 @media (max-width: 1180px) { .journey { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .journey { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.journey .parts-h { border-top: 1px solid var(--line); }
+.journey .parts-total b { color: var(--accent); }
 .journey h3 { grid-column: 1 / -1; margin: 0; padding: 11px 15px 8px; background: var(--surface); font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
 @media (max-width: 1180px) { .trav { grid-template-columns: repeat(3, minmax(0, 1fr)); } .tc.loc { grid-column: 1 / -1; } }
 @media (max-width: 640px) { .trav { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -2496,6 +2498,13 @@ PAGES.overview = (el) => {
   wireGarageBox(el);
   // the save's own details sit with the journey (owner 2026-11-12: they hung loose under the page)
   $('#journey', el).insertAdjacentHTML('beforeend', facts.map(([b, s]) => `<div><b>${esc(b)}</b><span>${s}</span></div>`).join(''));
+  // every placed part in the save by kind (owner 2026-11-19, a tester's request: before dropping a 3,000-part ship on a
+  // save that's already near the game's limit, see what's used)
+  const pc = partCounts(), tile = (n, l, cls = '') => `<div${cls ? ` class="${cls}"` : ''}><b>${n.toLocaleString()}</b><span>${l}</span></div>`;
+  $('#journey', el).insertAdjacentHTML('beforeend', `<h3 class="parts-h">Build parts ${hint('Every part placed in this save: corvette builds, planet bases, space stations and the freighter. The total is what counts towards the game\'s limit on a save.')}</h3>`
+    + tile(pc.corvette.parts, `Corvette parts · ${plural(pc.corvette.n, 'corvette')}`) + tile(pc.base.parts, `Base parts · ${plural(pc.base.n, 'base')}`) + tile(pc.station.parts, `Space station parts · ${plural(pc.station.n, 'station')}`)
+    + (pc.freighter.parts ? tile(pc.freighter.parts, 'Freighter parts') : '') + (pc.other.parts ? tile(pc.other.parts, `Other parts · ${plural(pc.other.n, 'build')}`) : '')
+    + tile(pc.total, 'Total parts', 'parts-total'));
   el.querySelectorAll('[data-cur]').forEach((inp) => inp.onchange = () => { const v = clampU32(inp.value); inp.value = v; set(p, inp.dataset.cur, N(v)); });
   el.querySelectorAll('[data-add]').forEach((b) => b.onclick = () => {
     const inp = el.querySelector(`[data-cur="${b.dataset.add}"]`);
@@ -2526,6 +2535,17 @@ document.addEventListener('toggle', (e) => {
   foldSet(d.dataset.fold, d.open);
 }, true);
 const GEAR_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>';
+// placed parts per kind of build, from PersistentPlayerBases' BaseType (PlayerShipBase = a corvette's build,
+// HomePlanetBase = a planet base, PlayerSpaceStationBase, FreighterBase; anything else is "other")
+function partCounts() {
+  const kinds = { PlayerShipBase: 'corvette', HomePlanetBase: 'base', PlayerSpaceStationBase: 'station', FreighterBase: 'freighter' };
+  const out = { corvette: { n: 0, parts: 0 }, base: { n: 0, parts: 0 }, station: { n: 0, parts: 0 }, freighter: { n: 0, parts: 0 }, other: { n: 0, parts: 0 }, total: 0 };
+  for (const b of g(ps(), 'PersistentPlayerBases') || []) {
+    const k = kinds[str(g(b, 'BaseType', 'PersistentBaseTypes'))] || 'other', n = (g(b, 'Objects') || []).length;
+    out[k].n++; out[k].parts += n; out.total += n;
+  }
+  return out;
+}
 function travellerCards(host, journey) {
   const p = ps(), items = coverItems(), disc = discoveryCounts(), st = globalStats();
   const ship = items.find((x) => x.kind !== 'tool' && x.current), tool = items.find((x) => x.kind === 'tool' && x.current);
