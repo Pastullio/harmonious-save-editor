@@ -520,6 +520,13 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .sw-row .id { color: var(--dim); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sw-row .grp { font-size: 12px; color: var(--dim); }
 .sw-row:not(.g-other) .nm { font-weight: 500; color: var(--accent); }
+.st-add { display: flex; gap: 10px; align-items: flex-start; margin: 10px 0 14px; }
+.st-grid { display: grid; grid-template-columns: 220px 1fr; gap: 16px; min-height: 300px; }
+.st-list { display: flex; flex-direction: column; gap: 6px; max-height: 460px; overflow: auto; }
+.st-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+.st-item.on { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.st-pic { display: grid; place-items: center; min-height: 240px; }
+.st-pic img { max-width: 100%; max-height: 360px; }
 .sw-row.dup { box-shadow: inset 3px 0 0 #e08a3c; background: color-mix(in srgb, #e08a3c 11%, transparent); }
 .sw-row.dup-first { box-shadow: inset 3px 0 0 color-mix(in srgb, #e08a3c 45%, transparent); }
 .sw-row.dup.sel { background: color-mix(in srgb, #e08a3c 26%, var(--surface)); }
@@ -2632,13 +2639,16 @@ function travellerName() {
   for (const b of g(ps(), 'PersistentPlayerBases') || []) { const n = untag(str(g(b, 'Owner', 'USN'))); if (n) return n; }
   return 'Traveller';
 }
-async function travellerShare() {
+async function travellerShare(other) {
   if (!APP) return;
-  const groups = travellerGroups(); if (!groups.length) return;
+  // other: a shared traveller ({name, groups, look}) for Blender's Import my traveller, instead of the save's own
+  const groups = other ? other.groups : travellerGroups(); if (!groups.length) return;
+  S.travShared = other ? other.name : null;
   // the save's multi-tools too, for "Hold a multi-tool" in Blender
   const tools = [];
   try { for (const it of coverItems().filter((x) => x.kind === 'tool' && x.scene)) tools.push({ name: it.name, scene: it.scene, seed: it.seed || '', picks: { ...(it.picks || {}), ...(await partsOf(it.key)) } }); } catch (_) {}
-  api('/api/live/traveller', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groups, name: travellerName(), look: travellerLook(), tools }) }).catch(() => {});
+  api('/api/live/traveller', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groups, name: other ? other.name : travellerName(), look: other ? other.look : travellerLook(), tools }) }).catch(() => {});
+  if (other) return;
   // build (or find) the textured traveller in the background now, so the Exosuit card doesn't wait for it later
   setTimeout(() => { if (S.save && !document.hidden) api(travGlbUrl(groups, travellerName(), travellerLook())).then((r) => r.arrayBuffer()).catch(() => {}); }, 4000);
 }
@@ -2652,6 +2662,106 @@ async function travellerExport(btn) {
     await downloadBlob(name + '.glb', await r.blob());
   } catch (e) { toast('Couldn\'t export your traveller: ' + e.message, true); }
   if (btn) btn.disabled = false;
+}
+// ---- Share codes (owner 2026-11-23: share character models through a Discord channel, with nothing hosted and no
+// game models passed round). A traveller's look is small: the part groups, the colours and the texture choices. A share
+// code is that as text, "HDT1:" + base64(deflate-raw(JSON {v, n: name, g: groups without ^, c: [[palette, alt, r, g, b,
+// a]], t: [[group, option]]})); standard base64 has no characters Discord's markdown eats. Share copies it in a code
+// block and saves a picture to post with it; Shared travellers takes a pasted code (found anywhere in the text), keeps
+// it (localStorage hse-shared-travellers), builds the model from this PC's game files, and can hand it to Blender's
+// Import my traveller or export the .glb. The save is never changed.
+const TRAV_CODE = 'HDT', TRAV_CODE_V = 1, TRAV_WORD = /^[\w^ .-]{1,64}$/;
+async function travCodeMake(t) {
+  const r4 = (x) => Math.round(x * 1e4) / 1e4, look = t.look || { c: [], t: [] };
+  const doc = { v: TRAV_CODE_V, n: String(t.name || 'Traveller').slice(0, 60), g: t.groups.map((x) => x.replace(/^\^/, '')), c: (look.c || []).map((x) => [x.p, x.a, ...x.c.slice(0, 4).map(r4)]), t: look.t || [] };
+  const raw = new Uint8Array(await new Response(new Blob([JSON.stringify(doc)]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
+  let bin = ''; for (const b of raw) bin += String.fromCharCode(b);
+  return TRAV_CODE + TRAV_CODE_V + ':' + btoa(bin).replace(/=+$/, '');
+}
+// the traveller in a pasted text ({name, groups, look}); null when the text holds no code; throws when a code is there but can't be read
+async function travCodeRead(text) {
+  const m = /HDT(\d+):([A-Za-z0-9+/]{8,40000})/.exec(String(text || '')); if (!m) return null;
+  if (+m[1] > TRAV_CODE_V) throw new Error('This code was made by a newer DryDock. Update DryDock to use it.');
+  let doc;
+  try {
+    const bin = atob(m[2]), raw = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
+    const txt = await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+    if (txt.length > 200000) throw new Error('too long');
+    doc = JSON.parse(txt);
+  } catch (_) { throw new Error('This code is cut off or damaged. Copy the whole code again.'); }
+  const word = (x) => typeof x === 'string' && TRAV_WORD.test(x), bad = new Error('This code isn\'t a traveller DryDock can read.');
+  if (!doc || !Array.isArray(doc.g) || !doc.g.length || doc.g.length > 80 || !doc.g.every(word)) throw bad;
+  const c = [], t = [];
+  for (const x of Array.isArray(doc.c) ? doc.c.slice(0, 200) : []) { if (!Array.isArray(x) || !word(x[0]) || typeof x[1] !== 'string' || !(x[1] === '' || word(x[1]))) throw bad; const col = x.slice(2, 6).map(Number); if (col.length < 3 || col.some((v) => !isFinite(v))) throw bad; c.push({ p: x[0], a: x[1], c: col }); }
+  for (const x of Array.isArray(doc.t) ? doc.t.slice(0, 200) : []) { if (!Array.isArray(x) || !word(x[0]) || !word(x[1])) throw bad; t.push([x[0], x[1]]); }
+  const name = untag(String(doc.n || '')).replace(/[<>\\/:*?"|\x00-\x1f]/g, '').trim().slice(0, 60) || 'Traveller';
+  return { name, groups: doc.g.map((x) => '^' + x.replace(/^\^/, '')), look: c.length || t.length ? { c, t } : null, code: m[0] };
+}
+const DISCORD_MAX = 2000;
+const sharedTravs = () => { try { const l = JSON.parse(localStorage.getItem('hse-shared-travellers') || '[]'); return Array.isArray(l) ? l.filter((x) => x && typeof x.code === 'string') : []; } catch (_) { return []; } };
+const sharedTravsStore = (l) => { try { localStorage.setItem('hse-shared-travellers', JSON.stringify(l.slice(0, 200))); } catch (_) {} };
+// a picture of a traveller (the textured model, front, transparent), or null
+async function travPicture(t, size) {
+  if (!APP || !GLTEX.ok()) return null;
+  const r = await api(travGlbUrl(t.groups, t.name, t.look)); if (!r.ok) throw new Error((await r.text()).trim());
+  const cv = GLTEX.render(GLTEX.parse(await r.arrayBuffer()), size, -12 * Math.PI / 180, 4 * Math.PI / 180, 'studio');
+  return cv ? new Promise((ok) => cv.toBlob(ok, 'image/png')) : null;
+}
+// Share: the code goes on the clipboard (in a code block, so Discord shows it whole with a copy button) and the picture into Exports
+async function travellerShareCode() {
+  const t = { name: travellerName(), groups: travellerGroups(), look: travellerLook() };
+  const code = await travCodeMake(t), post = '```\n' + code + '\n```', fits = post.length <= DISCORD_MAX;
+  const copy = async () => { try { await navigator.clipboard.writeText(post); toast('Share code copied. Paste it into Discord.'); return true; } catch (_) { toast('Couldn\'t reach the clipboard. Select the code and copy it.', true); return false; } };
+  await copy();
+  await customDialog({ title: 'Share ' + t.name, wide: true, html: `<p>Your traveller's look as a share code. Post it in Discord (with a picture, so people see who they are getting); anyone with DryDock copies the code and adds it under <b>Shared travellers</b>. The code holds the parts, colours and texture choices only: the model is built from their own game files.</p>
+    <textarea id="tsCode" class="mono" readonly rows="6" style="width:100%">${esc(post)}</textarea>
+    <p class="${fits ? 'dim' : 'warn'}" data-keep>${code.length.toLocaleString()} characters. ${fits ? `Fits in one Discord message (up to ${DISCORD_MAX.toLocaleString()}).` : `Longer than one Discord message (${DISCORD_MAX.toLocaleString()}): save it as a text file and post the file instead.`}</p>
+    <div class="toolbar"><button class="btn primary" type="button" id="tsCopy">Copy the code</button><button class="btn" type="button" id="tsPic">Save a picture to post with it</button>${fits ? '' : '<button class="btn" type="button" id="tsFile">Save as a text file</button>'}</div>`,
+    actions: [['Close', null]],
+    wire: (body) => {
+      $('#tsCopy', body).onclick = copy;
+      $('#tsCode', body).onfocus = (e) => e.target.select();
+      const tf = $('#tsFile', body); if (tf) tf.onclick = () => downloadText(t.name + ' traveller code.txt', code);
+      $('#tsPic', body).onclick = async (e) => { e.currentTarget.disabled = true; try { const b = await travPicture(t, 1024); if (b) await downloadBlob(t.name + ' traveller.png', b); else toast('The picture needs the game files and 3D in this window.', true); } catch (err) { toast('Couldn\'t make the picture: ' + err.message, true); } e.currentTarget.disabled = false; };
+    } });
+}
+// Shared travellers: paste a code, keep it, look at the traveller, hand it to Blender or export it
+async function sharedTravellersDialog() {
+  let list = sharedTravs(), cur = null, clip = '';
+  try { clip = await navigator.clipboard.readText(); } catch (_) {}
+  if (!/HDT\d+:[A-Za-z0-9+/]{8}/.test(clip)) clip = '';
+  await customDialog({ title: 'Shared travellers', wide: true, html: `<p>Travellers other people shared as a code. Copy a code from Discord, paste it here and press Add. Each one is built from your own game files, and your save isn't changed.</p>
+    <div class="st-add"><textarea id="stPaste" class="mono" rows="2" placeholder="Paste a share code (it starts with HDT1:)" style="width:100%">${esc(clip)}</textarea><button class="btn primary" type="button" id="stAdd">Add</button></div>
+    <div class="st-grid"><div id="stList" class="st-list"></div><div id="stView" class="st-view"></div></div>`,
+    actions: [['Close', null]],
+    wire: (body) => {
+      const listEl = $('#stList', body), view = $('#stView', body);
+      const drawList = () => { listEl.innerHTML = list.length ? list.map((x, k) => `<button type="button" class="st-item${cur === k ? ' on' : ''}" data-k="${k}"><b>${esc(x.name)}</b><span class="dim small-print">${esc(new Date(x.added || 0).toLocaleDateString())}</span></button>`).join('') : '<p class="dim" data-keep>No shared travellers yet.</p>'; listEl.querySelectorAll('[data-k]').forEach((b) => b.onclick = () => show(+b.dataset.k)); };
+      const show = async (k) => {
+        cur = k; drawList(); const x = list[k]; if (!x) { view.innerHTML = ''; return; }
+        let t; try { t = await travCodeRead(x.code); } catch (e) { view.innerHTML = `<p class="warn" data-keep>${esc(e.message)}</p>`; return; }
+        const using = S.travShared === t.name;
+        view.innerHTML = `<div class="st-pic"><span class="live-dot"></span></div><h3>${esc(t.name)}</h3><p class="dim small-print" data-keep>${plural(t.groups.length, 'part')}${t.look ? ', ' + plural(t.look.c.length, 'colour') : ''}</p>
+          <p id="stNote" class="dim" data-keep>${using ? 'Import my traveller in Blender now brings in this traveller.' : ''}</p>
+          <div class="toolbar"><button class="btn primary" type="button" data-st="blender">${using ? 'Back to my own traveller' : 'Use in Blender'}</button><button class="btn" type="button" data-st="glb">Export for Blender (.glb)</button><button class="btn" type="button" data-st="copy">Copy the code</button><button class="btn danger ghost" type="button" data-st="remove">Remove</button></div>`;
+        view.querySelector('[data-st="blender"]').onclick = async () => { await travellerShare(using ? undefined : t); toast(using ? 'Blender imports your own traveller again.' : `In Blender, press Import my traveller to bring in ${t.name}.`); show(k); };
+        view.querySelector('[data-st="glb"]').onclick = async (e) => { e.currentTarget.disabled = true; try { const r = await api(travGlbUrl(t.groups, t.name, t.look)); if (!r.ok) throw new Error((await r.text()).trim()); await downloadBlob(t.name + '.glb', await r.blob()); } catch (err) { toast('Couldn\'t export this traveller: ' + err.message, true); } if (e.currentTarget) e.currentTarget.disabled = false; };
+        view.querySelector('[data-st="copy"]').onclick = () => navigator.clipboard.writeText('```\n' + x.code + '\n```').then(() => toast('Share code copied')).catch(() => toast('Couldn\'t reach the clipboard', true));
+        view.querySelector('[data-st="remove"]').onclick = () => { list.splice(k, 1); sharedTravsStore(list); cur = null; view.innerHTML = ''; drawList(); };
+        const pic = view.querySelector('.st-pic');
+        try { const b = await travPicture(t, 520); if (cur !== k || !pic.isConnected) return; if (b) { const img = new Image(); img.alt = t.name; img.src = URL.createObjectURL(b); pic.replaceChildren(img); } else pic.innerHTML = '<p class="dim" data-keep>The picture needs the game files (Settings) and 3D in this window.</p>'; }
+        catch (err) { if (cur === k && pic.isConnected) pic.innerHTML = `<p class="warn" data-keep>This traveller couldn't be built from your game files: ${esc(err.message)}</p>`; }
+      };
+      $('#stAdd', body).onclick = async () => {
+        const box = $('#stPaste', body); let t;
+        try { t = await travCodeRead(box.value); } catch (e) { toast(e.message, true); return; }
+        if (!t) { toast('No share code in that text. A code starts with HDT1:', true); return; }
+        const at = list.findIndex((x) => x.code === t.code);
+        if (at >= 0) { toast(t.name + ' is already in your list'); show(at); return; }
+        list.unshift({ name: t.name, code: t.code, added: Date.now() }); sharedTravsStore(list); box.value = ''; show(0);
+      };
+      drawList(); if (list.length && !clip) show(0);
+    } });
 }
 // the traveller standing, drawn from the same model Blender gets (owner 2026-11-13: the Exosuit card showed only the
 // empty backdrop): the rigged .glb in its rest pose, in the save's colours, facing the viewer. Kept for the session.
@@ -2711,10 +2821,12 @@ function travellerCard(el) {
   stand();
   const info = document.createElement('div'); info.className = 'panel trav-info';
   info.innerHTML = `<h3>Pose ${esc(name)} in Blender</h3><p class="dim">Your traveller as the game builds them from your save, with the skeleton, ready to pose. In Blender: File, Import, glTF. Or press Import my traveller in the LiveLink add-on's panel, pose them, and make a picture of the pose on the Traveller page.</p>
-    <div class="toolbar"><button class="btn primary" type="button" id="travGlb">Export for Blender (.glb)</button><button class="btn addon-btn" type="button">Get LiveLink</button><button class="btn" type="button" id="travPic">Make a picture</button>${APP ? '<button class="btn ghost" type="button" id="travSample">Save traveller files for the developer</button>' : ''}</div>`;
+    <div class="toolbar"><button class="btn primary" type="button" id="travGlb">Export for Blender (.glb)</button><button class="btn addon-btn" type="button">Get LiveLink</button><button class="btn" type="button" id="travPic">Make a picture</button><button class="btn" type="button" id="travShare">Share</button><button class="btn" type="button" id="travPull">Shared travellers</button>${APP ? '<button class="btn ghost" type="button" id="travSample">Save traveller files for the developer</button>' : ''}</div>`;
   wrap.appendChild(info);
   $('#travGlb', info).onclick = (e) => travellerExport(e.currentTarget);
   $('#travPic', info).onclick = () => go('traveller');
+  $('#travShare', info).onclick = () => travellerShareCode().catch((e) => toast('Couldn\'t make the share code: ' + e.message, true));
+  $('#travPull', info).onclick = () => sharedTravellersDialog();
   const smp = $('#travSample', info); if (smp) smp.onclick = async () => {
     // the materials and textures this traveller wears, for working on the real colours and textures
     const cc = g(ps(), 'CharacterCustomisationData'); const e0 = Array.isArray(cc) ? cc[0] : null;
