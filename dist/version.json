@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.23.2207",
+  "version": "2026.11.23.2228",
   "date": "2026-11-23",
-  "size": 15194624,
-  "sha256": "bd65028c45629d1e3a0759dc725ac3465509b6979305e085d7da139b7751c1d8",
-  "notes": "Build a weapon: the picture no longer spins on its own. Drag to turn it, scroll to zoom, right-drag or Shift-drag to move, double-click to reset, and it now shows the weapon in its textures\nRemoved the Remove leftover staff data button: weapons built now never carry a staff's data",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.2207/HarmoniousSaveEditor.exe",
+  "size": 15197184,
+  "sha256": "c00589ade883c598359a6477e5d120954098b447fcb0a6f4b789d3c8426339c2",
+  "notes": "Models no longer turn on their own. The new Turn models button beside Cover Flow / Grid switches it on if you want it\nTurn a model by hand: drag it, or Shift-drag the centre cover in Cover Flow",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.2228/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

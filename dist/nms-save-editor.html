@@ -1165,6 +1165,8 @@ ol.steps { padding-left: 20px; display: grid; gap: 6px; }
 .arch-list .fixes { display: flex; gap: 6px; }
 .updated { max-width: 520px; margin: 18vh auto; padding: 0 24px; text-align: center; }
 .view-row { display: flex; justify-content: flex-end; margin: -6px 0 10px; }
+.spin-btn { margin-right: 10px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--dim); font: inherit; font-size: 12.5px; cursor: pointer; }
+.spin-btn[aria-pressed="true"] { color: var(--ink); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .view-switch { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--well); }
 .view-switch button { border: 0; background: none; padding: 5px 14px; border-radius: 999px; font: inherit; font-size: 12.5px; font-weight: 500; color: var(--dim); cursor: pointer; }
 .view-switch button:hover { color: var(--ink); }
@@ -2501,7 +2503,7 @@ function miniCover(host, it, size, onClick) {
   const canSpin = () => cv.isConnected && !it.custom && !it.renderImg && (it.holo || (it.texGlb && GLTEX.ok()) || (it.model && GL3D.ok()) || !!wireMesh(it));
   const base = it.holo ? -.65 : it.kind === 'tool' ? -1.25 : -.95;
   let angle = null, raf = 0, hover = false, dragX = null;
-  const loop = () => { raf = 0; if (!canSpin() || !hover) return; if (dragX == null && !REDUCED) angle = (angle ?? base) + .012; paintCover(cv, it, angle ?? base); raf = requestAnimationFrame(loop); };
+  const loop = () => { raf = 0; if (!canSpin() || !hover) return; if (dragX == null && !REDUCED && spinOn()) angle = (angle ?? base) + .012; paintCover(cv, it, angle ?? base); raf = requestAnimationFrame(loop); };
   frame.onpointerenter = () => { hover = true; if (!raf && canSpin()) raf = requestAnimationFrame(loop); };
   frame.onpointerleave = () => { hover = false; dragX = null; };
   frame.onpointerdown = (e) => { if (!canSpin()) return; dragX = e.clientX; frame._moved = false; try { frame.setPointerCapture(e.pointerId); } catch (_) {} };
@@ -4858,8 +4860,15 @@ async function partsDialog(it, onSaved) {
   const draw = () => {
     const c = $('#partsPrev'); if (!c || !alive) return;
     const ctx = c.getContext('2d');
+    if (!c._turn) {   // drag turns it; it turns on its own only with Turn models on
+      c._turn = true; c.style.cursor = 'grab'; c.style.touchAction = 'none';
+      c.onpointerdown = (e) => { c._x = e.clientX; try { c.setPointerCapture(e.pointerId); } catch (_) {} };
+      c.onpointermove = (e) => { if (c._x == null) return; angle += (e.clientX - c._x) * .012; c._x = e.clientX; };
+      c.onpointerup = c.onpointercancel = () => { c._x = null; };
+    }
     paintNebula(ctx, c.width, it.key); if (mesh) paintModel(ctx, c.width, mesh, tint, angle);
-    angle += .01; raf = requestAnimationFrame(draw);
+    if (spinOn() && !REDUCED && c._x == null) angle += .01;
+    raf = requestAnimationFrame(draw);
   };
   // each part's picture, drawn once its mesh arrives (cached by URL, so unchanged parts don't reload)
   const thumbs = () => {
@@ -4969,11 +4978,16 @@ async function moveCoversToDisk() {
 /** Cover Flow widget. opts: { size, index, onChange(i), onOpen(i), caption } */
 // Cover Flow can be swapped for a plain grid of large cards (the owner's option; remembered per computer).
 const coverView = () => { try { return localStorage.getItem('hse-cover-view') === 'grid' ? 'grid' : 'flow'; } catch (_) { return 'flow'; } };
+// Pictures turn on their own only when the owner switches it on (2026-11-23: "it needs to either only rotate if I do
+// it manually, or have a button to stop the rotation"); dragging a picture always turns it. localStorage hse-spin.
+const spinOn = () => { try { return localStorage.getItem('hse-spin') === '1'; } catch (_) { return false; } };
 function viewSwitch() {
   const v = coverView();
-  return `<div class="view-switch" role="group" aria-label="How to show covers"><button type="button" data-view="flow" aria-pressed="${v === 'flow'}">Cover Flow</button><button type="button" data-view="grid" aria-pressed="${v === 'grid'}">Grid</button></div>`;
+  return `<button type="button" class="spin-btn" data-spin aria-pressed="${spinOn()}" title="Models turn on their own when this is on. Off, they stay still: drag one to turn it (Shift-drag in Cover Flow).">Turn models</button><div class="view-switch" role="group" aria-label="How to show covers"><button type="button" data-view="flow" aria-pressed="${v === 'flow'}">Cover Flow</button><button type="button" data-view="grid" aria-pressed="${v === 'grid'}">Grid</button></div>`;
 }
 document.addEventListener('click', (e) => {
+  const sp = e.target.closest('[data-spin]');
+  if (sp) { try { localStorage.setItem('hse-spin', spinOn() ? '0' : '1'); } catch (_) {} document.querySelectorAll('[data-spin]').forEach((x) => x.setAttribute('aria-pressed', spinOn())); if (S.save || S.section) render(); return; }
   const b = e.target.closest('.view-switch [data-view]'); if (!b) return;
   try { localStorage.setItem('hse-cover-view', b.dataset.view); } catch (_) {}
   if (S.save || S.section) render();
@@ -5067,7 +5081,7 @@ function CoverFlow(host, items, opts) {
   }
 
   // one animation loop: the spring, plus the slow turn of a hologram on the centre cover
-  function needsSpin() { const it = items[cur]; return it && (it.holo || it.model || wireMesh(it)) && !it.renderImg && !it.custom && !REDUCED; }
+  function needsSpin() { const it = items[cur]; return spinOn() && it && (it.holo || it.model || wireMesh(it)) && !it.renderImg && !it.custom && !REDUCED; }
   function kick() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(tick); } }
   function tick(t) {
     raf = 0;
@@ -5110,6 +5124,12 @@ function CoverFlow(host, items, opts) {
   // drag: covers follow the pointer 1:1, then coast with the release speed and settle
   let dragX = 0, dragFrom = 0, moved = false, samples = [];
   const perCover = size * .42;
+  // Shift-drag turns the centre cover's model by hand (a plain drag moves through the covers)
+  let turnX = null;
+  const turnable = () => { const it = items[cur]; return it && (it.holo || it.model || wireMesh(it)) && !it.renderImg && !it.custom; };
+  stage.addEventListener('pointerdown', (e) => { if (e.button === 0 && e.shiftKey && turnable()) { turnX = e.clientX; try { stage.setPointerCapture(e.pointerId); } catch (_) {} e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+  stage.addEventListener('pointermove', (e) => { if (turnX == null) return; angle += (e.clientX - turnX) * .012; turnX = e.clientX; const cv = els[cur].querySelector('canvas'); if (cv) paintCover(cv, items[cur], angle); e.stopImmediatePropagation(); }, true);
+  for (const ev of ['pointerup', 'pointercancel']) stage.addEventListener(ev, (e) => { if (turnX == null) return; turnX = null; stage._down = false; e.stopImmediatePropagation(); }, true);
   stage.addEventListener('pointerdown', (e) => { if (e.button !== 0) return; dragX = e.clientX; dragFrom = pos; moved = false; dragging = false; samples = [[performance.now(), pos]]; stage._down = true; });
   stage.addEventListener('pointermove', (e) => {
     if (!stage._down) return;
