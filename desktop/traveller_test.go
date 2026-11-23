@@ -158,3 +158,11 @@ func TestRecolour(t *testing.T) {
 		t.Fatalf("pixels %v", img.Pix)
 	}
 }
+
+func TestAddonAtLeast(t *testing.T) {
+	for v, want := range map[string]bool{"1.30.0": true, "1.31.2": true, "2.0.0": true, "1.29.0": false, "1.9.0": false, "older": false, "": false} {
+		if got := addonAtLeast(v, 1, 30); got != want {
+			t.Errorf("addonAtLeast(%q, 1, 30) = %v, want %v", v, got, want)
+		}
+	}
+}

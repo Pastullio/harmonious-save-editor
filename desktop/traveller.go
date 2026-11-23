@@ -157,6 +157,78 @@ var trav struct {
 	name   string
 	look   string // the save's colours and texture choices (travLook as JSON)
 	tools  []toolRef
+	// travellers other people shared as codes (the page sends its list), for the add-on's "Import a shared traveller"
+	// list, and one the page asked Blender to bring in now ("Add to Blender"; who: 0 the save's own, n shared[n-1])
+	shared []sharedTrav
+	want   int
+	wantID int
+	wantAt time.Time
+}
+
+type sharedTrav struct {
+	Name   string          `json:"name"`
+	Groups []string        `json:"groups"`
+	Look   json.RawMessage `json:"look"`
+}
+
+// the shared travellers' names, for the add-on's list (call with trav locked)
+func sharedNames() []string {
+	out := make([]string, 0, len(trav.shared))
+	for _, t := range trav.shared {
+		out = append(out, t.Name)
+	}
+	return out
+}
+
+// what the page asked Blender to import, handed to the add-on once on its next check-in (call with trav locked)
+func wantedImport() map[string]any {
+	if trav.wantID == 0 || trav.wantAt.IsZero() {
+		return nil
+	}
+	who, id, at := trav.want, trav.wantID, trav.wantAt
+	trav.wantAt = time.Time{}
+	if time.Since(at) > time.Minute {
+		return nil
+	}
+	return map[string]any{"who": who, "id": id}
+}
+
+// POST {who} from the page: Blender should bring this traveller in now. Answers whether Blender is there to do it.
+func handleLiveTravellerAdd(w http.ResponseWriter, r *http.Request) {
+	var v struct {
+		Who int `json:"who"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&v); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	trav.Lock()
+	if v.Who < 0 || v.Who > len(trav.shared) {
+		trav.Unlock()
+		http.Error(w, "That traveller isn't in the list any more.", http.StatusNotFound)
+		return
+	}
+	trav.want, trav.wantAt = v.Who, time.Now()
+	trav.wantID++
+	trav.Unlock()
+	live.Lock()
+	linked, addon := !live.blender.IsZero() && time.Since(live.blender) < 12*time.Second, live.addon
+	live.Unlock()
+	if !addonAtLeast(addon, 1, 30) { // Add to Blender came with add-on 1.30.0
+		addon = "older"
+	}
+	writeJSON(w, map[string]any{"ok": true, "linked": linked, "addon": addon})
+}
+
+// addonAtLeast: is the add-on's version ("1.30.0") at least major.minor? Unknown or missing counts as older.
+func addonAtLeast(v string, major, minor int) bool {
+	parts := strings.Split(v, ".")
+	if len(parts) < 2 {
+		return false
+	}
+	a, err1 := strconv.Atoi(parts[0])
+	b, err2 := strconv.Atoi(parts[1])
+	return err1 == nil && err2 == nil && (a > major || (a == major && b >= minor))
 }
 
 // the save's multi-tools, for the add-on's "Hold a multi-tool"
@@ -219,19 +291,29 @@ func handleLiveTraveller(w http.ResponseWriter, r *http.Request) {
 			Name   string          `json:"name"`
 			Look   json.RawMessage `json:"look"`
 			Tools  []toolRef       `json:"tools"`
+			Shared []sharedTrav    `json:"shared"`
 		}
-		if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&v); err != nil {
+		if err := json.NewDecoder(io.LimitReader(r.Body, 4<<20)).Decode(&v); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		trav.Lock()
-		trav.groups, trav.name, trav.look, trav.tools = v.Groups, strings.TrimSpace(v.Name), string(v.Look), v.Tools
+		trav.groups, trav.name, trav.look, trav.tools, trav.shared = v.Groups, strings.TrimSpace(v.Name), string(v.Look), v.Tools, v.Shared
 		trav.Unlock()
 		writeJSON(w, map[string]any{"ok": true})
 		return
 	}
 	trav.Lock()
 	groups, name, look := trav.groups, trav.name, trav.look
+	if who, _ := strconv.Atoi(r.URL.Query().Get("who")); who > 0 { // a shared traveller, by its place in the list
+		if who > len(trav.shared) {
+			trav.Unlock()
+			http.Error(w, "That shared traveller isn't in DryDock's list any more.", http.StatusNotFound)
+			return
+		}
+		t := trav.shared[who-1]
+		groups, name, look = t.Groups, strings.TrimSpace(t.Name), string(t.Look)
+	}
 	trav.Unlock()
 	if len(groups) == 0 {
 		http.Error(w, "Open a save in Harmonious DryDock first.", http.StatusNotFound)

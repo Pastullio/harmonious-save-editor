@@ -69,7 +69,7 @@ const FX = process.argv[2]; const fails = []; const ok = (n, c) => { console.log
   ok('a code on the clipboard is already in the paste box', (await p.inputValue('#stPaste')) === clip);
   await p.click('#stAdd'); await p.waitForSelector('.st-item.on');
   ok('Add lists the traveller by name and opens it', (await p.textContent('.st-item.on b')) === 'Pastullio' && /14 parts, 22 colours/.test(await p.textContent('#stView')));
-  ok('…with Use in Blender, Export, Copy the code and Remove', (await p.$$eval('#stView [data-st]', (l) => l.map((x) => x.textContent).join('|'))) === 'Use in Blender|Export for Blender (.glb)|Copy the code|Remove');
+  ok('…with Add to Blender, Export, Copy the code and Remove', (await p.$$eval('#stView [data-st]', (l) => l.map((x) => x.textContent).join('|'))) === 'Add to Blender|Export for Blender (.glb)|Copy the code|Remove');
   if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, 'sharecode-shared.png') });
   await p.evaluate(() => { window.__saved = []; window.api = async () => new Response(new Blob(['glb'])); });
   await p.click('#stView [data-st="glb"]'); await p.waitForFunction(() => window.__saved.length === 1); await p.waitForTimeout(150);
