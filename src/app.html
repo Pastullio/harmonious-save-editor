@@ -7273,6 +7273,9 @@ function addSharedTool(t, donorIdx) {
   if (t.groups) { const cols = staffColoursOf(isStaff(src) ? src : null); for (const [pl, a, c] of t.cols || []) cols.set(staffKey(pl, a), c); return addStaff({ groups: t.groups, cols, name: t.name, cls: t.cls, seed: t.seed }, donorIdx); }
   const ent = cloneJSON(src), res = g(ent, 'Resource'), seed = [true, t.seed], rs = g(res, 'Seed');
   set(ent, 'Name', t.name); set(res, 'Filename', t.scene);
+  // copied from a staff: its parts and colours are the staff's own, not this tool's (owner's zip 2026-11-23: three
+  // standard tools built on his staff carried ^STAFF_HEAD_5A… and its 330 colours)
+  if (isStaff(src) && t.scene !== STAFF_SCENE) { const cd = g(ent, 'CustomisationData'); if (cd instanceof Map) { if (kOf(cd, 'DescriptorGroups') != null) set(cd, 'DescriptorGroups', []); if (kOf(cd, 'Colours') != null) set(cd, 'Colours', []); } }
   if (kOf(ent, 'Seed') != null) set(ent, 'Seed', cloneJSON(seed));
   if (kOf(ent, 'Seed') == null || (Array.isArray(rs) && rs[0] === true)) set(res, 'Seed', cloneJSON(seed));   // a multi-tool's seed is its own Seed; its Resource.Seed stays unset, as the game leaves it
   if (kOf(ent, 'UseLegacyColours') != null) set(ent, 'UseLegacyColours', t.legacy);
@@ -7288,6 +7291,7 @@ async function addToolDialog() {
   try { clip = await navigator.clipboard.readText(); } catch (_) {}
   if (!/HDM\d+:[A-Za-z0-9+/]{8}/.test(clip)) clip = '';
   const donors = have.map(({ s, i }) => `<option value="${i}"${i === num(g(ps(), 'ActiveMultioolIndex')) ? ' selected' : ''}>${esc(entityName(s, i, 'tool'))}</option>`).join('');
+  const plain = have.find(({ s }) => !isStaff(s)), donorsPlain = plain ? have.map(({ s, i }) => `<option value="${i}"${i === plain.i ? ' selected' : ''}>${esc(entityName(s, i, 'tool'))}</option>`).join('') : donors;
   const full = !empty.length, where = full ? `All ${list.length} multi-tool slots are in use. Delete one first.` : `It goes in slot ${empty[0] + 1}.`;
   const done = (slot, name, finish) => { finish(null); S.pick.tool = slot; S.sel = null; renderSide(); render(); toast(`${name} added to slot ${slot + 1}. Press Save to game to keep it.`); };
   // the tabs, in the owner's order (2026-11-23): the two builders first; a share code on the clipboard opens its tab
@@ -7318,7 +7322,7 @@ async function addToolDialog() {
           <label class="field"><span>Seed (decides the look)</span><span class="bw-seed"><input class="input mono" id="bwSeed" pattern="0x[0-9A-Fa-f]{1,16}"><button class="btn" type="button" id="bwRoll">Roll</button></span></label>
           <div class="sb-add"><label class="field"><span>Name</span><input class="input" id="bwName" maxlength="42" value="Multi-tool"></label>
             <label class="field"><span>Class</span><select class="input" id="bwCls">${['S', 'A', 'B', 'C'].map((c) => `<option>${c}</option>`).join('')}</select></label>
-            <label class="field"><span>Technology and size copied from</span><select class="input" id="bwDonor">${donors}</select></label></div>
+            <label class="field"><span>Technology and size copied from</span><select class="input" id="bwDonor">${donorsPlain}</select></label></div>
           <div class="toolbar"><button class="btn primary" type="button" id="bwAdd"${full || !have.length ? ' disabled' : ''}>Add to my save</button>${APP ? '<button class="btn ghost" type="button" data-sample>Save multi-tool files for the developer</button>' : ''}</div></div></div>
     </div>`,
     actions: [['Close', null]],
