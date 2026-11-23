@@ -5,7 +5,7 @@ const { chromium } = require('/opt/npm-tools/node_modules/playwright'); const pa
 // Usage: node test/e2e/test_sharecode.js <dir with the synthetic fixture from test/make_fixture.py>   (SHOTS=<dir> for pictures)
 const FX = process.argv[2]; const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n); if (!c) fails.push(n); };
 (async () => {
-  const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 }, permissions: ['clipboard-read', 'clipboard-write'] }); const p = await ctx.newPage();
+  const b = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] }); const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 }, permissions: ['clipboard-read', 'clipboard-write'] }); const p = await ctx.newPage();
   const errs = []; p.on('pageerror', (e) => errs.push(e.message));
   await p.goto('file://' + path.resolve(__dirname, '../../dist/nms-save-editor.html'));
   await p.setInputFiles('#filePick', [path.join(FX, 'save3.hg'), path.join(FX, 'mf_save3.hg')]); await p.waitForSelector('#app:not(.hidden)');
@@ -34,6 +34,21 @@ const FX = process.argv[2]; const fails = []; const ok = (n, c) => { console.log
   ok('a code from a newer version says to update', /newer DryDock/.test(r.newer));
   ok('part names that aren\'t plain words are refused', /isn't a traveller/.test(r.evil));
   ok('a name loses tags and file-name characters', r.tagName === 'Badname');
+  // the picture: a real (one-triangle) .glb through the same reader and renderer the traveller's picture uses
+  const pic = await p.evaluate(async () => {
+    if (!GLTEX.ok()) return { skip: true };
+    const json = { asset: { version: '2.0' }, scene: 0, scenes: [{ nodes: [0] }], nodes: [{ mesh: 0 }], meshes: [{ primitives: [{ attributes: { POSITION: 0 }, indices: 1 }] }],
+      buffers: [{ byteLength: 44 }], bufferViews: [{ buffer: 0, byteOffset: 0, byteLength: 36 }, { buffer: 0, byteOffset: 36, byteLength: 6 }],
+      accessors: [{ bufferView: 0, componentType: 5126, count: 3, type: 'VEC3', min: [-1, 0, 0], max: [1, 2, 0] }, { bufferView: 1, componentType: 5123, count: 3, type: 'SCALAR' }] };
+    let jt = JSON.stringify(json); while (jt.length % 4) jt += ' ';
+    const bin = new ArrayBuffer(44); new Float32Array(bin, 0, 9).set([-1, 0, 0, 1, 0, 0, 0, 2, 0]); new Uint16Array(bin, 36, 3).set([0, 1, 2]);
+    const out = new Uint8Array(12 + 8 + jt.length + 8 + 44), dv = new DataView(out.buffer);
+    dv.setUint32(0, 0x46546C67, true); dv.setUint32(4, 2, true); dv.setUint32(8, out.length, true);
+    dv.setUint32(12, jt.length, true); dv.setUint32(16, 0x4E4F534A, true); out.set(new TextEncoder().encode(jt), 20);
+    dv.setUint32(20 + jt.length, 44, true); dv.setUint32(24 + jt.length, 0x004E4942, true); out.set(new Uint8Array(bin), 28 + jt.length);
+    try { const blob = await travRender(out.buffer, 256); return { type: blob && blob.type, size: blob ? blob.size : 0 }; } catch (e) { return { err: e.message }; }
+  });
+  if (pic.skip) console.log('SKIP the picture (no WebGL2 in this browser)'); else ok('a model becomes a PNG picture' + (pic.err ? ': ' + pic.err : ''), pic.type === 'image/png' && pic.size > 100);
   // Share: the save's own traveller
   await p.evaluate((T) => { window.travellerGroups = () => T.groups; window.travellerLook = () => T.look; window.travellerName = () => T.name; }, T);
   p.evaluate(() => travellerShareCode()).catch(() => {});

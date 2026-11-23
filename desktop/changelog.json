@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.23.1722",
+  "date": "2026-11-23",
+  "notes": [
+   "Exosuit: the Share window's picture and the pictures in Shared travellers are made now (they failed with an error)"
+  ]
+ },
+ {
   "version": "2026.11.23.1719",
   "date": "2026-11-23",
   "notes": [
