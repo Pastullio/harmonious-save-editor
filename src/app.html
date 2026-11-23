@@ -3429,6 +3429,7 @@ function entityDetails(ed, o, i, kind) {
       <button class="btn primary" data-k="saveprof">Save as profile</button><button class="btn" data-k="applyprof">Apply a profile</button>
       ${APP && S.lib && S.lib.game ? '<button class="btn" data-k="parts">Choose parts</button>' : ''}
       ${kind === 'tool' && isStaff(o) && g(o, 'CustomisationData') instanceof Map ? '<button class="btn" data-k="staff">Staff parts and colours</button>' : ''}
+      ${kind === 'tool' && staffLeftovers(o) ? '<button class="btn" data-k="unstaff" title="This multi-tool isn\'t a staff but carries a staff\'s parts and colours, from being copied from one">Remove leftover staff data</button>' : ''}
       ${kind === 'tool' ? '<button class="btn" data-k="share">Share</button>' : ''}
       <span class="sep"></span>
       ${isShip && APP ? '<button class="btn" data-k="tolib">To the Dock Yard…</button><button class="btn ghost" data-k="dyvers">Versions in the Dock Yard</button>' : ''}<details class="menu" data-k="exportMenu"><summary class="btn">Export…</summary><div class="menu-pop">
@@ -3460,6 +3461,7 @@ function entityDetails(ed, o, i, kind) {
   for (const [k, key] of [['shealth', 'ShipHealth'], ['sshield', 'ShipShield']]) { const inp = $k(k); if (inp) inp.onchange = () => { const v = clampU32(inp.value); inp.value = v; set(p, key, N(v)); }; }
   $k('saveprof').onclick = () => saveProfileDialog(o, i, kind);
   if ($k('staff')) $k('staff').onclick = () => staffEditDialog(i);
+  if ($k('unstaff')) $k('unstaff').onclick = () => { clearStaffLeftovers(o, i); S.sel = null; render(); toast('Staff parts and colours removed from this multi-tool. Press Save to game to keep it.'); };
   if ($k('share')) $k('share').onclick = () => toolShareCode(o, i).catch((e) => toast('Couldn\'t make the share code: ' + e.message, true));
   $k('applyprof').onclick = () => applyProfileDialog(o, i, kind);
   const pb = $k('parts');
@@ -4410,7 +4412,7 @@ async function partsDialog(it, onSaved) {
       <div class="parts-list">${rows.length ? rows.map((row) => `<div class="parts-group" data-depth="${Math.min(row.depth, 4)}"><span class="pg-name">${esc(row.label)}${row.crumb ? ` <span class="dim">on ${esc(row.crumb.toLowerCase())}</span>` : ''}</span>
         <div class="parts-tiles">${row.ids.map((id) => `<button type="button" class="part-tile${id === row.cur ? ' on' : ''}" data-g="${esc(row.g.group)}" data-o="${esc(id)}" title="${esc(row.label + ': ' + optLabel(id))}">${/^(null|empty)$/i.test(id) ? '<span class="none">∅</span>' : `<canvas width="128" height="128" data-thumb="${esc(thumbUrl(row, id))}"></canvas>`}<span>${esc(optLabel(id))}</span></button>`).join('')}</div></div>`).join('')
         : '<p class="dim">This model has no parts to choose; it always looks the same.</p>'}</div></div>
-      <p class="dim small-print" data-keep>The game picks these from the seed with code that isn't in its files, so match them to yours by eye.</p>`;
+      <p class="dim small-print" data-keep>This sets DryDock's picture only; it doesn't change the model in the game. The game picks these from the seed with code that isn't in its files, so match them to yours by eye.</p>`;
   };
   let angle = it.kind === 'tool' ? -1.25 : -.95, raf = 0, mesh = null, alive = true;
   const tint = (CLASS_TINT[it.cls] || [79, 193, 176]).join(',');
@@ -7427,6 +7429,13 @@ const STAFF_GROUP = /^STAFF_(HEAD|CORE|POLE)_[A-Z0-9]{1,6}$/;
 const STAFF_SCREEN = { ScreenOffset: ['0.019999999552965164', '0.11999999731779099', '-0.10000000149011612'], ScreenRotation: ['0.0', '1.0', '0.0', '1.9198620319366455'] };
 const isStaff = (o) => str(g(o, 'Resource', 'Filename')).toUpperCase() === STAFF_SCENE;
 const staffGroups = (o) => { const gs = (g(o, 'CustomisationData', 'DescriptorGroups') || []).map((x) => str(x).replace(/^\^/, '').toUpperCase()); return STAFF_SLOTS.map((s) => gs.find((x) => x.startsWith(s.id + '_') && STAFF_GROUP.test(x)) || ''); };
+// a tool that isn't a staff but was copied from one before 2026.11.23.2122 still carries the staff's parts and colours
+const staffLeftovers = (o) => !isStaff(o) && g(o, 'CustomisationData') instanceof Map && (g(o, 'CustomisationData', 'DescriptorGroups') || []).some((x) => /^\^?STAFF_/i.test(str(x)));
+function clearStaffLeftovers(o, i) {
+  const cd = g(o, 'CustomisationData'); set(cd, 'DescriptorGroups', []); if (kOf(cd, 'Colours') != null) set(cd, 'Colours', []);
+  if (i === num(g(ps(), 'ActiveMultioolIndex'))) { const cc = g(ps(), 'CharacterCustomisationData'), e = Array.isArray(cc) ? cc[2] : null; if (e instanceof Map && g(e, 'CustomData') instanceof Map) set(e, 'CustomData', cloneJSON(cd)); }   // the equipped tool's copy
+  markDirty();
+}
 const staffNodes = (groups) => groups.filter(Boolean).map((x) => x.replace(/^STAFF_(HEAD|CORE|POLE)_/, '_STAFF$1_'));
 const staffKey = (p, a) => p + '|' + a;
 function staffStandardColours() {

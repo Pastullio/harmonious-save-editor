@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.23.2136",
+  "date": "2026-11-23",
+  "notes": [
+   "Multi-tools copied from a staff before today's fix: their page has Remove leftover staff data, which clears the staff's parts and colours from them",
+   "Choose parts now says plainly that it sets DryDock's picture only and doesn't change the tool in the game"
+  ]
+ },
+ {
   "version": "2026.11.23.2122",
   "date": "2026-11-23",
   "notes": [
