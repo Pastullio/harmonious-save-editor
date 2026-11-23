@@ -1,5 +1,19 @@
 [
  {
+  "version": "2026.11.23.2006",
+  "date": "2026-11-23",
+  "notes": [
+   "Build a staff: Add a multi-tool > Build a staff. Pick the head, core and pole (each with its own 3D picture), watch the staff turn in its real textures, choose its colours, then Add to my save",
+   "Random staff and Random colours roll one for you; the colours offered are the ones that staff really shows, and you can pick any colour",
+   "Staff parts and colours on a staff's page changes a staff you already have",
+   "Staff share codes now carry the three parts and the colours, so others get the same staff",
+   "Fixed: a multi-tool's share code and 3D picture used the wrong seed (0x0) on real saves. Share your multi-tools again to get working codes",
+   "Fixed: the picture of a shared multi-tool in the Add window never showed",
+   "Staffs in your save now show their real parts on their covers",
+   "Save multi-tool files for the developer also collects the staff's material files (small), for naming the colours"
+  ]
+ },
+ {
   "version": "2026.11.23.1929",
   "date": "2026-11-23",
   "notes": [

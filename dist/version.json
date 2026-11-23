@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.23.1929",
+  "version": "2026.11.23.2006",
   "date": "2026-11-23",
-  "size": 15133184,
-  "sha256": "af72be7e8238136a41c6f6440f6e2d5f0e146dc1015f23f018bf9026208b7b4a",
-  "notes": "Multi-tools: Share copies a multi-tool's share code (type, seed, class, name) to post in Discord\nMulti-tools: Add a multi-tool opens a new window. Paste a share code to add that exact tool, or copy one of your own\nAdd a multi-tool also has Build a staff and Pick the parts: not built yet, with a button that collects the files the developer needs",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.1929/HarmoniousSaveEditor.exe",
+  "size": 15175168,
+  "sha256": "b4e3c7c790719c266c78d06a497fd14b79f930c051284f9229edad6dabbf3463",
+  "notes": "Build a staff: Add a multi-tool > Build a staff. Pick the head, core and pole (each with its own 3D picture), watch the staff turn in its real textures, choose its colours, then Add to my save\nRandom staff and Random colours roll one for you; the colours offered are the ones that staff really shows, and you can pick any colour\nStaff parts and colours on a staff's page changes a staff you already have\nStaff share codes now carry the three parts and the colours, so others get the same staff\nFixed: a multi-tool's share code and 3D picture used the wrong seed (0x0) on real saves. Share your multi-tools again to get working codes\nFixed: the picture of a shared multi-tool in the Add window never showed\nStaffs in your save now show their real parts on their covers\nSave multi-tool files for the developer also collects the staff's material files (small), for naming the colours",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.2006/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
