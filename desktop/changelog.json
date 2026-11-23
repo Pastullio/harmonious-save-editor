@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.23.2207",
+  "date": "2026-11-23",
+  "notes": [
+   "Build a weapon: the picture no longer spins on its own. Drag to turn it, scroll to zoom, right-drag or Shift-drag to move, double-click to reset, and it now shows the weapon in its textures",
+   "Removed the Remove leftover staff data button: weapons built now never carry a staff's data"
+  ]
+ },
+ {
   "version": "2026.11.23.2136",
   "date": "2026-11-23",
   "notes": [

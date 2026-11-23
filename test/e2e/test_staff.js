@@ -82,13 +82,6 @@ const staffAt = (i) => { const t = toPlain(g(ps(), 'Multitools')[i]); const j = 
   // a pistol built on a staff doesn't keep the staff's parts and colours
   const s4 = await p.evaluate(async () => { const t = await toolCodeRead(await toolCodeMake({ name: 'Plain', scene: 'MODELS/COMMON/WEAPONS/MULTITOOL/MULTITOOL.SCENE.MBIN', seed: '0xBB', cls: 'C', legacy: true, picks: {} })); const k = addSharedTool(t, 1); const out = JSON.parse(C.stringifyJSON(toPlain(g(ps(), 'Multitools')[k]))); g(ps(), 'Multitools')[k] = blankEntity(g(ps(), 'Multitools')[0]); return out; });
   ok('a pistol copied from a staff drops the staff\'s parts and colours and keeps its technology', s4.CustomisationData.DescriptorGroups.length === 0 && s4.CustomisationData.Colours.length === 0 && s4.Store.Slots[0].Id === '^SCANBINOC1' && (await p.evaluate(staffAt, 1)).CustomisationData.Colours.length === 330);
-  // a pistol that still carries a staff's data (made before the fix) can be cleaned on its page
-  await p.evaluate(() => { const l = g(ps(), 'Multitools'), e = cloneJSON(l[1]); set(g(e, 'Resource'), 'Filename', 'MODELS/COMMON/WEAPONS/MULTITOOL/MULTITOOL.SCENE.MBIN'); l[4] = e; set(ps(), 'ActiveMultioolIndex', N(4)); S.pick.tool = 4; go('tools'); });
-  await p.waitForSelector('[data-k="unstaff"]'); await p.click('[data-k="unstaff"]'); await p.waitForTimeout(200);
-  const cl = await p.evaluate(() => { const t = JSON.parse(C.stringifyJSON(toPlain(g(ps(), 'Multitools')[4]))), c = JSON.parse(C.stringifyJSON(toPlain(g(ps(), 'CharacterCustomisationData')[2]))); const out = { g: t.CustomisationData.DescriptorGroups.length, c: t.CustomisationData.Colours.length, cg: c.CustomData.DescriptorGroups.length, cc: c.CustomData.Colours.length, tech: t.Store.Slots.length, btn: !!document.querySelector('[data-k="unstaff"]'), staffBtn: !!document.querySelector('[data-k="staff"]') }; g(ps(), 'Multitools')[4] = blankEntity(g(ps(), 'Multitools')[0]); set(ps(), 'ActiveMultioolIndex', N(1)); return out; });
-  ok('Remove leftover staff data empties the parts and colours (the equipped copy too), keeps the technology, and the button goes', cl.g === 0 && cl.c === 0 && cl.cg === 0 && cl.cc === 0 && cl.tech === 1 && !cl.btn && !cl.staffBtn);
-  await p.evaluate(() => { S.pick.tool = 1; go('tools'); }); await p.waitForTimeout(150);
-  ok('a real staff isn\'t offered it', !(await p.$('[data-k="unstaff"]')) && !!(await p.$('[data-k="staff"]')));
   // a save whose tools have no customisation data
   const old = await p.evaluate(() => { const l = g(ps(), 'Multitools'), e = cloneJSON(l[0]); e.delete(kOf(e, 'CustomisationData')); return applyStaff(e, { groups: ['STAFF_HEAD_1', 'STAFF_CORE_1', 'STAFF_POLE_1'], cols: staffStandardColours() }, false); });
   ok('a tool without customisation data is refused with a reason, not guessed at', /no customisation data/.test(old));
@@ -165,6 +158,16 @@ const staffAt = (i) => { const t = toPlain(g(ps(), 'Multitools')[i]); const j = 
       ok('a new staff starts from the colours of a staff already in the save', (await q.$eval('#sbHost .sb-crow input', (x) => x.value)) === '#ff0080');
       await q.click('#sbHost .sb-tile[data-g="STAFF_HEAD_9"]'); await q.waitForFunction(() => /no colours DryDock can read/.test(document.querySelector('#sbHost .sb-cols').textContent));
       ok('parts with no readable colours say so', true);
+      await q.click('[data-tab="weapon"]'); await q.waitForFunction(() => !!document.querySelector('.bw-pic canvas')); await q.waitForTimeout(600);
+      const wg = asked.glb.filter((u) => /MULTITOOL\/MULTITOOL\.SCENE/.test(u.get('scene')));
+      ok('Build a weapon shows the weapon for its type and seed in the look-round view', wg.length === 1 && wg[0].get('seed') === (await q.inputValue('#bwSeed')) && /Drag to turn/.test(await q.textContent('[data-pane="weapon"]')));
+      const shot = () => q.$eval('.bw-pic canvas', (c) => c.toDataURL().length + ':' + c.toDataURL().slice(-64));
+      const wb = await (await q.$('.bw-pic .tc-art')).boundingBox(); await q.mouse.move(wb.x + wb.width / 2, wb.y + wb.height / 2);
+      const a1 = await shot(); await q.waitForTimeout(700); const a2 = await shot();
+      await q.mouse.down(); await q.mouse.move(wb.x + wb.width / 2 + 80, wb.y + wb.height / 2 + 10, { steps: 4 }); await q.mouse.up(); await q.waitForTimeout(150); const a3 = await shot();
+      ok('it stays still under the pointer and only turns when dragged', a1 === a2 && a3 !== a2);
+      await q.click('#bwRoll'); await q.waitForTimeout(500);
+      ok('Roll draws the new seed', asked.glb.filter((u) => /MULTITOOL\/MULTITOOL\.SCENE/.test(u.get('scene'))).length === 2);
       await q.click('#dlgX');
       ok('no page errors (app)', e2.length === 0); if (e2.length) console.log(e2);
     } finally { proc.kill(); }

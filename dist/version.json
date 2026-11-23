@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.23.2136",
+  "version": "2026.11.23.2207",
   "date": "2026-11-23",
-  "size": 15194112,
-  "sha256": "6170ee1e60877940cb41d7822fc0e73af884283be9876eb55c35e2aa74bb174d",
-  "notes": "Multi-tools copied from a staff before today's fix: their page has Remove leftover staff data, which clears the staff's parts and colours from them\nChoose parts now says plainly that it sets DryDock's picture only and doesn't change the tool in the game",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.2136/HarmoniousSaveEditor.exe",
+  "size": 15194624,
+  "sha256": "bd65028c45629d1e3a0759dc725ac3465509b6979305e085d7da139b7751c1d8",
+  "notes": "Build a weapon: the picture no longer spins on its own. Drag to turn it, scroll to zoom, right-drag or Shift-drag to move, double-click to reset, and it now shows the weapon in its textures\nRemoved the Remove leftover staff data button: weapons built now never carry a staff's data",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.2207/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
