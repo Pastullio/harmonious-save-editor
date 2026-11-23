@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.23.1713",
+  "date": "2026-11-23",
+  "notes": [
+   "Exosuit: Share copies your traveller's look as a share code to post in Discord, with a picture to go with it",
+   "Exosuit: Shared travellers keeps travellers other people shared. Paste a code, press Add, then use the traveller in Blender or export it. Your save isn't changed"
+  ]
+ },
+ {
   "version": "2026.11.23.1623",
   "date": "2026-11-23",
   "notes": [
