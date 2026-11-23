@@ -2639,16 +2639,16 @@ function travellerName() {
   for (const b of g(ps(), 'PersistentPlayerBases') || []) { const n = untag(str(g(b, 'Owner', 'USN'))); if (n) return n; }
   return 'Traveller';
 }
-async function travellerShare(other) {
+async function travellerShare() {
   if (!APP) return;
-  // other: a shared traveller ({name, groups, look}) for Blender's Import my traveller, instead of the save's own
-  const groups = other ? other.groups : travellerGroups(); if (!groups.length) return;
-  S.travShared = other ? (other.code || other.name) : null;   // which shared traveller Blender gets (by its code: names can repeat)
+  const groups = travellerGroups(); if (!groups.length) return;
+  // the shared travellers too (owner 2026-11-23), for the add-on's "Import a shared traveller" list, in the list's order
+  const shared = [];
+  for (const x of sharedTravs()) { try { const t = await travCodeRead(x.code); shared.push({ name: t.name, groups: t.groups, look: t.look }); } catch (_) { shared.push({ name: x.name || 'Traveller', groups: [], look: null }); } }
   // the save's multi-tools too, for "Hold a multi-tool" in Blender
   const tools = [];
   try { for (const it of coverItems().filter((x) => x.kind === 'tool' && x.scene)) tools.push({ name: it.name, scene: it.scene, seed: it.seed || '', picks: { ...(it.picks || {}), ...(await partsOf(it.key)) } }); } catch (_) {}
-  api('/api/live/traveller', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groups, name: other ? other.name : travellerName(), look: other ? other.look : travellerLook(), tools }) }).catch(() => {});
-  if (other) return;
+  api('/api/live/traveller', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groups, name: travellerName(), look: travellerLook(), tools, shared }) }).catch(() => {});
   // build (or find) the textured traveller in the background now, so the Exosuit card doesn't wait for it later
   setTimeout(() => { if (S.save && !document.hidden) api(travGlbUrl(groups, travellerName(), travellerLook())).then((r) => r.arrayBuffer()).catch(() => {}); }, 4000);
 }
@@ -2744,14 +2744,27 @@ async function sharedTravellersDialog() {
       const show = async (k) => {
         cur = k; drawList(); const x = list[k]; if (!x) { view.innerHTML = ''; return; }
         let t; try { t = await travCodeRead(x.code); } catch (e) { view.innerHTML = `<p class="warn" data-keep>${esc(e.message)}</p>`; return; }
-        const using = S.travShared === t.code;
         view.innerHTML = `<div class="st-pic"><span class="live-dot"></span></div><h3>${esc(t.name)}</h3><p class="dim small-print" data-keep>${plural(t.groups.length, 'part')}${t.look ? ', ' + plural(t.look.c.length, 'colour') : ''}</p>
-          <p id="stNote" class="dim" data-keep>${using ? 'Import my traveller in Blender now brings in this traveller.' : ''}</p>
-          <div class="toolbar"><button class="btn primary" type="button" data-st="blender">${using ? 'Back to my own traveller' : 'Use in Blender'}</button><button class="btn" type="button" data-st="glb">Export for Blender (.glb)</button><button class="btn" type="button" data-st="copy">Copy the code</button><button class="btn danger ghost" type="button" data-st="remove">Remove</button></div>`;
-        view.querySelector('[data-st="blender"]').onclick = async () => { await travellerShare(using ? undefined : t); toast(using ? 'Blender imports your own traveller again.' : `In Blender, press Import my traveller to bring in ${t.name}.`); show(k); };
+          <p id="stNote" class="dim" data-keep></p>
+          <div class="toolbar"><button class="btn primary" type="button" data-st="blender">Add to Blender</button><button class="btn" type="button" data-st="glb">Export for Blender (.glb)</button><button class="btn" type="button" data-st="copy">Copy the code</button><button class="btn danger ghost" type="button" data-st="remove">Remove</button></div>`;
+        view.querySelector('[data-st="blender"]').onclick = async (e) => {
+          // Blender brings it in by itself within a few seconds (the add-on asks DryDock every 3 s); a new traveller takes a while to build the first time
+          const btn = e.currentTarget, note = view.querySelector('#stNote'); btn.disabled = true;
+          try {
+            await travellerShare();
+            const r = await api('/api/live/traveller/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ who: k + 1 }) });
+            if (!r.ok) throw new Error((await r.text()).trim());
+            const j = await r.json();
+            note.textContent = !j.linked ? `Blender isn't open with the LiveLink add-on. Open it, then press Add to Blender again, or pick ${t.name} under Import a shared traveller in the add-on.`
+              : j.addon === 'older' ? `Your LiveLink add-on is an older one: install it again (Get LiveLink), then ${t.name} can be added from here.`
+              : `${t.name} is on the way to Blender. They appear in a few seconds, beside anyone already there (longer the first time, while the model is built).`;
+            note.className = j.linked && j.addon !== 'older' ? 'dim' : 'warn';
+          } catch (err) { toast('Couldn\'t send this traveller to Blender: ' + err.message, true); }
+          btn.disabled = false;
+        };
         view.querySelector('[data-st="glb"]').onclick = async (e) => { const btn = e.currentTarget; btn.disabled = true; try { const r = await api(travGlbUrl(t.groups, t.name, t.look)); if (!r.ok) throw new Error((await r.text()).trim()); await downloadBlob(t.name + '.glb', await r.blob()); } catch (err) { toast('Couldn\'t export this traveller: ' + err.message, true); } btn.disabled = false; };
         view.querySelector('[data-st="copy"]').onclick = () => navigator.clipboard.writeText('```\n' + x.code + '\n```').then(() => toast('Share code copied')).catch(() => toast('Couldn\'t reach the clipboard', true));
-        view.querySelector('[data-st="remove"]').onclick = () => { list.splice(k, 1); sharedTravsStore(list); cur = null; view.innerHTML = ''; drawList(); };
+        view.querySelector('[data-st="remove"]').onclick = () => { list.splice(k, 1); sharedTravsStore(list); cur = null; view.innerHTML = ''; drawList(); travellerShare(); };
         const pic = view.querySelector('.st-pic');
         try { const b = await travPicture(t, 520); if (cur !== k || !pic.isConnected) return; if (b) { const img = new Image(); img.alt = t.name; img.src = URL.createObjectURL(b); pic.replaceChildren(img); } else pic.innerHTML = '<p class="dim" data-keep>The picture needs the game files (Settings) and 3D in this window.</p>'; }
         catch (err) { if (cur === k && pic.isConnected) pic.innerHTML = `<p class="warn" data-keep>This traveller couldn't be built from your game files: ${esc(err.message)}</p>`; }
@@ -2762,7 +2775,7 @@ async function sharedTravellersDialog() {
         if (!t) { toast('No share code in that text. A code starts with HDT1:', true); return; }
         const at = list.findIndex((x) => x.code === t.code);
         if (at >= 0) { toast(t.name + ' is already in your list'); show(at); return; }
-        list.unshift({ name: t.name, code: t.code, added: Date.now() }); sharedTravsStore(list); box.value = ''; show(0);
+        list.unshift({ name: t.name, code: t.code, added: Date.now() }); sharedTravsStore(list); box.value = ''; show(0); travellerShare();   // Blender's list too
       };
       drawList(); if (list.length && !clip) show(0);
     } });

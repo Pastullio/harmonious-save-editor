@@ -1,5 +1,14 @@
 [
  {
+  "version": "2026.11.23.1853",
+  "date": "2026-11-23",
+  "notes": [
+   "Shared travellers: Add to Blender puts a traveller straight into the Blender file you have open",
+   "LiveLink add-on 1.30.0: Import a shared traveller is a dropdown of every traveller you added in DryDock",
+   "The LiveLink add-on changed: install it again in Blender"
+  ]
+ },
+ {
   "version": "2026.11.23.1739",
   "date": "2026-11-23",
   "notes": [
