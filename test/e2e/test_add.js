@@ -50,8 +50,10 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   // ---- multi-tools, exocraft, companions
   await p.evaluate(() => go('tools')); await p.waitForSelector('#addTool'); await p.click('#addTool'); await p.waitForTimeout(300);
   const toolsFull = await p.evaluate(() => tools().length === g(ps(), 'Multitools').length);
-  if (toolsFull) ok('all multi-tool slots used: says so', /in use/.test(await p.textContent('#toast')));
-  else { await confirm(); ok('a multi-tool copy is added', /copy$/.test(await p.evaluate(() => str(g(g(ps(), 'Multitools')[S.pick.tool], 'Name'))))); }
+  // the Add window (owner 2026-11-23): tabs for a share code, a copy, the staff builder and picking parts
+  await p.waitForSelector('#dlg[open] [data-tab="copy"]');
+  if (toolsFull) { ok('all multi-tool slots used: says so', /in use/.test(await p.textContent('#dlgBody'))); await p.click('#dlgX'); }
+  else { await p.click('[data-tab="copy"]'); await p.click('#atCopy'); await p.waitForTimeout(250); ok('a multi-tool copy is added', /copy$/.test(await p.evaluate(() => str(g(g(ps(), 'Multitools')[S.pick.tool], 'Name'))))); }
   // each exocraft's geobay can be learnt right there (owner 2026-11-13): the Roamer's geobay from the library (a stand-in
   // when the test library has none), forgotten first so it can be learnt
   const bay = await p.evaluate(() => {

@@ -166,3 +166,20 @@ func TestAddonAtLeast(t *testing.T) {
 		}
 	}
 }
+
+func TestToolSampleWants(t *testing.T) {
+	for n, want := range map[string]bool{
+		"MODELS/COMMON/WEAPONS/MULTITOOL/MULTITOOL.SCENE.MBIN":             true,
+		"models/common/weapons/multitool/staffmultitool.descriptor.mbin":   true,
+		"models/common/weapons/multitool/multitool.geometry.mbin.pc":       false,
+		"metadata/gamestate/playerdata/modularcustomisationdatatable.mbin": true,
+		"metadata/reality/tables/nms_modularcustomisationproducts.mbin":    true,
+		"metadata/reality/tables/nms_reality_gcproducttable.mbin":          false,
+		"textures/common/weapons/multitool/multitool.dds":                  false,
+		"models/common/spacecraft/fighters/fighter_proc.scene.mbin":        false,
+	} {
+		if got := toolSampleWants(n); got != want {
+			t.Errorf("toolSampleWants(%q) = %v, want %v", n, got, want)
+		}
+	}
+}

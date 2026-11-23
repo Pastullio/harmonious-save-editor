@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.23.1906",
+  "version": "2026.11.23.1929",
   "date": "2026-11-23",
-  "size": 15108096,
-  "sha256": "a7f89d2cd7f54212e63242cd6bf2c9ede935087dc14cd99e15e291b0989e5e9e",
-  "notes": "LiveLink add-on 1.31.0: with several travellers in a file, the Poses list and the hand sliders show the picked traveller's own pose, and say No pose yet for one you haven't posed\nThe LiveLink add-on changed: install it again in Blender",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.1906/HarmoniousSaveEditor.exe",
+  "size": 15133184,
+  "sha256": "af72be7e8238136a41c6f6440f6e2d5f0e146dc1015f23f018bf9026208b7b4a",
+  "notes": "Multi-tools: Share copies a multi-tool's share code (type, seed, class, name) to post in Discord\nMulti-tools: Add a multi-tool opens a new window. Paste a share code to add that exact tool, or copy one of your own\nAdd a multi-tool also has Build a staff and Pick the parts: not built yet, with a button that collects the files the developer needs",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.1929/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
