@@ -47,7 +47,7 @@ const FX = process.argv[2]; const fails = []; const ok = (n, c) => { console.log
   const theirs = await p.evaluate(() => toolCodeMake({ name: 'Star Lance', scene: 'MODELS/COMMON/WEAPONS/MULTITOOL/SENTINELMULTITOOL.SCENE.MBIN', seed: '0x0FEDCBA987654321', cls: 'S', legacy: false, picks: {} }));
   await p.evaluate((c) => navigator.clipboard.writeText('```\n' + c + '\n```'), theirs);
   await p.click('#addTool'); await p.waitForFunction(() => document.querySelector('#dlg').open && document.querySelector('#dlgTitle').textContent === 'Add a multi-tool');
-  ok('the Add window has its four ways', (await p.$$eval('#dlgBody [data-tab]', (l) => l.map((x) => x.textContent).join('|'))) === 'From a share code|Copy one of mine|Build a staff|Pick the parts');
+  ok('the Add window has its four ways', (await p.$$eval('#dlgBody [data-tab]', (l) => l.map((x) => x.textContent).join('|'))) === 'Build a staff|Build a weapon|Copy one of mine|From a share code' && (await p.$eval('[data-tab="code"]', (x) => x.getAttribute('aria-selected'))) === 'true' && !(await p.$eval('[data-pane="code"]', (x) => x.hidden)) && (await p.$eval('[data-pane="staff"]', (x) => x.hidden)));
   ok('…says which slot it goes in', /It goes in slot 3/.test(await p.textContent('#dlgBody')));
   ok('a code on the clipboard is already in the paste box', /HDM1:/.test(await p.inputValue('#atPaste')));
   await p.click('#atKeep'); await p.waitForSelector('#atView [data-at="add"]');
@@ -62,7 +62,16 @@ const FX = process.argv[2]; const fails = []; const ok = (n, c) => { console.log
   await p.click('#addTool'); await p.waitForSelector('#dlg[open] [data-tab="copy"]');
   ok('the shared tool is kept in the list for next time', (await p.$$('.st-item')).length === 1);
   await p.click('[data-tab="staff"]'); ok('Build a staff opens the builder', (await p.$$('#sbHost .sb-tile')).length === 19 && !(await p.$eval('[data-pane="staff"]', (x) => x.hidden)) && (await p.$eval('[data-pane="code"]', (x) => x.hidden)));
-  await p.click('[data-tab="parts"]'); ok('Pick the parts says why it isn\'t possible yet', /seed/.test(await p.textContent('[data-pane="parts"]')) && !(await p.$eval('[data-pane="parts"]', (x) => x.hidden)));
+  // Build a weapon: a type and a seed on a copy of one of your tools
+  await p.click('[data-tab="weapon"]');
+  ok('Build a weapon lists the types (no staffs) and says the parts come from the seed', (await p.$$eval('.bw-type', (l) => l.map((x) => x.textContent).join('|'))) === 'Standard|Royal|Sentinel|Sentinel (B)|Atlas|Switch|Atlas Sceptre|Pillar of Titan|Basilisk Crown' && /from the seed/.test(await p.textContent('[data-pane="weapon"]')) && /^0x[0-9A-F]{16}$/.test(await p.inputValue('#bwSeed')));
+  const s0 = await p.inputValue('#bwSeed'); await p.click('#bwRoll'); const s1 = await p.inputValue('#bwSeed');
+  await p.fill('#bwSeed', 'nonsense'); await p.dispatchEvent('#bwSeed', 'change');
+  ok('Roll gives a new seed and a seed that isn\'t one is refused', s1 !== s0 && (await p.inputValue('#bwSeed')) === s1);
+  await p.click('.bw-type[data-m="1"]'); await p.fill('#bwName', 'Regal'); await p.selectOption('#bwCls', 'A'); await p.selectOption('#bwDonor', '0'); await p.click('#bwAdd'); await p.waitForTimeout(300);
+  ok('Add to my save makes that type with that seed on a copy of the chosen tool', await p.evaluate((seed) => { const t = g(ps(), 'Multitools')[3]; return str(g(t, 'Name')) === 'Regal' && /ROYALMULTITOOL/.test(str(g(t, 'Resource', 'Filename'))) && str(g(t, 'Seed')[1]) === seed && invClass(g(t, 'Store')) === 'A' && g(t, 'Store', 'Slots').length === 3 && S.pick.tool === 3; }, s1));
+  await p.evaluate(() => { const l = g(ps(), 'Multitools'); l[3] = blankEntity(l[0]); });
+  await p.click('#addTool'); await p.waitForSelector('#dlg[open] [data-tab="copy"]');
   await p.click('[data-tab="copy"]'); await p.selectOption('#addWhat', '1'); await p.click('#atCopy'); await p.waitForTimeout(300);
   ok('Copy one of mine still adds a copy', await p.evaluate(() => str(g(g(ps(), 'Multitools')[3], 'Name')) === 'Crown copy' && tools().length === 4));
   // all slots in use
