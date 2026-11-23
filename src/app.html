@@ -3429,7 +3429,6 @@ function entityDetails(ed, o, i, kind) {
       <button class="btn primary" data-k="saveprof">Save as profile</button><button class="btn" data-k="applyprof">Apply a profile</button>
       ${APP && S.lib && S.lib.game ? '<button class="btn" data-k="parts">Choose parts</button>' : ''}
       ${kind === 'tool' && isStaff(o) && g(o, 'CustomisationData') instanceof Map ? '<button class="btn" data-k="staff">Staff parts and colours</button>' : ''}
-      ${kind === 'tool' && staffLeftovers(o) ? '<button class="btn" data-k="unstaff" title="This multi-tool isn\'t a staff but carries a staff\'s parts and colours, from being copied from one">Remove leftover staff data</button>' : ''}
       ${kind === 'tool' ? '<button class="btn" data-k="share">Share</button>' : ''}
       <span class="sep"></span>
       ${isShip && APP ? '<button class="btn" data-k="tolib">To the Dock Yard…</button><button class="btn ghost" data-k="dyvers">Versions in the Dock Yard</button>' : ''}<details class="menu" data-k="exportMenu"><summary class="btn">Export…</summary><div class="menu-pop">
@@ -3461,7 +3460,6 @@ function entityDetails(ed, o, i, kind) {
   for (const [k, key] of [['shealth', 'ShipHealth'], ['sshield', 'ShipShield']]) { const inp = $k(k); if (inp) inp.onchange = () => { const v = clampU32(inp.value); inp.value = v; set(p, key, N(v)); }; }
   $k('saveprof').onclick = () => saveProfileDialog(o, i, kind);
   if ($k('staff')) $k('staff').onclick = () => staffEditDialog(i);
-  if ($k('unstaff')) $k('unstaff').onclick = () => { clearStaffLeftovers(o, i); S.sel = null; render(); toast('Staff parts and colours removed from this multi-tool. Press Save to game to keep it.'); };
   if ($k('share')) $k('share').onclick = () => toolShareCode(o, i).catch((e) => toast('Couldn\'t make the share code: ' + e.message, true));
   $k('applyprof').onclick = () => applyProfileDialog(o, i, kind);
   const pb = $k('parts');
@@ -7319,6 +7317,7 @@ async function addToolDialog() {
     </div>
     <div data-pane="weapon" hidden>
       <div class="bw"><div class="bw-view"><div class="bw-pic">${APP && S.lib && S.lib.game ? '<div class="tc-art"></div>' : '<p class="dim" data-keep>The picture needs the game files (Settings).</p>'}</div>
+          ${APP && S.lib && S.lib.game ? '<p class="dim small-print sb-how" data-keep>Drag to turn · scroll to zoom · right-drag or Shift-drag to move · double-click to reset</p>' : ''}
           <p class="dim small-print" data-keep>The picture is DryDock's guess. The game chooses the barrel, stock and the rest from the seed, with a rule that isn't in its files, so the parts can't be picked yet and yours will differ in detail. Roll a new seed in the game until you like it.</p></div>
         <div class="bw-opts"><span class="pg-name">Type</span><div class="bw-types">${weapons.map((x, k) => `<button type="button" class="part-tile bw-type${k === 0 ? ' on' : ''}" data-m="${x.n}">${esc(x.label)}</button>`).join('')}</div>
           <label class="field"><span>Seed (decides the look)</span><span class="bw-seed"><input class="input mono" id="bwSeed" pattern="0x[0-9A-Fa-f]{1,16}"><button class="btn" type="button" id="bwRoll">Roll</button></span></label>
@@ -7343,9 +7342,22 @@ async function addToolDialog() {
       if (first === 'staff') setTimeout(startStaff, 0);   // after the dialog is on screen, so the 3D view knows its size
       // Build a weapon: a type and a seed on a copy of one of your tools
       const bw = { m: weapons[0].n, seed: randomSeed() }, bwPic = body.querySelector('.bw-pic');
-      const bwDraw = () => {
-        $('#bwSeed', body).value = bw.seed; const [label, file] = TOOL_MODELS[bw.m];
-        if (bwPic.querySelector('.tc-art') && !body.querySelector('[data-pane="weapon"]').hidden) { try { miniCover(bwPic, { kind: 'tool', i: -1, name: label, type: label, tool: toolType(new Map([[keyFor('Resource'), new Map([[keyFor('Filename'), file]])]])).kind, cls: $('#bwCls', body).value, seed: bw.seed, scene: file, key: `tool|new|${bw.seed}|${file}` }, 380); } catch (_) {} }
+      // its picture is the same look-round view as the staff's (owner 2026-11-23: the cover's turntable kept
+      // spinning under the pointer); it only moves when turned by hand
+      let bwView = null, bwJob = 0;
+      const bwDraw = async () => {
+        $('#bwSeed', body).value = bw.seed; const [label, file] = TOOL_MODELS[bw.m], art = bwPic.querySelector('.tc-art');
+        if (!art || body.querySelector('[data-pane="weapon"]').hidden) return;
+        if (!bwView) bwView = orbitView(art, 'weapon-builder');
+        const mine = ++bwJob; art.classList.add('trav-loading');
+        try {
+          const r = await api('/api/model/glb?scene=' + encodeURIComponent(file) + '&seed=' + encodeURIComponent(bw.seed) + '&name=' + encodeURIComponent(label) + '&picks=%7B%7D');
+          if (!r.ok) throw new Error((await r.text()).trim());
+          const glb = await GLTEX.parse(await r.arrayBuffer());
+          if (mine !== bwJob || !art.isConnected) { GLTEX.free(glb); return; }
+          const old = bwView.model; bwView.model = glb; bwView.set(glb); if (old) GLTEX.free(old);
+        } catch (_) {}
+        if (mine === bwJob) art.classList.remove('trav-loading');
       };
       body.querySelectorAll('.bw-type').forEach((b) => b.onclick = () => { bw.m = +b.dataset.m; body.querySelectorAll('.bw-type').forEach((x) => x.classList.toggle('on', x === b)); bwDraw(); });
       $('#bwRoll', body).onclick = () => { bw.seed = randomSeed(); bwDraw(); };
@@ -7355,7 +7367,7 @@ async function addToolDialog() {
       $('#bwAdd', body).onclick = () => {
         const donor = +$('#bwDonor', body).value, name = $('#bwName', body).value.trim().slice(0, 42) || 'Multi-tool';
         const slot = addSharedTool({ name, scene: TOOL_MODELS[bw.m][1], seed: bw.seed, cls: $('#bwCls', body).value, legacy: g(list[donor], 'UseLegacyColours') === true, picks: {} }, donor);
-        if (slot >= 0) { if (sb) sb.stop(); done(slot, name, finish); }
+        if (slot >= 0) { if (sb) sb.stop(); if (bwView) { bwView.stop(); if (bwView.model) GLTEX.free(bwView.model); } done(slot, name, finish); }
       };
       const staffNow = () => { const st = sb.state(); return { ...st, name: $('#sbName', body).value.trim().slice(0, 42) || 'Staff', cls: $('#sbCls', body).value }; };
       $('#sbAdd', body).onclick = () => { const st = staffNow(), slot = addStaff(st, +$('#sbDonor', body).value); if (slot >= 0) { sb.stop(); done(slot, st.name, finish); } };
@@ -7429,13 +7441,6 @@ const STAFF_GROUP = /^STAFF_(HEAD|CORE|POLE)_[A-Z0-9]{1,6}$/;
 const STAFF_SCREEN = { ScreenOffset: ['0.019999999552965164', '0.11999999731779099', '-0.10000000149011612'], ScreenRotation: ['0.0', '1.0', '0.0', '1.9198620319366455'] };
 const isStaff = (o) => str(g(o, 'Resource', 'Filename')).toUpperCase() === STAFF_SCENE;
 const staffGroups = (o) => { const gs = (g(o, 'CustomisationData', 'DescriptorGroups') || []).map((x) => str(x).replace(/^\^/, '').toUpperCase()); return STAFF_SLOTS.map((s) => gs.find((x) => x.startsWith(s.id + '_') && STAFF_GROUP.test(x)) || ''); };
-// a tool that isn't a staff but was copied from one before 2026.11.23.2122 still carries the staff's parts and colours
-const staffLeftovers = (o) => !isStaff(o) && g(o, 'CustomisationData') instanceof Map && (g(o, 'CustomisationData', 'DescriptorGroups') || []).some((x) => /^\^?STAFF_/i.test(str(x)));
-function clearStaffLeftovers(o, i) {
-  const cd = g(o, 'CustomisationData'); set(cd, 'DescriptorGroups', []); if (kOf(cd, 'Colours') != null) set(cd, 'Colours', []);
-  if (i === num(g(ps(), 'ActiveMultioolIndex'))) { const cc = g(ps(), 'CharacterCustomisationData'), e = Array.isArray(cc) ? cc[2] : null; if (e instanceof Map && g(e, 'CustomData') instanceof Map) set(e, 'CustomData', cloneJSON(cd)); }   // the equipped tool's copy
-  markDirty();
-}
 const staffNodes = (groups) => groups.filter(Boolean).map((x) => x.replace(/^STAFF_(HEAD|CORE|POLE)_/, '_STAFF$1_'));
 const staffKey = (p, a) => p + '|' + a;
 function staffStandardColours() {
