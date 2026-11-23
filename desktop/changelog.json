@@ -1,5 +1,14 @@
 [
  {
+  "version": "2026.11.23.1623",
+  "date": "2026-11-23",
+  "notes": [
+   "Shipwright: duplicate parts are marked in the Parts list. Show them lists only the duplicates, and Only duplicates switches back to the whole build",
+   "LiveLink: before a corvette's .blend opens, DryDock checks it against your save. If you changed the corvette in the game, it asks whether to open the Blender file as it is or update it with the changes from the game (a backup of the .blend is kept)",
+   "The LiveLink add-on changed (1.28.0): install it again in Blender"
+  ]
+ },
+ {
   "version": "2026.11.19.1520",
   "date": "2026-11-19",
   "notes": [

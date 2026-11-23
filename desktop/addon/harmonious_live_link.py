@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 27, 0),
+    "version": (1, 28, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious DryDock every time you save",
@@ -273,7 +273,10 @@ def send(scene):
         set_status(str(error))
         return
     payload = {"objects": objects, "name": os.path.splitext(os.path.basename(bpy.data.filepath))[0],
-               "file": bpy.data.filepath, "source": source}
+               "file": bpy.data.filepath, "source": source,
+               # is this the file as it is on disk? (true after Ctrl+S, false for Send now with unsaved changes):
+               # DryDock notes what a saved file holds, to tell later when the save has moved on without it
+               "saved": bool(bpy.data.filepath) and not bpy.data.is_dirty}
     base = base_info(scene)
     if base is not None:   # a base names itself; the editor checks it against the base LiveLink is on for
         payload["base"] = base
