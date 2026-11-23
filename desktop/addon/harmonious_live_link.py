@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 28, 0),
+    "version": (1, 29, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious DryDock every time you save",
@@ -560,12 +560,44 @@ class HARMONIOUS_PT_build(LiveLinkPanel, bpy.types.Panel):
 # The editor builds the open save's traveller from the game files, skeleton included (a .glb); this brings it in,
 # ready to pose, and renders the pose as a picture with a transparent background.
 
-def find_traveller():
-    """The traveller's armature in this file: the one we imported, else the selected or only armature."""
-    arms = [o for o in bpy.data.objects if o.type == "ARMATURE"]
-    for o in arms:
-        if o.get("harmonious_traveller"):
+# Several travellers in one file (owner 2026-11-23, with travellers shared as codes: a group picture). Every tool works
+# on ONE traveller, the current one: the traveller that is selected (or whose body or held tool is), remembered while
+# something else is selected (a light, the camera). The Your traveller panel lists them when there is more than one.
+_CURRENT = {"name": ""}
+
+
+def travellers():
+    return [o for o in bpy.data.objects if o.type == "ARMATURE" and o.get("harmonious_traveller")]
+
+
+def traveller_of(o):
+    """The traveller an object is, or belongs to (its body, a tool in its hand); None for anything else."""
+    for _ in range(8):
+        if o is None:
+            return None
+        if o.type == "ARMATURE" and o.get("harmonious_traveller"):
             return o
+        o = o.find_armature() if o.type == "MESH" and o.find_armature() is not None else o.parent
+    return None
+
+
+def find_traveller():
+    """The traveller the tools work on: the selected one, else the one last worked on, else the first imported; in a
+    file without one, the selected or only armature."""
+    arms = [o for o in bpy.data.objects if o.type == "ARMATURE"]
+    tagged = [o for o in arms if o.get("harmonious_traveller")]
+    if tagged:
+        try:
+            mine = traveller_of(bpy.context.view_layer.objects.active)
+        except (AttributeError, ReferenceError):
+            mine = None
+        if mine is not None:
+            _CURRENT["name"] = mine.name
+            return mine
+        for o in tagged:
+            if o.name == _CURRENT["name"]:
+                return o
+        return tagged[0]
     act = bpy.context.view_layer.objects.active
     if act is not None and act.type == "ARMATURE":
         return act
@@ -1490,7 +1522,11 @@ class HARMONIOUS_OT_traveller(bpy.types.Operator):
                     print("LiveLink: couldn't split the fingers:", error)
                 apply_keep_shape(o)
                 apply_natural(o)
+                others = [t for t in travellers() if t != o]
+                if others:   # beside the travellers already here, not inside them
+                    o.location.x = max(t.location.x for t in others) + 1.4
                 context.view_layer.objects.active = o
+                _CURRENT["name"] = o.name
                 arm = o
         # the importer draws each bone as a sphere (an Icosphere in a glTF_not_exported collection); plain bones instead
         for o in new:
@@ -1571,10 +1607,59 @@ class HARMONIOUS_OT_pick_part(bpy.types.Operator):
         direction = view3d_utils.region_2d_to_vector_3d(region, rv3d, mouse)
         name = pick_ray(context, arm, origin, direction)
         if name is None:
+            # another traveller's body under the click: pose that one
+            for other in travellers():
+                if other != arm and pick_ray(context, other, origin, direction) is not None:
+                    work_on(context, other, pose=True)
+                    show_bone(other, pick_ray(context, other, origin, direction))
+                    return {"FINISHED"}
             if not self.extend:
                 show_bone(arm, None)
             return {"PASS_THROUGH"}
         show_bone(arm, name, self.extend)
+        return {"FINISHED"}
+
+
+def traveller_label(arm):
+    """A traveller's name for the list; two of the same name get Blender's own object name."""
+    name = str(arm.get("harmonious_traveller") or arm.name)
+    same = [t for t in travellers() if str(t.get("harmonious_traveller")) == name]
+    return name if len(same) < 2 else arm.name
+
+
+def work_on(context, arm, pose=None):
+    """Make this the traveller the tools work on: selected and active, in Pose mode when the last one was (or pose=True)."""
+    pose = context.mode == "POSE" if pose is None else pose
+    if context.mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
+    for o in context.selected_objects:
+        o.select_set(False)
+    arm.hide_set(False)
+    arm.select_set(True)
+    context.view_layer.objects.active = arm
+    _CURRENT["name"] = arm.name
+    if pose:
+        try:
+            bpy.ops.object.mode_set(mode="POSE")
+            context.scene.tool_settings.transform_pivot_point = "INDIVIDUAL_ORIGINS"
+        except RuntimeError:
+            pass
+
+
+class HARMONIOUS_OT_choose_traveller(bpy.types.Operator):
+    bl_idname = "harmonious.choose_traveller"
+    bl_label = "Work on this traveller"
+    bl_description = "Poses, hands, body parts, the multi-tool, lighting and exports work on this traveller"
+    bl_options = {"REGISTER", "UNDO"}
+    name: bpy.props.StringProperty()
+
+    def execute(self, context):
+        arm = bpy.data.objects.get(self.name)
+        if arm is None or traveller_of(arm) != arm:
+            self.report({"ERROR"}, "That traveller isn't in this file any more")
+            return {"CANCELLED"}
+        work_on(context, arm)
+        set_status("Working on %s." % traveller_label(arm))
         return {"FINISHED"}
 
 
@@ -2885,6 +2970,17 @@ class HARMONIOUS_PT_traveller(LiveLinkPanel, bpy.types.Panel):
             return
         arm = find_traveller()
         posing = context.mode == "POSE"
+        everyone = travellers()
+        if len(everyone) > 1:   # which one the tools work on
+            who = layout.box()
+            who.label(text="Working on: " + traveller_label(arm), **ic("traveller", "ARMATURE_DATA"))
+            col = who.column(align=True)
+            for t in everyone:
+                col.operator(HARMONIOUS_OT_choose_traveller.bl_idname, text=traveller_label(t), depress=t == arm, icon="USER").name = t.name
+            tip = who.column(align=True)
+            tip.scale_y = 0.8
+            for line in wrap("Pick who to pose. Every tool below works on that traveller. In Pose Mode, a click on another traveller's body switches to them.", 40):
+                tip.label(text=line)
         box = layout.box()
         modes = box.column(align=True)
         modes.operator(HARMONIOUS_OT_pose_mode.bl_idname, text="Pose Mode (pose the traveller)", depress=posing, **ic("pose", "POSE_HLT")).mode = "POSE"
@@ -4168,7 +4264,7 @@ def wrap(text, width):
 
 _KEYMAPS = []
 
-CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_OT_pick_part, HARMONIOUS_OT_show_bones, HARMONIOUS_OT_pose, HARMONIOUS_OT_pose_reset,
+CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_OT_choose_traveller, HARMONIOUS_OT_pick_part, HARMONIOUS_OT_show_bones, HARMONIOUS_OT_pose, HARMONIOUS_OT_pose_reset,
            HARMONIOUS_OT_pose_save, HARMONIOUS_OT_poses_folder, HARMONIOUS_OT_hold_tool, HARMONIOUS_OT_drop_tool, HARMONIOUS_OT_send_pose, HARMONIOUS_OT_picture,
            HARMONIOUS_OT_body_part, HARMONIOUS_OT_body_parts_clear, HARMONIOUS_OT_pose_mode, HARMONIOUS_OT_light, HARMONIOUS_OT_select_light, HARMONIOUS_OT_send_ship,
            HARMONIOUS_OT_tip, HARMONIOUS_OT_camera, HARMONIOUS_OT_add_blend, HARMONIOUS_OT_backdrop, HARMONIOUS_OT_print, HARMONIOUS_OT_print_preview, HARMONIOUS_OT_camera_view, HARMONIOUS_OT_clean_view,

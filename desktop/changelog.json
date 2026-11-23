@@ -1,5 +1,14 @@
 [
  {
+  "version": "2026.11.23.1739",
+  "date": "2026-11-23",
+  "notes": [
+   "LiveLink add-on 1.29.0: several travellers in one Blender file. The Your traveller panel lists them; pick who to work on and the poses, hands, body parts, multi-tool, lighting and exports apply to that traveller",
+   "A newly imported traveller stands beside the ones already in the file",
+   "The LiveLink add-on changed: install it again in Blender"
+  ]
+ },
+ {
   "version": "2026.11.23.1722",
   "date": "2026-11-23",
   "notes": [
