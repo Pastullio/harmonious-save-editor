@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.23.2122",
+  "date": "2026-11-23",
+  "notes": [
+   "Build a weapon: a tool copied from a staff no longer keeps the staff's parts and colours, and the list of tools to copy from starts on one that isn't a staff"
+  ]
+ },
+ {
   "version": "2026.11.23.2050",
   "date": "2026-11-23",
   "notes": [
