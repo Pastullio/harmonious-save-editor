@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 30, 0),
+    "version": (1, 31, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious DryDock every time you save",
@@ -1232,9 +1232,11 @@ def set_curl(arm, side, amount, thumb=None, keep=()):
 
 
 def curl_changed(side):
+    """The hand sliders. Each traveller has its own (Object.harmonious_curl_*, shown in the panel: owner 2026-11-23,
+    a second traveller showed the first one's values); the scene's sliders stay for scripts and move the current one."""
     def update(self, context):
-        arm = find_traveller()
-        if arm is not None:
+        arm = self if isinstance(self, bpy.types.Object) else find_traveller()
+        if arm is not None and arm.type == "ARMATURE":
             if not any("harmonious_hinge" in pb for pb in arm.pose.bones):
                 apply_natural(arm)
             set_curl(arm, side, getattr(self, "harmonious_curl_" + side))
@@ -2293,6 +2295,27 @@ def _pose_traveller(context, key):
 _POSING = {"busy": False}
 
 
+# Which pose a traveller is in is kept on the traveller (owner 2026-11-23: with several in a file, clicking another one
+# still showed the first one's pose, as if the click hadn't taken). The Poses panel's dropdown is labelled from it.
+POSE_KEY = "harmonious_pose_key"
+
+
+def remember_pose(arm, key):
+    if arm is not None:
+        if key:
+            arm[POSE_KEY] = key
+        elif POSE_KEY in arm:
+            del arm[POSE_KEY]
+
+
+def pose_label(arm):
+    """The pose a traveller was last put in, for the dropdown: its name, or that it has none yet."""
+    kind, _, name = str(arm.get(POSE_KEY) or "").partition(":") if arm is not None else ("", "", "")
+    if not name:
+        return "No pose yet"
+    return name + (" (saved)" if kind == "saved" else "")
+
+
 def pose_changed(self, context):
     """Picking a pose in the list puts it on straight away (owner 2026-11-13: no separate Pose button)."""
     if _POSING["busy"] or find_traveller() is None:
@@ -2301,9 +2324,42 @@ def pose_changed(self, context):
     try:
         key = self.harmonious_pose
         err = pose_traveller(context, key)
+        if not err:
+            remember_pose(find_traveller(), key)
         set_status(err or ("Posed: " + key.partition(":")[2]))
     finally:
         _POSING["busy"] = False
+
+
+class HARMONIOUS_OT_pose_pick(bpy.types.Operator):
+    """The Poses dropdown: a pose for the traveller being worked on."""
+    bl_idname = "harmonious.pose_pick"
+    bl_label = "Pose"
+    bl_description = "Pick a pose and the traveller takes it at once: ready-made ones, then yours from the Poses folder"
+    bl_options = {"REGISTER", "UNDO"}
+    pose: bpy.props.EnumProperty(name="Pose", items=pose_items)
+
+    @classmethod
+    def poll(cls, context):
+        return find_traveller() is not None
+
+    def execute(self, context):
+        arm, key = find_traveller(), self.pose
+        _POSING["busy"] = True   # the scene's list follows, without posing a second time
+        try:
+            err = pose_traveller(context, key)
+            if err:
+                self.report({"ERROR"}, err)
+                return {"CANCELLED"}
+            remember_pose(arm, key)
+            try:
+                context.scene.harmonious_pose = key
+            except TypeError:
+                pass
+        finally:
+            _POSING["busy"] = False
+        set_status("Posed %s: %s" % (traveller_label(arm), key.partition(":")[2]))
+        return {"FINISHED"}
 
 
 class HARMONIOUS_OT_pose(bpy.types.Operator):
@@ -2322,6 +2378,7 @@ class HARMONIOUS_OT_pose(bpy.types.Operator):
         if err:
             self.report({"ERROR"}, err)
             return {"CANCELLED"}
+        remember_pose(find_traveller(), key)
         set_status("Posed: " + key.partition(":")[2])
         return {"FINISHED"}
 
@@ -2339,8 +2396,10 @@ class HARMONIOUS_OT_pose_reset(bpy.types.Operator):
     def execute(self, context):
         arm = find_traveller()
         clear_pose(arm)
+        remember_pose(arm, None)
         for side in ("l", "r"):
             context.scene["harmonious_curl_" + side] = 0.0
+            arm["harmonious_curl_" + side] = 0.0
         set_status("Pose reset")
         return {"FINISHED"}
 
@@ -2368,6 +2427,7 @@ class HARMONIOUS_OT_pose_save(bpy.types.Operator):
         _POSING["busy"] = True   # it's already on: just show it in the list
         try:
             context.scene.harmonious_pose = "saved:" + name
+            remember_pose(find_traveller(), "saved:" + name)
         finally:
             _POSING["busy"] = False
         set_status("Saved the pose to " + p)
@@ -3062,7 +3122,13 @@ class HARMONIOUS_PT_poses(LiveLinkPanel, bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        layout.prop(context.scene, "harmonious_pose", text="Pose")
+        arm = find_traveller()
+        if len(travellers()) > 1:   # whose pose this is
+            layout.label(text="Posing: " + traveller_label(arm), **ic("traveller", "ARMATURE_DATA"))
+        # the dropdown shows this traveller's own pose (the scene's list, kept for scripts, is one for the whole file)
+        row = layout.row(align=True)
+        row.label(text="Pose")
+        row.operator_menu_enum(HARMONIOUS_OT_pose_pick.bl_idname, "pose", text=pose_label(arm))
         layout.operator(HARMONIOUS_OT_pose_reset.bl_idname, text="Reset pose", icon="LOOP_BACK")
         row = layout.row(align=True)
         row.operator(HARMONIOUS_OT_pose_save.bl_idname, icon="FILE_TICK")
@@ -3104,8 +3170,8 @@ class HARMONIOUS_PT_parts(LiveLinkPanel, bpy.types.Panel):
         hands = layout.box()
         hands.label(text="Hands: open to fist", **ic("bone", "HAND"))
         col = hands.column(align=True)
-        col.prop(context.scene, "harmonious_curl_r", slider=True)
-        col.prop(context.scene, "harmonious_curl_l", slider=True)
+        col.prop(arm, "harmonious_curl_r", slider=True)   # this traveller's own sliders
+        col.prop(arm, "harmonious_curl_l", slider=True)
 
 
 class HARMONIOUS_PT_tool(LiveLinkPanel, bpy.types.Panel):
@@ -4310,7 +4376,7 @@ def wrap(text, width):
 
 _KEYMAPS = []
 
-CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_MT_shared, HARMONIOUS_OT_choose_traveller, HARMONIOUS_OT_pick_part, HARMONIOUS_OT_show_bones, HARMONIOUS_OT_pose, HARMONIOUS_OT_pose_reset,
+CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_MT_shared, HARMONIOUS_OT_choose_traveller, HARMONIOUS_OT_pick_part, HARMONIOUS_OT_show_bones, HARMONIOUS_OT_pose, HARMONIOUS_OT_pose_pick, HARMONIOUS_OT_pose_reset,
            HARMONIOUS_OT_pose_save, HARMONIOUS_OT_poses_folder, HARMONIOUS_OT_hold_tool, HARMONIOUS_OT_drop_tool, HARMONIOUS_OT_send_pose, HARMONIOUS_OT_picture,
            HARMONIOUS_OT_body_part, HARMONIOUS_OT_body_parts_clear, HARMONIOUS_OT_pose_mode, HARMONIOUS_OT_light, HARMONIOUS_OT_select_light, HARMONIOUS_OT_send_ship,
            HARMONIOUS_OT_tip, HARMONIOUS_OT_camera, HARMONIOUS_OT_add_blend, HARMONIOUS_OT_backdrop, HARMONIOUS_OT_print, HARMONIOUS_OT_print_preview, HARMONIOUS_OT_camera_view, HARMONIOUS_OT_clean_view,
@@ -4376,6 +4442,10 @@ def register():
         update=curl_changed("r"), description="Open hand to fist")
     bpy.types.Scene.harmonious_curl_l = bpy.props.FloatProperty(name="Left hand", min=0.0, max=1.0, default=0.0, subtype="FACTOR",
         update=curl_changed("l"), description="Open hand to fist")
+    bpy.types.Object.harmonious_curl_r = bpy.props.FloatProperty(name="Right hand", min=0.0, max=1.0, default=0.0, subtype="FACTOR",
+        update=curl_changed("r"), description="Open hand to fist")
+    bpy.types.Object.harmonious_curl_l = bpy.props.FloatProperty(name="Left hand", min=0.0, max=1.0, default=0.0, subtype="FACTOR",
+        update=curl_changed("l"), description="Open hand to fist")
     bpy.types.Scene.harmonious_target_name = bpy.props.StringProperty(name="Corvette")
     if on_save not in bpy.app.handlers.save_post:
         bpy.app.handlers.save_post.append(on_save)
@@ -4414,6 +4484,8 @@ def unregister():
     del bpy.types.Object.harmonious_reach
     del bpy.types.Scene.harmonious_show_steps
     del bpy.types.Scene.harmonious_curl_r
+    del bpy.types.Object.harmonious_curl_r
+    del bpy.types.Object.harmonious_curl_l
     del bpy.types.Scene.harmonious_curl_l
     del bpy.types.Scene.harmonious_pose
     del bpy.types.Scene.harmonious_blend

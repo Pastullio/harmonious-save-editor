@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.23.1906",
+  "date": "2026-11-23",
+  "notes": [
+   "LiveLink add-on 1.31.0: with several travellers in a file, the Poses list and the hand sliders show the picked traveller's own pose, and say No pose yet for one you haven't posed",
+   "The LiveLink add-on changed: install it again in Blender"
+  ]
+ },
+ {
   "version": "2026.11.23.1853",
   "date": "2026-11-23",
   "notes": [
