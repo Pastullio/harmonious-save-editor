@@ -513,6 +513,13 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .sw-row .id { color: var(--dim); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sw-row .grp { font-size: 12px; color: var(--dim); }
 .sw-row:not(.g-other) .nm { font-weight: 500; color: var(--accent); }
+.sw-row.dup { box-shadow: inset 3px 0 0 #e08a3c; background: color-mix(in srgb, #e08a3c 11%, transparent); }
+.sw-row.dup-first { box-shadow: inset 3px 0 0 color-mix(in srgb, #e08a3c 45%, transparent); }
+.sw-row.dup.sel { background: color-mix(in srgb, #e08a3c 26%, var(--surface)); }
+.sw-dup { margin-left: 8px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 500; color: #fff; background: #e08a3c; white-space: nowrap; }
+.sw-dup.first { color: var(--text); background: transparent; border: 1px solid color-mix(in srgb, #e08a3c 70%, transparent); }
+.sw-fixes { display: inline-flex; gap: 6px; flex: none; }
+.sw-onlydup { font-size: 13px; }
 .sw-json summary, .sw-parts > summary { cursor: pointer; font-size: 11px; font-weight: 500; letter-spacing: .2em; text-transform: uppercase; color: var(--dim); }
 .sw-parts[open] > summary { margin-bottom: 12px; }
 .sw-count { letter-spacing: 0; text-transform: none; font-size: 12px; margin-left: 6px; }
@@ -6886,6 +6893,8 @@ async function tuneOrderDialog(objs) {
 }
 function isTuned(objs) { const R = groupRank(); let last = -1; for (const o of objs) { const r = R[partGroup(g(o, 'ObjectID'))]; if (r < last) return false; last = r; } return true; }
 function duplicateParts(objs) { const seen = new Set(), dup = []; for (const o of objs) { const k = partKey(o); if (seen.has(k)) dup.push(o); else seen.add(k); } return dup; }
+// which parts are extra copies: index -> index of the part it sits on (the first one with the same part, place and turn)
+function duplicateMap(objs) { const first = new Map(), of = new Map(); objs.forEach((o, k) => { const key = partKey(o); if (first.has(key)) of.set(k, first.get(key)); else first.set(key, k); }); return of; }
 // everything worth knowing about one corvette's build
 function corvetteHealth(i) {
   const list = g(ps(), 'ShipOwnership') || [], s = list[i], base = shipBuild(i), out = [];
@@ -7268,6 +7277,69 @@ async function liveOpenBlender(file) {
   if (!r.ok) { toast((await r.text()).trim(), true); return false; }
   toast(file ? 'Opening ' + blendName(file) + ' in Blender…' : 'Opening Blender…'); return true;
 }
+// ---- is the .blend behind the save? (owner 2026-11-23: a change made in the game is in the save but not in the
+// .blend, so opening the .blend and saving it put the older build back.) Before a corvette's .blend is opened, the
+// build in the save is compared with the build in the file: what the file held when it last sent a saved build
+// (/api/live/sent, good while the file hasn't changed since), else a read of the file through Blender. When they
+// differ the person chooses: open the file as it is, or update it with the save's build (/api/live/update: the app
+// copies the .blend to Blender backups first, and Blender opens it changed but not saved).
+// a part as a row to compare: id, Position, Up (carries the size), At (unit length), UserData (colour)
+const liveRow = (o) => { const v = (k) => (g(o, k) || []).map(num), a = v('At'), n = Math.hypot(...a) || 1, r4 = (x) => Math.round(x * 1e4) / 1e4;
+  return [str(g(o, 'ObjectID')).replace(/^\^/, ''), ...v('Position').map(r4), ...v('Up').map(r4), ...a.map((x) => r4(x / n)), rawNum(g(o, 'UserData')) || '0']; };
+// what it takes to turn the .blend's build into the save's: parts to add, remove, move (same part, another place) and recolour
+function liveDiff(blend, save) {
+  const cell = (r, dx, dy, dz) => `${r[0]}|${Math.floor(r[1] / .05) + dx}|${Math.floor(r[2] / .05) + dy}|${Math.floor(r[3] / .05) + dz}`;
+  const grid = new Map(); blend.forEach((r, k) => { const c = cell(r, 0, 0, 0), l = grid.get(c); if (l) l.push(k); else grid.set(c, [k]); });
+  const used = new Set(), near = (a, b) => { for (let i = 1; i < 10; i++) if (Math.abs(a[i] - b[i]) > .002) return false; return true; };
+  const find = (r) => { for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (let dz = -1; dz <= 1; dz++) for (const k of grid.get(cell(r, dx, dy, dz)) || []) if (!used.has(k) && near(blend[k], r)) return k; return -1; };
+  const left = new Map(), onlySave = []; let recoloured = 0;
+  for (const r of save) { const k = find(r); if (k < 0) onlySave.push(r); else { used.add(k); if (String(blend[k][10] || '0') !== String(r[10] || '0')) recoloured++; } }
+  blend.forEach((r, k) => { if (!used.has(k)) left.set(r[0], (left.get(r[0]) || 0) + 1); });
+  let moved = 0, added = 0; for (const r of onlySave) { const n = left.get(r[0]) || 0; if (n) { left.set(r[0], n - 1); moved++; } else added++; }
+  const removed = [...left.values()].reduce((a, b) => a + b, 0);
+  return { added, removed, moved, recoloured, differ: added + removed + moved + recoloured > 0 };
+}
+const liveDiffText = (d) => [d.added && plural(d.added, 'part') + ' added', d.removed && plural(d.removed, 'part') + ' removed', d.moved && plural(d.moved, 'part') + ' moved', d.recoloured && plural(d.recoloured, 'part') + ' recoloured'].filter(Boolean).join(', ');
+// note what a .blend holds now (the app keeps the file's size and time with it)
+const liveNoteSent = (file, rows) => api('/api/live/sent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file, parts: rows }) }).catch(() => {});
+// the build in a .blend as rows: the note from its last saved build while the file hasn't changed, else read through Blender
+async function liveBlendRows(file) {
+  try { const j = await (await api('/api/live/sent?file=' + encodeURIComponent(file))).json(); if (j.fresh && Array.isArray(j.parts)) return j.parts; } catch (_) {}
+  const wait = dialog('Checking ' + blendName(file), `<p class="live-state"><span class="live-dot"></span>Blender is reading <b>${esc(blendName(file))}</b> in the background, to see whether it still matches your save. Big builds take a little while.</p>`, [['Skip the check', 'skip', 'ghost']]);
+  let done = false, skipped = false; wait.then(() => { if (!done) skipped = true; });
+  const finish = async () => { done = true; if ($('#dlg').open) $('#dlg').close(); await new Promise((ok) => setTimeout(ok, 0)); };
+  let res;
+  try { const r = await api('/api/blend/read', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file }) }); if (!r.ok) throw new Error((await r.text()).trim()); res = C.parseJSON(await r.text()); }
+  catch (e) { if (!skipped) { await finish(); toast('Couldn\'t check the Blender file against your save: ' + e.message, true); } return null; }
+  if (skipped) return null;
+  await finish();
+  const objects = res.get('objects'); if (!Array.isArray(objects) || res.get('base') instanceof Map) return null;
+  const rows = fromPlain(objects).map(liveRow); liveNoteSent(file, rows); return rows;
+}
+// open a corvette's .blend, asking first when its build isn't the one in the save
+async function liveOpenChecked(t, file) {
+  const base = !isBaseT(t) && file ? shipBuild(t) : null;
+  if (!base) return liveOpenBlender(file);
+  const save = (g(base, 'Objects') || []).map(liveRow), rows = await liveBlendRows(file);
+  const d = rows && rows.length ? liveDiff(rows, save) : null;
+  if (!d || !d.differ) return liveOpenBlender(file);
+  const name = liveTName(t), bn = blendName(file);
+  const v = await dialog('The Blender file and your save differ', `<p><b>${esc(name)}</b> in your save isn't the build in <b>${esc(bn)}</b>: to match the save, the file needs ${esc(liveDiffText(d))}.</p>
+    <p>This happens when you change the corvette in the game (or here) after the Blender file was last saved.</p>
+    <ul class="steps"><li><b>Update it</b>: Blender opens the file with the save's build put in. A copy of the file as it is now goes to your <b>Blender backups</b> folder first, and nothing is saved in Blender until you save it.</li>
+    <li><b>Open it as it is</b>: the file opens unchanged. Saving it in Blender then puts the file's build on ${esc(name)}, replacing what is in your save.</li></ul>`,
+    [['Cancel', 'no', 'ghost'], ['Open the Blender file as it is', 'asis'], ['Update it with the changes from the game', 'update', 'primary']]);
+  if (v === 'asis') return liveOpenBlender(file);
+  if (v !== 'update') return false;
+  const objects = C.stringifyJSON(toPlain(cloneJSON(g(base, 'Objects') || [])));
+  const r = await api('/api/live/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: `{"file":${JSON.stringify(file)},"objects":${objects}}` }).catch((e) => ({ ok: false, text: async () => e.message }));
+  if (!r.ok) { toast((await r.text()).trim(), true); return false; }
+  const j = await r.json();
+  dialog('Updating ' + bn, `<p>Blender is opening <b>${esc(bn)}</b> with ${esc(name)} as it is in your save (${esc(liveDiffText(d))}).</p>
+    <p>Look it over in Blender, then save (Ctrl+S) to keep it. Until you save, the file on disk is unchanged.</p>
+    <div class="live-file"><span class="k">Backup of the file as it was</span><b>${esc(blendName(j.backup))}</b><span class="mono dim small-print">${esc(j.backup)}</span></div>`, [['OK', true, 'primary']]);
+  return true;
+}
 // right after turning the link on: say so, and offer to open the corvette's .blend
 async function liveOnDialog(slot) {
   await liveLoadFiles();
@@ -7277,8 +7349,8 @@ async function liveOnDialog(slot) {
       : `<p>No Blender file is linked to this ${kw} yet. Choose the .blend it's built in, and it opens in Blender and is remembered for next time.</p>`}
     <p class="dim small-print">LiveLink turns off when you close the editor.</p>`;
   const v = await dialog('LiveLink is on', body, cur ? [['Not now', 'no', 'ghost'], ['Choose another file…', 'pick'], ['Open in Blender', 'open', 'primary']] : [['Not now', 'no', 'ghost'], ['Open Blender empty', 'empty'], ['Choose the .blend file…', 'pick', 'primary']]);
-  if (v === 'open') await liveOpenBlender(cur.file);
-  else if (v === 'pick') { const f = await livePickFile(slot); if (f) await liveOpenBlender(f); }
+  if (v === 'open') await liveOpenChecked(slot, cur.file);
+  else if (v === 'pick') { const f = await livePickFile(slot); if (f) await liveOpenChecked(slot, f); }
   else if (v === 'empty') await liveOpenBlender('');
   if (S.section === 'shipwright' || S.section === 'bases') render();
 }
@@ -7297,8 +7369,8 @@ function wireLivePanel(side, t) {
   $('#liveWrite', side).onchange = (e) => { LIVE.write = e.target.checked; };
   $('#liveAddon', side).onclick = () => getLiveAddon();
   $('#liveToggle', side).onclick = () => { if (liveIsOn(t)) { liveStop(); render(); } else { liveStart(t); render(); liveOnDialog(t); } };
-  const lo = $('#liveOpen', side); if (lo) lo.onclick = () => liveOpenBlender((liveFileOf(t) || {}).file);
-  const lp = $('#livePick', side); if (lp) lp.onclick = async () => { const f = await livePickFile(t); if (f) { render(); liveOpenBlender(f); } };
+  const lo = $('#liveOpen', side); if (lo) lo.onclick = () => liveOpenChecked(t, (liveFileOf(t) || {}).file);
+  const lp = $('#livePick', side); if (lp) lp.onclick = async () => { const f = await livePickFile(t); if (f) { render(); liveOpenChecked(t, f); } };
   if (!LIVE.files) liveLoadFiles().then(() => { if (S.section === 'shipwright' || S.section === 'bases') render(); });
 }
 async function liveArm() {
@@ -7392,6 +7464,7 @@ async function liveWrite(body, objects) {
   const name = str(g(ship, 'Name')) || 'the corvette';
   const from = str(body.get('file') || ''), fromTxt = from ? ` from ${blendName(from)}` : '';
   if (from) await liveSetFile(LIVE.slot, from);   // this corvette's build now comes from this .blend
+  if (from && body.get('saved') === true) liveNoteSent(from, objs.map(liveRow));   // the file as saved holds this build (add-on 1.28+ says so)
   if (!LIVE.write) return { ok: true, parts: objs.length, file: from, name, slot: LIVE.slot, written: false, message: `${plural(objs.length, 'part')}${fromTxt} put on ${name}. Press Save to game in the editor to keep them.` };
   try {
     const out = encodeSave(), res = await appWriteFiles(out);
@@ -7560,7 +7633,7 @@ PAGES.livelink = (el) => {
     });
     const wr = $('#llWrite', w); if (wr) wr.onchange = (e) => { LIVE.write = e.target.checked; };
     w.querySelectorAll('[data-ll-on]').forEach((b) => b.onclick = () => { const x = LL.targets[+b.dataset.llOn]; if (liveIsOn(x.t)) liveStop(); else { liveStart(x.t); liveOnDialog(x.t); } draw(); });
-    w.querySelectorAll('[data-ll-open]').forEach((b) => b.onclick = () => liveOpenBlender((liveFileOf(LL.targets[+b.dataset.llOpen].t) || {}).file));
+    w.querySelectorAll('[data-ll-open]').forEach((b) => b.onclick = () => { const t = LL.targets[+b.dataset.llOpen].t; liveOpenChecked(t, (liveFileOf(t) || {}).file); });
     w.querySelectorAll('[data-ll-pick]').forEach((b) => b.onclick = async () => { const f = await livePickFile(LL.targets[+b.dataset.llPick].t); if (f) draw(); });
     const pr = (LL.prints && LL.prints.prints) || [];
     w.querySelectorAll('.ll-print').forEach((card) => {
@@ -7651,6 +7724,8 @@ PAGES.shipwright = (el) => {
   $('#swDel', side).onclick = () => deleteEntity(g(ps(), 'ShipOwnership')[W.slot], W.slot, 'ship');
   const main = document.createElement('div'); main.className = 'sw-main'; wrap.appendChild(main);
   const i = W.slot, ship = g(ps(), 'ShipOwnership')[i], H = corvetteHealth(i), base = H.base;
+  const dupN = base ? duplicateMap(H.objs).size : 0; if (!dupN) W.onlyDup = false;
+  let drawParts = null;
   main.innerHTML = `<div class="sw-top"><div class="sw-pic"></div><div class="sw-topr"><div class="panel sw-bar">
       <div class="sw-title"><b>${esc(str(g(ship, 'Name')) || 'Corvette')}</b><button class="btn small sw-manage" type="button" id="swManage" title="Rename, profiles, Dock Yard and the full ship editor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Manage</button><span class="dim">Slot ${i + 1}${base ? ' · ' + plural(H.objs.length, 'part') : ''}</span></div>
       <div class="sw-acts">
@@ -7664,8 +7739,9 @@ PAGES.shipwright = (el) => {
         ${APP ? '<button class="btn small" type="button" data-a="blend" title="Reads a Blender file through your Blender (with Charon Forge when it is installed) and puts its build on a corvette">Load from a .blend…</button>' : ''}
         <button class="btn small" type="button" data-a="saveas"${base ? '' : ' disabled'}>Save as…</button>
       </div></div>
-    <div class="panel sw-health"><h3>Build check</h3><ul>${H.out.map(([k, t, fix]) => `<li class="${k}"><span class="sw-ic"></span><span>${esc(t)}</span>${fix ? `<button class="btn small" type="button" data-a="${fix}">${fix === 'tune' ? 'Tune up' : 'Remove them'}</button>` : ''}</li>`).join('')}</ul></div></div></div>
+    <div class="panel sw-health"><h3>Build check</h3><ul>${H.out.map(([k, t, fix]) => `<li class="${k}"><span class="sw-ic"></span><span>${esc(t)}</span>${fix === 'dedupe' ? '<span class="sw-fixes"><button class="btn small" type="button" data-a="showdup">Show them</button><button class="btn small" type="button" data-a="dedupe">Remove them</button></span>' : fix ? `<button class="btn small" type="button" data-a="${fix}">Tune up</button>` : ''}</li>`).join('')}</ul></div></div></div>
     ${base ? `<details class="panel sw-parts"${foldAttr('sw-parts')}><summary>Parts <span class="dim sw-count">${plural(H.objs.length, 'part')}</span></summary><div class="sw-parts-head"><input class="input" id="swQ" type="search" placeholder="Search parts" value="${esc(W.q)}">
+      ${dupN ? `<label class="check sw-onlydup" title="Lists only the parts that sit exactly on top of an identical part, and the parts they sit on"><input type="checkbox" id="swOnlyDup"${W.onlyDup ? ' checked' : ''}> Only duplicates <span class="dim">${dupN.toLocaleString()}</span></label>` : ''}
       <span class="sw-move"><button class="btn small" type="button" data-m="top" title="Move to the top">Top</button><button class="btn small" type="button" data-m="up" title="Move up">Up</button><button class="btn small" type="button" data-m="down" title="Move down">Down</button><button class="btn small" type="button" data-m="bottom" title="Move to the bottom">Bottom</button><button class="btn small" type="button" data-m="copy1" title="Copy the selected parts">Copy</button><button class="btn small danger" type="button" data-m="del">Delete</button></span></div>
       <p class="dim sw-hint">Click a part to select it; Ctrl-click and Shift-click select several. The game reads parts from the top down: the first cockpit is the camera, the second the boarding cockpit, and the first landing bay is where you beam up.</p>
       <div class="sw-rows" id="swRows"></div></details>
@@ -7691,6 +7767,8 @@ PAGES.shipwright = (el) => {
     const a = b.dataset.a;
     try {
       if (a === 'tune') { const objs = g(base, 'Objects'), next = tunedOrder(objs), moved = next.filter((o, k) => o !== objs[k]).length; if (!moved) { toast('Already in the right order'); return; } commit(next, `Tuned up: ${plural(moved, 'part')} moved`); }
+      // Show them (owner 2026-11-22): open Parts, list only the duplicates and the parts under them, with the extra copies selected
+      if (a === 'showdup') { const d = $m('details.sw-parts'); W.onlyDup = true; W.q = ''; W.sel = new Set(duplicateMap(g(base, 'Objects')).keys()); if (!d.open) { d.open = true; d.dispatchEvent(new Event('toggle')); } $m('#swQ').value = ''; const c = $m('#swOnlyDup'); if (c) c.checked = true; if (drawParts) drawParts(); d.scrollIntoView({ block: 'start', behavior: 'smooth' }); return; }
       if (a === 'dedupe') { const d = new Set(duplicateParts(g(base, 'Objects'))); commit(g(base, 'Objects').filter((o) => !d.has(o)), `${plural(d.size, 'duplicate')} removed`); }
       if (a === 'blend') { await loadCorvetteBlend(i); return; }
       if (a === 'copy') { await navigator.clipboard.writeText(plainBuild(base)); toast(`Copied the whole build (${plural(H.objs.length, 'part')})`); }
@@ -7720,13 +7798,21 @@ PAGES.shipwright = (el) => {
   const objs = g(base, 'Objects'), rows = $m('#swRows');
   const draw = () => {
     const q = W.q.toLowerCase();
+    // duplicates (owner 2026-11-22): an extra copy is marked with the part it sits on, and that part with how many sit on it
+    const dupOf = duplicateMap(objs), under = new Map(); dupOf.forEach((f) => under.set(f, (under.get(f) || 0) + 1));
+    const stamp = (o) => String(g(o, 'Timestamp'));
     rows.innerHTML = objs.map((o, k) => {
       const id = str(g(o, 'ObjectID')), info = dbItem(id), nm = info ? info.name : id.replace(/^\^/, ''), grp = partGroup(id);
       if (q && !(nm + ' ' + id + ' ' + grp).toLowerCase().includes(q)) return '';
-      return `<div class="sw-row g-${grp}${W.sel.has(k) ? ' sel' : ''}" data-k="${k}"><span class="mono n">${k}</span><span class="nm">${esc(nm)}</span><span class="mono id">${esc(id.replace(/^\^/, ''))}</span><span class="grp">${esc(GROUP_NAME[grp])}</span><span class="mono sc">${partScale(o).toFixed(3)}</span></div>`;
+      const isDup = dupOf.has(k), n = under.get(k) || 0;
+      if (W.onlyDup && !isDup && !n) return '';
+      const mark = isDup ? `<span class="sw-dup" title="Same part, same place and same turn as part ${dupOf.get(k)}${stamp(o) === stamp(objs[dupOf.get(k)]) ? ', placed at the same moment too (same timestamp)' : ', placed at a different time'}. Remove them takes this one out.">Copy of ${dupOf.get(k)}</span>`
+        : n ? `<span class="sw-dup first" title="${plural(n, 'identical part')} ${n === 1 ? 'sits' : 'sit'} exactly on top of this one. This one is kept.">${plural(n, 'copy', 'copies')} on top</span>` : '';
+      return `<div class="sw-row g-${grp}${W.sel.has(k) ? ' sel' : ''}${isDup ? ' dup' : n ? ' dup-first' : ''}" data-k="${k}"><span class="mono n">${k}</span><span class="nm">${esc(nm)}${mark}</span><span class="mono id">${esc(id.replace(/^\^/, ''))}</span><span class="grp">${esc(GROUP_NAME[grp])}</span><span class="mono sc">${partScale(o).toFixed(3)}</span></div>`;
     }).join('');
   };
-  draw();
+  draw(); drawParts = draw;
+  { const c = $m('#swOnlyDup'); if (c) c.onchange = () => { W.onlyDup = c.checked; draw(); }; }
   let anchor = null;
   rows.onclick = (e) => {
     const r = e.target.closest('.sw-row'); if (!r) return; const k = +r.dataset.k;

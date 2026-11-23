@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.19.1520",
-  "date": "2026-11-19",
-  "size": 15033856,
-  "sha256": "d91928e763d9cd5a658f95aae44593b9880aa237c2deb4fd4cce5beb380c22fd",
-  "notes": "Overview: a Build parts row in Journey counts every placed part, for corvettes, planet bases, space stations and the freighter, with the total",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.19.1520/HarmoniousSaveEditor.exe",
+  "version": "2026.11.23.1623",
+  "date": "2026-11-23",
+  "size": 15074304,
+  "sha256": "e19cddeaef45e1d447de12e572033809ffd593d797dea22a9365bc1fc200eef2",
+  "notes": "Shipwright: duplicate parts are marked in the Parts list. Show them lists only the duplicates, and Only duplicates switches back to the whole build\nLiveLink: before a corvette's .blend opens, DryDock checks it against your save. If you changed the corvette in the game, it asks whether to open the Blender file as it is or update it with the changes from the game (a backup of the .blend is kept)\nThe LiveLink add-on changed (1.28.0): install it again in Blender",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.1623/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

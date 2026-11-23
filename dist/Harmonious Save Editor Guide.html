@@ -255,7 +255,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
     <li><b>Cockpits</b>: the first two in the list are the camera cockpit and the boarding cockpit.</li>
     <li><b>Landing bay</b>: the first one is where you beam up. If it's scaled too small, beam-up won't work, and the check says so.</li>
     <li><b>Part order</b>: performance parts listed late can lose stats or misbehave. <span class="ui">Tune up</span> fixes the order (TAZmd's documented priority order; cockpits and the beam-up bay stay put). Tick <b>Tune up when pasting or loading</b> to do it every time. The gear beside <span class="ui">Tune up</span> sets your own order: move the groups with the arrows or drag them, then <span class="ui">Save</span>; <span class="ui">Standard order</span> puts TAZmd's back. A dot on the gear means your own order is in use.</li>
-    <li><b>Stacked parts</b>: parts sitting exactly on top of an identical one, with a one-click fix.</li>
+    <li><b>Stacked parts</b>: parts sitting exactly on top of an identical one. <span class="ui">Show them</span> opens Parts with only those listed: each extra copy is marked <b>Copy of N</b> and the part under it says how many copies sit on top; untick <span class="ui">Only duplicates</span> to see the whole build again. <span class="ui">Remove them</span> takes the extra copies out.</li>
   </ul>
   <h2>Builds in and out</h2>
   <ul class="feat">
@@ -701,7 +701,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   <h2>LiveLink</h2>
   <ol class="steps">
     <li>On Shipwright (or Bases), press <span class="ui">Get the Blender add-on</span> and install it in Blender (Edit, Preferences, Add-ons, Install from disk).</li>
-    <li>Pick a corvette or base and press <span class="ui">Turn on for this corvette</span>. The editor offers to open the <code>.blend</code> it was last built from (<span class="ui">Open in Blender</span>), or <span class="ui">Choose</span> another.</li>
+    <li>Pick a corvette or base and press <span class="ui">Turn on for this corvette</span>. The editor offers to open the <code>.blend</code> it was last built from (<span class="ui">Open in Blender</span>), or <span class="ui">Choose</span> another. If the corvette in your save is no longer the build in that file (you changed it in the game since), the editor says what differs and asks: <span class="ui">Open the Blender file as it is</span>, or <span class="ui">Update it with the changes from the game</span>, which copies the file to your <code>Blender backups</code> folder and opens it in Blender with the save's build put in. Nothing is saved in Blender until you save it.</li>
     <li>In Blender, the 3D view's sidebar has a <b>LiveLink</b> tab that shows the link. Set which corvette or base the file is for.</li>
     <li>Build. Each time you save the file (or press <b>Send now</b>), the build goes into your save. The editor backs up the save each time, and a card at the top of its window says what arrived.</li>
   </ol>
