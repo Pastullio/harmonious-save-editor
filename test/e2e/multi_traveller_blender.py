@@ -91,6 +91,7 @@ class Lay:
     def prop_search(self, *a, **k): pass
     def template_list(self, *a, **k): pass
     def menu(self, *a, **k): pass
+    def operator_menu_enum(self, idname, prop, text="", **k): self.out.append("{" + text + "}")
 
 out = []
 view.objects.active = a
@@ -102,6 +103,24 @@ except Exception as error:  # noqa: BLE001
     drawn = False
     print("draw failed:", type(error).__name__, error)
 ok("the panel says who is being worked on and lists everyone", drawn and "Working on: Pastullio" in out and "[Pastullio]" in out and sum(1 for x in out if x.startswith("[Dre")) == 2)
+
+# each traveller shows its own pose and its own hand sliders (owner 2026-11-23: clicking another traveller still showed
+# the first one's pose, as if the click hadn't taken)
+live.remember_pose(a, "ready:Arms crossed")
+def poses_panel(active):
+    view.objects.active = active
+    rows = []
+    live.HARMONIOUS_PT_poses.draw(type("P", (), {"layout": Lay(rows)})(), bpy.context)
+    return rows
+pa, pb = poses_panel(a), poses_panel(b)
+ok("the Poses list shows the posed traveller's pose", "Posing: Pastullio" in pa and "{Arms crossed}" in pa)
+ok("…and that the other one has none yet", "{No pose yet}" in pb and "{Arms crossed}" not in pb)
+live.remember_pose(b, "saved:My wave")
+ok("a saved pose is named as saved", "{My wave (saved)}" in poses_panel(b) and "{Arms crossed}" in poses_panel(a))
+live.remember_pose(a, None)
+ok("after Reset pose it has none again", "{No pose yet}" in poses_panel(a))
+b.harmonious_curl_r = 0.6
+ok("each traveller keeps its own hand sliders", abs(b.harmonious_curl_r - 0.6) < 1e-6 and a.harmonious_curl_r == 0.0)
 
 print("\n%d FAILED" % len(fails) if fails else "\nall passed", flush=True)
 os._exit(1 if fails else 0)
