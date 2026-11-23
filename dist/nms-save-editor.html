@@ -2643,7 +2643,7 @@ async function travellerShare(other) {
   if (!APP) return;
   // other: a shared traveller ({name, groups, look}) for Blender's Import my traveller, instead of the save's own
   const groups = other ? other.groups : travellerGroups(); if (!groups.length) return;
-  S.travShared = other ? other.name : null;
+  S.travShared = other ? (other.code || other.name) : null;   // which shared traveller Blender gets (by its code: names can repeat)
   // the save's multi-tools too, for "Hold a multi-tool" in Blender
   const tools = [];
   try { for (const it of coverItems().filter((x) => x.kind === 'tool' && x.scene)) tools.push({ name: it.name, scene: it.scene, seed: it.seed || '', picks: { ...(it.picks || {}), ...(await partsOf(it.key)) } }); } catch (_) {}
@@ -2744,7 +2744,7 @@ async function sharedTravellersDialog() {
       const show = async (k) => {
         cur = k; drawList(); const x = list[k]; if (!x) { view.innerHTML = ''; return; }
         let t; try { t = await travCodeRead(x.code); } catch (e) { view.innerHTML = `<p class="warn" data-keep>${esc(e.message)}</p>`; return; }
-        const using = S.travShared === t.name;
+        const using = S.travShared === t.code;
         view.innerHTML = `<div class="st-pic"><span class="live-dot"></span></div><h3>${esc(t.name)}</h3><p class="dim small-print" data-keep>${plural(t.groups.length, 'part')}${t.look ? ', ' + plural(t.look.c.length, 'colour') : ''}</p>
           <p id="stNote" class="dim" data-keep>${using ? 'Import my traveller in Blender now brings in this traveller.' : ''}</p>
           <div class="toolbar"><button class="btn primary" type="button" data-st="blender">${using ? 'Back to my own traveller' : 'Use in Blender'}</button><button class="btn" type="button" data-st="glb">Export for Blender (.glb)</button><button class="btn" type="button" data-st="copy">Copy the code</button><button class="btn danger ghost" type="button" data-st="remove">Remove</button></div>`;

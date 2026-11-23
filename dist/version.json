@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.23.1722",
+  "version": "2026.11.23.1739",
   "date": "2026-11-23",
-  "size": 15088128,
-  "sha256": "bd80817a27303991dc0ce3fee8f0c51779224958bab2a958012d0934fca08a31",
-  "notes": "Exosuit: the Share window's picture and the pictures in Shared travellers are made now (they failed with an error)",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.1722/HarmoniousSaveEditor.exe",
+  "size": 15093760,
+  "sha256": "681b0ae7675cef3f37d395bc731d1d36e76a2f1cf6bb10468829248ac61eed34",
+  "notes": "LiveLink add-on 1.29.0: several travellers in one Blender file. The Your traveller panel lists them; pick who to work on and the poses, hands, body parts, multi-tool, lighting and exports apply to that traveller\nA newly imported traveller stands beside the ones already in the file\nThe LiveLink add-on changed: install it again in Blender",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.1739/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
