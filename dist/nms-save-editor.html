@@ -2704,7 +2704,11 @@ const sharedTravsStore = (l) => { try { localStorage.setItem('hse-shared-travell
 async function travPicture(t, size) {
   if (!APP || !GLTEX.ok()) return null;
   const r = await api(travGlbUrl(t.groups, t.name, t.look)); if (!r.ok) throw new Error((await r.text()).trim());
-  const cv = GLTEX.render(GLTEX.parse(await r.arrayBuffer()), size, -12 * Math.PI / 180, 4 * Math.PI / 180, 'studio');
+  return travRender(await r.arrayBuffer(), size);
+}
+// a .glb as a PNG (front, studio light, transparent); GLTEX.parse is async (owner 2026-11-23: "m.prims is not iterable" without the await)
+async function travRender(buf, size) {
+  const cv = GLTEX.render(await GLTEX.parse(buf), size, -12 * Math.PI / 180, 4 * Math.PI / 180, 'studio');
   return cv ? new Promise((ok) => cv.toBlob(ok, 'image/png')) : null;
 }
 // Share: the code goes on the clipboard (in a code block, so Discord shows it whole with a copy button) and the picture into Exports

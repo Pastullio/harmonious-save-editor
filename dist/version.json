@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.23.1719",
+  "version": "2026.11.23.1722",
   "date": "2026-11-23",
   "size": 15088128,
-  "sha256": "d892e3f9e473c56c69d67671369e0bf5fd34fe664e587ed50fdaa483e2173a5d",
-  "notes": "Exosuit: Save a picture in the Share window no longer ends with an error message",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.1719/HarmoniousSaveEditor.exe",
+  "sha256": "bd80817a27303991dc0ce3fee8f0c51779224958bab2a958012d0934fca08a31",
+  "notes": "Exosuit: the Share window's picture and the pictures in Shared travellers are made now (they failed with an error)",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.1722/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
