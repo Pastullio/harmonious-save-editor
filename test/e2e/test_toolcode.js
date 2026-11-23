@@ -65,6 +65,7 @@ const FX = process.argv[2]; const fails = []; const ok = (n, c) => { console.log
   // Build a weapon: a type and a seed on a copy of one of your tools
   await p.click('[data-tab="weapon"]');
   ok('Build a weapon lists the types (no staffs) and says the parts come from the seed', (await p.$$eval('.bw-type', (l) => l.map((x) => x.textContent).join('|'))) === 'Standard|Royal|Sentinel|Sentinel (B)|Atlas|Switch|Atlas Sceptre|Pillar of Titan|Basilisk Crown' && /from the seed/.test(await p.textContent('[data-pane="weapon"]')) && /^0x[0-9A-F]{16}$/.test(await p.inputValue('#bwSeed')));
+  ok('the type buttons are all the same size', await p.$$eval('.bw-type', (l) => { const b = l.map((x) => x.getBoundingClientRect()); return b.every((r) => Math.abs(r.width - b[0].width) < 1 && Math.abs(r.height - b[0].height) < 1) && b[0].width > 140; }));
   const s0 = await p.inputValue('#bwSeed'); await p.click('#bwRoll'); const s1 = await p.inputValue('#bwSeed');
   await p.fill('#bwSeed', 'nonsense'); await p.dispatchEvent('#bwSeed', 'change');
   ok('Roll gives a new seed and a seed that isn\'t one is refused', s1 !== s0 && (await p.inputValue('#bwSeed')) === s1);

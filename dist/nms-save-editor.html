@@ -542,7 +542,7 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .sb-view .toolbar { margin-top: 10px; flex-wrap: wrap; }
 .sb-opts { display: grid; gap: 12px; padding-right: 4px; }
 .sb-opts [data-sb="slots"] { display: grid; gap: 12px; }
-.sb-tile { width: auto; min-width: 0; padding: 5px 4px 4px; }
+.part-tile.sb-tile { width: 100%; min-width: 0; padding: 5px 4px 4px; }
 .sb-tile canvas { width: 100%; height: auto; aspect-ratio: 1; max-width: 140px; }
 .sb-tile span { line-height: 1.2; text-align: center; }
 .sb-h { margin: 4px 0 0; font-size: 13px; font-weight: 600; }
@@ -552,8 +552,8 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .bw { display: grid; grid-template-columns: minmax(280px, 440px) minmax(0, 1fr); gap: 22px; align-items: start; }
 .bw-pic .tc-art { border-radius: var(--r-lg); }
 .bw-opts { display: grid; gap: 12px; }
-.bw-types { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
-.bw-type { width: auto; padding: 9px 8px; font-size: 13px; }
+.bw-types { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.part-tile.bw-type { width: 100%; min-height: 46px; padding: 8px 10px; font-size: 13px; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2; }
 .bw-seed { display: flex; gap: 8px; }
 .bw-seed .input { flex: 1; }
 @media (max-width: 760px) { .bw { grid-template-columns: 1fr; } }

@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.23.2042",
+  "version": "2026.11.23.2050",
   "date": "2026-11-23",
-  "size": 15191040,
-  "sha256": "fd97407442ddc609b1ff162d3e085ed9bbb14088434a84a39b2eaa3d64746dd9",
-  "notes": "Staff builder: the 3D staff is yours to look round. Drag to turn it any way, scroll to zoom, right-drag or Shift-drag to move, double-click to reset\nStaff builder: the part pictures now show the real textures and your colours, and each row of parts stays on one line in a wider window\nStaff colours are named by what they paint (Paint, Glow, Metal, Trim), with a row of swatches and a + for any colour\nStaff colours in the game: a built staff now has Use old colours turned off, so the game should draw it in the colours you picked. For a staff you already built, open Staff parts and colours and press Apply\nAdd a multi-tool opens on Build a staff, then Build a weapon, Copy one of mine, From a share code\nBuild a weapon: any other type of multi-tool with a seed to roll, on a copy of one of your tools",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.2042/HarmoniousSaveEditor.exe",
+  "size": 15192064,
+  "sha256": "0aa4bdb9be0b12129c2d3f015af7b18d59a01e6abc30e996f2dd90e30d8af938",
+  "notes": "Build a weapon: the type buttons are all the same size\nBuild a staff: the part tiles fill their row evenly",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.2050/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
