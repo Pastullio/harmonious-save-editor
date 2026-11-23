@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.23.2228",
+  "date": "2026-11-23",
+  "notes": [
+   "Models no longer turn on their own. The new Turn models button beside Cover Flow / Grid switches it on if you want it",
+   "Turn a model by hand: drag it, or Shift-drag the centre cover in Cover Flow"
+  ]
+ },
+ {
   "version": "2026.11.23.2207",
   "date": "2026-11-23",
   "notes": [
