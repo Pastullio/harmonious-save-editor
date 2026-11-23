@@ -59,7 +59,7 @@ def editor_address():
 # ---------------------------------------------------------------- is the editor linked?
 # Every few seconds the add-on asks the editor whether LiveLink is on and for which corvette; the panel shows it,
 # and the editor sees Blender check in.
-LINK = {"state": "none", "target": "", "slot": -1, "corvettes": [], "kind": "corvette", "base": None, "traveller": "", "exports": "", "addon": "", "tools": [], "blends": []}
+LINK = {"state": "none", "target": "", "slot": -1, "corvettes": [], "kind": "corvette", "base": None, "traveller": "", "exports": "", "addon": "", "tools": [], "blends": [], "shared": [], "want": None}
 
 
 def newer_addon():
@@ -87,12 +87,21 @@ def check_link_now():
                     slot=int(info.get("slot", -1)), corvettes=info.get("corvettes") or LINK["corvettes"],
                     kind=info.get("kind") or "corvette", base=info.get("base"),
                     traveller=info.get("traveller") or "", exports=info.get("exports") or "", addon=info.get("addon") or "",
-                    tools=list(info.get("tools") or []), blends=list(info.get("blends") or []))
+                    tools=list(info.get("tools") or []), blends=list(info.get("blends") or []),
+                    shared=[str(x) for x in info.get("travellers") or []])
+        if isinstance(info.get("import"), dict):   # DryDock's "Add to Blender": link_timer brings it in on the main thread
+            LINK["want"] = info["import"]
     except (urllib.error.URLError, OSError, ValueError):
         LINK.update(state="none", target="")
 
 
 def link_timer():
+    want, LINK["want"] = LINK.get("want"), None
+    if want:
+        try:
+            import_from_editor(int(want.get("who", 0)))
+        except Exception as error:  # noqa: BLE001 - a failed import mustn't stop the check-ins
+            set_status("Couldn't bring in the traveller DryDock sent: %s" % error)
     threading.Thread(target=check_link_now, daemon=True).start()
     redraw()   # shows what the last check found
     return 3.0
@@ -1479,10 +1488,44 @@ def reach_changed(self, context):
             print("LiveLink: move hands and feet:", error)
 
 
+def import_from_editor(who):
+    """Run Import my traveller from outside a click (DryDock's Add to Blender): operators need a 3D view to run in."""
+    for window in bpy.context.window_manager.windows:
+        for area in window.screen.areas:
+            if area.type != "VIEW_3D":
+                continue
+            region = next((r for r in area.regions if r.type == "WINDOW"), None)
+            with bpy.context.temp_override(window=window, area=area, region=region):
+                bpy.ops.harmonious.import_traveller(who=who)
+            return True
+    set_status("DryDock sent a traveller, but this Blender has no 3D view open to put it in.")
+    return False
+
+
+class HARMONIOUS_MT_shared(bpy.types.Menu):
+    """The travellers other people shared (added in DryDock under Shared travellers): a click brings one in."""
+    bl_idname = "HARMONIOUS_MT_shared"
+    bl_label = "Shared travellers"
+
+    def draw(self, context):
+        if not LINK["shared"]:
+            self.layout.label(text="None yet: add codes in DryDock (Exosuit, Shared travellers)")
+        for k, name in enumerate(LINK["shared"]):
+            self.layout.operator(HARMONIOUS_OT_traveller.bl_idname, text=name, icon="USER").who = k + 1
+
+
 class HARMONIOUS_OT_traveller(bpy.types.Operator):
     bl_idname = "harmonious.import_traveller"
     bl_label = "Import my traveller"
     bl_description = "Bring in the traveller from the save open in Harmonious DryDock, with its skeleton, ready to pose"
+    # 0: the save's own traveller; n: the nth traveller in DryDock's Shared travellers list
+    who: bpy.props.IntProperty(default=0, min=0, options={"SKIP_SAVE"})
+
+    @classmethod
+    def description(cls, context, props):
+        if props.who > 0:
+            return "Bring in this shared traveller, built by DryDock from your own game files, with its skeleton, ready to pose"
+        return cls.bl_description
 
     def execute(self, context):
         addr = editor_address()
@@ -1491,7 +1534,7 @@ class HARMONIOUS_OT_traveller(bpy.types.Operator):
             return {"CANCELLED"}
         url, token = addr
         try:
-            req = urllib.request.Request(url.replace("/api/live/build", "/api/live/traveller"), headers={"X-Live-Token": token})
+            req = urllib.request.Request(url.replace("/api/live/build", "/api/live/traveller") + ("?who=%d" % self.who if self.who else ""), headers={"X-Live-Token": token})
             with urllib.request.urlopen(req, timeout=120) as res:
                 data, name = res.read(), res.headers.get("X-Traveller") or "Traveller"
         except urllib.error.HTTPError as error:
@@ -2966,6 +3009,9 @@ class HARMONIOUS_PT_traveller(LiveLinkPanel, bpy.types.Panel):
         row = layout.row()
         row.enabled = bool(LINK.get("traveller"))
         row.operator(HARMONIOUS_OT_traveller.bl_idname, **ic("import", "IMPORT"))
+        row = layout.row()   # the travellers other people shared, kept in DryDock
+        row.enabled = LINK["state"] != "none"
+        row.menu(HARMONIOUS_MT_shared.bl_idname, text="Import a shared traveller" + (" (%d)" % len(LINK["shared"]) if LINK["shared"] else ""), icon="COMMUNITY")
         if not has_traveller():
             return
         arm = find_traveller()
@@ -4264,7 +4310,7 @@ def wrap(text, width):
 
 _KEYMAPS = []
 
-CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_OT_choose_traveller, HARMONIOUS_OT_pick_part, HARMONIOUS_OT_show_bones, HARMONIOUS_OT_pose, HARMONIOUS_OT_pose_reset,
+CLASSES = (HARMONIOUS_OT_send, HARMONIOUS_OT_target, HARMONIOUS_OT_traveller, HARMONIOUS_MT_shared, HARMONIOUS_OT_choose_traveller, HARMONIOUS_OT_pick_part, HARMONIOUS_OT_show_bones, HARMONIOUS_OT_pose, HARMONIOUS_OT_pose_reset,
            HARMONIOUS_OT_pose_save, HARMONIOUS_OT_poses_folder, HARMONIOUS_OT_hold_tool, HARMONIOUS_OT_drop_tool, HARMONIOUS_OT_send_pose, HARMONIOUS_OT_picture,
            HARMONIOUS_OT_body_part, HARMONIOUS_OT_body_parts_clear, HARMONIOUS_OT_pose_mode, HARMONIOUS_OT_light, HARMONIOUS_OT_select_light, HARMONIOUS_OT_send_ship,
            HARMONIOUS_OT_tip, HARMONIOUS_OT_camera, HARMONIOUS_OT_add_blend, HARMONIOUS_OT_backdrop, HARMONIOUS_OT_print, HARMONIOUS_OT_print_preview, HARMONIOUS_OT_camera_view, HARMONIOUS_OT_clean_view,

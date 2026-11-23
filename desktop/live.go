@@ -178,9 +178,13 @@ func handleLiveBuild(w http.ResponseWriter, r *http.Request) {
 			base = json.RawMessage("null")
 		}
 		trav.Lock()
-		tname, tools := trav.name, toolNames()
+		tname, tools, shared := trav.name, toolNames(), sharedNames()
+		var want map[string]any
+		if r.URL.Query().Get("addon") != "" { // an add-on new enough to act on it (1.29.0 on)
+			want = wantedImport()
+		}
 		trav.Unlock()
-		writeJSON(w, map[string]any{"ok": true, "armed": armed, "target": target, "slot": slot, "corvettes": corvettes, "kind": kind, "base": base, "version": appVersion, "traveller": tname, "tools": tools, "exports": exportsDir(), "addon": addonVersion, "blends": rememberedBlends()})
+		writeJSON(w, map[string]any{"ok": true, "armed": armed, "target": target, "slot": slot, "corvettes": corvettes, "kind": kind, "base": base, "version": appVersion, "traveller": tname, "tools": tools, "exports": exportsDir(), "addon": addonVersion, "blends": rememberedBlends(), "travellers": shared, "import": want})
 		return
 	}
 	if r.Method != http.MethodPost {

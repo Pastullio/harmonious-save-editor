@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.23.1739",
+  "version": "2026.11.23.1852",
   "date": "2026-11-23",
-  "size": 15093760,
-  "sha256": "681b0ae7675cef3f37d395bc731d1d36e76a2f1cf6bb10468829248ac61eed34",
-  "notes": "LiveLink add-on 1.29.0: several travellers in one Blender file. The Your traveller panel lists them; pick who to work on and the poses, hands, body parts, multi-tool, lighting and exports apply to that traveller\nA newly imported traveller stands beside the ones already in the file\nThe LiveLink add-on changed: install it again in Blender",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.1739/HarmoniousSaveEditor.exe",
+  "size": 15102976,
+  "sha256": "be5d19028f0d50e2a7996f93991e01af25abbf56f0b591baad5fdd75526a391a",
+  "notes": "Shared travellers: Add to Blender puts a traveller straight into the Blender file you have open\nLiveLink add-on 1.29.0: Import a shared traveller is a dropdown of every traveller you added in DryDock\nSeveral travellers in one Blender file: the Your traveller panel lists them; pick who to work on and the poses, hands, body parts, multi-tool, lighting and exports apply to that traveller. A new one stands beside the others\nThe LiveLink add-on changed: install it again in Blender",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.1852/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
