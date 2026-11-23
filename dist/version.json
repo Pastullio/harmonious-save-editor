@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.23.2122",
+  "version": "2026.11.23.2136",
   "date": "2026-11-23",
-  "size": 15192576,
-  "sha256": "25e909ac6f55b6a0fc0f60f7742b272051d2bdcb0d897707cb1cf8d3811fb359",
-  "notes": "Build a weapon: a tool copied from a staff no longer keeps the staff's parts and colours, and the list of tools to copy from starts on one that isn't a staff",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.2122/HarmoniousSaveEditor.exe",
+  "size": 15194112,
+  "sha256": "6170ee1e60877940cb41d7822fc0e73af884283be9876eb55c35e2aa74bb174d",
+  "notes": "Multi-tools copied from a staff before today's fix: their page has Remove leftover staff data, which clears the staff's parts and colours from them\nChoose parts now says plainly that it sets DryDock's picture only and doesn't change the tool in the game",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.2136/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
