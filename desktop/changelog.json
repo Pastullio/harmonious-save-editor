@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.23.2050",
+  "date": "2026-11-23",
+  "notes": [
+   "Build a weapon: the type buttons are all the same size",
+   "Build a staff: the part tiles fill their row evenly"
+  ]
+ },
+ {
   "version": "2026.11.23.2042",
   "date": "2026-11-23",
   "notes": [
