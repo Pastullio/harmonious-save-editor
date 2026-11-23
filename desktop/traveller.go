@@ -275,7 +275,7 @@ func handleLiveTool(w http.ResponseWriter, r *http.Request) {
 			place = &m
 		}
 	}
-	glb, err := modelGLB(sc, t.Seed, string(t.Picks), "", t.Name, place)
+	glb, err := modelGLB(sc, t.Seed, string(t.Picks), "", t.Name, place, "", 1)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -1125,7 +1125,10 @@ type glbLook struct{ diffuse, masks, normal *glbImage }
 var (
 	texCacheMu sync.Mutex
 	texCache   = map[string]*glbImage{}
+	texLooks   []string // the looks with painted textures in the cache, oldest first
 )
+
+const texLooksKept = 4
 
 // materialImages reads every material's textures in parallel (each decoded once per run of the app).
 func materialImages(order []string, prims map[string]*prim, look *travLook) map[string]*glbLook {
@@ -1198,6 +1201,26 @@ func textureImage(tex, kind string, look *travLook) *glbImage {
 	}
 	texCacheMu.Lock()
 	texCache[key] = im
+	if lk := look.key(); kind == "diffuse" && lk != "" { // painted textures are kept for the newest few looks only: a colour picker makes a new look at every step
+		texLooks = append(texLooks, lk)
+		seen, keep := map[string]bool{}, []string{}
+		for i := len(texLooks) - 1; i >= 0; i-- {
+			if !seen[texLooks[i]] {
+				seen[texLooks[i]] = true
+				keep = append([]string{texLooks[i]}, keep...)
+			}
+		}
+		for len(keep) > texLooksKept {
+			old := "|" + keep[0]
+			keep = keep[1:]
+			for k := range texCache {
+				if strings.HasPrefix(k, "diffuse|") && strings.HasSuffix(k, old) {
+					delete(texCache, k)
+				}
+			}
+		}
+		texLooks = keep
+	}
 	texCacheMu.Unlock()
 	return im
 }
@@ -1238,7 +1261,12 @@ func handleModelGLB(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	glb, err := modelGLB(p, r.URL.Query().Get("seed"), r.URL.Query().Get("picks"), r.URL.Query().Get("look"), r.URL.Query().Get("name"), nil)
+	// only=<group>&depth=n keeps one part, as /api/model/mesh does (the staff builder's part pictures)
+	depth := 1
+	if d, err := strconv.Atoi(r.URL.Query().Get("depth")); err == nil && d > 0 {
+		depth = d
+	}
+	glb, err := modelGLB(p, r.URL.Query().Get("seed"), r.URL.Query().Get("picks"), r.URL.Query().Get("look"), r.URL.Query().Get("name"), nil, r.URL.Query().Get("only"), depth)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -1247,12 +1275,12 @@ func handleModelGLB(w http.ResponseWriter, r *http.Request) {
 	w.Write(glb)
 }
 
-func modelGLB(scene, seed, picksJSON, look, name string, place *mat4) ([]byte, error) {
+func modelGLB(scene, seed, picksJSON, look, name string, place *mat4, only string, depth int) ([]byte, error) {
 	picks := map[string]string{}
 	if picksJSON != "" {
 		_ = json.Unmarshal([]byte(picksJSON), &picks)
 	}
-	out := &meshOut{onlyDepth: 1, collect: true}
+	out := &meshOut{only: only, onlyDepth: depth, collect: true}
 	if err := buildMesh(scene, picks, seed, 0, out, identity(), 0); err != nil {
 		return nil, err
 	}
