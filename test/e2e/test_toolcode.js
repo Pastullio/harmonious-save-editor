@@ -61,7 +61,7 @@ const FX = process.argv[2]; const fails = []; const ok = (n, c) => { console.log
   // the other tabs
   await p.click('#addTool'); await p.waitForSelector('#dlg[open] [data-tab="copy"]');
   ok('the shared tool is kept in the list for next time', (await p.$$('.st-item')).length === 1);
-  await p.click('[data-tab="staff"]'); ok('Build a staff says what it needs', /Not built yet/.test(await p.textContent('[data-pane="staff"]')) && !(await p.$eval('[data-pane="staff"]', (x) => x.hidden)) && (await p.$eval('[data-pane="code"]', (x) => x.hidden)));
+  await p.click('[data-tab="staff"]'); ok('Build a staff opens the builder', (await p.$$('#sbHost .sb-tile')).length === 19 && !(await p.$eval('[data-pane="staff"]', (x) => x.hidden)) && (await p.$eval('[data-pane="code"]', (x) => x.hidden)));
   await p.click('[data-tab="parts"]'); ok('Pick the parts says why it isn\'t possible yet', /seed/.test(await p.textContent('[data-pane="parts"]')) && !(await p.$eval('[data-pane="parts"]', (x) => x.hidden)));
   await p.click('[data-tab="copy"]'); await p.selectOption('#addWhat', '1'); await p.click('#atCopy'); await p.waitForTimeout(300);
   ok('Copy one of mine still adds a copy', await p.evaluate(() => str(g(g(ps(), 'Multitools')[3], 'Name')) === 'Crown copy' && tools().length === 4));

@@ -160,6 +160,7 @@ func main() {
 	mux.HandleFunc("/api/model/creature/sample", handleCreatureSample)
 	mux.HandleFunc("/api/model/traveller/sample", handleTravellerSample)
 	mux.HandleFunc("/api/model/tool/sample", handleToolSample)
+	mux.HandleFunc("/api/model/staff", handleStaff)
 	mux.HandleFunc("/api/model/creature/types", handleCreatureTypes)
 	mux.HandleFunc("/api/model/traveller", handleTraveller)
 	mux.HandleFunc("/api/model/traveller/glb", handleTravellerGLB)

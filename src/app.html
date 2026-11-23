@@ -515,6 +515,22 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .sw-row:not(.g-other) .nm { font-weight: 500; color: var(--accent); }
 .at-tabs { margin-bottom: 12px; }
 .at-pic { min-height: 260px; }
+.at-pic .tc-art { width: 260px; border-radius: var(--r-lg); }
+.sb { display: grid; grid-template-columns: minmax(260px, 380px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.sb-pic .tc-art { border-radius: var(--r-lg); }
+.sb-view .toolbar { margin-top: 10px; flex-wrap: wrap; }
+.sb-opts { display: grid; gap: 12px; max-height: 62vh; overflow: auto; padding-right: 4px; }
+.sb-opts [data-sb="slots"] { display: grid; gap: 12px; }
+.sb-tile { width: 104px; }
+.sb-tile canvas { width: 92px; height: 92px; }
+.sb-tile span { line-height: 1.2; text-align: center; }
+.sb-h { margin: 4px 0 0; font-size: 13px; font-weight: 600; }
+.sb-cols { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.sb-col { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.sb-col input[type=color] { width: 38px; height: 30px; padding: 0; border: 1.5px solid var(--line); border-radius: 8px; background: none; cursor: pointer; }
+.sb-add { display: grid; grid-template-columns: 2fr 1fr 2fr; gap: 12px; margin: 14px 0 4px; }
+.sb-add + .toolbar { margin-top: 12px; }
+@media (max-width: 760px) { .sb, .sb-add { grid-template-columns: 1fr; } }
 .st-add { display: flex; gap: 10px; align-items: flex-start; margin: 10px 0 14px; }
 .st-grid { display: grid; grid-template-columns: 220px 1fr; gap: 16px; min-height: 300px; }
 .st-list { display: flex; flex-direction: column; gap: 6px; max-height: 460px; overflow: auto; }
@@ -3281,7 +3297,9 @@ function ownedPage(el, { title, intro, list, key, label, sub, primaryKey, invs, 
   }
   editor();
 }
-function seedOf(s) { const sd = g(s, 'Resource', 'Seed') || g(s, 'Seed'); return Array.isArray(sd) ? sd : null; }
+// a ship's seed is its Resource.Seed; a multi-tool's is the entry's own Seed with Resource.Seed left unset ([false, "0x0"],
+// the owner's save 2026-11-23), so the one that is set wins
+function seedOf(s) { const a = g(s, 'Resource', 'Seed'), b = g(s, 'Seed'), ok = Array.isArray; if (ok(a) && a[0] === true) return a; if (ok(b) && b[0] === true) return b; return ok(a) ? a : ok(b) ? b : null; }
 function seedField(s) { const sd = seedOf(s); return sd ? `<label class="field"><span>Seed (changes the look; keep a backup)</span><input class="input mono" data-seed value="${esc(str(sd[1]))}" pattern="0x[0-9A-Fa-f]{1,16}"></label>` : ''; }
 function wireSeed(panel, s) {
   const inp = panel.querySelector('[data-seed]'); if (!inp) return;
@@ -3383,6 +3401,7 @@ function entityDetails(ed, o, i, kind) {
     <div class="toolbar details-acts">
       <button class="btn primary" data-k="saveprof">Save as profile</button><button class="btn" data-k="applyprof">Apply a profile</button>
       ${APP && S.lib && S.lib.game ? '<button class="btn" data-k="parts">Choose parts</button>' : ''}
+      ${kind === 'tool' && isStaff(o) && g(o, 'CustomisationData') instanceof Map ? '<button class="btn" data-k="staff">Staff parts and colours</button>' : ''}
       ${kind === 'tool' ? '<button class="btn" data-k="share">Share</button>' : ''}
       <span class="sep"></span>
       ${isShip && APP ? '<button class="btn" data-k="tolib">To the Dock Yard…</button><button class="btn ghost" data-k="dyvers">Versions in the Dock Yard</button>' : ''}<details class="menu" data-k="exportMenu"><summary class="btn">Export…</summary><div class="menu-pop">
@@ -3413,6 +3432,7 @@ function entityDetails(ed, o, i, kind) {
   panel.querySelectorAll('[data-stat]').forEach((inp) => inp.onchange = () => { const v = Number(inp.value); if (!isFinite(v) || v < 0) { toast('Stats are numbers of 0 or more.', true); inp.value = fmtStat(statOf(o, kind, inp.dataset.stat)); return; } setStat(o, kind, inp.dataset.stat, v); });
   for (const [k, key] of [['shealth', 'ShipHealth'], ['sshield', 'ShipShield']]) { const inp = $k(k); if (inp) inp.onchange = () => { const v = clampU32(inp.value); inp.value = v; set(p, key, N(v)); }; }
   $k('saveprof').onclick = () => saveProfileDialog(o, i, kind);
+  if ($k('staff')) $k('staff').onclick = () => staffEditDialog(i);
   if ($k('share')) $k('share').onclick = () => toolShareCode(o, i).catch((e) => toast('Couldn\'t make the share code: ' + e.message, true));
   $k('applyprof').onclick = () => applyProfileDialog(o, i, kind);
   const pb = $k('parts');
@@ -4001,7 +4021,8 @@ function coverItems() {
   }
   for (const { s, i } of tools()) {
     const tt = toolType(s), cls = invClass(g(s, 'Store')) || '', name = str(g(s, 'Name')) || tt.label + ' ' + (i + 1), seed = str((seedOf(s) || [])[1]);
-    out.push({ kind: 'tool', i, obj: s, name, type: tt.label, tool: tt.kind, cls, seed, current: i === activeTool, scene: str(g(s, 'Resource', 'Filename')),
+    const sg = isStaff(s) ? staffNodes(staffGroups(s)) : [];
+    out.push({ kind: 'tool', i, obj: s, name, type: tt.label, tool: tt.kind, cls, seed, current: i === activeTool, scene: str(g(s, 'Resource', 'Filename')), ...(sg.length ? { picks: { _names: sg.join('|') } } : {}),
       key: `tool|${name}|${seed}|${str(g(s, 'Resource', 'Filename'))}`,
       sub: [tt.label, cls && cls + ' class', i === activeTool && 'equipped'].filter(Boolean).join(', ') });
   }
@@ -7161,6 +7182,8 @@ async function toolCodeMake(t) {
   const at = TOOL_MODELS.findIndex(([, f]) => f === t.scene), picks = {};
   for (const [k, v] of Object.entries(t.picks || {})) if (TRAV_WORD.test(k) && typeof v === 'string' && /^[\w^ .|\-]{1,200}$/.test(v)) picks[k] = v;
   const doc = { v: TOOL_CODE_V, n: String(t.name || 'Multi-tool').slice(0, 42), m: at >= 0 ? at : t.scene, s: t.seed, c: /^[SABC]$/.test(t.cls) ? t.cls : 'C', l: !!t.legacy, p: picks };
+  // a staff: its three parts (g) and the colours it shows (k: [palette, alt number, r, g, b ×1000])
+  if (t.groups && t.groups.length === 3 && t.groups.every((x) => STAFF_GROUP.test(x))) { doc.g = t.groups; if (t.cols && t.cols.length) doc.k = t.cols.slice(0, 40).map(([pl, a, c]) => [pl, STAFF_ALTS.indexOf(a), ...c.slice(0, 3).map((v) => Math.round(v * 1000))]); }
   const raw = new Uint8Array(await new Response(new Blob([JSON.stringify(doc)]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
   let bin = ''; for (const b of raw) bin += String.fromCharCode(b);
   return 'HDM' + TOOL_CODE_V + ':' + btoa(bin).replace(/=+$/, '');
@@ -7184,14 +7207,24 @@ async function toolCodeRead(text) {
   const picks = {};
   if (doc.p && typeof doc.p === 'object') for (const [k, v] of Object.entries(doc.p).slice(0, 60)) if (TRAV_WORD.test(k) && typeof v === 'string' && /^[\w^ .|\-]{1,200}$/.test(v)) picks[k] = v;
   const name = untag(String(doc.n || '')).replace(/[<>\\/:*?"|\x00-\x1f]/g, '').trim().slice(0, 42) || 'Multi-tool';
-  return { name, scene, seed: '0x' + doc.s.slice(2).toUpperCase(), cls: /^[SABC]$/.test(doc.c) ? doc.c : 'C', legacy: doc.l === true, picks, code: m[0], type: (TOOL_MODELS.find(([, f]) => f === scene) || [modelName(scene)])[0] };
+  const out = { name, scene, seed: '0x' + doc.s.slice(2).toUpperCase(), cls: /^[SABC]$/.test(doc.c) ? doc.c : 'C', legacy: doc.l === true, picks, code: m[0], type: (TOOL_MODELS.find(([, f]) => f === scene) || [modelName(scene)])[0] };
+  if (scene === STAFF_SCENE && Array.isArray(doc.g) && doc.g.length === 3 && doc.g.every((x, k) => typeof x === 'string' && STAFF_GROUP.test(x) && x.startsWith(STAFF_SLOTS[k].id + '_'))) {
+    out.groups = doc.g; out.cols = [];
+    if (Array.isArray(doc.k)) for (const e of doc.k.slice(0, 40)) if (Array.isArray(e) && STAFF_PALETTES.includes(e[0]) && STAFF_ALTS[e[1]] && [e[2], e[3], e[4]].every((v) => Number.isFinite(v) && v >= 0 && v <= 1000)) out.cols.push([e[0], STAFF_ALTS[e[1]], [e[2] / 1000, e[3] / 1000, e[4] / 1000]]);
+  }
+  return out;
 }
 const sharedTools = () => { try { const l = JSON.parse(localStorage.getItem('hse-shared-tools') || '[]'); return Array.isArray(l) ? l.filter((x) => x && typeof x.code === 'string') : []; } catch (_) { return []; } };
 const sharedToolsStore = (l) => { try { localStorage.setItem('hse-shared-tools', JSON.stringify(l.slice(0, 300))); } catch (_) {} };
 // what a multi-tool in the save shares: its model, seed, name, class and the owner's part picks
 async function toolShareOf(o, i) {
   const it = coverItems().find((x) => x.kind === 'tool' && x.i === i), sd = seedOf(o) || [];
-  return { name: entityName(o, i, 'tool'), scene: str(g(o, 'Resource', 'Filename')), seed: str(sd[1]), cls: invClass(g(o, 'Store')) || 'C', legacy: g(o, 'UseLegacyColours') === true, picks: it ? await partsOf(it.key) : {} };
+  const t = { name: entityName(o, i, 'tool'), scene: str(g(o, 'Resource', 'Filename')), seed: str(sd[1]), cls: invClass(g(o, 'Store')) || 'C', legacy: g(o, 'UseLegacyColours') === true, picks: it ? await partsOf(it.key) : {} };
+  if (isStaff(o)) {   // its parts, and the colours those parts show (known only with the game files)
+    const gs = staffGroups(o);
+    if (gs.every(Boolean)) { t.groups = gs; t.picks = {}; const d = await staffInfo(gs), cols = staffColoursOf(o); t.cols = d && Array.isArray(d.colours) ? d.colours.filter((u) => cols.has(staffKey(u.p, u.a))).map((u) => [u.p, u.a, cols.get(staffKey(u.p, u.a))]) : []; }
+  }
+  return t;
 }
 async function toolShareCode(o, i) {
   const t = await toolShareOf(o, i);
@@ -7199,7 +7232,7 @@ async function toolShareCode(o, i) {
   const code = await toolCodeMake(t), post = '```\n' + code + '\n```';
   const copy = async () => { try { await navigator.clipboard.writeText(post); toast('Share code copied. Paste it into Discord.'); } catch (_) { toast('Couldn\'t reach the clipboard. Select the code and copy it.', true); } };
   await copy();
-  await customDialog({ title: 'Share ' + t.name, wide: true, html: `<p>This multi-tool's look as a share code: its type, seed, class and name. Post it in Discord with a screenshot; anyone with DryDock copies the code and adds it under <b>Add a multi-tool</b>. Seeds look the same in every game, so they get this exact tool. Its technology isn't in the code.</p>
+  await customDialog({ title: 'Share ' + t.name, wide: true, html: `<p>${t.groups ? 'This staff as a share code: its head, core and pole, ' + (t.cols.length ? 'its colours, ' : '') + 'class and name.' : 'This multi-tool\'s look as a share code: its type, seed, class and name.'} Post it in Discord with a screenshot; anyone with DryDock copies the code and adds it under <b>Add a multi-tool</b>. ${t.groups ? (t.cols.length ? 'They get this exact staff.' : 'They get these parts in the standard colours: reading which colours a staff shows needs the game files.') : 'Seeds look the same in every game, so they get this exact tool.'} Its technology isn't in the code.</p>
     <textarea id="tsCode" class="mono" readonly rows="4" style="width:100%">${esc(post)}</textarea>
     <p class="dim" data-keep>${code.length.toLocaleString()} characters. Fits in one Discord message (up to ${DISCORD_MAX.toLocaleString()}).${Object.keys(t.picks).length ? ' Your part choices for the 3D picture go with it.' : ''}</p>
     <div class="toolbar"><button class="btn primary" type="button" id="tsCopy">Copy the code</button></div>`,
@@ -7210,10 +7243,11 @@ function addSharedTool(t, donorIdx) {
   const list = g(ps(), 'Multitools') || [], used = new Set(tools().map((x) => x.i)), slot = list.findIndex((s, k) => !used.has(k));
   if (slot < 0) { toast(`All ${list.length} multi-tool slots are in use. The game has no more; delete one first.`, true); return -1; }
   const src = list[donorIdx]; if (!(src instanceof Map) || !(g(src, 'Resource') instanceof Map)) { toast('Pick one of your multi-tools to copy the technology from.', true); return -1; }
-  const ent = cloneJSON(src), res = g(ent, 'Resource'), seed = [true, t.seed];
+  if (t.groups) { const cols = staffColoursOf(isStaff(src) ? src : null); for (const [pl, a, c] of t.cols || []) cols.set(staffKey(pl, a), c); return addStaff({ groups: t.groups, cols, name: t.name, cls: t.cls, seed: t.seed }, donorIdx); }
+  const ent = cloneJSON(src), res = g(ent, 'Resource'), seed = [true, t.seed], rs = g(res, 'Seed');
   set(ent, 'Name', t.name); set(res, 'Filename', t.scene);
-  if (kOf(res, 'Seed')) set(res, 'Seed', cloneJSON(seed));
-  if (kOf(ent, 'Seed')) set(ent, 'Seed', cloneJSON(seed));
+  if (kOf(ent, 'Seed') != null) set(ent, 'Seed', cloneJSON(seed));
+  if (kOf(ent, 'Seed') == null || (Array.isArray(rs) && rs[0] === true)) set(res, 'Seed', cloneJSON(seed));   // a multi-tool's seed is its own Seed; its Resource.Seed stays unset, as the game leaves it
   if (kOf(ent, 'UseLegacyColours') != null) set(ent, 'UseLegacyColours', t.legacy);
   const cls = g(ent, 'Store', 'Class'); if (cls instanceof Map) set(cls, 'InventoryClass', t.cls);
   list[slot] = ent; markDirty();
@@ -7242,11 +7276,14 @@ async function addToolDialog() {
       <div class="toolbar"><button class="btn primary" type="button" id="atCopy"${full || !have.length ? ' disabled' : ''}>Add the copy</button></div>
     </div>
     <div data-pane="staff" hidden>
-      <p><b>Not built yet.</b> The game assembles a staff from the head, core and handle you choose, so a builder that lets you pick them is possible. To write it I need two things from a real game: the game's own table of staff parts, and a save that holds a staff, to see how the game records the choice.</p>
-      ${APP ? '<p>The button below collects both from your PC into one zip in your Exports folder. Send me that zip. A save with at least one staff in it helps most.</p><div class="toolbar"><button class="btn primary" type="button" data-sample>Save multi-tool files for the developer</button></div>' : '<p class="dim">Collecting the files needs the desktop app.</p>'}
+      <div id="sbHost"></div>
+      <div class="sb-add"><label class="field"><span>Name</span><input class="input" id="sbName" maxlength="42" value="Staff"></label>
+        <label class="field"><span>Class</span><select class="input" id="sbCls">${['S', 'A', 'B', 'C'].map((c) => `<option>${c}</option>`).join('')}</select></label>
+        <label class="field"><span>Technology and size copied from</span><select class="input" id="sbDonor">${donors}</select></label></div>
+      <div class="toolbar"><button class="btn primary" type="button" id="sbAdd"${full || !have.length ? ' disabled' : ''}>Add to my save</button><button class="btn" type="button" id="sbShare">Copy a share code</button></div>
     </div>
     <div data-pane="parts" hidden>
-      <p><b>Not possible yet, and it may stay that way.</b> For every multi-tool but the staff, the game picks the barrel, stock and the rest from the seed, with a rule that isn't in its files. Choosing parts would mean finding a seed that gives exactly those parts, which needs that rule worked out first.</p>
+      <p><b>Not possible yet, and it may stay that way.</b> Staffs have their own builder (the tab beside this one). For every other multi-tool, the game picks the barrel, stock and the rest from the seed, with a rule that isn't in its files. Choosing parts would mean finding a seed that gives exactly those parts, which needs that rule worked out first.</p>
       <p>What helps: your own tools, with their parts set correctly under <b>Choose parts</b>, are known pairs of seed and parts to test a rule against. The more tools you have set, the better the odds.</p>
       ${APP ? '<div class="toolbar"><button class="btn primary" type="button" data-sample>Save multi-tool files for the developer</button></div>' : ''}
     </div>`,
@@ -7258,6 +7295,16 @@ async function addToolDialog() {
         set(ent, 'Name', (str(g(src, 'Name')) || 'Multi-tool') + ' copy'); list[slot] = ent; markDirty(); done(slot, str(g(ent, 'Name')), finish);
       };
       body.querySelectorAll('[data-sample]').forEach((b) => b.onclick = () => toolSample(b));
+      // Build a staff: drawn the first time its tab opens (it loads models)
+      let sb = null;
+      const staffTab = body.querySelector('[data-tab="staff"]'), openTab = staffTab.onclick;
+      staffTab.onclick = () => { openTab(); if (!sb) { const mine = have.map((x) => x.s).find(isStaff); sb = staffBuilder($('#sbHost', body), { cols: staffColoursOf(mine || null) }); } };
+      const staffNow = () => { const st = sb.state(); return { ...st, name: $('#sbName', body).value.trim().slice(0, 42) || 'Staff', cls: $('#sbCls', body).value }; };
+      $('#sbAdd', body).onclick = () => { const st = staffNow(), slot = addStaff(st, +$('#sbDonor', body).value); if (slot >= 0) { sb.stop(); done(slot, st.name, finish); } };
+      $('#sbShare', body).onclick = async () => {
+        const st = staffNow(), code = await toolCodeMake({ name: st.name, scene: STAFF_SCENE, seed: randomSeed(), cls: st.cls, legacy: true, picks: {}, groups: st.groups, cols: st.used.map(([pl, a]) => [pl, a, st.cols.get(staffKey(pl, a))]).filter((x) => x[2]) });
+        navigator.clipboard.writeText('```\n' + code + '\n```').then(() => toast(st.used.length ? 'Share code copied. Paste it into Discord.' : 'Share code copied (parts only: colours need the game files).')).catch(() => toast('Couldn\'t reach the clipboard', true));
+      };
       const listEl = $('#atList', body), view = $('#atView', body);
       const drawList = () => { listEl.innerHTML = shared.length ? shared.map((x, k) => `<button type="button" class="st-item${cur === k ? ' on' : ''}" data-k="${k}"><b>${esc(x.name)}</b><span class="dim small-print">${esc(x.type || '')}</span></button>`).join('') : '<p class="dim" data-keep>No shared multi-tools yet.</p>'; listEl.querySelectorAll('[data-k]').forEach((b) => b.onclick = () => show(+b.dataset.k)); };
       const show = async (k) => {
@@ -7265,14 +7312,15 @@ async function addToolDialog() {
         let t; try { t = await toolCodeRead(x.code); } catch (e) { view.innerHTML = `<p class="warn" data-keep>${esc(e.message)}</p>`; return; }
         view.innerHTML = `<div class="st-pic at-pic"></div><h3>${esc(t.name)}</h3><p class="dim small-print" data-keep>${esc(t.type)}, ${t.cls} class, seed ${esc(t.seed)}</p>
           <label class="field"><span>Technology and size copied from</span><select class="input" id="atDonor">${donors}</select></label>
-          <p class="dim" data-keep>The picture is a guide: it shows the parts the sharer chose, or DryDock's guess when they chose none. In the game the tool looks as it does for them.</p>
-          ${/STAFF/i.test(t.scene) ? '<p class="warn" data-keep>This is a staff. A staff is assembled from chosen parts, and how the game records that choice isn\'t worked out yet, so it may not come out the same as the sharer\'s.</p>' : ''}
+          <p class="dim" data-keep>${t.groups ? esc('A staff: ' + t.groups.map((x, k) => (staffSlotList(null)[k].parts.find((q) => q.group === x) || { name: x }).name).join(', ') + '.') : 'The picture is a guide: it shows the parts the sharer chose, or DryDock\'s guess when they chose none. In the game the tool looks as it does for them.'}</p>
+          ${t.scene === STAFF_SCENE && !t.groups ? '<p class="warn" data-keep>This staff\'s code has no parts in it (it was made by an older DryDock), so the game may build it from other parts than the sharer\'s. Ask them to share it again.</p>' : ''}
           <div class="toolbar"><button class="btn primary" type="button" data-at="add"${full || !have.length ? ' disabled' : ''}>Add to my save</button><button class="btn" type="button" data-at="copy">Copy the code</button><button class="btn danger ghost" type="button" data-at="remove">Remove</button></div>`;
         view.querySelector('[data-at="add"]').onclick = () => { const slot = addSharedTool(t, +$('#atDonor', view).value); if (slot >= 0) done(slot, t.name, finish); };
         view.querySelector('[data-at="copy"]').onclick = () => navigator.clipboard.writeText('```\n' + x.code + '\n```').then(() => toast('Share code copied')).catch(() => toast('Couldn\'t reach the clipboard', true));
         view.querySelector('[data-at="remove"]').onclick = () => { shared.splice(k, 1); sharedToolsStore(shared); cur = null; view.innerHTML = ''; drawList(); };
         const pic = view.querySelector('.at-pic');
-        if (APP && S.lib && S.lib.game) { try { miniCover(pic, { kind: 'tool', i: -1, name: t.name, type: t.type, tool: toolType(new Map([[keyFor('Resource'), new Map([[keyFor('Filename'), t.scene]])]])).kind, cls: t.cls, seed: t.seed, scene: t.scene, picks: t.picks, key: `tool|${t.name}|${t.seed}|${t.scene}` }, 260); } catch (_) {} }
+        pic.innerHTML = '<div class="tc-art"></div>';   // miniCover draws into the card's .tc-art
+        if (APP && S.lib && S.lib.game) { try { miniCover(pic, { kind: 'tool', i: -1, name: t.name, type: t.type, tool: toolType(new Map([[keyFor('Resource'), new Map([[keyFor('Filename'), t.scene]])]])).kind, cls: t.cls, seed: t.seed, scene: t.scene, picks: t.groups ? { _names: staffNodes(t.groups).join('|') } : t.picks, key: `tool|${t.name}|${t.seed}|${t.scene}|${(t.groups || []).join(',')}` }, 260); } catch (_) {} }
         else pic.innerHTML = '<p class="dim" data-keep>The picture needs the game files (Settings).</p>';
       };
       $('#atKeep', body).onclick = async () => {
@@ -7299,6 +7347,189 @@ async function toolSample(btn) {
     const d = await r.json(); toast('Saved ' + d.path.split(/[\\/]/).pop() + ' (' + Math.max(1, Math.round(d.size / 1048576)) + ' MB) in your Exports folder. Send that zip to the developer.');
   } catch (err) { toast('Couldn\'t collect the files: ' + err.message, true); }
   btn.disabled = false;
+}
+// ---- The staff builder (owner 2026-11-23, after seeing another tool's: "I think we can do better"). A staff is a
+// multi-tool with the staff model whose CustomisationData.DescriptorGroups name its head, core and pole
+// (^STAFF_HEAD_5A, ^STAFF_CORE_5, ^STAFF_POLE_2) and whose CustomisationData.Colours hold a colour for every palette
+// and ColourAlt (330 entries, Index -1); the equipped tool's copy sits in CharacterCustomisationData[2]. Seen in the
+// owner's save. The parts are the game's table (modularcustomisationdatatable.mbin, /api/model/staff; STAFF_SLOTS is
+// that table on 2026-11-23, with the game's item names as the fallback when the item library has none). A new
+// staff is a copy of one of the owner's tools (its technology and size) made into a staff. Only the colours a staff's
+// textures take are offered (/api/model/staff reads them from the game files); the rest keep the standard list
+// (STAFF_PALETTES/STAFF_RGB: the owner's own staff, per palette five colours ×1000).
+const STAFF_SCENE = 'MODELS/COMMON/WEAPONS/MULTITOOL/STAFFMULTITOOL.SCENE.MBIN';
+const STAFF_SLOTS = [
+  { id: 'STAFF_HEAD', label: 'Head', node: '_StaffHead', parts: [['STAFF_HEAD_1', 'STAFF_PART_C', 'Concentric Transducer'], ['STAFF_HEAD_2', 'STAFF_HEAD1', 'Salvaged Aerator'], ['STAFF_HEAD_3', 'STAFF_HEAD2', 'Havoc Coil'], ['STAFF_HEAD_5', 'STAFF_HEAD4A', 'Reclaimed Claw'], ['STAFF_HEAD_5A', 'STAFF_HEAD4B', 'Reclaimed Head'], ['STAFF_HEAD_6', 'STAFF_HEAD5', 'Radiant Heart'], ['STAFF_HEAD_7', 'STAFF_HEAD6', 'Runic Focus']] },
+  { id: 'STAFF_CORE', label: 'Core', node: '_StaffCore', parts: [['STAFF_CORE_1', 'STAFF_PART_B', 'Atlantideum Chamber'], ['STAFF_CORE_2', 'STAFF_CORE1', 'Salvaged Battery'], ['STAFF_CORE_3', 'STAFF_CORE2', 'Havoc Core'], ['STAFF_CORE_5', 'STAFF_CORE4', 'Reclaimed Grip'], ['STAFF_CORE_6', 'STAFF_CORE5', 'Radiant Chamber'], ['STAFF_CORE_7', 'STAFF_CORE6', 'Runic Core']] },
+  { id: 'STAFF_POLE', label: 'Pole', node: '_StaffPole', parts: [['STAFF_POLE_1', 'STAFF_PART_A', 'Fibreglass Grip'], ['STAFF_POLE_2', 'STAFF_POLE1', 'Salvaged Shaft'], ['STAFF_POLE_3', 'STAFF_POLE2', 'Havoc Lance'], ['STAFF_POLE_5', 'STAFF_POLE4', 'Recycled Pole'], ['STAFF_POLE_6', 'STAFF_POLE5', 'Radiant Bore'], ['STAFF_POLE_7', 'STAFF_POLE6', 'Runic Beam']] }];
+const STAFF_ALTS = ['Primary', 'Alternative1', 'Alternative2', 'Alternative3', 'Alternative4'];
+const STAFF_PALETTES = 'Grass Plant Leaf Wood Rock Stone Crystal Sand Dirt Metal Paint Plastic Fur Scale Feather Water Cloud Sky Space Underbelly Undercoat Snow SkyHorizon SkyFog SkyHeightFog SkySunset SkyNight WaterNear SpaceCloud SpaceBottom SpaceSolar SpaceLight Warrior Scientific Trader WarriorAlt ScientificAlt TraderAlt RockSaturated RockLight RockDark PlanetRing Custom_Head Custom_Torso Custom_Chest_Armour Custom_Backpack Custom_Arms Custom_Hands Custom_Legs Custom_Feet Cave GrassAlt BioShip_Body BioShip_Underbelly BioShip_Cockpit SailShip_Sails Freighter FreighterPaint PirateBase PirateAlt SpaceStationBase SpaceStationAlt SpaceStationLights DeepWaterBioLum Slime Hulk'.split(' ');
+const STAFF_RGB = [631,333,20,493,258,332,289,148,298,367,287,208,261,283,163,384,125,90,565,392,118,451,227,173,651,302,0,216,376,427,216,376,427,651,302,0,239,188,322,247,306,200,384,125,90,223,193,171,223,193,171,223,193,171,223,193,171,223,193,171,251,259,298,322,275,251,298,251,243,329,318,310,322,275,251,340,388,389,427,362,309,423,406,406,324,324,324,427,362,309,996,733,141,114,804,20,1000,322,133,0,384,906,494,890,122,367,318,247,607,455,303,437,414,381,577,501,388,53,50,47,345,326,307,324,270,246,403,376,282,379,297,235,379,297,235,169,169,169,133,114,114,125,125,145,255,255,255,235,235,259,925,380,396,945,376,325,910,439,478,259,447,537,925,373,310,988,945,565,486,482,435,859,749,675,973,843,835,1000,1000,624,278,353,373,208,208,208,690,761,486,184,149,208,373,251,184,443,443,443,443,310,20,412,333,443,639,787,402,137,251,122,682,329,329,286,459,667,467,361,714,682,322,345,584,522,267,507,280,326,165,540,383,166,573,369,206,462,681,161,608,681,941,945,961,969,937,953,890,957,957,976,953,933,965,961,976,803,949,1000,965,750,1000,750,865,1000,1000,846,750,1000,750,750,263,39,333,327,44,293,276,414,540,75,359,377,173,35,66,369,159,159,749,859,714,369,329,264,859,859,859,263,160,29,816,765,765,506,396,396,733,702,718,388,400,388,824,812,776,602,778,764,675,773,837,667,787,830,591,767,753,638,758,800,869,989,1000,1000,951,889,799,1000,992,824,834,1000,769,1000,931,344,273,510,453,409,81,133,448,500,0,500,480,166,530,421,900,879,691,359,846,1000,746,1000,959,980,811,628,782,1000,926,302,474,697,510,399,637,626,314,670,550,800,358,129,612,369,741,655,0,478,200,314,714,467,180,157,494,106,678,404,27,485,900,767,81,708,900,913,543,869,282,900,715,830,432,207,293,25,540,1000,1000,1000,500,14,374,593,138,10,1000,1000,0,21,1000,628,236,524,563,626,707,515,467,112,377,1000,1000,1000,850,643,332,422,1000,4,517,833,0,10,560,428,49,737,737,1000,1000,1000,1000,727,546,1000,680,821,977,592,592,977,762,564,587,425,219,285,359,363,314,560,607,352,398,497,700,550,232,510,248,280,310,203,135,60,236,270,365,400,513,747,641,218,653,568,297,191,215,280,350,484,510,690,529,243,850,764,311,377,286,253,533,490,563,593,407,251,713,600,711,740,448,237,487,590,710,793,768,615,640,850,753,757,667,490,1000,1000,1000,337,342,423,657,617,372,433,260,206,537,344,406,727,539,205,237,211,192,231,184,149,169,118,118,118,141,133,169,118,118,329,318,310,267,228,208,298,251,243,251,258,297,298,251,243,98,98,98,117,109,99,120,94,94,99,111,118,99,111,118,677,676,627,580,649,703,445,464,520,587,558,523,477,541,577,870,404,404,540,368,279,950,817,395,456,790,730,233,291,403,667,667,667,897,518,760,456,790,730,1000,520,0,243,436,440,950,817,395,753,616,441,680,524,813,319,737,496,897,518,760,243,480,342,243,436,440,0,0,0,897,518,760,870,404,404,680,524,813,753,616,441,1000,520,0,897,518,760,367,280,440,1000,1000,1000,297,297,297,950,817,395,367,280,440,503,225,225,0,0,0,870,404,404,1000,520,0,1000,1000,1000,950,817,395,667,667,667,1000,520,0,950,817,395,503,225,225,870,404,404,106,106,122,133,90,75,141,102,51,208,188,173,192,165,125,310,263,129,427,427,427,304,115,115,339,347,155,456,462,1,329,367,423,205,280,241,190,187,157,293,243,153,266,293,197,923,862,810,863,828,684,1000,1000,1000,682,717,543,857,727,760,438,507,537,261,250,287,513,463,432,390,305,324,543,503,503,492,650,647,710,275,275,800,762,480,657,440,800,295,590,324,444,243,249,454,243,225,437,263,277,155,225,258,444,240,217,953,953,953,627,227,275,651,310,275,200,510,424,988,522,239,452,438,404,223,211,210,272,276,279,485,476,469,354,347,328,762,739,686,676,235,709,302,302,302,762,569,254,855,347,347,853,883,897,515,506,492,540,524,482,322,312,288,597,293,202,197,197,197,470,230,230,842,842,842,762,569,254,858,411,160,733,545,862,1000,1000,1000,393,1000,430,870,936,1000,311,503,1000,392,790,1000,769,221,639,1000,392,620,524,882,791,20,525,996,561,580,388,228,571,461,560,527,143,248,364,611,311,451,294,577,577,577,158,158,233,318,368,473,117,127,190,39,147,580];
+const STAFF_GROUP = /^STAFF_(HEAD|CORE|POLE)_[A-Z0-9]{1,6}$/;
+// the screen's place on a staff, from the owner's staff (a pistol's differs)
+const STAFF_SCREEN = { ScreenOffset: ['0.019999999552965164', '0.11999999731779099', '-0.10000000149011612'], ScreenRotation: ['0.0', '1.0', '0.0', '1.9198620319366455'] };
+const isStaff = (o) => str(g(o, 'Resource', 'Filename')).toUpperCase() === STAFF_SCENE;
+const staffGroups = (o) => { const gs = (g(o, 'CustomisationData', 'DescriptorGroups') || []).map((x) => str(x).replace(/^\^/, '').toUpperCase()); return STAFF_SLOTS.map((s) => gs.find((x) => x.startsWith(s.id + '_') && STAFF_GROUP.test(x)) || ''); };
+const staffNodes = (groups) => groups.filter(Boolean).map((x) => x.replace(/^STAFF_(HEAD|CORE|POLE)_/, '_STAFF$1_'));
+const staffKey = (p, a) => p + '|' + a;
+function staffStandardColours() {
+  const m = new Map();
+  STAFF_PALETTES.forEach((p, i) => STAFF_ALTS.forEach((a, k) => m.set(staffKey(p, a), [0, 1, 2].map((c) => STAFF_RGB[(i * 5 + k) * 3 + c] / 1000))));
+  return m;
+}
+// a tool's stored colours as a map (palette|alt -> [r, g, b]); the standard list fills what it doesn't have
+function staffColoursOf(o) {
+  const m = staffStandardColours();
+  for (const x of (o && g(o, 'CustomisationData', 'Colours')) || []) { const p = str(g(x, 'Palette', 'Palette')), a = str(g(x, 'Palette', 'ColourAlt')), c = (g(x, 'Colour') || []).map(num); if (p && a && c.length >= 3) m.set(staffKey(p, a), c.slice(0, 3)); }
+  return m;
+}
+const staffPartName = (item, fallback) => { const it = S.db && (S.db.byId.get('^' + item) || S.db.byId.get(item)); return (it && it.name && !/^\^|_/.test(it.name) ? it.name : fallback) || item; };
+// the parts to choose from: the game's own table when the app read it, else the built-in list
+function staffSlotList(fromGame) {
+  return STAFF_SLOTS.map((s) => {
+    const mine = new Map(s.parts.map((p) => [p[0], p])), got = ((fromGame || []).find((x) => x.id === s.id) || {}).parts;
+    const parts = Array.isArray(got) && got.length && got.every((p) => p && STAFF_GROUP.test(p.group) && p.group.startsWith(s.id + '_')) ? got.map((p) => [p.group, p.item, (mine.get(p.group) || [])[2] || '']) : s.parts;
+    return { ...s, parts: parts.map(([group, item, fb]) => ({ group, item, name: staffPartName(item, fb || titleCase(group.replace(/^STAFF_/, '').replace(/_/g, ' ').toLowerCase())) })) };
+  });
+}
+const titleCase = (s) => s.replace(/\b[a-z]/g, (c) => c.toUpperCase());
+// the save's colour list for a staff: `like` is a list to copy the shape from (another staff's), else it is built
+function staffColourList(cols, like) {
+  let list;
+  if (Array.isArray(like) && like.length) list = cloneJSON(like);
+  else list = STAFF_PALETTES.flatMap((p) => STAFF_ALTS.map((a) => new Map([[keyFor('Palette'), new Map([[keyFor('Palette'), p], [keyFor('ColourAlt'), a], [keyFor('Index'), N(-1)]])], [keyFor('Colour'), [...cols.get(staffKey(p, a)).map((v) => FL(+v.toFixed(4))), FL(1)]]])));
+  const seen = new Set();
+  for (const x of list) {
+    const k = staffKey(str(g(x, 'Palette', 'Palette')), str(g(x, 'Palette', 'ColourAlt'))), want = cols.get(k), have = (g(x, 'Colour') || []).map(num); seen.add(k);
+    if (want && (have.length < 3 || want.some((v, c) => Math.abs(v - have[c]) > .0006))) set(x, 'Colour', [...want.map((v) => FL(+v.toFixed(4))), have.length > 3 ? g(x, 'Colour')[3] : FL(1)]);
+  }
+  return list;
+}
+// make a multi-tool entry a staff with these parts and colours; returns an error text or ''
+function applyStaff(ent, st, wasStaff) {
+  const res = g(ent, 'Resource'), cd = g(ent, 'CustomisationData');
+  if (!(res instanceof Map) || !(cd instanceof Map) || kOf(cd, 'DescriptorGroups') == null || kOf(cd, 'Colours') == null) return 'This save\'s multi-tools have no customisation data, so a staff can\'t be built in it. Open a save made by a recent version of the game.';
+  if (st.groups.length !== 3 || !st.groups.every((x) => STAFF_GROUP.test(x))) return 'Pick a head, a core and a pole.';
+  const other = tools().map((x) => x.s).find((s) => s !== ent && isStaff(s) && (g(s, 'CustomisationData', 'Colours') || []).length);
+  const mine = g(cd, 'Colours') || [];
+  set(res, 'Filename', STAFF_SCENE);
+  set(cd, 'DescriptorGroups', st.groups.map((x) => '^' + x));
+  set(cd, 'Colours', staffColourList(st.cols, wasStaff && mine.length ? mine : other ? g(other, 'CustomisationData', 'Colours') : null));
+  if (kOf(ent, 'IsLarge') != null) set(ent, 'IsLarge', true);
+  if (!wasStaff) { const sc = g(ent, 'ScreenData'); if (sc instanceof Map) for (const [k, v] of Object.entries(STAFF_SCREEN)) if (kOf(sc, k) != null) set(sc, k, v.map((x) => N(x))); }
+  return '';
+}
+// a new staff in the first empty slot, as a copy of one of the owner's tools (its technology and size)
+function addStaff(st, donorIdx) {
+  const list = g(ps(), 'Multitools') || [], used = new Set(tools().map((x) => x.i)), slot = list.findIndex((s, k) => !used.has(k));
+  if (slot < 0) { toast(`All ${list.length} multi-tool slots are in use. The game has no more; delete one first.`, true); return -1; }
+  const src = list[donorIdx]; if (!(src instanceof Map) || !(g(src, 'Resource') instanceof Map)) { toast('Pick one of your multi-tools to copy the technology from.', true); return -1; }
+  const ent = cloneJSON(src), err = applyStaff(ent, st, isStaff(src));
+  if (err) { toast(err, true); return -1; }
+  set(ent, 'Name', st.name);
+  if (kOf(ent, 'Seed') != null) set(ent, 'Seed', [true, st.seed || randomSeed()]);
+  const cls = g(ent, 'Store', 'Class'); if (cls instanceof Map) set(cls, 'InventoryClass', st.cls);
+  list[slot] = ent; markDirty();
+  return slot;
+}
+// change the parts and colours of a staff already in the save; the equipped tool's copy in
+// CharacterCustomisationData[2] follows
+function restyleStaff(i, st) {
+  const list = g(ps(), 'Multitools') || [], ent = list[i]; if (!(ent instanceof Map)) return 'That multi-tool is gone.';
+  const err = applyStaff(ent, st, isStaff(ent)); if (err) return err;
+  if (i === num(g(ps(), 'ActiveMultioolIndex'))) { const cc = g(ps(), 'CharacterCustomisationData'), e = Array.isArray(cc) ? cc[2] : null; if (e instanceof Map && g(e, 'CustomData') instanceof Map) set(e, 'CustomData', cloneJSON(g(ent, 'CustomisationData'))); }
+  markDirty(); return '';
+}
+const staffInfoCache = new Map();
+// what the game files say about a staff with these parts: {names, colours: [{p, a, avg}], slots} or null
+function staffInfo(groups) {
+  if (!APP || !S.lib || !S.lib.game) return Promise.resolve(null);
+  const k = groups.join(',');
+  if (!staffInfoCache.has(k)) staffInfoCache.set(k, api('/api/model/staff?groups=' + encodeURIComponent(k)).then((r) => (r.ok ? r.json() : null)).then((d) => (d && !d.error ? d : null)).catch(() => null));
+  return staffInfoCache.get(k);
+}
+const hex2 = (v) => Math.max(0, Math.min(255, Math.round(v * 255))).toString(16).padStart(2, '0');
+const rgbHex = (c) => '#' + hex2(c[0]) + hex2(c[1]) + hex2(c[2]);
+const hexRgb = (h) => [1, 3, 5].map((k) => parseInt(h.slice(k, k + 2), 16) / 255);
+function hsvRgb(h, s, v) { const f = (n) => { const k = (n + h * 6) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); }; return [f(5), f(3), f(1)]; }
+// The builder itself, drawn into `host`: a turning 3D staff, a row of part tiles per slot, and the staff's colours.
+// start: {groups, cols (Map), name}. Returns {state()} for the caller's own buttons.
+function staffBuilder(host, start) {
+  let slots = staffSlotList(null), used = [], alive = true, job = 0, timer = 0;
+  const st = { groups: STAFF_SLOTS.map((s, k) => (start.groups && STAFF_GROUP.test(start.groups[k] || '') ? start.groups[k] : s.parts[0][0])), cols: new Map(start.cols || staffStandardColours()) };
+  const game = APP && S.lib && S.lib.game;
+  host.innerHTML = `<div class="sb"><div class="sb-view"><div class="sb-pic">${game ? '<div class="tc-art"></div>' : '<p class="dim" data-keep>The 3D staff and the part pictures need the game files (Settings). The builder works without them.</p>'}</div>
+    <div class="toolbar"><button class="btn" type="button" data-sb="rand">Random staff</button><button class="btn" type="button" data-sb="randcol">Random colours</button><button class="btn ghost" type="button" data-sb="stdcol">Standard colours</button></div>
+    <p class="dim small-print" data-keep data-sb="what"></p></div>
+    <div class="sb-opts"><div data-sb="slots"></div><h4 class="sb-h">Colours</h4><div class="sb-cols" data-sb="cols"></div></div></div>`;
+  const $s = (k) => host.querySelector(`[data-sb="${k}"]`), pic = host.querySelector('.sb-pic');
+  const part = (k) => slots[k].parts.find((p) => p.group === st.groups[k]) || { name: st.groups[k] };
+  const tint = [79, 193, 176];
+  const thumbs = () => host.querySelectorAll('canvas[data-thumb]').forEach(async (c) => {
+    const m = await fetchMesh(c.dataset.thumb); if (!alive || !c.isConnected) return;
+    const ctx = c.getContext('2d'); ctx.clearRect(0, 0, c.width, c.height);
+    const img = m && GL3D.render(m, c.width, -1.25, tint); if (img) ctx.drawImage(img, 0, 0);
+  });
+  const drawSlots = () => {
+    $s('slots').innerHTML = slots.map((s, k) => `<div class="parts-group"><span class="pg-name">${s.label} <span class="dim">${esc(part(k).name)}</span></span>
+      <div class="parts-tiles">${s.parts.map((p) => `<button type="button" class="part-tile sb-tile${p.group === st.groups[k] ? ' on' : ''}" data-slot="${k}" data-g="${esc(p.group)}" title="${esc(p.name)}">${game ? `<canvas width="184" height="184" data-thumb="${esc(modelUrl(STAFF_SCENE, '', { _names: staffNodes([p.group])[0] }, 1) + '&only=' + s.node + '&depth=1')}"></canvas>` : ''}<span>${esc(p.name)}</span></button>`).join('')}</div></div>`).join('');
+    $s('slots').querySelectorAll('.sb-tile').forEach((b) => b.onclick = () => { st.groups[+b.dataset.slot] = b.dataset.g; drawSlots(); refresh(); });
+    $s('what').textContent = STAFF_SLOTS.map((s, k) => part(k).name).join(' · ');
+    if (game) thumbs();
+  };
+  const drawCols = () => {
+    const box = $s('cols');
+    if (!game) { box.innerHTML = '<p class="dim" data-keep>Which colours a staff shows is read from the game files, so colours need them. Without them the staff gets the standard colours.</p>'; return; }
+    if (!used.length) { box.innerHTML = `<p class="dim" data-keep>${job ? 'Reading this staff\'s colours…' : 'These parts take no colours DryDock can read from the game files. The staff gets the standard colours.'}</p>`; return; }
+    box.innerHTML = used.map((u, n) => `<label class="sb-col" title="${esc(u.layer ? 'Texture layer ' + u.layer : '')}"><input type="color" data-n="${n}" value="${rgbHex(st.cols.get(staffKey(u.p, u.a)) || u.avg || [.5, .5, .5])}"><span>${esc(u.p.replace(/_/g, ' '))} ${STAFF_ALTS.indexOf(u.a) + 1}</span></label>`).join('');
+    box.querySelectorAll('input[type=color]').forEach((inp) => inp.oninput = () => { const u = used[+inp.dataset.n]; st.cols.set(staffKey(u.p, u.a), hexRgb(inp.value)); paintSoon(); });
+  };
+  const it = { kind: 'tool', i: -1, name: 'Staff', type: 'Staff', tool: 'staff', cls: 'S', seed: '', scene: STAFF_SCENE, key: 'staff-builder' };
+  const look = () => ({ c: used.map((u) => ({ p: u.p, a: u.a, c: [...(st.cols.get(staffKey(u.p, u.a)) || u.avg), 1].map((v) => +(+v).toFixed(4)) })) });
+  // the textured staff in its colours (the plain model shows meanwhile)
+  const paint = async () => {
+    if (!game || !alive) return;
+    const mine = ++job, names = staffNodes(st.groups).join('|'), art = pic.querySelector('.tc-art');
+    if (art) art.classList.add('trav-loading');
+    try {
+      const lk = look(), r = await api('/api/model/glb?scene=' + encodeURIComponent(STAFF_SCENE) + '&seed=&name=Staff&picks=' + encodeURIComponent(JSON.stringify({ _names: names })) + (lk.c.length ? '&look=' + encodeURIComponent(JSON.stringify(lk)) : ''));
+      if (!r.ok) throw new Error((await r.text()).trim());
+      const glb = await GLTEX.parse(await r.arrayBuffer());
+      if (mine !== job || !alive || !pic.isConnected) return;
+      it.texGlb = glb; it.pitch = 6; miniCover(pic, it, 380);
+    } catch (e) { if (mine === job && alive) { const w = $s('what'); if (w) w.textContent = 'The 3D staff couldn\'t be made: ' + e.message; } }
+    if (mine === job) { job = 0; const a2 = pic.querySelector('.tc-art'); if (a2) a2.classList.remove('trav-loading'); }
+  };
+  const paintSoon = () => { clearTimeout(timer); timer = setTimeout(paint, 220); };
+  const refresh = async () => {
+    if (!game) { drawCols(); return; }
+    const key = st.groups.join(','); job++; drawCols();
+    const d = await staffInfo(st.groups); if (!alive || key !== st.groups.join(',')) return;
+    if (d && Array.isArray(d.slots) && d.slots.length) { const before = JSON.stringify(slots); slots = staffSlotList(d.slots); if (JSON.stringify(slots) !== before) drawSlots(); }
+    used = d && Array.isArray(d.colours) ? d.colours.filter((u) => u && typeof u.p === 'string' && STAFF_ALTS.includes(u.a)) : [];
+    job = 0; drawCols(); paint();
+  };
+  const pickRandom = (a) => a[Math.floor(Math.random() * a.length)];
+  $s('rand').onclick = () => { st.groups = slots.map((s) => pickRandom(s.parts).group); drawSlots(); refresh(); };
+  $s('randcol').onclick = () => {
+    if (!used.length) { toast(game ? 'These parts take no colours DryDock can read.' : 'Colours need the game files (Settings).', true); return; }
+    const byPal = new Map(); for (const u of used) if (!byPal.has(u.p)) byPal.set(u.p, Math.random());
+    for (const u of used) st.cols.set(staffKey(u.p, u.a), hsvRgb((byPal.get(u.p) + (Math.random() - .5) * .16 + 1) % 1, .35 + Math.random() * .55, .3 + Math.random() * .65));
+    drawCols(); paint();
+  };
+  $s('stdcol').onclick = () => { st.cols = new Map(start.cols || staffStandardColours()); drawCols(); paint(); };
+  drawSlots(); refresh();
+  return { state: () => ({ groups: [...st.groups], cols: new Map(st.cols), used: used.map((u) => [u.p, u.a]) }), names: () => STAFF_SLOTS.map((s, k) => part(k).name), stop: () => { alive = false; clearTimeout(timer); } };
+}
+// a staff already in the save: change its parts and colours
+async function staffEditDialog(i) {
+  const o = (g(ps(), 'Multitools') || [])[i]; if (!(o instanceof Map)) return;
+  let sb = null;
+  const ok = await customDialog({ title: 'Staff parts and colours: ' + entityName(o, i, 'tool'), wide: true, html: '<div id="seHost"></div><p class="dim small-print" data-keep>Its technology, class and name stay as they are. Press Save to game to keep the change.</p>', actions: [['Cancel', null], ['Apply', 'ok', 'primary']], wire: (body) => { sb = staffBuilder($('#seHost', body), { groups: staffGroups(o), cols: staffColoursOf(o) }); } });
+  const st = sb && sb.state(); if (sb) sb.stop();
+  if (ok !== 'ok' || !st) return;
+  const err = restyleStaff(i, st); if (err) { toast(err, true); return; }
+  S.sel = null; render(); toast('Staff changed. Press Save to game to keep it.');
 }
 // exocraft come from their geobays: learning a geobay's blueprint lets you build it and summon that exocraft
 // Each exocraft is summoned from its own geobay, a base part whose blueprint the player learns (the Knowledge page's

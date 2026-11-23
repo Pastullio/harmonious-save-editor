@@ -26,7 +26,10 @@ func toolSampleWants(n string) bool {
 	n = normGamePath(n)
 	switch {
 	case strings.HasPrefix(n, "models/common/weapons/multitool/"):
-		return strings.HasSuffix(n, ".scene.mbin") || strings.HasSuffix(n, ".descriptor.mbin")
+		// materials too (small): they name the layered textures that say which palette colours a staff shows
+		return strings.HasSuffix(n, ".scene.mbin") || strings.HasSuffix(n, ".descriptor.mbin") || strings.HasSuffix(n, ".material.mbin")
+	case strings.HasSuffix(n, ".texture.mbin"):
+		return strings.Contains(n, "multitool") || strings.Contains(n, "staff") || strings.Contains(n, "/weapons/")
 	case strings.HasPrefix(n, "metadata/gamestate/playerdata/"):
 		return strings.HasSuffix(n, ".mbin")
 	case strings.HasPrefix(n, "metadata/reality/tables/"):
