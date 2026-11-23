@@ -513,6 +513,8 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .sw-row .id { color: var(--dim); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sw-row .grp { font-size: 12px; color: var(--dim); }
 .sw-row:not(.g-other) .nm { font-weight: 500; color: var(--accent); }
+.at-tabs { margin-bottom: 12px; }
+.at-pic { min-height: 260px; }
 .st-add { display: flex; gap: 10px; align-items: flex-start; margin: 10px 0 14px; }
 .st-grid { display: grid; grid-template-columns: 220px 1fr; gap: 16px; min-height: 300px; }
 .st-list { display: flex; flex-direction: column; gap: 6px; max-height: 460px; overflow: auto; }
@@ -3381,6 +3383,7 @@ function entityDetails(ed, o, i, kind) {
     <div class="toolbar details-acts">
       <button class="btn primary" data-k="saveprof">Save as profile</button><button class="btn" data-k="applyprof">Apply a profile</button>
       ${APP && S.lib && S.lib.game ? '<button class="btn" data-k="parts">Choose parts</button>' : ''}
+      ${kind === 'tool' ? '<button class="btn" data-k="share">Share</button>' : ''}
       <span class="sep"></span>
       ${isShip && APP ? '<button class="btn" data-k="tolib">To the Dock Yard…</button><button class="btn ghost" data-k="dyvers">Versions in the Dock Yard</button>' : ''}<details class="menu" data-k="exportMenu"><summary class="btn">Export…</summary><div class="menu-pop">
         <button class="menu-item" data-k="export"><b>.json backup</b><span>This ${isShip ? 'ship' : 'multi-tool'} as a file you can import again</span></button>
@@ -3410,6 +3413,7 @@ function entityDetails(ed, o, i, kind) {
   panel.querySelectorAll('[data-stat]').forEach((inp) => inp.onchange = () => { const v = Number(inp.value); if (!isFinite(v) || v < 0) { toast('Stats are numbers of 0 or more.', true); inp.value = fmtStat(statOf(o, kind, inp.dataset.stat)); return; } setStat(o, kind, inp.dataset.stat, v); });
   for (const [k, key] of [['shealth', 'ShipHealth'], ['sshield', 'ShipShield']]) { const inp = $k(k); if (inp) inp.onchange = () => { const v = clampU32(inp.value); inp.value = v; set(p, key, N(v)); }; }
   $k('saveprof').onclick = () => saveProfileDialog(o, i, kind);
+  if ($k('share')) $k('share').onclick = () => toolShareCode(o, i).catch((e) => toast('Couldn\'t make the share code: ' + e.message, true));
   $k('applyprof').onclick = () => applyProfileDialog(o, i, kind);
   const pb = $k('parts');
   if (pb) pb.onclick = () => { const it = coverItems().find((x) => (kind === 'tool' ? x.kind === 'tool' : x.kind !== 'tool') && x.i === i); if (it && it.scene) partsDialog(it, () => render()); else toast("Corvettes are built from base parts; render them with Blender instead.", true); };
@@ -7143,17 +7147,158 @@ async function addShipDialog() {
   S.pick.ship = slot; S.sel = null; renderSide(); render(); toast(`Added to slot ${slot + 1}. Press Save to game to keep it.`);
 }
 // multi-tools: a copy of one you have, in a free slot
+// ---- Multi-tools: share codes and the Add window (owner 2026-11-23: "click add multitool and a new page/popup opens
+// with these new features": pick parts for any tool, share and pull tools, a staff builder).
+// A multi-tool's look is its model and its seed; the game works the parts out from the seed with code that isn't in
+// its files, so a tool shared as model + seed looks the same in every game. A share code is "HDM1:" + base64 of
+// deflate-raw JSON {v, n: name, m: the model (an index into TOOL_MODELS, or its path), s: seed, c: class, l: use old
+// colours, p: the sharer's part picks for the 3D preview (Choose parts), so the receiver sees what the sharer saw}.
+// Pulling one adds a COPY of one of your own tools (its technology and size) with that model, seed, name and class:
+// the same proven shape as Add a multi-tool's copy. Picking exact parts and building staffs need the game's part
+// tables and a save that has them, which the owner sends with "Save multi-tool files for the developer".
+const TOOL_CODE_V = 1, TOOL_SEED = /^0x[0-9A-Fa-f]{1,16}$/, TOOL_PATH = /^MODELS\/[A-Z0-9_\/.\-]{4,120}\.SCENE\.MBIN$/;
+async function toolCodeMake(t) {
+  const at = TOOL_MODELS.findIndex(([, f]) => f === t.scene), picks = {};
+  for (const [k, v] of Object.entries(t.picks || {})) if (TRAV_WORD.test(k) && typeof v === 'string' && /^[\w^ .|\-]{1,200}$/.test(v)) picks[k] = v;
+  const doc = { v: TOOL_CODE_V, n: String(t.name || 'Multi-tool').slice(0, 42), m: at >= 0 ? at : t.scene, s: t.seed, c: /^[SABC]$/.test(t.cls) ? t.cls : 'C', l: !!t.legacy, p: picks };
+  const raw = new Uint8Array(await new Response(new Blob([JSON.stringify(doc)]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer());
+  let bin = ''; for (const b of raw) bin += String.fromCharCode(b);
+  return 'HDM' + TOOL_CODE_V + ':' + btoa(bin).replace(/=+$/, '');
+}
+// the multi-tool in a pasted text; null when there is no code; throws when one is there but can't be read
+async function toolCodeRead(text) {
+  const m = /HDM(\d+):([A-Za-z0-9+/]{8,40000})/.exec(String(text || '')); if (!m) return null;
+  if (+m[1] > TOOL_CODE_V) throw new Error('This code was made by a newer DryDock. Update DryDock to use it.');
+  let doc;
+  try {
+    const bin = atob(m[2]), raw = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
+    const txt = await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+    if (txt.length > 100000) throw new Error('too long');
+    doc = JSON.parse(txt);
+  } catch (_) { throw new Error('This code is cut off or damaged. Copy the whole code again.'); }
+  const bad = new Error('This code isn\'t a multi-tool DryDock can read.');
+  if (!doc || typeof doc.s !== 'string' || !TOOL_SEED.test(doc.s)) throw bad;
+  const scene = Number.isInteger(doc.m) ? (TOOL_MODELS[doc.m] || [])[1] : (typeof doc.m === 'string' && TOOL_PATH.test(doc.m) ? doc.m : '');
+  if (!scene) throw bad;
+  if (/STAFFNPC/i.test(scene)) throw new Error('This code is for the NPC staff, which stops a save from loading. It wasn\'t added.');
+  const picks = {};
+  if (doc.p && typeof doc.p === 'object') for (const [k, v] of Object.entries(doc.p).slice(0, 60)) if (TRAV_WORD.test(k) && typeof v === 'string' && /^[\w^ .|\-]{1,200}$/.test(v)) picks[k] = v;
+  const name = untag(String(doc.n || '')).replace(/[<>\\/:*?"|\x00-\x1f]/g, '').trim().slice(0, 42) || 'Multi-tool';
+  return { name, scene, seed: '0x' + doc.s.slice(2).toUpperCase(), cls: /^[SABC]$/.test(doc.c) ? doc.c : 'C', legacy: doc.l === true, picks, code: m[0], type: (TOOL_MODELS.find(([, f]) => f === scene) || [modelName(scene)])[0] };
+}
+const sharedTools = () => { try { const l = JSON.parse(localStorage.getItem('hse-shared-tools') || '[]'); return Array.isArray(l) ? l.filter((x) => x && typeof x.code === 'string') : []; } catch (_) { return []; } };
+const sharedToolsStore = (l) => { try { localStorage.setItem('hse-shared-tools', JSON.stringify(l.slice(0, 300))); } catch (_) {} };
+// what a multi-tool in the save shares: its model, seed, name, class and the owner's part picks
+async function toolShareOf(o, i) {
+  const it = coverItems().find((x) => x.kind === 'tool' && x.i === i), sd = seedOf(o) || [];
+  return { name: entityName(o, i, 'tool'), scene: str(g(o, 'Resource', 'Filename')), seed: str(sd[1]), cls: invClass(g(o, 'Store')) || 'C', legacy: g(o, 'UseLegacyColours') === true, picks: it ? await partsOf(it.key) : {} };
+}
+async function toolShareCode(o, i) {
+  const t = await toolShareOf(o, i);
+  if (!TOOL_SEED.test(t.seed) || !t.scene) { toast('This multi-tool has no model or seed to share.', true); return; }
+  const code = await toolCodeMake(t), post = '```\n' + code + '\n```';
+  const copy = async () => { try { await navigator.clipboard.writeText(post); toast('Share code copied. Paste it into Discord.'); } catch (_) { toast('Couldn\'t reach the clipboard. Select the code and copy it.', true); } };
+  await copy();
+  await customDialog({ title: 'Share ' + t.name, wide: true, html: `<p>This multi-tool's look as a share code: its type, seed, class and name. Post it in Discord with a screenshot; anyone with DryDock copies the code and adds it under <b>Add a multi-tool</b>. Seeds look the same in every game, so they get this exact tool. Its technology isn't in the code.</p>
+    <textarea id="tsCode" class="mono" readonly rows="4" style="width:100%">${esc(post)}</textarea>
+    <p class="dim" data-keep>${code.length.toLocaleString()} characters. Fits in one Discord message (up to ${DISCORD_MAX.toLocaleString()}).${Object.keys(t.picks).length ? ' Your part choices for the 3D picture go with it.' : ''}</p>
+    <div class="toolbar"><button class="btn primary" type="button" id="tsCopy">Copy the code</button></div>`,
+    actions: [['Close', null]], wire: (body) => { $('#tsCopy', body).onclick = copy; $('#tsCode', body).onfocus = (e) => e.target.select(); } });
+}
+// put a shared multi-tool in the first empty slot, as a copy of one of your own tools with the shared look
+function addSharedTool(t, donorIdx) {
+  const list = g(ps(), 'Multitools') || [], used = new Set(tools().map((x) => x.i)), slot = list.findIndex((s, k) => !used.has(k));
+  if (slot < 0) { toast(`All ${list.length} multi-tool slots are in use. The game has no more; delete one first.`, true); return -1; }
+  const src = list[donorIdx]; if (!(src instanceof Map) || !(g(src, 'Resource') instanceof Map)) { toast('Pick one of your multi-tools to copy the technology from.', true); return -1; }
+  const ent = cloneJSON(src), res = g(ent, 'Resource'), seed = [true, t.seed];
+  set(ent, 'Name', t.name); set(res, 'Filename', t.scene);
+  if (kOf(res, 'Seed')) set(res, 'Seed', cloneJSON(seed));
+  if (kOf(ent, 'Seed')) set(ent, 'Seed', cloneJSON(seed));
+  if (kOf(ent, 'UseLegacyColours') != null) set(ent, 'UseLegacyColours', t.legacy);
+  const cls = g(ent, 'Store', 'Class'); if (cls instanceof Map) set(cls, 'InventoryClass', t.cls);
+  list[slot] = ent; markDirty();
+  if (Object.keys(t.picks).length) IDB.put('parts:' + `tool|${t.name}|${t.seed}|${t.scene}`, t.picks).catch(() => {});   // the sharer's part choices, for its picture
+  return slot;
+}
 async function addToolDialog() {
   const list = g(ps(), 'Multitools') || [], used = new Set(tools().map((x) => x.i));
-  const empty = list.map((s, i) => i).filter((i) => !used.has(i));
-  if (!empty.length) { toast(`All ${list.length} multi-tool slots are in use. The game has no more; delete one first.`, true); return; }
-  const have = tools();
-  const ok = await dialog('Add a multi-tool', `<label class="field"><span>A copy of</span><select class="input" id="addWhat">${have.map(({ s, i }) => `<option value="${i}">${esc(str(g(s, 'Name')) || 'Multi-tool ' + (i + 1))}</option>`).join('')}</select></label>
-    <p class="dim" style="margin-top:12px">It goes in slot ${empty[0] + 1}, with the same look, class and technology. Rename it after.</p>`, [['Cancel', false, 'ghost'], ['Add', true, 'primary']]);
-  if (!ok) return;
-  const src = list[+$('#addWhat').value], ent = cloneJSON(src), slot = empty[0];
-  set(ent, 'Name', (str(g(src, 'Name')) || 'Multi-tool') + ' copy'); list[slot] = ent;
-  markDirty(); S.pick.tool = slot; S.sel = null; renderSide(); render(); toast(`Added to slot ${slot + 1}. Press Save to game to keep it.`);
+  const empty = list.map((s, i) => i).filter((i) => !used.has(i)), have = tools();
+  let shared = sharedTools(), cur = null, clip = '';
+  try { clip = await navigator.clipboard.readText(); } catch (_) {}
+  if (!/HDM\d+:[A-Za-z0-9+/]{8}/.test(clip)) clip = '';
+  const donors = have.map(({ s, i }) => `<option value="${i}"${i === num(g(ps(), 'ActiveMultioolIndex')) ? ' selected' : ''}>${esc(entityName(s, i, 'tool'))}</option>`).join('');
+  const full = !empty.length, where = full ? `All ${list.length} multi-tool slots are in use. Delete one first.` : `It goes in slot ${empty[0] + 1}.`;
+  const done = (slot, name, finish) => { finish(null); S.pick.tool = slot; S.sel = null; renderSide(); render(); toast(`${name} added to slot ${slot + 1}. Press Save to game to keep it.`); };
+  await customDialog({ title: 'Add a multi-tool', wide: true, html: `<div class="seg at-tabs" role="tablist">${[['code', 'From a share code'], ['copy', 'Copy one of mine'], ['staff', 'Build a staff'], ['parts', 'Pick the parts']].map(([k, t], n) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${n === 0}" aria-pressed="${n === 0}">${t}</button>`).join('')}</div>
+    <p class="${full ? 'warn' : 'dim'}" data-keep>${where}</p>
+    <div data-pane="code">
+      <p>A multi-tool someone shared as a code. Copy it from Discord, paste it here and press Add. You get that exact tool: seeds look the same in every game.</p>
+      <div class="st-add"><textarea id="atPaste" class="mono" rows="2" placeholder="Paste a share code (it starts with HDM1:)" style="width:100%">${esc(clip)}</textarea><button class="btn primary" type="button" id="atKeep">Add</button></div>
+      <div class="st-grid"><div id="atList" class="st-list"></div><div id="atView" class="st-view"></div></div>
+    </div>
+    <div data-pane="copy" hidden>
+      <label class="field"><span>A copy of</span><select class="input" id="addWhat">${donors}</select></label>
+      <p class="dim" style="margin-top:12px">The same look, class and technology. Rename it after.</p>
+      <div class="toolbar"><button class="btn primary" type="button" id="atCopy"${full || !have.length ? ' disabled' : ''}>Add the copy</button></div>
+    </div>
+    <div data-pane="staff" hidden>
+      <p><b>Not built yet.</b> The game assembles a staff from the head, core and handle you choose, so a builder that lets you pick them is possible. To write it I need two things from a real game: the game's own table of staff parts, and a save that holds a staff, to see how the game records the choice.</p>
+      ${APP ? '<p>The button below collects both from your PC into one zip in your Exports folder. Send me that zip. A save with at least one staff in it helps most.</p><div class="toolbar"><button class="btn primary" type="button" data-sample>Save multi-tool files for the developer</button></div>' : '<p class="dim">Collecting the files needs the desktop app.</p>'}
+    </div>
+    <div data-pane="parts" hidden>
+      <p><b>Not possible yet, and it may stay that way.</b> For every multi-tool but the staff, the game picks the barrel, stock and the rest from the seed, with a rule that isn't in its files. Choosing parts would mean finding a seed that gives exactly those parts, which needs that rule worked out first.</p>
+      <p>What helps: your own tools, with their parts set correctly under <b>Choose parts</b>, are known pairs of seed and parts to test a rule against. The more tools you have set, the better the odds.</p>
+      ${APP ? '<div class="toolbar"><button class="btn primary" type="button" data-sample>Save multi-tool files for the developer</button></div>' : ''}
+    </div>`,
+    actions: [['Close', null]],
+    wire: (body, finish) => {
+      body.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => { body.querySelectorAll('[data-tab]').forEach((x) => { x.setAttribute('aria-selected', x === b); x.setAttribute('aria-pressed', x === b); }); body.querySelectorAll('[data-pane]').forEach((x) => { x.hidden = x.dataset.pane !== b.dataset.tab; }); });
+      $('#atCopy', body).onclick = () => {
+        const src = list[+$('#addWhat', body).value], ent = cloneJSON(src), slot = empty[0];
+        set(ent, 'Name', (str(g(src, 'Name')) || 'Multi-tool') + ' copy'); list[slot] = ent; markDirty(); done(slot, str(g(ent, 'Name')), finish);
+      };
+      body.querySelectorAll('[data-sample]').forEach((b) => b.onclick = () => toolSample(b));
+      const listEl = $('#atList', body), view = $('#atView', body);
+      const drawList = () => { listEl.innerHTML = shared.length ? shared.map((x, k) => `<button type="button" class="st-item${cur === k ? ' on' : ''}" data-k="${k}"><b>${esc(x.name)}</b><span class="dim small-print">${esc(x.type || '')}</span></button>`).join('') : '<p class="dim" data-keep>No shared multi-tools yet.</p>'; listEl.querySelectorAll('[data-k]').forEach((b) => b.onclick = () => show(+b.dataset.k)); };
+      const show = async (k) => {
+        cur = k; drawList(); const x = shared[k]; if (!x) { view.innerHTML = ''; return; }
+        let t; try { t = await toolCodeRead(x.code); } catch (e) { view.innerHTML = `<p class="warn" data-keep>${esc(e.message)}</p>`; return; }
+        view.innerHTML = `<div class="st-pic at-pic"></div><h3>${esc(t.name)}</h3><p class="dim small-print" data-keep>${esc(t.type)}, ${t.cls} class, seed ${esc(t.seed)}</p>
+          <label class="field"><span>Technology and size copied from</span><select class="input" id="atDonor">${donors}</select></label>
+          <p class="dim" data-keep>The picture is a guide: it shows the parts the sharer chose, or DryDock's guess when they chose none. In the game the tool looks as it does for them.</p>
+          ${/STAFF/i.test(t.scene) ? '<p class="warn" data-keep>This is a staff. A staff is assembled from chosen parts, and how the game records that choice isn\'t worked out yet, so it may not come out the same as the sharer\'s.</p>' : ''}
+          <div class="toolbar"><button class="btn primary" type="button" data-at="add"${full || !have.length ? ' disabled' : ''}>Add to my save</button><button class="btn" type="button" data-at="copy">Copy the code</button><button class="btn danger ghost" type="button" data-at="remove">Remove</button></div>`;
+        view.querySelector('[data-at="add"]').onclick = () => { const slot = addSharedTool(t, +$('#atDonor', view).value); if (slot >= 0) done(slot, t.name, finish); };
+        view.querySelector('[data-at="copy"]').onclick = () => navigator.clipboard.writeText('```\n' + x.code + '\n```').then(() => toast('Share code copied')).catch(() => toast('Couldn\'t reach the clipboard', true));
+        view.querySelector('[data-at="remove"]').onclick = () => { shared.splice(k, 1); sharedToolsStore(shared); cur = null; view.innerHTML = ''; drawList(); };
+        const pic = view.querySelector('.at-pic');
+        if (APP && S.lib && S.lib.game) { try { miniCover(pic, { kind: 'tool', i: -1, name: t.name, type: t.type, tool: toolType(new Map([[keyFor('Resource'), new Map([[keyFor('Filename'), t.scene]])]])).kind, cls: t.cls, seed: t.seed, scene: t.scene, picks: t.picks, key: `tool|${t.name}|${t.seed}|${t.scene}` }, 260); } catch (_) {} }
+        else pic.innerHTML = '<p class="dim" data-keep>The picture needs the game files (Settings).</p>';
+      };
+      $('#atKeep', body).onclick = async () => {
+        const box = $('#atPaste', body); let t;
+        try { t = await toolCodeRead(box.value); } catch (e) { toast(e.message, true); return; }
+        if (!t) { toast('No multi-tool code in that text. A code starts with HDM1:', true); return; }
+        const at = shared.findIndex((x) => x.code === t.code);
+        if (at >= 0) { toast(t.name + ' is already in your list'); show(at); return; }
+        shared.unshift({ name: t.name, type: t.type, code: t.code, added: Date.now() }); sharedToolsStore(shared); box.value = ''; show(0);
+      };
+      drawList(); if (shared.length && !clip) show(0);
+    } });
+}
+// the files the staff builder and the part research need, zipped into Exports: the game's multi-tool scenes and part
+// tables, and this save's multi-tools with the owner's part picks (known seed and parts pairs)
+async function toolSample(btn) {
+  btn.disabled = true; toast('Collecting the multi-tool files…');
+  try {
+    const mine = [];
+    for (const it of coverItems().filter((x) => x.kind === 'tool')) mine.push({ slot: it.i, name: it.name, scene: it.scene, seed: it.seed, picks: await partsOf(it.key) });
+    const save = new Map([['Multitools', toPlain(cloneJSON(g(ps(), 'Multitools') || []))], ['ArchivedMultitools', toPlain(cloneJSON(g(ps(), 'ArchivedMultitools') || []))], ['ActiveMultioolIndex', g(ps(), 'ActiveMultioolIndex')], ['CharacterCustomisationData', toPlain(cloneJSON(g(ps(), 'CharacterCustomisationData') || []))]]);
+    const r = await api('/api/model/tool/sample', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"tools":' + JSON.stringify(mine) + ',"save":' + C.stringifyJSON(save) + '}' });
+    if (!r.ok) throw new Error((await r.text()).trim());
+    const d = await r.json(); toast('Saved ' + d.path.split(/[\\/]/).pop() + ' (' + Math.max(1, Math.round(d.size / 1048576)) + ' MB) in your Exports folder. Send that zip to the developer.');
+  } catch (err) { toast('Couldn\'t collect the files: ' + err.message, true); }
+  btn.disabled = false;
 }
 // exocraft come from their geobays: learning a geobay's blueprint lets you build it and summon that exocraft
 // Each exocraft is summoned from its own geobay, a base part whose blueprint the player learns (the Knowledge page's

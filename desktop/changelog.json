@@ -1,5 +1,14 @@
 [
  {
+  "version": "2026.11.23.1929",
+  "date": "2026-11-23",
+  "notes": [
+   "Multi-tools: Share copies a multi-tool's share code (type, seed, class, name) to post in Discord",
+   "Multi-tools: Add a multi-tool opens a new window. Paste a share code to add that exact tool, or copy one of your own",
+   "Add a multi-tool also has Build a staff and Pick the parts: not built yet, with a button that collects the files the developer needs"
+  ]
+ },
+ {
   "version": "2026.11.23.1906",
   "date": "2026-11-23",
   "notes": [
