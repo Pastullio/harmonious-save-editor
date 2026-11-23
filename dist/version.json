@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.23.1713",
+  "version": "2026.11.23.1719",
   "date": "2026-11-23",
-  "size": 15087616,
-  "sha256": "a26206f384b98629bb6df2f7f95b146ff0d11dd181ec3495155765f3f9fc2ad6",
-  "notes": "Exosuit: Share copies your traveller's look as a share code to post in Discord, with a picture to go with it\nExosuit: Shared travellers keeps travellers other people shared. Paste a code, press Add, then use the traveller in Blender or export it. Your save isn't changed",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.1713/HarmoniousSaveEditor.exe",
+  "size": 15088128,
+  "sha256": "d892e3f9e473c56c69d67671369e0bf5fd34fe664e587ed50fdaa483e2173a5d",
+  "notes": "Exosuit: Save a picture in the Share window no longer ends with an error message",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.1719/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

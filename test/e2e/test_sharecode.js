@@ -42,6 +42,11 @@ const FX = process.argv[2]; const fails = []; const ok = (n, c) => { console.log
   ok('Share copies the code in a code block', clip === '```\n' + r.code + '\n```' && (await p.inputValue('#tsCode')) === clip);
   ok('…and says it fits in one Discord message', /Fits in one Discord message/.test(await p.textContent('#dlgBody')));
   if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, 'sharecode-share.png') });
+  // Save a picture (owner 2026-11-23: "Cannot set properties of null (setting 'disabled')" after the picture was made)
+  await p.evaluate(() => { window.__saved = []; window.travPicture = async () => { await new Promise((r) => setTimeout(r, 50)); return new Blob(['x'], { type: 'image/png' }); }; window.downloadBlob = async (n) => { window.__saved.push(n); }; });
+  await p.click('#tsPic'); await p.waitForFunction(() => window.__saved.length === 1);
+  await p.waitForTimeout(150);
+  ok('Save a picture saves it and the button works again', (await p.evaluate(() => window.__saved[0])) === 'Pastullio traveller.png' && !(await p.$eval('#tsPic', (x) => x.disabled)) && errs.length === 0);
   await p.click('#dlgX');
   // Shared travellers: the code on the clipboard is offered, Add keeps it
   p.evaluate(() => sharedTravellersDialog()).catch(() => {});
@@ -51,6 +56,9 @@ const FX = process.argv[2]; const fails = []; const ok = (n, c) => { console.log
   ok('Add lists the traveller by name and opens it', (await p.textContent('.st-item.on b')) === 'Pastullio' && /14 parts, 22 colours/.test(await p.textContent('#stView')));
   ok('…with Use in Blender, Export, Copy the code and Remove', (await p.$$eval('#stView [data-st]', (l) => l.map((x) => x.textContent).join('|'))) === 'Use in Blender|Export for Blender (.glb)|Copy the code|Remove');
   if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, 'sharecode-shared.png') });
+  await p.evaluate(() => { window.__saved = []; window.api = async () => new Response(new Blob(['glb'])); });
+  await p.click('#stView [data-st="glb"]'); await p.waitForFunction(() => window.__saved.length === 1); await p.waitForTimeout(150);
+  ok('Export saves the model and the button works again', (await p.evaluate(() => window.__saved[0])) === 'Pastullio.glb' && !(await p.$eval('#stView [data-st="glb"]', (x) => x.disabled)) && errs.length === 0);
   await p.fill('#stPaste', clip); await p.click('#stAdd'); await p.waitForTimeout(200);
   ok('the same code isn\'t added twice', (await p.$$('.st-item')).length === 1);
   await p.fill('#stPaste', 'hello'); await p.click('#stAdd'); await p.waitForTimeout(200);

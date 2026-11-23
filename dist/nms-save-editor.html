@@ -2722,7 +2722,7 @@ async function travellerShareCode() {
       $('#tsCopy', body).onclick = copy;
       $('#tsCode', body).onfocus = (e) => e.target.select();
       const tf = $('#tsFile', body); if (tf) tf.onclick = () => downloadText(t.name + ' traveller code.txt', code);
-      $('#tsPic', body).onclick = async (e) => { e.currentTarget.disabled = true; try { const b = await travPicture(t, 1024); if (b) await downloadBlob(t.name + ' traveller.png', b); else toast('The picture needs the game files and 3D in this window.', true); } catch (err) { toast('Couldn\'t make the picture: ' + err.message, true); } e.currentTarget.disabled = false; };
+      $('#tsPic', body).onclick = async (e) => { const btn = e.currentTarget; btn.disabled = true; try { const b = await travPicture(t, 1024); if (b) await downloadBlob(t.name + ' traveller.png', b); else toast('The picture needs the game files and 3D in this window.', true); } catch (err) { toast('Couldn\'t make the picture: ' + err.message, true); } btn.disabled = false; };   // the event's currentTarget is gone after an await: keep the button
     } });
 }
 // Shared travellers: paste a code, keep it, look at the traveller, hand it to Blender or export it
@@ -2745,7 +2745,7 @@ async function sharedTravellersDialog() {
           <p id="stNote" class="dim" data-keep>${using ? 'Import my traveller in Blender now brings in this traveller.' : ''}</p>
           <div class="toolbar"><button class="btn primary" type="button" data-st="blender">${using ? 'Back to my own traveller' : 'Use in Blender'}</button><button class="btn" type="button" data-st="glb">Export for Blender (.glb)</button><button class="btn" type="button" data-st="copy">Copy the code</button><button class="btn danger ghost" type="button" data-st="remove">Remove</button></div>`;
         view.querySelector('[data-st="blender"]').onclick = async () => { await travellerShare(using ? undefined : t); toast(using ? 'Blender imports your own traveller again.' : `In Blender, press Import my traveller to bring in ${t.name}.`); show(k); };
-        view.querySelector('[data-st="glb"]').onclick = async (e) => { e.currentTarget.disabled = true; try { const r = await api(travGlbUrl(t.groups, t.name, t.look)); if (!r.ok) throw new Error((await r.text()).trim()); await downloadBlob(t.name + '.glb', await r.blob()); } catch (err) { toast('Couldn\'t export this traveller: ' + err.message, true); } if (e.currentTarget) e.currentTarget.disabled = false; };
+        view.querySelector('[data-st="glb"]').onclick = async (e) => { const btn = e.currentTarget; btn.disabled = true; try { const r = await api(travGlbUrl(t.groups, t.name, t.look)); if (!r.ok) throw new Error((await r.text()).trim()); await downloadBlob(t.name + '.glb', await r.blob()); } catch (err) { toast('Couldn\'t export this traveller: ' + err.message, true); } btn.disabled = false; };
         view.querySelector('[data-st="copy"]').onclick = () => navigator.clipboard.writeText('```\n' + x.code + '\n```').then(() => toast('Share code copied')).catch(() => toast('Couldn\'t reach the clipboard', true));
         view.querySelector('[data-st="remove"]').onclick = () => { list.splice(k, 1); sharedTravsStore(list); cur = null; view.innerHTML = ''; drawList(); };
         const pic = view.querySelector('.st-pic');

@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.23.1719",
+  "date": "2026-11-23",
+  "notes": [
+   "Exosuit: Save a picture in the Share window no longer ends with an error message"
+  ]
+ },
+ {
   "version": "2026.11.23.1713",
   "date": "2026-11-23",
   "notes": [
