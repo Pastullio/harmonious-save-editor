@@ -28,3 +28,21 @@ jobs:
           printf '%s\n\n**Download:** HarmoniousSaveEditor.exe below (Windows, no installer). If you already have the editor, it updates itself.\nThe user guide and the browser version are attached too.\n' "$NOTES" > notes.md
           gh release create "v$VERSION" --target "$GITHUB_SHA" --title "Harmonious DryDock $VERSION" --notes-file notes.md --latest \
             out/HarmoniousSaveEditor.exe out/Harmonious-Save-Editor-Guide.html out/nms-save-editor-browser.html
+      # The Mac test build (2026-11-24) is built here from the same source and added to the release; it isn't kept in
+      # dist/. A failure here never stops the Windows release above.
+      - uses: actions/setup-go@v5
+        continue-on-error: true
+        with:
+          go-version-file: desktop/go.mod
+          cache: false
+      - name: Add the Mac test build
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(jq -r .version dist/version.json)
+          if gh release view "v$VERSION" --json assets --jq '.assets[].name' | grep -qx HarmoniousDryDock-Mac.zip; then echo "the Mac build is already there"; exit 0; fi
+          go version
+          node build.js
+          tools/build-mac.sh "$VERSION"
+          gh release upload "v$VERSION" dist-mac/HarmoniousDryDock-Mac.zip

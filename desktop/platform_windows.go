@@ -181,3 +181,16 @@ func openBrowser(url string) error {
 	openExternal(url)
 	return nil
 }
+
+// extraGameFolders: places beside the Steam libraries where the game may be (GOG's usual folders)
+func extraGameFolders() []string {
+	var out []string
+	for _, d := range []string{os.Getenv("ProgramFiles(x86)"), os.Getenv("ProgramFiles"), `C:\`, `D:\`} {
+		if d != "" {
+			out = append(out, filepath.Join(d, "GOG Galaxy", "Games", "No Man's Sky"), filepath.Join(d, "GOG Games", "No Man's Sky"))
+		}
+	}
+	return out
+}
+
+func macBrowsers() []string { return nil }

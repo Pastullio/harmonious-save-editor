@@ -1,0 +1,8 @@
+#!/bin/sh
+# Starts the build for this Mac's processor. DryDock has no window of its own here: it opens in a Chrome-family
+# browser window when one is installed, else in the default browser, and quits by itself after that window closes.
+d="$(cd "$(dirname "$0")" && pwd)"
+case "$(uname -m)" in
+	arm64) exec "$d/drydock-arm64" ;;
+	*) exec "$d/drydock-amd64" ;;
+esac

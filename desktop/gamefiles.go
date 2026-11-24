@@ -24,7 +24,13 @@ import (
 
 // ------------------------------------------------------------------ HGPAK
 
-const pakChunk = 0x10000 // decompressed chunk size on PC (zstd)
+// A compressed archive is cut into chunks: on PC 0x10000 bytes each, packed with zstd; on the Mac 0x20000 bytes each,
+// packed as raw LZ4 blocks (HGPAKtool's compressors.py; the Mac's archives are in GAMEDATA/MACOSBANKS). The header
+// doesn't say which, so openPak looks at the chunks (pakKind).
+const (
+	pakChunk    = 0x10000 // PC (zstd)
+	pakChunkMac = 0x20000 // Mac (LZ4)
+)
 
 type pakEntry struct{ off, size int64 }
 
@@ -32,6 +38,8 @@ type hgpak struct {
 	mu         sync.Mutex
 	f          *os.File
 	compressed bool
+	lz4        bool  // Mac archive: LZ4 chunks
+	chunkLen   int64 // decompressed size of a chunk
 	dataOffset int64
 	chunkSize  []int64
 	chunkOff   []int64
@@ -95,6 +103,10 @@ func (p *hgpak) parse() error {
 			pos += (s + 15) &^ 15
 		}
 	}
+	p.chunkLen = pakChunk
+	if p.compressed {
+		p.pakKind()
+	}
 	// file 0 is the manifest: the names of the other files, one per line
 	man, err := p.readAt(p.entryFor(infos[0].start, infos[0].size))
 	if err != nil {
@@ -107,6 +119,95 @@ func (p *hgpak) parse() error {
 		}
 	}
 	return nil
+}
+
+var zstdMagic = [4]byte{0x28, 0xB5, 0x2F, 0xFD}
+
+// pakKind works out whether the chunks are PC ones (zstd, 0x10000 bytes) or Mac ones (LZ4, 0x20000 bytes): a zstd
+// chunk starts with zstd's magic number; a chunk stored unpacked is exactly one chunk long, which also tells them
+// apart; anything else is LZ4.
+func (p *hgpak) pakKind() {
+	head := make([]byte, 4)
+	for i := 0; i < len(p.chunkSize) && i < 64; i++ {
+		n := p.chunkSize[i]
+		last := i == len(p.chunkSize)-1
+		if n >= 4 {
+			if _, err := p.f.ReadAt(head, p.chunkOff[i]); err != nil {
+				return
+			}
+			if [4]byte(head) == zstdMagic {
+				return // PC
+			}
+		}
+		if n == pakChunkMac && !last {
+			p.lz4, p.chunkLen = true, pakChunkMac
+			return
+		}
+		if n == pakChunk && !last {
+			continue // an unpacked PC chunk, or a Mac chunk that happens to be this long: look at the next
+		}
+		p.lz4, p.chunkLen = true, pakChunkMac
+		return
+	}
+}
+
+// lz4Block unpacks one raw LZ4 block of at most max bytes.
+func lz4Block(src []byte, max int) ([]byte, error) {
+	out := make([]byte, 0, max)
+	bad := errors.New("damaged LZ4 data")
+	for i := 0; i < len(src); {
+		tok := src[i]
+		i++
+		n := int(tok >> 4)
+		if n == 15 {
+			for {
+				if i >= len(src) {
+					return nil, bad
+				}
+				b := src[i]
+				i++
+				n += int(b)
+				if b != 255 {
+					break
+				}
+			}
+		}
+		if i+n > len(src) || len(out)+n > max {
+			return nil, bad
+		}
+		out = append(out, src[i:i+n]...)
+		i += n
+		if i >= len(src) {
+			break // the last sequence is literals only
+		}
+		if i+2 > len(src) {
+			return nil, bad
+		}
+		off := int(src[i]) | int(src[i+1])<<8
+		i += 2
+		m := int(tok & 15)
+		if m == 15 {
+			for {
+				if i >= len(src) {
+					return nil, bad
+				}
+				b := src[i]
+				i++
+				m += int(b)
+				if b != 255 {
+					break
+				}
+			}
+		}
+		m += 4
+		if off == 0 || off > len(out) || len(out)+m > max {
+			return nil, bad
+		}
+		for k := 0; k < m; k++ { // byte by byte: a match may overlap what it writes
+			out = append(out, out[len(out)-off])
+		}
+	}
+	return out, nil
 }
 
 func (p *hgpak) entryFor(start, size int64) pakEntry {
@@ -127,9 +228,17 @@ func (p *hgpak) chunk(i int) ([]byte, error) {
 	if _, err := p.f.ReadAt(raw, p.chunkOff[i]); err != nil {
 		return nil, err
 	}
-	out, err := zstdDec.DecodeAll(raw, make([]byte, 0, pakChunk))
+	var out []byte
+	var err error
+	if int64(len(raw)) == p.chunkLen && i < len(p.chunkSize)-1 {
+		out = raw // a full-length chunk was stored unpacked (a packed one is always shorter)
+	} else if p.lz4 {
+		out, err = lz4Block(raw, int(p.chunkLen))
+	} else {
+		out, err = zstdDec.DecodeAll(raw, make([]byte, 0, pakChunk))
+	}
 	if err != nil {
-		if len(raw) == pakChunk { // stored without compression
+		if int64(len(raw)) == p.chunkLen { // stored without compression
 			out = raw
 		} else {
 			return nil, fmt.Errorf("chunk %d: %w", i, err)
@@ -152,21 +261,21 @@ func (p *hgpak) readAt(e pakEntry) ([]byte, error) {
 	}
 	out := make([]byte, 0, e.size)
 	for pos := e.off; pos < e.off+e.size; {
-		ci := int(pos / pakChunk)
+		ci := int(pos / p.chunkLen)
 		c, err := p.chunk(ci)
 		if err != nil {
 			return nil, err
 		}
-		from := pos - int64(ci)*pakChunk
+		from := pos - int64(ci)*p.chunkLen
 		to := int64(len(c))
-		if rest := e.off + e.size - int64(ci)*pakChunk; rest < to {
+		if rest := e.off + e.size - int64(ci)*p.chunkLen; rest < to {
 			to = rest
 		}
 		if from >= to {
 			return nil, errors.New("file runs past the end of its chunk")
 		}
 		out = append(out, c[from:to]...)
-		pos = int64(ci)*pakChunk + to
+		pos = int64(ci)*p.chunkLen + to
 	}
 	return out, nil
 }
