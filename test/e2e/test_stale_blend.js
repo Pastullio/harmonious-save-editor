@@ -106,7 +106,7 @@ const sha = (f) => crypto.createHash('sha256').update(fs.readFileSync(f)).digest
 
     // 5. a build that arrives from a saved file is noted; one sent with unsaved changes isn't
     const res = await p.evaluate(async ([f, objs]) => {
-      const body = (saved) => new Map([['file', f], ['saved', saved]]), objects = C.parseJSON(JSON.stringify(objs));
+      const body = (saved) => new Map([['file', f], ['saved', saved], ['overwrite', true]]), objects = C.parseJSON(JSON.stringify(objs));   // overwrite: this step is about the note, not the changed-outside-Blender question (test_stale_save.js)
       LIVE.write = false; LIVE.on = true; LIVE.kind = 'corvette'; LIVE.slot = 0;
       await api('/api/live/sent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file: f, parts: [['X', 0, 0, 0, 0, 1, 0, 0, 0, 1, '0']] }) });
       await liveWrite(body(false), objects); await new Promise((r) => setTimeout(r, 300));

@@ -2201,6 +2201,7 @@ function openSave(data, meta, name, src) {
   const t0 = performance.now();
   const save = C.readSave(data, meta, name);
   S.save = save; S.src = src; S.dirty = false; S.pick = {}; S.sel = null;
+  if (src && src.kind === 'app') { src.seen = null; appSeen(src); }   // what the file on disk looked like when it was read
   S.raw = { path: [], q: '', hits: null, open: new Set(), page: {} };
   S.bases = S.pets = S.frig = S.coords = S.acct = null; S.diffPreset = null;
   const root = save.json;
@@ -9979,6 +9980,7 @@ async function liveOpenChecked(t, file) {
   const r = await api('/api/live/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: `{"file":${JSON.stringify(file)},"objects":${objects}}` }).catch((e) => ({ ok: false, text: async () => e.message }));
   if (!r.ok) { toast((await r.text()).trim(), true); return false; }
   const j = await r.json();
+  liveNoteBase(file, t, save);   // Blender now starts from the save's build
   dialog('Updating ' + bn, `<p>Blender is opening <b>${esc(bn)}</b> with ${esc(name)} as it is in your save (${esc(liveDiffText(d))}).</p>
     <p>Look it over in Blender, then save (Ctrl+S) to keep it. Until you save, the file on disk is unchanged.</p>
     <div class="live-file"><span class="k">Backup of the file as it was</span><b>${esc(blendName(j.backup))}</b><span class="mono dim small-print">${esc(j.backup)}</span></div>`, [['OK', true, 'primary']]);
@@ -10099,15 +10101,55 @@ async function liveConfirmTarget(body) {
   }
   return true;
 }
+// The build Blender last put on a corvette of this save, kept per .blend (desktop/blendupdate.go basePath). When the
+// next build arrives and the save's corvette is no longer that build, the corvette was changed in the game or in the
+// editor, and Blender (open all along, or opened without updating) doesn't have that change.
+const liveBaseKey = (slot) => [S.src.dir, slotLabel(S.src.dataName).slot, slot, str(g((g(ps(), 'ShipOwnership') || [])[slot], 'Name'))].join('|');
+const liveNoteBase = (file, slot, rows) => api('/api/live/sent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ file, parts: rows, for: liveBaseKey(slot) }) }).catch(() => {});
+async function liveBaseRows(file, slot) {
+  try { const j = await (await api('/api/live/sent?file=' + encodeURIComponent(file) + '&for=' + encodeURIComponent(liveBaseKey(slot)))).json(); if (j.found && Array.isArray(j.parts)) return j.parts; } catch (_) {}
+  // nothing noted for this corvette yet (builds sent before this check existed): what the file held when it last sent a saved build
+  try { const j = await (await api('/api/live/sent?file=' + encodeURIComponent(file))).json(); if (j.found && Array.isArray(j.parts)) return j.parts; } catch (_) {}
+  return null;
+}
+// a build arrived while the save in the editor is older than the one on disk: nothing is written
+async function liveStaleStop(st) {
+  const v = await dialog('Not written: the game has saved since', `<p class="err">${esc(staleText(st))}.</p><p>A build just arrived from Blender, but DryDock still has the save from before you played. Writing now would put that older save back and lose what you did in the game. <b>Nothing was written.</b></p>
+    <p>Open the new save, then send the build from Blender again (Send now in the LiveLink panel, or save the file). DryDock then checks it against the corvette as the game left it.</p>`, [['Not now', 'no', 'ghost'], ['Open the new save', 'open', 'primary']]);
+  if (v === 'open') await openNewerSave(st.file);
+  return { ok: false, message: 'Not written: the game saved after DryDock opened this save. ' + (v === 'open' ? 'The new save is open now; send the build again.' : 'Open the new save in DryDock, then send again.') };
+}
 async function liveWrite(body, objects) {
+  { const st = await diskStale(); if (st) return liveStaleStop(st); }
   const list = g(ps(), 'ShipOwnership') || [], ship = list[LIVE.slot], base = shipBuild(LIVE.slot);
   if (!ship || !slotIsCorvette(ship) || !base) return { ok: false, message: `Slot ${LIVE.slot + 1} isn't a corvette with a build any more.` };
+  const name = str(g(ship, 'Name')) || 'the corvette';
+  const from = str(body.get('file') || ''), fromTxt = from ? ` from ${blendName(from)}` : '';
+  // has the corvette changed since Blender last put a build on it? Then Blender's build doesn't have that change
+  if (from && !body.get('overwrite')) {
+    const was = await liveBaseRows(from, LIVE.slot), now = (g(base, 'Objects') || []).map(liveRow), d = was && was.length ? liveDiff(was, now) : null;
+    if (d && d.differ) {
+      const bn = blendName(from);
+      const v = await dialog(name + ' was changed outside Blender', `<p><b>${esc(name)}</b> in your save is no longer the build Blender last sent: since then it has ${esc(liveDiffText(d))}.</p>
+        <p>That happens when you build or decorate in the game (decals count), or change the build here. <b>${esc(bn)}</b> doesn't have those changes, so writing its build now would remove them. <b>Nothing has been written.</b></p>
+        <ul class="steps"><li><b>Update the Blender file</b>: close ${esc(bn)} in Blender <i>without saving</i>, then choose this. Blender opens it again with the corvette as it is in your save; a copy of the file goes to your Blender backups folder first.</li>
+        <li><b>Use Blender's build</b>: the build from Blender replaces the corvette in your save. The changes made outside Blender are lost (your save is backed up first).</li></ul>`,
+        [["Don't write", 'no', 'ghost'], ["Use Blender's build", 'over', 'danger'], ['Update the Blender file', 'update', 'primary']]);
+      if (v === 'update') {
+        const objects2 = C.stringifyJSON(toPlain(cloneJSON(g(base, 'Objects') || [])));
+        const r = await api('/api/live/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: `{"file":${JSON.stringify(from)},"objects":${objects2}}` }).catch((e) => ({ ok: false, text: async () => e.message }));
+        if (!r.ok) { const why = (await r.text()).trim(); toast(why, true); return { ok: false, message: 'Not written. The Blender file could not be updated: ' + why }; }
+        await liveNoteBase(from, LIVE.slot, now);   // Blender now starts from the save's build
+        return { ok: false, message: `Not written: ${name} was changed in the game. ${bn} is opening again with those changes; close this window without saving.` };
+      }
+      if (v !== 'over') return { ok: false, message: `Not written: ${name} was changed outside Blender since this file last sent its build. Choose in DryDock what to do.` };
+    }
+  }
   let objs = inGameOrder(fromPlain(cloneJSON(objects)), (g(base, 'Objects') || [])[0]);
   if (S.wright && S.wright.auto) objs = tunedOrder(objs);
   set(base, 'Objects', objs); markDirty();
-  const name = str(g(ship, 'Name')) || 'the corvette';
-  const from = str(body.get('file') || ''), fromTxt = from ? ` from ${blendName(from)}` : '';
   if (from) await liveSetFile(LIVE.slot, from);   // this corvette's build now comes from this .blend
+  if (from) await liveNoteBase(from, LIVE.slot, objs.map(liveRow));   // …and this is the build Blender put on it
   if (from && body.get('saved') === true) liveNoteSent(from, objs.map(liveRow));   // the file as saved holds this build (add-on 1.28+ says so)
   if (!LIVE.write) return { ok: true, parts: objs.length, file: from, name, slot: LIVE.slot, written: false, message: `${plural(objs.length, 'part')}${fromTxt} put on ${name}. Press Save to game in the editor to keep them.` };
   try {
@@ -10155,6 +10197,7 @@ async function liveApplyBase(body) {
   return liveWriteBase(body, objects, hit.b);
 }
 async function liveWriteBase(body, objects, b) {
+  { const st = await diskStale(); if (st) return liveStaleStop(st); }   // never an older save over the game's newer one
   const objs = inGameOrder(fromPlain(cloneJSON(objects)), (g(b, 'Objects') || [])[0]);
   set(b, 'Objects', objs); markDirty();
   const name = baseLabel(b), from = str(body.get('file') || ''), fromTxt = from ? ` from ${blendName(from)}` : '';
@@ -12387,13 +12430,50 @@ async function appListAccount(acct) {
 }
 
 // writes the pair through the app, which backs up the old pair first
-async function appWriteFiles(out) {
+// ---- Never write an older copy over a newer save (owner 2026-11-24: DryDock sat open through a play session, a build
+// then arrived from Blender, and the save from before the session went over the game's newer one, decals and all).
+// When a save is opened its file's time and size are noted, with the newest time among the slot's two files (auto and
+// manual; the game loads the newer). diskStale() says when the game has written either since. Every write goes
+// through appWriteFiles, which refuses a stale write unless told to (`force`: the person chose to); the server checks
+// the file again (`seenMtime`/`seenSize`).
+const slotFiles = (files, name) => { const slot = slotLabel(name).slot; return files.filter((f) => SAVE_RE.test(f.name) && slotLabel(f.name).slot === slot); };
+async function appSeen(src) {
+  try {
+    const files = await (await api('/api/list?dir=' + encodeURIComponent(src.dir))).json(), me = files.find((f) => f.name.toLowerCase() === src.dataName.toLowerCase());
+    if (me && S.src === src) src.seen = { mtime: me.mtime, size: me.size, slotNewest: Math.max(me.mtime, ...slotFiles(files, src.dataName).map((f) => f.mtime)) };
+  } catch (_) {}
+}
+// null, or {file, same}: the save file the game wrote after this save was opened (`same`: the very file that is open)
+async function diskStale() {
+  const src = S.src; if (!APP || !src || src.kind !== 'app' || !src.seen) return null;
+  let files; try { files = await (await api('/api/list?dir=' + encodeURIComponent(src.dir))).json(); } catch (_) { return null; }
+  const me = files.find((f) => f.name.toLowerCase() === src.dataName.toLowerCase());
+  if (me && (me.mtime !== src.seen.mtime || me.size !== src.seen.size)) return { file: me, same: true };
+  const newest = slotFiles(files, src.dataName).sort((a, b) => b.mtime - a.mtime)[0];
+  if (newest && newest.mtime > src.seen.slotNewest + 1000) return { file: newest, same: false };
+  return null;
+}
+const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+const staleText = (st) => `The game saved ${st.same ? 'this save' : 'this slot (its ' + slotLabel(st.file.name).kind + ' save)'} at ${clock(st.file.mtime)}, after DryDock opened it`;
+// open the save the game wrote, in place of the one that is open
+async function openNewerSave(f) {
+  const dir = S.src.dir, read = async (n) => new Uint8Array(await (await api('/api/read?dir=' + encodeURIComponent(dir) + '&name=' + encodeURIComponent(n))).arrayBuffer());
+  try { busy('Opening ' + f.name + '…'); await tick(); const metaName = 'mf_' + f.name; openSave(await read(f.name), await read(metaName), f.name, { kind: 'app', dir, dataName: f.name, metaName }); return true; }
+  catch (e) { toast('Could not open ' + f.name + ': ' + e.message, true); return false; }
+  finally { busy(); }
+}
+async function appWriteFiles(out, opts) {
+  const force = !!(opts && opts.force);
+  if (!force) { const st = await diskStale(); if (st) throw new Error(staleText(st) + '. Nothing was written. Open the new save first.'); }
   const fd = new FormData();
   fd.append('dir', S.src.dir); fd.append('dataName', S.src.dataName); fd.append('metaName', S.src.metaName);
+  if (S.src.seen) { fd.append('seenMtime', String(S.src.seen.mtime)); fd.append('seenSize', String(S.src.seen.size)); }
+  if (force) fd.append('force', '1');
   fd.append('data', new Blob([out.data]), S.src.dataName); fd.append('meta', new Blob([out.meta]), S.src.metaName);
   const r = await api('/api/write', { method: 'POST', body: fd });
   if (!r.ok) throw new Error((await r.text()).trim() || r.statusText);
   const res = await r.json();
+  if (res.mtime) S.src.seen = { mtime: res.mtime, size: res.size, slotNewest: Math.max(res.mtime, S.src.seen ? S.src.seen.slotNewest : 0) };
   S.save.meta = C.readSave(out.data, out.meta, S.src.dataName).meta;
   return res;
 }
@@ -12403,11 +12483,19 @@ async function appWrite(out) {
   const body = `<p>This replaces <span class="mono">${esc(S.src.dataName)}</span> and <span class="mono">${esc(S.src.metaName)}</span> in your save folder. The current pair is copied to the backups folder first.</p>`
     + (running ? `<p class="err">No Man's Sky is running. It will overwrite these changes the next time it saves. Quit the game to the desktop first.</p>` : '')
     + `<p>If Steam asks about a cloud conflict next time you start the game, choose the local files.</p>`;
-  const ok = await dialog(running ? 'The game is still running' : 'Save to your game?', body, [['Cancel', false, 'ghost'], [running ? 'Save anyway' : 'Save', true, running ? 'danger' : 'primary']]);
+  const stale = await diskStale();
+  let ok, force = false;
+  if (stale) {
+    const v = await dialog('The game has saved since you opened this', `<p class="err">${esc(staleText(stale))}.</p><p>What DryDock has is the save from before that. Saving now puts that older save back, with your edits, and what you did in the game since is lost.</p>
+      <p><b>Open the new save</b> shows the game's newer save here instead; your edits in DryDock are dropped and you can make them again.</p>`, [['Cancel', 'no', 'ghost'], ['Save the older copy anyway', 'force', 'danger'], ['Open the new save', 'open', 'primary']]);
+    if (v === 'open') { await openNewerSave(stale.file); return; }
+    if (v !== 'force') return;
+    ok = true; force = true;
+  } else ok = await dialog(running ? 'The game is still running' : 'Save to your game?', body, [['Cancel', false, 'ghost'], [running ? 'Save anyway' : 'Save', true, running ? 'danger' : 'primary']]);
   if (!ok) return;
   const btn = $('#saveBtn'); btn.disabled = true; btn.textContent = 'Saving…';
   try {
-    const res = await appWriteFiles(out);
+    const res = await appWriteFiles(out, { force });
     S.dirty = false; renderSide(); DISK.save = null;   // our own write is not "the game saved again"
     toast('Saved. The previous files are in backups\\' + res.backupName);
     setTimeout(() => garageCapture().catch(() => {}), 1500);   // what was just saved goes to the Hangar too
@@ -12530,10 +12618,7 @@ function showNewer(f) {
   box.querySelector('[data-k="open"]').onclick = async () => {
     if ((S.dirty || (S.acct && S.acct.dirty)) && !(await dialog('Discard changes?', '<p>Your edits to the open save have not been written. Opening the new save drops them.</p>', [['Keep editing', false, 'ghost'], ['Open the new save', true, 'danger']]))) return;
     box.hidden = true;
-    const dir = S.appAcct.path, read = async (n) => new Uint8Array(await (await api('/api/read?dir=' + encodeURIComponent(dir) + '&name=' + encodeURIComponent(n))).arrayBuffer());
-    try { busy('Opening ' + f.name + '…'); await tick(); const metaName = 'mf_' + f.name; openSave(await read(f.name), await read(metaName), f.name, { kind: 'app', dir, dataName: f.name, metaName }); }
-    catch (e) { toast('Could not open ' + f.name + ': ' + e.message, true); }
-    finally { busy(); }
+    await openNewerSave(f);
   };
 }
 if (APP) {

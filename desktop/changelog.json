@@ -1,5 +1,14 @@
 [
  {
+  "version": "2026.11.24.1657",
+  "date": "2026-11-24",
+  "notes": [
+   "Important fix: DryDock no longer writes over a save the game has written since you opened it. If you played with DryDock open, a build arriving from Blender (or Save to game) used to put the older save back; now nothing is written and DryDock offers to open the new save",
+   "When your corvette was changed in the game since Blender last sent its build (decals, new parts), DryDock asks before Blender's build replaces it: don't write, update the Blender file, or use Blender's build",
+   "Backups made in the same second no longer share a folder"
+  ]
+ },
+ {
   "version": "2026.11.24.1553",
   "date": "2026-11-24",
   "notes": [
