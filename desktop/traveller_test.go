@@ -186,3 +186,21 @@ func TestToolSampleWants(t *testing.T) {
 		}
 	}
 }
+
+func TestShipSampleWants(t *testing.T) {
+	for n, want := range map[string]bool{
+		"MODELS/COMMON/SPACECRAFT/FIGHTERS/FIGHTER_PROC.SCENE.MBIN":          true,
+		"models/common/spacecraft/dropships/dropship_proc.descriptor.mbin":   true,
+		"models/common/spacecraft/fighters/fighter_proc.geometry.mbin.pc":    false,
+		"models/common/spacecraft/biggs/hull/hull_a.scene.mbin":              false,
+		"models/common/spacecraft/industrial/freighter_proc.scene.mbin":      false,
+		"textures/common/spacecraft/fighters/shared/fighter.texture.mbin":    true,
+		"textures/common/spacecraft/fighters/shared/fighter.dds":             false,
+		"metadata/gamestate/playerdata/modularcustomisationdatatable.mbin":   true,
+		"models/common/weapons/multitool/multitool.scene.mbin":               false,
+	} {
+		if got := shipSampleWants(n); got != want {
+			t.Errorf("%s: got %v, want %v", n, got, want)
+		}
+	}
+}

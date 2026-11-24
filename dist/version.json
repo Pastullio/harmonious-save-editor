@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.24.1403",
+  "version": "2026.11.24.1433",
   "date": "2026-11-24",
-  "size": 15198720,
-  "sha256": "b2cd0f456c7370e609fb4b8c235cc67cbe90e287bcd2d282e3ec8f09ce63701e",
-  "notes": "Every Cover Flow now sits on a starfield with a faint glow in its page's colour\nCorvettes no longer show a Choose parts button (they are built from base parts)",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.24.1403/HarmoniousSaveEditor.exe",
+  "size": 15205376,
+  "sha256": "9bc348035b4c31776056ce26d00507a02d283bb48f11823974b416ac8ee47d83",
+  "notes": "Add a ship has Save ship files for the developer, the first step towards building a ship from chosen parts",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.24.1433/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

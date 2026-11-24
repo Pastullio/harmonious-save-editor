@@ -40,32 +40,79 @@ func toolSampleWants(n string) bool {
 }
 
 func handleToolSample(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "POST only", http.StatusMethodNotAllowed)
-		return
-	}
-	if _, err := openGamePaks(); err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
-		return
-	}
 	var v struct {
 		Tools json.RawMessage `json:"tools"`
 		Save  json.RawMessage `json:"save"`
 	}
-	if err := json.NewDecoder(io.LimitReader(r.Body, 64<<20)).Decode(&v); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if !sampleBody(w, r, &v) {
 		return
 	}
+	writeSampleZip(w, "Multi-tool files for the developer", "the staff builder, and how the game picks a multi-tool's parts from its seed", toolSampleWants,
+		map[string]json.RawMessage{"my-tools.json": v.Tools, "save-multitools.json": v.Save})
+}
+
+// shipSampleWants: is this game file one the ship builder needs? (owner 2026-11-24: build a ship like a multi-tool.)
+// Scenes, descriptor lists and materials of the starships (not corvette parts, freighters or frigates: many, and
+// not built this way), the layered-texture lists that say which palette colours a ship shows, and the same tables
+// as the multi-tool zip (the game's ship builder slots and parts are in modularcustomisationdatatable).
+func shipSampleWants(n string) bool {
+	n = normGamePath(n)
+	switch {
+	case strings.HasPrefix(n, "models/common/spacecraft/"):
+		if strings.Contains(n, "/biggs/") || strings.Contains(n, "/industrial/") || strings.Contains(n, "/frigates/") || strings.Contains(n, "/commonparts/") {
+			return false
+		}
+		return strings.HasSuffix(n, ".scene.mbin") || strings.HasSuffix(n, ".descriptor.mbin") || strings.HasSuffix(n, ".material.mbin")
+	case strings.HasSuffix(n, ".texture.mbin"):
+		return strings.Contains(n, "/spacecraft/") && !strings.Contains(n, "/biggs/") && !strings.Contains(n, "/industrial/") && !strings.Contains(n, "/frigates/")
+	case strings.HasPrefix(n, "metadata/gamestate/playerdata/"):
+		return strings.HasSuffix(n, ".mbin")
+	case strings.HasPrefix(n, "metadata/reality/tables/"):
+		base := filepath.Base(n)
+		return strings.Contains(base, "modular") || strings.Contains(base, "customis") || strings.Contains(base, "ship")
+	}
+	return false
+}
+
+func handleShipSample(w http.ResponseWriter, r *http.Request) {
+	var v struct {
+		Ships json.RawMessage `json:"ships"`
+		Save  json.RawMessage `json:"save"`
+	}
+	if !sampleBody(w, r, &v) {
+		return
+	}
+	writeSampleZip(w, "Ship files for the developer", "the ship builder: which parts a ship can have and how a save records them", shipSampleWants,
+		map[string]json.RawMessage{"my-ships.json": v.Ships, "save-ships.json": v.Save})
+}
+
+func sampleBody(w http.ResponseWriter, r *http.Request, v any) bool {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return false
+	}
+	if _, err := openGamePaks(); err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return false
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 64<<20)).Decode(v); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return false
+	}
+	return true
+}
+
+func writeSampleZip(w http.ResponseWriter, title, what string, wants func(string) bool, extra map[string]json.RawMessage) {
 	var list []string
 	for _, n := range allGameFiles() {
-		if toolSampleWants(n) {
+		if wants(n) {
 			list = append(list, n)
 		}
 	}
 	sort.Strings(list)
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
-	report := []string{"Editor version: " + appVersion, "For: the staff builder, and how the game picks a multi-tool's parts from its seed", "", "Game files:"}
+	report := []string{"Editor version: " + appVersion, "For: " + what, "", "Game files:"}
 	kept := 0
 	for _, n := range list {
 		b, err := gameFile(n)
@@ -79,7 +126,7 @@ func handleToolSample(w http.ResponseWriter, r *http.Request) {
 			report = append(report, n)
 		}
 	}
-	for name, raw := range map[string]json.RawMessage{"my-tools.json": v.Tools, "save-multitools.json": v.Save} {
+	for name, raw := range extra {
 		if len(raw) > 0 {
 			if f, err := zw.Create(name); err == nil {
 				f.Write(raw)
@@ -95,7 +142,7 @@ func handleToolSample(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	p := filepath.Join(dir, "Multi-tool files for the developer "+time.Now().Format("2006-01-02 1504")+".zip")
+	p := filepath.Join(dir, title+" "+time.Now().Format("2006-01-02 1504")+".zip")
 	for n := 2; fileExists(p); n++ {
 		p = strings.TrimSuffix(p, ".zip") + " (" + strconv.Itoa(n) + ").zip"
 	}
