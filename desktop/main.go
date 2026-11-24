@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -420,9 +421,28 @@ func handleWrite(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Never put an older copy over a save the game has written since the page read it (owner 2026-11-24: a build from
+	// Blender wrote the save DryDock had open from before a play session over the game's newer one). The page says
+	// what the file looked like when it read it; if it has changed, nothing is written unless the person chose to.
+	if seen := r.FormValue("seenMtime"); seen != "" && r.FormValue("force") != "1" {
+		st, err := os.Stat(dataPath)
+		wantM, _ := strconv.ParseInt(seen, 10, 64)
+		wantS, _ := strconv.ParseInt(r.FormValue("seenSize"), 10, 64)
+		if err == nil && (st.ModTime().UnixMilli() != wantM || st.Size() != wantS) {
+			http.Error(w, "the game saved "+dataName+" after DryDock opened it, so nothing was written. Open the new save first.", http.StatusConflict)
+			return
+		}
+	}
+
 	stamp := time.Now().Format("20060102-150405")
 	bakName := filepath.Join(filepath.Base(dir), stamp+"_"+strings.TrimSuffix(dataName, filepath.Ext(dataName)))
 	bakDir := filepath.Join(backups, bakName)
+	// two writes in the same second must not share a folder: the second backup would replace the first, which holds
+	// the save from before either write
+	for n := 2; fileExists(bakDir); n++ {
+		bakName = filepath.Join(filepath.Base(dir), stamp+"-"+strconv.Itoa(n)+"_"+strings.TrimSuffix(dataName, filepath.Ext(dataName)))
+		bakDir = filepath.Join(backups, bakName)
+	}
 	if err := os.MkdirAll(bakDir, 0o755); err != nil {
 		http.Error(w, "could not create backup folder: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -444,7 +464,11 @@ func handleWrite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Printf("wrote %s (%d bytes) and %s (%d bytes), backup %s", dataPath, len(data), metaPath, len(meta), bakDir)
-	writeJSON(w, map[string]string{"backup": bakDir, "backupName": bakName})
+	out := map[string]any{"backup": bakDir, "backupName": bakName}
+	if st, err := os.Stat(dataPath); err == nil { // what the page should expect to find there next time
+		out["mtime"], out["size"] = st.ModTime().UnixMilli(), st.Size()
+	}
+	writeJSON(w, out)
 }
 
 func handleReveal(w http.ResponseWriter, r *http.Request) {

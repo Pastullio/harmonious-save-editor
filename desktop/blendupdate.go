@@ -47,6 +47,15 @@ func sentPath(file string) string {
 	return filepath.Join(appDir, "live-sent", hex.EncodeToString(sum[:])+".json")
 }
 
+// basePath: where the build Blender last put on one corvette of one save is kept (owner 2026-11-24: decals added in
+// the game were lost when Blender, open all along with the older build, sent it again). `who` names the save and the
+// corvette; the note is what the save's corvette is compared with when the next build arrives: if the save has moved
+// on from it, the game (or the editor) changed the corvette and Blender doesn't have that.
+func basePath(file, who string) string {
+	sum := sha1.Sum([]byte(strings.ToLower(filepath.Clean(file)) + "\n" + who))
+	return filepath.Join(appDir, "live-sent", "base-"+hex.EncodeToString(sum[:])+".json")
+}
+
 func blendBackupsDir() string {
 	return filepath.Join(filepath.Dir(exportsDir()), "Blender backups")
 }
@@ -60,9 +69,21 @@ func handleLiveSent(w http.ResponseWriter, r *http.Request) {
 		var v struct {
 			File  string          `json:"file"`
 			Parts json.RawMessage `json:"parts"`
+			For   string          `json:"for"`
 		}
 		if err := json.NewDecoder(io.LimitReader(r.Body, 64<<20)).Decode(&v); err != nil || v.File == "" || len(v.Parts) == 0 {
 			http.Error(w, "a file and its parts are needed", http.StatusBadRequest)
+			return
+		}
+		if v.For != "" { // the build last put on that corvette from this file, whatever the file holds now
+			b, _ := json.Marshal(sentBuild{File: v.File, Time: time.Now().UnixMilli(), Parts: v.Parts})
+			p := basePath(v.File, v.For)
+			_ = os.MkdirAll(filepath.Dir(p), 0o755)
+			if err := os.WriteFile(p, b, 0o644); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, map[string]bool{"ok": true})
 			return
 		}
 		st, err := os.Stat(v.File)
@@ -82,6 +103,15 @@ func handleLiveSent(w http.ResponseWriter, r *http.Request) {
 	}
 	file := r.URL.Query().Get("file")
 	var s sentBuild
+	if who := r.URL.Query().Get("for"); who != "" {
+		b, err := os.ReadFile(basePath(file, who))
+		if err != nil || json.Unmarshal(b, &s) != nil || len(s.Parts) == 0 {
+			writeJSON(w, map[string]any{"found": false})
+			return
+		}
+		writeJSON(w, map[string]any{"found": true, "time": s.Time, "parts": s.Parts})
+		return
+	}
 	b, err := os.ReadFile(sentPath(file))
 	if err != nil || json.Unmarshal(b, &s) != nil || len(s.Parts) == 0 {
 		writeJSON(w, map[string]any{"found": false, "fresh": false})

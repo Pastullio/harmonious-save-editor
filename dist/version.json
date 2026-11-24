@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.24.1553",
+  "version": "2026.11.24.1657",
   "date": "2026-11-24",
-  "size": 15302144,
-  "sha256": "6d62c91f11442cac04a67451577d0ab023b08f1a4d7b07f4cc5e92f60dd80dc5",
-  "notes": "A first Mac test build (HarmoniousDryDock-Mac.zip on the release page): for Steam's Mac version of the game, new and not yet tried on a Mac\nReport, on the first screen and in Settings: saves a zip saying where DryDock looked for your saves, the game and Blender and what it found, to send to the developer when something isn't found\nThe game is also looked for in GOG's usual folders",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.24.1553/HarmoniousSaveEditor.exe",
+  "size": 15317504,
+  "sha256": "85a85369f7cb020bdf0c948ee8ed96f8120f7e0896ff385ad21552819a21f991",
+  "notes": "Important fix: DryDock no longer writes over a save the game has written since you opened it. If you played with DryDock open, a build arriving from Blender (or Save to game) used to put the older save back; now nothing is written and DryDock offers to open the new save\nWhen your corvette was changed in the game since Blender last sent its build (decals, new parts), DryDock asks before Blender's build replaces it: don't write, update the Blender file, or use Blender's build\nBackups made in the same second no longer share a folder",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.24.1657/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
