@@ -1,0 +1,48 @@
+Harmonious DryDock for Mac: TEST BUILD @VERSION@
+=================================================
+
+This is an early test build. It has not been run on a Mac by its developer, so please
+report what works and what doesn't (Discord: https://discord.gg/NzTHwmQpy).
+
+BACK UP YOUR SAVES FIRST. In Finder: Go > Go to Folder, paste
+    ~/Library/Application Support/HelloGames/NMS
+and copy the st_... folder somewhere safe. (DryDock also keeps its own backup every
+time it writes a save, but this is a test build.)
+
+1. OPENING IT THE FIRST TIME
+   The app isn't signed with Apple, so macOS blocks it at first.
+   a. Drag "Harmonious DryDock" into your Applications folder.
+   b. Double-click it. macOS says it can't be opened. Click Done (not Move to Trash).
+   c. Open System Settings > Privacy & Security, scroll down to
+      "Harmonious DryDock was blocked", click Open Anyway, and confirm.
+   On older macOS: right-click the app > Open > Open.
+   If that doesn't work, open Terminal and paste:
+      xattr -dr com.apple.quarantine "/Applications/Harmonious DryDock.app"
+
+2. WHAT HAPPENS
+   DryDock opens in its own window if you have Chrome, Edge or Brave, otherwise as a
+   page in your default browser. There is no Dock icon. It quits by itself a few
+   seconds after you close that window.
+   macOS may ask to let it use your Documents folder (that is where exports, the
+   Dock Yard and backups go) and to control Finder (for file choosers). Allow both.
+
+3. PLEASE SEND A REPORT
+   On the first screen, top right, click Report. It saves a zip and shows it in
+   Finder. Send that zip to the developer, even if everything seems to work.
+   It lists where DryDock looked for your saves, the game and Blender and what it
+   found, how the game's files are packed, and a few small sample files. Nothing
+   from inside your saves is in it. Folder paths include your Mac user name.
+
+4. WHAT TO TRY, IN THIS ORDER
+   - Does it list your saves? Open one. Do the pages show your ships and inventory?
+   - Item names (bottom of the sidebar): does it find the game and build the library?
+   - Starships: do the ship pictures appear?
+   - Change something small (a few units), press Save to game, load the save in the
+     game, and check it.
+   - If you use Blender: Settings (the gear) shows whether Blender was found.
+
+KNOWN LIMITS OF THIS BUILD
+   - It doesn't update itself; it tells you when a newer build is out.
+   - Only Steam's version of the game has been planned for. If you have the Mac App
+     Store version, the Report is especially useful.
+   - No window of its own yet (it uses your browser).

@@ -158,32 +158,59 @@ func itemlibDir() string { return filepath.Join(appDir, "itemlib") }
 
 // ------------------------------------------------------------------ finding the game
 
-// gameBanks finds GAMEDATA\PCBANKS: the folder set in settings, then every Steam library.
-func gameBanks() string {
-	try := func(p string) string {
-		if p == "" {
-			return ""
-		}
-		for _, c := range []string{p, filepath.Join(p, "GAMEDATA", "PCBANKS"), filepath.Join(p, "PCBANKS")} {
-			if st, err := os.Stat(c); err == nil && st.IsDir() {
-				if m, _ := filepath.Glob(filepath.Join(c, "NMSARC.*.pak")); len(m) > 0 {
-					return c
-				}
-			}
-		}
+// banksUnder finds the folder of NMSARC.*.pak archives from a folder the game is in: the folder itself, the PC's
+// GAMEDATA\PCBANKS, or the Mac's GAMEDATA/MACOSBANKS, which sits inside the app bundle (No Man's Sky.app/Contents/
+// Resources), so the bundle, the folder holding the bundle and Contents are all taken.
+func banksUnder(p string) string {
+	if p == "" {
 		return ""
 	}
-	if b := try(os.Getenv("HSE_GAME")); b != "" {
+	has := func(c string) bool {
+		if st, err := os.Stat(c); err == nil && st.IsDir() {
+			m, _ := filepath.Glob(filepath.Join(c, "NMSARC.*.pak"))
+			return len(m) > 0
+		}
+		return false
+	}
+	bases := []string{p, filepath.Join(p, "Contents", "Resources"), filepath.Join(p, "Resources")}
+	if apps, _ := filepath.Glob(filepath.Join(p, "*.app")); len(apps) > 0 {
+		for _, a := range apps {
+			bases = append(bases, filepath.Join(a, "Contents", "Resources"))
+		}
+	}
+	for _, b := range bases {
+		for _, c := range []string{b, filepath.Join(b, "GAMEDATA", "PCBANKS"), filepath.Join(b, "GAMEDATA", "MACOSBANKS"), filepath.Join(b, "PCBANKS"), filepath.Join(b, "MACOSBANKS")} {
+			if has(c) {
+				return c
+			}
+		}
+	}
+	return ""
+}
+
+// gameFolders lists where the game may be installed, most likely first: every Steam library, then (on a Mac) the
+// Applications folders, where the App Store's copy lives.
+func gameFolders() []string {
+	var out []string
+	for _, lib := range steamLibraries() {
+		out = append(out, filepath.Join(lib, "steamapps", "common", "No Man's Sky"))
+	}
+	return append(out, extraGameFolders()...)
+}
+
+// gameBanks finds the game's archives: the folder set in settings, then every Steam library and the other places.
+func gameBanks() string {
+	if b := banksUnder(os.Getenv("HSE_GAME")); b != "" {
 		return b
 	}
 	renderMu.Lock()
 	custom := settings.Game
 	renderMu.Unlock()
-	if b := try(custom); b != "" {
+	if b := banksUnder(custom); b != "" {
 		return b
 	}
-	for _, lib := range steamLibraries() {
-		if b := try(filepath.Join(lib, "steamapps", "common", "No Man's Sky")); b != "" {
+	for _, d := range gameFolders() {
+		if b := banksUnder(d); b != "" {
 			return b
 		}
 	}
@@ -318,7 +345,9 @@ func buildItemLibrary() (err error) {
 	}
 	const prodT, substT, techT, procT = "metadata/reality/tables/nms_reality_gcproducttable.mbin", "metadata/reality/tables/nms_reality_gcsubstancetable.mbin",
 		"metadata/reality/tables/nms_reality_gctechnologytable.mbin", "metadata/reality/tables/nms_reality_gcproceduraltechnologytable.mbin"
-	if b.paks["NMSARC.Precache.pak"] == nil || !b.paks["NMSARC.Precache.pak"].Has(prodT) || b.paks["NMSARC.TexUI.pak"] == nil {
+	openedAll := false
+	openAll := func() {
+		openedAll = true
 		for i, n := range pakNames {
 			b.progress("Looking through the game archives", i, len(pakNames))
 			if _, open := b.paks[n]; open {
@@ -329,17 +358,29 @@ func buildItemLibrary() (err error) {
 			}
 		}
 	}
+	if b.paks["NMSARC.Precache.pak"] == nil || !b.paks["NMSARC.Precache.pak"].Has(prodT) || b.paks["NMSARC.TexUI.pak"] == nil {
+		openAll()
+	}
 
-	// English text: every language file the archives list
-	b.progress("Reading the game's English text", 0, 0)
+	// English text: every language file the archives list (the Mac keeps its text in an archive of its own, so when
+	// the usual three have none, the rest are opened)
 	var langFiles []string
-	for _, p := range b.paks {
-		for f := range p.files {
-			if strings.HasPrefix(f, "language/") && strings.HasSuffix(f, "_english.mbin") && !strings.HasSuffix(f, "_usenglish.mbin") {
-				langFiles = append(langFiles, f)
+	findLang := func() {
+		langFiles = nil
+		for _, p := range b.paks {
+			for f := range p.files {
+				if strings.HasPrefix(f, "language/") && strings.HasSuffix(f, "_english.mbin") && !strings.HasSuffix(f, "_usenglish.mbin") {
+					langFiles = append(langFiles, f)
+				}
 			}
 		}
 	}
+	findLang()
+	if len(langFiles) == 0 && !openedAll {
+		openAll()
+		findLang()
+	}
+	b.progress("Reading the game's English text", 0, 0)
 	sort.Strings(langFiles)
 	for _, f := range langFiles {
 		p, _ := b.find(f, "NMSARC.MetadataEtc.pak")

@@ -1,5 +1,14 @@
 [
  {
+  "version": "2026.11.24.1553",
+  "date": "2026-11-24",
+  "notes": [
+   "A first Mac test build (HarmoniousDryDock-Mac.zip on the release page): for Steam's Mac version of the game, new and not yet tried on a Mac",
+   "Report, on the first screen and in Settings: saves a zip saying where DryDock looked for your saves, the game and Blender and what it found, to send to the developer when something isn't found",
+   "The game is also looked for in GOG's usual folders"
+  ]
+ },
+ {
   "version": "2026.11.24.1543",
   "date": "2026-11-24",
   "notes": [

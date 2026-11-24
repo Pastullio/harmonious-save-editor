@@ -24,7 +24,7 @@ Nothing is uploaded anywhere. Item names and icons come from your own copy of th
 
 ## Getting started
 
-1. **[Download the editor](https://github.com/Pastullio/harmonious-save-editor/releases/latest/download/HarmoniousSaveEditor.exe)** (always the newest version; every version is on the [Releases](https://github.com/Pastullio/harmonious-save-editor/releases) page). It's one small program with no installer. The user guide is attached to each release too; the app also opens it from **Guide** on the save list and **User guide** in the sidebar.
+1. **[Download the editor](https://github.com/Pastullio/harmonious-save-editor/releases/latest/download/HarmoniousSaveEditor.exe)** (always the newest version; every version is on the [Releases](https://github.com/Pastullio/harmonious-save-editor/releases) page). It's one small program with no installer. **Mac (test build):** [HarmoniousDryDock-Mac.zip](https://github.com/Pastullio/harmonious-save-editor/releases/latest/download/HarmoniousDryDock-Mac.zip), for Steam's Mac version of the game on Apple Silicon or Intel; it is new and unsigned, so read the READ ME FIRST file in the zip, and please send the **Report** from its first screen. The user guide is attached to each release too; the app also opens it from **Guide** on the save list and **User guide** in the sidebar.
 2. Run it. Windows SmartScreen warns the first time because the exe isn't code-signed: choose **More info**, then **Run anyway**.
 3. The editor finds your saves in `%APPDATA%\HelloGames\NMS` and opens in its own window. Pick a save.
 4. On first start it builds an item library from your No Man's Sky install (about a minute). That's where item names, icons and descriptions come from.

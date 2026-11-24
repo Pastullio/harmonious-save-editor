@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.24.1543",
+  "version": "2026.11.24.1553",
   "date": "2026-11-24",
-  "size": 15241728,
-  "sha256": "9996c2f0f46b0fed4aa2f3a8a1f23650bc999ae069a8c46110fd73b5bf913c7c",
-  "notes": "Ship pictures no longer draw the engines' exhaust jets as big solid cones (they hid the ship and looked like backwards thrusters)",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.24.1543/HarmoniousSaveEditor.exe",
+  "size": 15302144,
+  "sha256": "6d62c91f11442cac04a67451577d0ab023b08f1a4d7b07f4cc5e92f60dd80dc5",
+  "notes": "A first Mac test build (HarmoniousDryDock-Mac.zip on the release page): for Steam's Mac version of the game, new and not yet tried on a Mac\nReport, on the first screen and in Settings: saves a zip saying where DryDock looked for your saves, the game and Blender and what it found, to send to the developer when something isn't found\nThe game is also looked for in GOG's usual folders",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.24.1553/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

@@ -142,6 +142,7 @@ body.is-app .open-grid, body.is-app .where { display: none; }
 .app-where { font-size: 13.5px; color: var(--dim); margin: 22px 0 12px; }
 .acct-list { display: flex; gap: 8px; flex-wrap: wrap; }
 .other-folder { margin-top: 18px; font-size: 13.5px; }
+.report-text { max-height: 320px; overflow: auto; font-size: 11.5px; white-space: pre-wrap; word-break: break-all; background: var(--well); padding: 10px; border-radius: var(--r-sm); }
 .other-folder summary { cursor: pointer; color: var(--accent); }
 .other-folder form { margin-top: 10px; }
 .land-corner { position: fixed; top: 14px; right: 16px; z-index: 30; display: flex; gap: 8px; }
@@ -1341,7 +1342,7 @@ nav button[aria-current="page"] .dot { background: var(--accent-ink); opacity: .
 </head>
 <body class="on-landing">
 
-<div class="land-corner"><a class="btn small guide-btn" href="/guide" target="_blank" rel="noopener">Guide</a><button class="btn small addon-btn app-only" type="button" title="The LiveLink add-on for Blender: pose your traveller and send builds">LiveLink</button><button class="btn small about-btn" type="button">About</button></div>
+<div class="land-corner"><a class="btn small guide-btn" href="/guide" target="_blank" rel="noopener">Guide</a><button class="btn small addon-btn app-only" type="button" title="The LiveLink add-on for Blender: pose your traveller and send builds">LiveLink</button><button class="btn small report-btn app-only" type="button" title="Save a report for the developer: where DryDock looked for your saves, the game and Blender, and what it found">Report</button><button class="btn small about-btn" type="button">About</button></div>
 <button class="icon-btn theme-btn land-theme" type="button" title="Dark mode" aria-label="Dark mode"></button>
 <section id="landing">
   <div class="landing-inner">
@@ -1883,6 +1884,7 @@ const S = {
 // accessors that work for both obfuscated and plaintext saves
 function kOf(m, name) { if (!(m instanceof Map)) return null; const o = NAME2OBF[name]; if (o && m.has(o)) return o; if (m.has(name)) return name; return null; }
 function g(m, ...names) { let v = m; for (const n of names) { if (!(v instanceof Map)) return undefined; const k = kOf(v, n); if (k == null) return undefined; v = v.get(k); } return v; }
+const IS_MAC = /Mac/i.test(navigator.platform || navigator.userAgent || '');
 function keyFor(name) { return S.obf && NAME2OBF[name] ? NAME2OBF[name] : name; }
 function set(m, name, val) { const k = kOf(m, name) ?? keyFor(name); m.set(k, val); markDirty(); }
 const num = (v) => (v == null ? 0 : Number(v instanceof Num ? v.raw : v));
@@ -5472,13 +5474,16 @@ async function autoRenderCorvettes() {
 }
 async function renderSettingsDialog() {
   let s; try { s = await renderSetup(); } catch (e) { toast(e.message, true); return; }
-  const ok = await dialog('Settings', `<h3 class="label">Corvette covers</h3><p>Corvettes are rendered by your own Blender with Charon Forge's part models. Leave a box empty to find it automatically.</p>
-    <label class="field"><span>Blender (blender.exe)${s.blender ? ', found: ' + esc(s.blender) : ', not found'}</span><input class="input mono" id="rsB" value="${esc(s.blenderSet || '')}" placeholder="C:\\Program Files\\Blender Foundation\\Blender 5.0\\blender.exe"></label>
-    <label class="field" style="margin-top:10px"><span>Charon Forge folder${s.charon ? ', found: ' + esc(s.charon) : ', not found'}</span><input class="input mono" id="rsC" value="${esc(s.charonSet || '')}" placeholder="...\\Blender\\5.0\\extensions\\user_default"></label>
+  const okP = dialog('Settings', `<h3 class="label">Corvette covers</h3><p>Corvettes are rendered by your own Blender with Charon Forge's part models. Leave a box empty to find it automatically.</p>
+    <label class="field"><span>Blender (${IS_MAC ? 'Blender.app' : 'blender.exe'})${s.blender ? ', found: ' + esc(s.blender) : ', not found'}</span><input class="input mono" id="rsB" value="${esc(s.blenderSet || '')}" placeholder="${IS_MAC ? '/Applications/Blender.app/Contents/MacOS/Blender' : 'C:\\Program Files\\Blender Foundation\\Blender 5.0\\blender.exe'}"></label>
+    <label class="field" style="margin-top:10px"><span>Charon Forge folder${s.charon ? ', found: ' + esc(s.charon) : ', not found'}</span><input class="input mono" id="rsC" value="${esc(s.charonSet || '')}" placeholder="${IS_MAC ? '~/Library/Application Support/Blender/5.0/extensions/user_default' : '...\\Blender\\5.0\\extensions\\user_default'}"></label>
     <label class="field" style="margin-top:10px"><span>Screenshot folder (optional; Steam's No Man's Sky folder is used anyway)</span><input class="input mono" id="rsSh" value="${esc(s.shots || '')}" placeholder="D:\\Pictures\\No Man's Sky"></label>
     <div class="two" style="margin-top:10px"><label class="field"><span>Size (pixels)</span><input class="input" id="rsS" type="number" min="256" max="2048" value="${s.size}"></label><label class="field"><span>Quality (samples)</span><input class="input" id="rsQ" type="number" min="4" max="512" value="${s.samples}"></label></div>
-    <label class="check" style="margin-top:12px"><input type="checkbox" id="rsAuto"${s.autoRender !== false ? ' checked' : ''}> Render corvettes without a cover automatically, in the background, when a save opens</label>`,
+    <label class="check" style="margin-top:12px"><input type="checkbox" id="rsAuto"${s.autoRender !== false ? ' checked' : ''}> Render corvettes without a cover automatically, in the background, when a save opens</label>
+    <h3 class="label" style="margin-top:18px">Something not found?</h3><p data-keep>A report lists where DryDock looked for your saves, the game, Blender and Charon Forge, and what it found. <button class="btn sm report-btn" type="button">Save a report for the developer</button></p>`,
     [['Cancel', false, 'ghost'], ['Save', true, 'primary']]);
+  $('#dlgBody .report-btn').onclick = () => { $('#dlgX').click(); saveReport(); };
+  const ok = await okP;
   if (!ok) return;
   try {
     const r = await (await api('/api/render-setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ blender: $('#rsB').value, charon: $('#rsC').value, shots: $('#rsSh').value, size: +$('#rsS').value, samples: +$('#rsQ').value, autoRender: $('#rsAuto').checked }) })).json();
@@ -12111,9 +12116,9 @@ PAGES.items = (el) => {
       <div class="panel lib-panel">
         ${building ? `<h3>Building the item library…</h3><p class="dim">${esc(st.phase || '')}${st.total ? ` (${st.done.toLocaleString()} of ${st.total.toLocaleString()})` : ''}</p><div class="lib-bar"><i style="width:${pct}%"></i></div>`
           : lib.items ? `<h3>${lib.items.toLocaleString()} items from your game</h3><p class="dim">Built ${esc(new Date(lib.built).toLocaleString())} from <span class="mono">${esc(lib.builtFrom || '')}</span>${lib.missingIcons ? `. ${lib.missingIcons.toLocaleString()} icons couldn't be read.` : '.'}${lib.stale ? ' <b>The game has been updated since; rebuild to match.</b>' : ''}</p>`
-          : `<h3>No item library yet</h3><p class="dim">${lib.game ? 'Build it from your game. It takes about a minute.' : "No Man's Sky wasn't found through Steam. Paste the game's folder below (the one that contains GAMEDATA)."}</p>`}
+          : `<h3>No item library yet</h3><p class="dim">${lib.game ? 'Build it from your game. It takes about a minute.' : "No Man's Sky wasn't found through Steam. Paste the game's folder below (the one that contains GAMEDATA; on a Mac, the No Man's Sky app or the folder it is in)."}</p>`}
         ${st.state === 'error' || S.libError ? `<p class="err">${esc(st.error || S.libError)}</p>` : ''}
-        <form class="row db-form" id="gameForm"><label class="field"><span>No Man's Sky folder</span><input class="input mono" id="gamePath" placeholder="C:\\Program Files (x86)\\Steam\\steamapps\\common\\No Man's Sky" value="${esc(lib.gameSet || (lib.game || '').replace(/[\\/]GAMEDATA[\\/]PCBANKS$/i, ''))}"></label><button class="btn" type="submit">Use this folder</button></form>
+        <form class="row db-form" id="gameForm"><label class="field"><span>No Man's Sky folder</span><input class="input mono" id="gamePath" placeholder="${IS_MAC ? "~/Library/Application Support/Steam/steamapps/common/No Man's Sky" : "C:\\Program Files (x86)\\Steam\\steamapps\\common\\No Man's Sky"}" value="${esc(lib.gameSet || (lib.game || '').replace(/[\\/]GAMEDATA[\\/](PCBANKS|MACOSBANKS)$/i, ''))}"></label><button class="btn" type="submit">Use this folder</button></form>
         <div class="toolbar"><button class="btn primary" id="libBuild"${building ? ' disabled' : ''}>${lib.items ? 'Rebuild from the game' : 'Build item library'}</button></div>
       </div>
       <details class="panel gf-panel"${foldAttr('itemdb-jar')}><summary><h3>Goatfungus's item database (optional)</h3></summary>
@@ -12330,6 +12335,20 @@ async function whatsNew(always) {
   return true;
 }
 
+// "Save a report for the developer" (owner 2026-11-24, for the Mac test build): everything DryDock looked for on this
+// computer and what it found (desktop/report.go), zipped into Exports. No save contents go in it.
+async function saveReport(btn) {
+  if (btn) btn.disabled = true; toast('Looking over this computer for the report…');
+  try {
+    const r = await api('/api/report', { method: 'POST' }); if (!r.ok) throw new Error((await r.text()).trim());
+    const d = await r.json();
+    await dialog('Report saved', `<p>Saved as <b>${esc(d.path.split(/[\\/]/).pop())}</b> and shown in ${IS_MAC ? 'Finder' : 'Explorer'}. Send that zip to the developer.</p><p class="dim">It lists the folders DryDock looked in and what it found, how the game's files are packed, and a few small sample files. Nothing from inside your saves is in it. Folder paths include your user name.</p>
+      <details class="menu" style="margin-top:10px"><summary>What it says</summary><pre class="report-text">${esc(d.text || '')}</pre></details><p class="dim small-print mono" data-keep>${esc(d.path)}</p>`, [['Close', false]]);
+  } catch (e) { toast('The report couldn\'t be made: ' + e.message, true); }
+  if (btn) btn.disabled = false;
+}
+function wireReportBtns(root) { (root || document).querySelectorAll('.report-btn').forEach((b) => { b.onclick = () => saveReport(b); }); }
+wireReportBtns();
 async function appLoadRoots() {
   $('#landingErr').textContent = '';
   let info;
@@ -12337,7 +12356,9 @@ async function appLoadRoots() {
   S.appInfo = info;
   const accts = info.roots.flatMap((r) => r.accounts);
   const where = info.roots.map((r) => `<code>${esc(r.path)}</code>${r.exists ? '' : ' (not found)'}`).join(' and ');
-  $('#appWhere').innerHTML = accts.length ? `Saves found in ${where}.` : `No saves found in ${where}. If yours are somewhere else, use a different folder below.`;
+  $('#appWhere').innerHTML = accts.length ? `Saves found in ${where}.` : `No saves found in ${where}. If yours are somewhere else, use a different folder below. If you can't find them either, <button class="link report-btn" type="button">save a report for the developer</button>.`;
+  wireReportBtns($('#appWhere'));
+  if (IS_MAC) $('#otherPath').placeholder = '/Users/you/Library/Application Support/HelloGames/NMS/st_7656…';
   const box = $('#acctList'); box.innerHTML = '';
   if (accts.length > 1) {
     box.innerHTML = accts.map((a, i) => `<button class="pick" data-i="${i}" aria-pressed="false"><span class="pn">${esc(a.label)}</span><span class="ps">${a.saves} saves, last played ${esc(fmtWhen(a.newest))}</span></button>`).join('');
@@ -12424,6 +12445,13 @@ async function checkForUpdateNow(manual) {
   if (!u.newer) { if (manual) upToDatePop(u.current); return; }
   let skipped = ''; try { skipped = localStorage.getItem('hse-skip-version') || ''; } catch (_) {}
   if (!manual && skipped === u.latest) return;
+  if (u.manual) {   // the Mac build doesn't swap itself: offer the download
+    const v = await dialog('A new version is available', `<p>Harmonious DryDock <b>${esc(u.latest)}</b>${u.date ? ` (${esc(u.date)})` : ''} is out. You have ${esc(u.current)}.</p>${u.notes ? `<p>${esc(u.notes)}</p>` : ''}
+      <p class="dim">This build doesn't update itself. Download the new one, quit DryDock, and put the new app in place of the old one. Your saves, backups, Dock Yard and settings stay as they are.</p>`, [['Not now', 'later', 'ghost'], ['Download it', 'go', 'primary']]);
+    if (v === 'later') { try { localStorage.setItem('hse-skip-version', u.latest); } catch (_) {} }
+    if (v === 'go') window.open(u.manual, '_blank', 'noopener');
+    return;
+  }
   const dirty = S.dirty || (S.acct && S.acct.dirty);
   const v = await dialog('A new version is available', `<div class="upd-offer"><div><p>Harmonious DryDock <b>${esc(u.latest)}</b>${u.date ? ` <span style="white-space:nowrap">(${esc(u.date)})</span>` : ''} is out. You have ${esc(u.current)}.</p>${u.notes ? `<p>${esc(u.notes)}</p>` : ''}
     <p class="dim">Updating downloads the new version, checks it, and restarts the editor. Your saves, backups, Dock Yard and settings stay as they are.</p></div><img src="${$('#updScreen .upd-art').src}" alt=""></div>${dirty ? '<p class="err">You have unsaved changes. Save them first, or they are lost when the editor restarts.</p>' : ''}`,

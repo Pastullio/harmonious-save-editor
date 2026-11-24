@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -133,12 +134,31 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 	out["notes"] = rel.Notes
 	out["date"] = rel.Date
 	out["newer"] = newerVersion(rel.Version, appVersion)
+	if runtime.GOOS != "windows" { // only the Windows exe swaps itself; elsewhere the new build is a download
+		out["manual"] = manualDownload()
+	}
 	writeJSON(w, out)
 }
+
+const releasesURL = "https://github.com/Pastullio/harmonious-save-editor/releases/latest"
+
+// manualDownload: where a build that can't swap itself gets the newest one (the Mac's zip is a release asset)
+func manualDownload() string {
+	if runtime.GOOS == "darwin" {
+		return releasesURL + "/download/" + macZipName
+	}
+	return releasesURL
+}
+
+const macZipName = "HarmoniousDryDock-Mac.zip"
 
 func handleUpdateInstall(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	if runtime.GOOS != "windows" { // the release's exe must never replace a Mac or Linux program
+		http.Error(w, "this build doesn't update itself; download the new one from "+manualDownload(), http.StatusNotImplemented)
 		return
 	}
 	rel, err := latestRelease()
