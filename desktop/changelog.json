@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.24.1543",
+  "date": "2026-11-24",
+  "notes": [
+   "Ship pictures no longer draw the engines' exhaust jets as big solid cones (they hid the ship and looked like backwards thrusters)"
+  ]
+ },
+ {
   "version": "2026.11.24.1447",
   "date": "2026-11-24",
   "notes": [

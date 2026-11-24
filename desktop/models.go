@@ -327,7 +327,9 @@ func optionOf(name string) (string, string) {
 }
 
 // effect meshes (engine glow, lights, shadow planes, decals, pulses) draw as solid slabs in a hologram
-var effectMaterialRe = regexp.MustCompile(`SHADOW|HOVER_ENGINE|RADIALPULSE|GLOW|LIGHT|DECAL|SCROLLINGBAR|ENTRANCEMARKER|FLAME|BEAM`)
+// (ENGINEJET, AFTERBURN: a starship's exhaust jets, long cones behind the engines that drew as solid shapes bigger than
+// the ship, owner 2026-11-24; VFX, PULSELINE: eject and pulse effects)
+var effectMaterialRe = regexp.MustCompile(`SHADOW|HOVER_ENGINE|RADIALPULSE|GLOW|LIGHT|DECAL|SCROLLINGBAR|ENTRANCEMARKER|FLAME|BEAM|ENGINEJET|AFTERBURN|VFX|PULSELINE`)
 
 func skipMaterial(m string) bool {
 	if i := strings.LastIndexAny(m, `\/`); i >= 0 {

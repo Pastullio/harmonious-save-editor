@@ -96,3 +96,12 @@ func TestShipSlots(t *testing.T) {
 		t.Logf("the owner's fighter: %v", got)
 	}
 }
+
+func TestSkipEngineJets(t *testing.T) {
+	for m, want := range map[string]bool{"MODELS/COMMON/SPACECRAFT/FIGHTERS/ENGINE/ENGINE_B/ENGINEJET_MAT1.MATERIAL.MBIN": true, "squareengine4_enginejet_mat.material.mbin": true,
+		"AFTERBURNMAT.MATERIAL.MBIN": true, "EJECTVFX3MAT.MATERIAL.MBIN": true, "HQTRIMSECONDARY_MAT.MATERIAL.MBIN": false, "JETPACK_MAT.MATERIAL.MBIN": false, "ENGINEMAT.MATERIAL.MBIN": false} {
+		if got := skipMaterial(m); got != want {
+			t.Errorf("%s: got %v", m, got)
+		}
+	}
+}
