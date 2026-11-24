@@ -7209,16 +7209,34 @@ function duplicateShip(src, slot) {
   if (b) { const bases = g(P, 'PersistentPlayerBases'); shipBuilds().filter((x) => num(g(x, 'UserData')) === slot).forEach((x) => bases.splice(bases.indexOf(x), 1)); const nb = cloneJSON(b); set(nb, 'UserData', N(slot)); set(nb, 'Name', str(g(ent, 'Name'))); bases.push(nb); }
   markDirty();
 }
+// "Save ship files for the developer" (owner 2026-11-24, for a ship builder like the multi-tool one): the game's ship
+// scenes and tables (desktop/toolsample.go) plus this save's ships and their customisation entries, zipped into Exports.
+async function shipSample(btn) {
+  btn.disabled = true; toast('Collecting the ship files…');
+  try {
+    const p = ps(), mine = [];
+    for (const it of coverItems().filter((x) => x.kind !== 'tool' && x.scene)) mine.push({ slot: it.i, kind: it.kind, name: it.name, scene: it.scene, seed: it.seed, ccd: it.kind === 'ship' ? shipCcdIndex(it.i) : undefined, picks: await partsOf(it.key).catch(() => null) });
+    const list = (g(p, 'ShipOwnership') || []).map((s) => { const c = cloneJSON(s); for (const k of ['Inventory', 'Inventory_TechOnly', 'Inventory_Cargo']) { const inv = g(c, k); if (inv && g(inv, 'Slots')) set(inv, 'Slots', []); } return toPlain(c); });
+    const save = new Map([['ShipOwnership', list], ['ShipUsesLegacyColours', g(p, 'ShipUsesLegacyColours')], ['PrimaryShip', g(p, 'PrimaryShip')], ['CharacterCustomisationData', toPlain(cloneJSON(g(p, 'CharacterCustomisationData') || []))]]);
+    const r = await api('/api/model/ship/sample', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"ships":' + JSON.stringify(mine) + ',"save":' + C.stringifyJSON(save) + '}' });
+    if (!r.ok) throw new Error((await r.text()).trim());
+    const d = await r.json(); toast('Saved ' + d.path.split(/[\\/]/).pop() + ' (' + Math.max(1, Math.round(d.size / 1048576)) + ' MB) in your Exports folder. Send that zip to the developer.');
+  } catch (err) { toast('Couldn\'t collect the files: ' + err.message, true); }
+  btn.disabled = false;
+}
 async function addShipDialog() {
   const list = g(ps(), 'ShipOwnership') || [];
   const empty = list.map((s, i) => i).filter((i) => !str(g(list[i], 'Resource', 'Filename')));
   if (!empty.length) { toast(`All ${list.length} ship slots are in use. Delete a ship first, or replace one from the Dock Yard.`, true); return; }
   const have = ships();
-  const ok = await dialog('Add a ship', `<label class="field"><span>What</span><select class="input" id="addWhat">
+  const okP = dialog('Add a ship', `<label class="field"><span>What</span><select class="input" id="addWhat">
       <option value="corvette">A new corvette with a starter build</option>
       ${have.map(({ s, i }) => `<option value="${i}">A copy of ${esc(str(g(s, 'Name')) || shipType(g(s, 'Resource', 'Filename')))}${isCorvetteEntry(s) ? ', build included' : ''}</option>`).join('')}</select></label>
     <label class="field" style="margin-top:12px"><span>Slot</span><select class="input" id="addSlot">${empty.map((i) => `<option value="${i}">Slot ${i + 1}</option>`).join('')}</select></label>
-    <p class="dim" style="margin-top:12px">A copy keeps the ship's look, class, technology and cargo. To bring in a ship from a file or from another save, use the Dock Yard.</p>`, [['Cancel', false, 'ghost'], ['Add', true, 'primary']]);
+    <p class="dim" style="margin-top:12px">A copy keeps the ship's look, class, technology and cargo. To bring in a ship from a file or from another save, use the Dock Yard.</p>
+    ${APP && S.lib && S.lib.game ? '<p class="dim" style="margin-top:12px" data-keep>Building a ship from chosen parts is being worked on. <button class="btn sm" type="button" id="shipSample">Save ship files for the developer</button></p>' : ''}`, [['Cancel', false, 'ghost'], ['Add', true, 'primary']]);
+  const sb = $('#shipSample'); if (sb) sb.onclick = () => shipSample(sb);
+  const ok = await okP;
   if (!ok) return;
   const what = $('#addWhat').value, slot = +$('#addSlot').value;
   try { if (what === 'corvette') addCorvette(slot); else duplicateShip(+what, slot); }

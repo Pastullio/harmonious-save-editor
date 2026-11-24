@@ -1,5 +1,12 @@
 [
  {
+  "version": "2026.11.24.1433",
+  "date": "2026-11-24",
+  "notes": [
+   "Add a ship has Save ship files for the developer, the first step towards building a ship from chosen parts"
+  ]
+ },
+ {
   "version": "2026.11.24.1403",
   "date": "2026-11-24",
   "notes": [
