@@ -64,7 +64,7 @@ func parseModularSlots(raw []byte, ids ...string) []staffSlot {
 				continue
 			}
 			a, n := m.list(p + 0x10)
-			if n < 1 || n > 64 || !m.ok(a, n*0x40) {
+			if n < 1 || n > 400 || !m.ok(a, n*0x40) { // a hauler has well over a hundred wing sets
 				continue
 			}
 			s := staffSlot{ID: id, Label: m.fstr(p-0x40, 0x20)}

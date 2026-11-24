@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.24.1433",
+  "version": "2026.11.24.1447",
   "date": "2026-11-24",
-  "size": 15205376,
-  "sha256": "9bc348035b4c31776056ce26d00507a02d283bb48f11823974b416ac8ee47d83",
-  "notes": "Add a ship has Save ship files for the developer, the first step towards building a ship from chosen parts",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.24.1433/HarmoniousSaveEditor.exe",
+  "size": 15241216,
+  "sha256": "b36dba664307f3d47e8c2b95d39631ca9657377ef86ed3ba29b91a82e6ca96f6",
+  "notes": "Add a ship can now build a ship from chosen parts: fighter, hauler, explorer, shuttle or solar, with body, engines, wings, finish and colours, shown turning in 3D (needs the game files)\nA built ship has Parts and colours on its page, and its cover is drawn from its real parts\nNew and not yet checked in the game: try one ship first and tell the developer how it looks",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.24.1447/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

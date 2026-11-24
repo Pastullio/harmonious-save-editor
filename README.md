@@ -151,7 +151,7 @@ Every ship you own.
 - **Name, type** (hauler, explorer, shuttle, fighter, exotic, living ship, solar, interceptor, corvette and the special ships), **class**, **seed** and **use old colours**.
 - **Base stats**: damage, shields, hyperdrive and maneuverability, plus ship health and shield.
 - **Ship slots** at the top: drag ships into a new order (corvette builds, colours and your current ship move with them), **Close the gaps**, and fixes for problems such as a build that points at the wrong slot.
-- **Add a ship**: a new corvette, or a copy of a ship you own with its colours and build.
+- **Add a ship**: a ship you build from chosen parts (fighter, hauler, explorer, shuttle or solar: pick the body, engines and wings, a finish and colours, with the ship turning in 3D; needs the game files), a new corvette, or a copy of one of your ships with its colours and build. A built fighter, hauler, explorer, shuttle or solar ship also has **Parts and colours** on its page.
 - **Archived ships**: see the ships the game keeps in its archive, **Restore** one into a slot, or **Archive a ship**.
 - **Versions in the Dock Yard** opens the ship's card in the Hangar, with every version kept.
 - **To the Dock Yard…** asks whether to **Keep a copy** (the ship stays in your game) or **Move it** (it's stored in Ship storage and its slot is emptied; not for the ship you're flying).

@@ -528,6 +528,12 @@ button.tc { cursor: pointer; transition: border-color .15s, transform .15s; } bu
 .tc-art.orbit:active { cursor: grabbing; }
 .sb-how { margin: 6px 0 0; }
 .sb-tiles { display: grid; grid-template-columns: repeat(var(--n, 7), minmax(0, 1fr)); gap: 6px; }
+.shb-tiles.many { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); max-height: 268px; overflow-y: auto; padding: 2px 4px 2px 2px; border-radius: var(--r-sm); }
+.shb .part-tile.sb-tile canvas { width: 100%; height: auto; aspect-ratio: 1; max-width: 132px; border-radius: 6px; }
+.shb-kinds { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.shb-form { display: grid; grid-template-columns: 2fr 90px 120px 2fr; gap: 12px; margin-top: 14px; }
+.shb-finish { flex-wrap: wrap; }
+@media (max-width: 760px) { .shb-form { grid-template-columns: 1fr 1fr; } .shb-kinds { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .sb-crow { display: grid; grid-template-columns: 76px minmax(0, 1fr) 62px; align-items: center; gap: 10px; }
 .sb-cname { font-size: 13px; font-weight: 600; }
 .sb-sw { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
@@ -3882,6 +3888,7 @@ function entityDetails(ed, o, i, kind) {
       <button class="btn primary" data-k="saveprof">Save as profile</button><button class="btn" data-k="applyprof">Apply a profile</button>
       ${APP && S.lib && S.lib.game && !(isShip && isCorvetteEntry(o)) ? '<button class="btn" data-k="parts">Choose parts</button>' : ''}
       ${kind === 'tool' && isStaff(o) && g(o, 'CustomisationData') instanceof Map ? '<button class="btn" data-k="staff">Staff parts and colours</button>' : ''}
+      ${isShip && APP && S.lib && S.lib.game && shipKindOf(g(o, 'Resource', 'Filename')) && shipCcd(i) ? '<button class="btn" data-k="shipparts">Parts and colours</button>' : ''}
       ${kind === 'tool' ? '<button class="btn" data-k="share">Share</button>' : ''}
       <span class="sep"></span>
       ${isShip && APP ? '<button class="btn" data-k="tolib">To the Dock Yard…</button><button class="btn ghost" data-k="dyvers">Versions in the Dock Yard</button>' : ''}<details class="menu" data-k="exportMenu"><summary class="btn">Export…</summary><div class="menu-pop">
@@ -3913,6 +3920,7 @@ function entityDetails(ed, o, i, kind) {
   for (const [k, key] of [['shealth', 'ShipHealth'], ['sshield', 'ShipShield']]) { const inp = $k(k); if (inp) inp.onchange = () => { const v = clampU32(inp.value); inp.value = v; set(p, key, N(v)); }; }
   $k('saveprof').onclick = () => saveProfileDialog(o, i, kind);
   if ($k('staff')) $k('staff').onclick = () => staffEditDialog(i);
+  if ($k('shipparts')) $k('shipparts').onclick = () => shipEditDialog(i);
   if ($k('share')) $k('share').onclick = () => toolShareCode(o, i).catch((e) => toast('Couldn\'t make the share code: ' + e.message, true));
   $k('applyprof').onclick = () => applyProfileDialog(o, i, kind);
   const pb = $k('parts');
@@ -4495,8 +4503,10 @@ function coverItems() {
     const file = g(s, 'Resource', 'Filename'), type = shipType(file), cls = invClass(g(s, 'Inventory')) || '';
     const holo = type === 'Corvette' ? corvetteParts(i) : null;
     const name = str(g(s, 'Name')) || type + ' ' + (i + 1), seed = str((seedOf(s) || [])[1]);
-    out.push({ kind: type === 'Corvette' ? 'corvette' : 'ship', i, obj: s, name, type, cls, holo, seed, current: i === primary, scene: type === 'Corvette' ? '' : str(file),
-      key: `ship|${name}|${seed}|${str(file)}`,
+    // a ship built at the fabricator (or in DryDock) is drawn from the parts its customisation entry names
+    const built = shipKindOf(file) ? shipGroupsOf(i) : [];
+    out.push({ kind: type === 'Corvette' ? 'corvette' : 'ship', i, obj: s, name, type, cls, holo, seed, current: i === primary, scene: type === 'Corvette' ? '' : str(file), ...(built.length ? { picks: { _groups: built.join(',') } } : {}),
+      key: `ship|${name}|${seed}|${str(file)}` + (built.length ? '|' + built.join(',') : ''),
       sub: [type, cls && cls + ' class', holo && holo.objs.toLocaleString() + ' parts', i === primary && 'current ship'].filter(Boolean).join(', ') });
   }
   for (const { s, i } of tools()) {
@@ -8945,25 +8955,6 @@ async function shipSample(btn) {
   } catch (err) { toast('Couldn\'t collect the files: ' + err.message, true); }
   btn.disabled = false;
 }
-async function addShipDialog() {
-  const list = g(ps(), 'ShipOwnership') || [];
-  const empty = list.map((s, i) => i).filter((i) => !str(g(list[i], 'Resource', 'Filename')));
-  if (!empty.length) { toast(`All ${list.length} ship slots are in use. Delete a ship first, or replace one from the Dock Yard.`, true); return; }
-  const have = ships();
-  const okP = dialog('Add a ship', `<label class="field"><span>What</span><select class="input" id="addWhat">
-      <option value="corvette">A new corvette with a starter build</option>
-      ${have.map(({ s, i }) => `<option value="${i}">A copy of ${esc(str(g(s, 'Name')) || shipType(g(s, 'Resource', 'Filename')))}${isCorvetteEntry(s) ? ', build included' : ''}</option>`).join('')}</select></label>
-    <label class="field" style="margin-top:12px"><span>Slot</span><select class="input" id="addSlot">${empty.map((i) => `<option value="${i}">Slot ${i + 1}</option>`).join('')}</select></label>
-    <p class="dim" style="margin-top:12px">A copy keeps the ship's look, class, technology and cargo. To bring in a ship from a file or from another save, use the Dock Yard.</p>
-    ${APP && S.lib && S.lib.game ? '<p class="dim" style="margin-top:12px" data-keep>Building a ship from chosen parts is being worked on. <button class="btn sm" type="button" id="shipSample">Save ship files for the developer</button></p>' : ''}`, [['Cancel', false, 'ghost'], ['Add', true, 'primary']]);
-  const sb = $('#shipSample'); if (sb) sb.onclick = () => shipSample(sb);
-  const ok = await okP;
-  if (!ok) return;
-  const what = $('#addWhat').value, slot = +$('#addSlot').value;
-  try { if (what === 'corvette') addCorvette(slot); else duplicateShip(+what, slot); }
-  catch (e) { toast(e.message, true); return; }
-  S.pick.ship = slot; S.sel = null; renderSide(); render(); toast(`Added to slot ${slot + 1}. Press Save to game to keep it.`);
-}
 // multi-tools: a copy of one you have, in a free slot
 // ---- Multi-tools: share codes and the Add window (owner 2026-11-23: "click add multitool and a new page/popup opens
 // with these new features": pick parts for any tool, share and pull tools, a staff builder).
@@ -9442,6 +9433,237 @@ async function staffEditDialog(i) {
   if (ok !== 'ok' || !st) return;
   const err = restyleStaff(i, st); if (err) { toast(err, true); return; }
   S.sel = null; render(); toast('Staff changed. Press Save to game to keep it.');
+}
+// ---- Ship builder (owner 2026-11-24: "the same ability to create a ship as they do with the multitool").
+// A ship built at the game's fabricator keeps its parts in its slot's CharacterCustomisationData entry (seen in the
+// owner's save: a fighter with ^FIGHT_COCKAB, ^FIGHT_WINGA, ^FIGHT_ENGIC, 330 colours, the texture option
+// SHIP_FIGHT/COATING and UseLegacyColours off). The parts on offer and what each stands for in the model come from
+// the game files through /api/model/shipbuild, so the builder needs them. The reactor core has no model part: it is
+// the ship's class.
+const SHIP_FINISH_FIGHT = [['COATING', 'Coating'], ['PANELS', 'Panels'], ['STEALTH', 'Stealth'], ['METALBOLT', 'Bolted metal'], ['SEVENTEEN', 'Seventeen']];
+const SHIP_KINDS = [
+  { k: 'fighter', label: 'Fighter', scene: M + 'FIGHTERS/FIGHTER_PROC.SCENE.MBIN', tex: 'SHIP_FIGHT', finishes: SHIP_FINISH_FIGHT },
+  { k: 'dropship', label: 'Hauler', scene: M + 'DROPSHIPS/DROPSHIP_PROC.SCENE.MBIN', tex: 'SHIP_FIGHT', finishes: SHIP_FINISH_FIGHT },
+  { k: 'scientific', label: 'Explorer', scene: M + 'SCIENTIFIC/SCIENTIFIC_PROC.SCENE.MBIN', tex: 'SHIP_SCI', finishes: [['DEFAULT', 'Standard'], ['SHINY', 'Shiny']] },
+  { k: 'shuttle', label: 'Shuttle', scene: M + 'SHUTTLE/SHUTTLE_PROC.SCENE.MBIN', tex: '', finishes: [] },
+  { k: 'sail', label: 'Solar', scene: M + 'SAILSHIP/SAILSHIP_PROC.SCENE.MBIN', tex: 'SHIP_SAIL', finishes: SHIP_FINISH_FIGHT.slice(0, 4) }];
+// the finishes the game's table pairs with its metallic palette
+const SHIP_METALLIC = new Set(['STEALTH', 'METALBOLT', 'SEVENTEEN']);
+const SHIP_SLOT_LABELS = { UI_SHIP_BUILDER_INPUT_BODY: 'Body', UI_SHIP_BUILDER_INPUT_COCK: 'Cockpit', UI_SHIP_BUILDER_INPUT_HULL: 'Hull', UI_SHIP_BUILDER_INPUT_ENGINE: 'Engines', UI_SHIP_BUILDER_INPUT_WINGS: 'Wings', UI_SHIP_BUILDER_INPUT_WING_L: 'Left wing', UI_SHIP_BUILDER_INPUT_WING_R: 'Right wing', UI_SHIP_BUILDER_INPUT_SAIL: 'Sail' };
+const SHIP_COLOUR_NAMES = [['Paint|Primary', 'Paint'], ['Paint|Alternative1', 'Paint 2'], ['Paint|Alternative2', 'Paint 3'], ['Paint|Alternative3', 'Detail'], ['Paint|Alternative4', 'Paint 5'], ['Undercoat|Primary', 'Undercoat'], ['Metal|Primary', 'Metal'], ['SailShip_Sails|Primary', 'Sail']];
+const shipColourName = (u) => (SHIP_COLOUR_NAMES.find(([k]) => k === staffKey(u.p, u.a)) || [0, u.p.replace(/_/g, ' ') + (u.a === 'Primary' ? '' : ' ' + (STAFF_ALTS.indexOf(u.a) + 1))])[1];
+const shipColourRank = (u) => { const n = SHIP_COLOUR_NAMES.findIndex(([k]) => k === staffKey(u.p, u.a)); return n < 0 ? 99 : n; };
+const SHIP_GROUP = /^[A-Z0-9_]{2,15}$/;
+const shipKindOf = (file) => SHIP_KINDS.find((x) => x.scene === str(file).toUpperCase()) || null;
+const shipCcd = (i) => { const cc = g(ps(), 'CharacterCustomisationData'), e = Array.isArray(cc) ? cc[shipCcdIndex(i)] : null; return e instanceof Map && g(e, 'CustomData') instanceof Map ? g(e, 'CustomData') : null; };
+// the parts a ship in the save was built from (its slot's customisation entry), without ^
+const shipGroupsOf = (i) => { const cd = shipCcd(i); return cd ? (g(cd, 'DescriptorGroups') || []).map((x) => str(x).replace(/^\^/, '').toUpperCase()).filter((x) => SHIP_GROUP.test(x)) : []; };
+function shipColoursOf(i) {
+  const m = staffStandardColours(), cd = i == null ? null : shipCcd(i);
+  for (const x of (cd && g(cd, 'Colours')) || []) { const p = str(g(x, 'Palette', 'Palette')), a = str(g(x, 'Palette', 'ColourAlt')), c = (g(x, 'Colour') || []).map(num); if (p && a && c.length >= 3) m.set(staffKey(p, a), c.slice(0, 3)); }
+  return m;
+}
+const shipFinishOf = (i, kind) => { const cd = shipCcd(i), t = ((cd && g(cd, 'TextureOptions')) || []).map((x) => [str(g(x, 'TextureOptionGroupName')).replace(/^\^/, ''), str(g(x, 'TextureOptionName')).replace(/^\^/, '')]).find(([a]) => kind && a === kind.tex); return t && kind.finishes.some(([f]) => f === t[1]) ? t[1] : ''; };
+const shipBuildCache = new Map();
+// what the game files say about this kind of ship with these parts: {scene, slots, names, colours} or null
+function shipBuildInfo(kind, groups) {
+  if (!APP || !S.lib || !S.lib.game) return Promise.resolve(null);
+  const k = kind + '|' + groups.join(',');
+  if (!shipBuildCache.has(k)) shipBuildCache.set(k, api('/api/model/shipbuild?kind=' + kind + '&groups=' + encodeURIComponent(groups.join(','))).then((r) => (r.ok ? r.json() : null)).then((d) => (d && !d.error ? d : null)).catch(() => null));
+  return shipBuildCache.get(k);
+}
+// write a built ship's look into its slot's customisation entry; returns an error text or ''
+function applyShipLook(slot, kind, st) {
+  const P = ps(), cc = g(P, 'CharacterCustomisationData'), e = Array.isArray(cc) ? cc[shipCcdIndex(slot)] : null, cd = e instanceof Map ? g(e, 'CustomData') : null;
+  if (!(cd instanceof Map) || kOf(cd, 'DescriptorGroups') == null || kOf(cd, 'Colours') == null) return 'This save has no customisation entry for that ship slot, so a built ship can\'t be recorded in it. Open a save made by a recent version of the game.';
+  if (!st.groups.length || !st.groups.every((x) => SHIP_GROUP.test(x))) return 'Pick a part for every slot.';
+  // the colour list's shape: this slot's own when it has the full list, else another ship's or a staff's, else built
+  const full = (l) => Array.isArray(l) && l.length >= 300;
+  let like = full(g(cd, 'Colours')) ? g(cd, 'Colours') : null;
+  if (!like) for (const x of cc) { const l = x instanceof Map && g(x, 'CustomData') instanceof Map ? g(x, 'CustomData', 'Colours') : null; if (full(l)) { like = l; break; } }
+  const cols = new Map(staffStandardColours());
+  for (const x of like || []) { const p = str(g(x, 'Palette', 'Palette')), a = str(g(x, 'Palette', 'ColourAlt')), c = (g(x, 'Colour') || []).map(num); if (p && a && c.length >= 3) cols.set(staffKey(p, a), c.slice(0, 3)); }
+  for (const [p, a] of st.used) { const c = st.cols.get(staffKey(p, a)); if (c) cols.set(staffKey(p, a), c); }
+  set(cd, 'DescriptorGroups', st.groups.map((x) => '^' + x));
+  set(cd, 'Colours', staffColourList(cols, like));
+  if (kOf(cd, 'TextureOptions') != null && kind.tex && st.finish) {
+    set(cd, 'TextureOptions', [new Map([[keyFor('TextureOptionGroupName'), '^' + kind.tex], [keyFor('TextureOptionName'), '^' + st.finish]])]);
+    if (kOf(cd, 'PaletteID') != null) set(cd, 'PaletteID', SHIP_METALLIC.has(st.finish) ? '^SHIP_METALLIC' : '^');
+  } else if (kOf(cd, 'TextureOptions') != null && !kind.tex) set(cd, 'TextureOptions', []);
+  const legacy = g(P, 'ShipUsesLegacyColours'); if (Array.isArray(legacy) && slot < legacy.length) legacy[slot] = false;
+  markDirty(); return '';
+}
+// a new built ship in a free slot, as a copy of one of the owner's ships (its technology, cargo and size)
+function addBuiltShip(slot, kind, st, donorIdx) {
+  const P = ps(), list = g(P, 'ShipOwnership') || [], src = list[donorIdx];
+  if (!(src instanceof Map) || !(g(src, 'Resource') instanceof Map) || isCorvetteEntry(src)) return 'Pick one of your starships to copy the technology from (not a corvette).';
+  if (str(g(list[slot], 'Resource', 'Filename'))) return 'That slot is in use.';
+  const before = list[slot], ccd = g(P, 'CharacterCustomisationData'), ci = shipCcdIndex(slot), ccdBefore = Array.isArray(ccd) ? ccd[ci] : null, ent = cloneJSON(src), res = g(ent, 'Resource');
+  set(ent, 'Name', st.name); set(res, 'Filename', kind.scene); set(res, 'Seed', [true, st.seed]);
+  const lay = g(ent, 'InventoryLayout'); if (lay instanceof Map && kOf(lay, 'Seed') != null) set(lay, 'Seed', [true, st.seed]);
+  for (const k of ['Inventory', 'Inventory_TechOnly']) { const c = g(ent, k, 'Class'); if (c instanceof Map) set(c, 'InventoryClass', st.cls); }
+  list[slot] = ent;
+  // start the slot's customisation entry from the donor's, so every field the game expects is there
+  const from = Array.isArray(ccd) ? ccd[shipCcdIndex(donorIdx)] : null;
+  if (Array.isArray(ccd) && from instanceof Map && ccd[ci] instanceof Map && !((g(ccd[ci], 'CustomData', 'Colours') || []).length >= 300)) ccd[ci] = cloneJSON(from);
+  const err = applyShipLook(slot, kind, st);
+  if (err) { list[slot] = before; if (Array.isArray(ccd)) ccd[ci] = ccdBefore; return err; }
+  markDirty(); return '';
+}
+function shipBuilder(host, start) {
+  const game = APP && S.lib && S.lib.game;
+  let kind = SHIP_KINDS.find((x) => x.k === start.kind) || SHIP_KINDS[0], slots = [], used = [], names = [], alive = true, job = 0, timer = 0, view = null, io = null, ready = false;
+  const st = { groups: [...(start.groups || [])], cols: new Map(start.cols || staffStandardColours()), finish: start.finish || '' };
+  if (!game) { host.innerHTML = '<p class="dim" data-keep>Building a ship from chosen parts reads the parts from your game files. Point DryDock at the game in Settings (the gear), then open this again.</p>'; return { state: () => null, kind: () => kind, stop() {} }; }
+  host.innerHTML = `<div class="sb shb"><div class="sb-view"><div class="sb-pic"><div class="tc-art"></div></div>
+    <p class="dim small-print sb-how" data-keep>Drag to turn · scroll to zoom · right-drag or Shift-drag to move · double-click to reset</p>
+    <div class="toolbar"><button class="btn" type="button" data-sb="rand">Random ship</button><button class="btn" type="button" data-sb="randcol">Random colours</button></div>
+    <p class="dim small-print" data-keep data-sb="what"></p></div>
+    <div class="sb-opts">${start.lockKind ? '' : `<div class="bw-types shb-kinds">${SHIP_KINDS.map((x) => `<button type="button" class="part-tile bw-type${x === kind ? ' on' : ''}" data-kind="${x.k}">${x.label}</button>`).join('')}</div>`}
+      <div data-sb="slots"></div><div data-sb="finish"></div><h4 class="sb-h">Colours</h4><div class="sb-cols" data-sb="cols"></div></div></div>`;
+  const $s = (k) => host.querySelector(`[data-sb="${k}"]`), pic = host.querySelector('.sb-pic');
+  view = orbitView(pic.querySelector('.tc-art'), 'ship-builder');
+  const part = (k) => (slots[k] ? slots[k].parts.find((p) => p.group === st.groups[k]) : null) || { name: st.groups[k] || '', names: [] };
+  const namesWith = (k, p) => slots.flatMap((s, n) => (n === k ? p : part(n)).names || []).join('|');
+  const tint = [150, 205, 235];
+  const look = () => ({ c: used.map((u) => ({ p: u.p, a: u.a, c: [...(st.cols.get(staffKey(u.p, u.a)) || u.avg), 1].map((x) => +(+x).toFixed(4)) })), t: kind.tex && st.finish ? [[kind.tex, st.finish]] : [] });
+  const lookQ = () => { const lk = look(); return lk.c.length || lk.t.length ? '&look=' + encodeURIComponent(JSON.stringify(lk)) : ''; };
+  // each part's picture is the whole ship with that part on it, as a plain shape, drawn when its tile scrolls into view
+  const drawThumb = async (c) => {
+    const want = c.dataset.want; if (!want || c.dataset.done === want || c.dataset.busy === want) return;
+    c.dataset.busy = want;
+    let m = null; try { const r = await fetch(want); if (r.ok) m = parseMesh(await r.arrayBuffer()); } catch (_) {}
+    if (!alive || !c.isConnected || c.dataset.want !== want) return;
+    const ctx = c.getContext('2d'); ctx.clearRect(0, 0, c.width, c.height);
+    const img = m && GL3D.render(m, c.width, -.95, tint); if (img) ctx.drawImage(img, 0, 0);
+    c.dataset.done = want;
+  };
+  const thumbs = () => {
+    if (io) io.disconnect();
+    io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) drawThumb(e.target); }), { root: null, rootMargin: '80px' });
+    host.querySelectorAll('canvas[data-slot]').forEach((c) => { const k = +c.dataset.slot, p = slots[k].parts[+c.dataset.n]; c.dataset.want = modelUrl(kind.scene, '', { _names: namesWith(k, p) }, 1); io.observe(c); });
+  };
+  const what = () => { $s('what').textContent = slots.map((s, k) => part(k).name).join(' · '); };
+  const drawSlots = () => {
+    $s('slots').innerHTML = slots.map((s, k) => `<div class="parts-group"><span class="pg-name">${esc(s.label)} <span class="dim">${esc(part(k).name)}</span> <span class="dim small-print">${s.parts.length} to choose from</span></span>
+      <div class="sb-tiles shb-tiles${s.parts.length > 16 ? ' many' : ''}" style="--n:${Math.min(8, Math.max(6, s.parts.length))}">${s.parts.map((p, n) => `<button type="button" class="part-tile sb-tile${p.group === st.groups[k] ? ' on' : ''}" data-slot="${k}" data-g="${esc(p.group)}" title="${esc(p.name)}"><canvas width="160" height="160" data-slot="${k}" data-n="${n}"></canvas><span>${esc(p.name)}</span></button>`).join('')}</div></div>`).join('');
+    $s('slots').querySelectorAll('.sb-tile').forEach((b) => b.onclick = () => { const k = +b.dataset.slot; st.groups[k] = b.dataset.g; b.parentNode.querySelectorAll('.sb-tile').forEach((x) => x.classList.toggle('on', x === b)); b.closest('.parts-group').querySelector('.pg-name .dim').textContent = part(k).name; what(); thumbs(); refresh(); });
+    $s('slots').querySelectorAll('.sb-tile.on').forEach((b) => { const box = b.parentNode; if (box.classList.contains('many')) box.scrollTop = Math.max(0, b.offsetTop - box.offsetTop - 8); });
+    what(); thumbs();
+  };
+  const drawFinish = () => {
+    const box = $s('finish');
+    if (!kind.finishes.length) { box.innerHTML = ''; return; }
+    if (!kind.finishes.some(([f]) => f === st.finish)) st.finish = kind.finishes[0][0];
+    box.innerHTML = `<h4 class="sb-h">Finish</h4><div class="seg shb-finish">${kind.finishes.map(([f, t]) => `<button type="button" data-finish="${f}" aria-pressed="${f === st.finish}">${t}</button>`).join('')}</div>`;
+    box.querySelectorAll('[data-finish]').forEach((b) => b.onclick = () => { st.finish = b.dataset.finish; box.querySelectorAll('[data-finish]').forEach((x) => x.setAttribute('aria-pressed', x === b)); paintSoon(); });
+  };
+  const setCol = (u, rgb) => { st.cols.set(staffKey(u.p, u.a), rgb); paintSoon(); };
+  const drawCols = () => {
+    const box = $s('cols');
+    if (!used.length) { box.innerHTML = `<p class="dim" data-keep>${ready ? 'These parts take no colours DryDock can read from the game files. The ship keeps its standard colours.' : 'Reading this ship\'s colours…'}</p>`; return; }
+    box.innerHTML = used.map((u, n) => { const cur = rgbHex(st.cols.get(staffKey(u.p, u.a)) || u.avg || [.5, .5, .5]);
+      return `<div class="sb-crow" data-n="${n}"><span class="sb-cname">${esc(shipColourName(u))}</span><div class="sb-sw">${STAFF_SWATCHES.map((h) => `<button type="button" class="sb-dot${h === cur ? ' on' : ''}" data-hex="${h}" style="--c:${h}" title="${h}"></button>`).join('')}<label class="sb-plus${STAFF_SWATCHES.includes(cur) ? '' : ' on'}" style="--c:${cur}" title="Any colour"><input type="color" value="${cur}"><span>+</span></label></div><span class="mono small-print sb-hex">${cur}</span></div>`; }).join('');
+    box.querySelectorAll('.sb-crow').forEach((row) => {
+      const u = used[+row.dataset.n], mark = (hex) => { row.querySelectorAll('.sb-dot').forEach((d) => d.classList.toggle('on', d.dataset.hex === hex)); const pl = row.querySelector('.sb-plus'); pl.classList.toggle('on', !STAFF_SWATCHES.includes(hex)); pl.style.setProperty('--c', hex); row.querySelector('.sb-hex').textContent = hex; };
+      row.querySelectorAll('.sb-dot').forEach((d) => d.onclick = () => { mark(d.dataset.hex); row.querySelector('input').value = d.dataset.hex; setCol(u, hexRgb(d.dataset.hex)); });
+      const inp = row.querySelector('input'); inp.oninput = inp.onchange = () => { mark(inp.value); setCol(u, hexRgb(inp.value)); };
+    });
+  };
+  // the textured ship in its colours
+  const paint = async () => {
+    if (!alive || !names.length) return;
+    const mine = ++job, art = pic.querySelector('.tc-art'); if (art) art.classList.add('trav-loading');
+    try {
+      const r = await api('/api/model/glb?scene=' + encodeURIComponent(kind.scene) + '&seed=&name=Ship&picks=' + encodeURIComponent(JSON.stringify({ _names: names.join('|') })) + lookQ());
+      if (!r.ok) throw new Error((await r.text()).trim());
+      const glb = await GLTEX.parse(await r.arrayBuffer());
+      if (mine !== job || !alive || !pic.isConnected) { GLTEX.free(glb); return; }
+      const old = view.model; view.model = glb; view.set(glb); if (old) GLTEX.free(old);
+    } catch (e) { if (mine === job && alive) { const w = $s('what'); if (w) w.textContent = 'The 3D ship couldn\'t be made: ' + e.message; } }
+    if (mine === job) { const a2 = pic.querySelector('.tc-art'); if (a2) a2.classList.remove('trav-loading'); }
+  };
+  const paintSoon = () => { clearTimeout(timer); timer = setTimeout(paint, 220); };
+  // read the parts and colours for the kind and the picks; the first answer for a kind brings its slots
+  const refresh = async () => {
+    const mine = kind, asked = st.groups.join(',');
+    let d = await shipBuildInfo(kind.k, st.groups); if (!alive || mine !== kind || (slots.length && asked !== st.groups.join(','))) return;
+    if (!d || !Array.isArray(d.slots) || !d.slots.length) { $s('slots').innerHTML = '<p class="warn" data-keep>DryDock couldn\'t read this kind of ship\'s parts from the game files. A game update may have changed the table; send the ship files from the Copy tab so it can be fixed.</p>'; ready = true; drawCols(); return; }
+    if (!slots.length) {
+      slots = d.slots.map((s) => ({ id: s.id, label: SHIP_SLOT_LABELS[s.label] || titleCase(s.id.replace(/_/g, ' ').toLowerCase()), parts: s.parts.filter((p) => p && SHIP_GROUP.test(p.group) && Array.isArray(p.names)).map((p) => ({ group: p.group, item: p.item, names: p.names, name: staffPartName(p.item, titleCase(p.group.replace(/^[A-Z]+_/, '').replace(/_/g, ' ').toLowerCase())) })) })).filter((s) => s.parts.length);
+      // the picks, slot by slot: the ones given when they belong to the slot, else its first part
+      const given = st.groups; st.groups = slots.map((s) => (s.parts.find((p) => given.includes(p.group)) || s.parts[0]).group);
+      drawSlots(); drawFinish();
+      if (st.groups.join(',') !== given.join(',')) { d = await shipBuildInfo(kind.k, st.groups); if (!alive || mine !== kind || !d) return; }
+    }
+    names = Array.isArray(d.names) ? d.names : [];
+    used = (Array.isArray(d.colours) ? d.colours.filter((u) => u && typeof u.p === 'string' && STAFF_ALTS.includes(u.a)) : []).map((u, n) => [u, n]).sort((a, b) => shipColourRank(a[0]) - shipColourRank(b[0]) || a[1] - b[1]).map((x) => x[0]);
+    ready = true; drawCols(); paint();
+  };
+  const setKind = (k) => { kind = SHIP_KINDS.find((x) => x.k === k) || kind; slots = []; used = []; names = []; ready = false; st.groups = []; host.querySelectorAll('[data-kind]').forEach((x) => x.classList.toggle('on', x.dataset.kind === kind.k)); $s('slots').innerHTML = '<p class="dim" data-keep>Reading the parts…</p>'; $s('finish').innerHTML = ''; drawCols(); refresh(); };
+  host.querySelectorAll('[data-kind]').forEach((b) => b.onclick = () => { if (b.dataset.kind !== kind.k) setKind(b.dataset.kind); });
+  const pickRandom = (a) => a[Math.floor(Math.random() * a.length)];
+  $s('rand').onclick = () => { if (!slots.length) return; st.groups = slots.map((s) => pickRandom(s.parts).group); drawSlots(); refresh(); };
+  $s('randcol').onclick = () => { if (!used.length) { toast('These parts take no colours DryDock can read.', true); return; } for (const u of used) st.cols.set(staffKey(u.p, u.a), hexRgb(pickRandom(STAFF_SWATCHES))); drawCols(); paint(); };
+  $s('slots').innerHTML = '<p class="dim" data-keep>Reading the parts…</p>'; drawCols(); refresh();
+  return { state: () => (slots.length && st.groups.length === slots.length ? { groups: [...st.groups], cols: new Map(st.cols), used: used.map((u) => [u.p, u.a]), finish: st.finish } : null), kind: () => kind, names: () => slots.map((s, k) => part(k).name),
+    stop: () => { alive = false; clearTimeout(timer); if (io) io.disconnect(); if (view) { view.stop(); if (view.model) GLTEX.free(view.model); } } };
+}
+// a built ship already in the save: change its parts, finish and colours
+async function shipEditDialog(i) {
+  const o = (g(ps(), 'ShipOwnership') || [])[i], kind = o instanceof Map ? shipKindOf(g(o, 'Resource', 'Filename')) : null; if (!kind) return;
+  let sb = null;
+  const ok = await customDialog({ title: 'Ship parts and colours: ' + entityName(o, i, 'ship'), wide: 'max', html: '<div id="shHost"></div><p class="dim small-print" data-keep>Its technology, cargo, class and name stay as they are. Press Save to game to keep the change.</p>', actions: [['Cancel', null], ['Apply', 'ok', 'primary']], wire: (body) => { sb = shipBuilder($('#shHost', body), { kind: kind.k, lockKind: true, groups: shipGroupsOf(i), cols: shipColoursOf(i), finish: shipFinishOf(i, kind) }); } });
+  const st = sb && sb.state(); if (sb) sb.stop();
+  if (ok !== 'ok') return;
+  if (!st) { toast('The parts hadn\'t been read yet, so nothing was changed.', true); return; }
+  const err = applyShipLook(i, kind, st); if (err) { toast(err, true); return; }
+  S.sel = null; render(); toast('Ship changed. Press Save to game to keep it.');
+}
+async function addShipDialog() {
+  const list = g(ps(), 'ShipOwnership') || [];
+  const empty = list.map((s, i) => i).filter((i) => !str(g(list[i], 'Resource', 'Filename')));
+  if (!empty.length) { toast(`All ${list.length} ship slots are in use. Delete a ship first, or replace one from the Dock Yard.`, true); return; }
+  const have = ships(), game = APP && S.lib && S.lib.game, donorsOk = have.filter(({ s }) => !isCorvetteEntry(s));
+  const firstDonor = donorsOk.find(({ s }) => shipKindOf(g(s, 'Resource', 'Filename'))) || donorsOk[0];
+  const first = game ? 'build' : 'copy', slotOpts = empty.map((i) => `<option value="${i}">Slot ${i + 1}</option>`).join('');
+  let sb = null, tab = first;
+  const res = await customDialog({ title: 'Add a ship', wide: 'max', html: `<div class="seg at-tabs" role="tablist">${[['build', 'Build a ship'], ['copy', 'New corvette or a copy']].map(([k, t]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${k === first}" aria-pressed="${k === first}">${t}</button>`).join('')}</div>
+    <div data-pane="build"${first === 'build' ? '' : ' hidden'}>
+      <div id="shHost"></div>
+      ${game ? `<div class="shb-form"><label class="field"><span>Name</span><input class="input" id="shName" maxlength="40" placeholder="Leave empty for the game's own name"></label>
+        <label class="field"><span>Class</span><select class="input" id="shCls">${['S', 'A', 'B', 'C'].map((c) => `<option>${c}</option>`).join('')}</select></label>
+        <label class="field"><span>Slot</span><select class="input" id="shSlot">${slotOpts}</select></label>
+        <label class="field"><span>Technology and cargo copied from</span><select class="input" id="shDonor">${donorsOk.map(({ s, i }) => `<option value="${i}"${firstDonor && i === firstDonor.i ? ' selected' : ''}>${esc(entityName(s, i, 'ship'))}</option>`).join('')}</select></label></div>
+        <p class="dim small-print" data-keep>${donorsOk.length ? 'The ship is recorded the way the game records one built at a space station\'s fabricator. New here: check your first one in the game and tell the developer if anything looks off.' : 'A built ship takes its technology and cargo from a starship you own, and this save only has corvettes. Get any starship in the game first.'}</p>` : ''}
+    </div>
+    <div data-pane="copy"${first === 'copy' ? '' : ' hidden'}>
+      <label class="field"><span>What</span><select class="input" id="addWhat">
+        <option value="corvette">A new corvette with a starter build</option>
+        ${have.map(({ s, i }) => `<option value="${i}">A copy of ${esc(str(g(s, 'Name')) || shipType(g(s, 'Resource', 'Filename')))}${isCorvetteEntry(s) ? ', build included' : ''}</option>`).join('')}</select></label>
+      <label class="field" style="margin-top:12px"><span>Slot</span><select class="input" id="addSlot">${slotOpts}</select></label>
+      <p class="dim" style="margin-top:12px" data-keep>A copy keeps the ship's look, class, technology and cargo. To bring in a ship from a file or from another save, use the Dock Yard.</p>
+      ${game ? '<p class="dim" style="margin-top:12px" data-keep><button class="btn sm" type="button" id="shipSample">Save ship files for the developer</button></p>' : ''}
+    </div>`,
+    actions: [['Cancel', null, 'ghost'], ['Add', () => {
+      if (tab === 'copy') return { what: $('#addWhat').value, slot: +$('#addSlot').value };
+      const st = sb && sb.state(); if (!st) return { error: 'The parts hadn\'t been read yet, so nothing was added.' };
+      return { build: st, kind: sb.kind(), slot: +$('#shSlot').value, donor: +$('#shDonor').value, name: $('#shName').value.trim(), cls: $('#shCls').value };
+    }, 'primary']],
+    wire: (body) => {
+      body.querySelectorAll('[data-tab]').forEach((b) => b.onclick = () => { tab = b.dataset.tab; body.querySelectorAll('[data-tab]').forEach((x) => { x.setAttribute('aria-selected', x === b); x.setAttribute('aria-pressed', x === b); }); body.querySelectorAll('[data-pane]').forEach((x) => { x.hidden = x.dataset.pane !== tab; }); });
+      sb = shipBuilder($('#shHost', body), { kind: 'fighter' });
+      const ss = $('#shipSample', body); if (ss) ss.onclick = () => shipSample(ss);
+    } });
+  if (sb) sb.stop();
+  if (!res) return;
+  if (res.error) { toast(res.error, true); return; }
+  const slot = res.slot;
+  try {
+    if (res.build) { const err = addBuiltShip(slot, res.kind, { ...res.build, name: res.name, cls: res.cls, seed: randomSeed() }, res.donor); if (err) { toast(err, true); return; } }
+    else if (res.what === 'corvette') addCorvette(slot); else duplicateShip(+res.what, slot);
+  } catch (e) { toast(e.message, true); return; }
+  S.pick.ship = slot; S.sel = null; renderSide(); render(); toast(`Added to slot ${slot + 1}. Press Save to game to keep it.`);
 }
 // exocraft come from their geobays: learning a geobay's blueprint lets you build it and summon that exocraft
 // Each exocraft is summoned from its own geobay, a base part whose blueprint the player learns (the Knowledge page's

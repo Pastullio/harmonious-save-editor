@@ -1,5 +1,14 @@
 [
  {
+  "version": "2026.11.24.1447",
+  "date": "2026-11-24",
+  "notes": [
+   "Add a ship can now build a ship from chosen parts: fighter, hauler, explorer, shuttle or solar, with body, engines, wings, finish and colours, shown turning in 3D (needs the game files)",
+   "A built ship has Parts and colours on its page, and its cover is drawn from its real parts",
+   "New and not yet checked in the game: try one ship first and tell the developer how it looks"
+  ]
+ },
+ {
   "version": "2026.11.24.1433",
   "date": "2026-11-24",
   "notes": [
