@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.23.2228",
-  "date": "2026-11-23",
-  "size": 15197184,
-  "sha256": "c00589ade883c598359a6477e5d120954098b447fcb0a6f4b789d3c8426339c2",
-  "notes": "Models no longer turn on their own. The new Turn models button beside Cover Flow / Grid switches it on if you want it\nTurn a model by hand: drag it, or Shift-drag the centre cover in Cover Flow",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.23.2228/HarmoniousSaveEditor.exe",
+  "version": "2026.11.24.1403",
+  "date": "2026-11-24",
+  "size": 15198720,
+  "sha256": "b2cd0f456c7370e609fb4b8c235cc67cbe90e287bcd2d282e3ec8f09ce63701e",
+  "notes": "Every Cover Flow now sits on a starfield with a faint glow in its page's colour\nCorvettes no longer show a Choose parts button (they are built from base parts)",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.24.1403/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
