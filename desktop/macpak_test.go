@@ -77,3 +77,23 @@ func TestMacAndPCPaks(t *testing.T) {
 		}
 	}
 }
+
+// The Mac's archives name platform files ".macos" where the PC's say ".pc"; a scene may name either.
+func TestPlatformNames(t *testing.T) {
+	got := platformNames("models/a/acca.geometry.mbin.pc")
+	if len(got) != 2 || got[0] != "models/a/acca.geometry.mbin.pc" || got[1] != "models/a/acca.geometry.mbin.macos" {
+		t.Fatalf("pc name: %v", got)
+	}
+	got = platformNames("models/a/acca.geometry.data.mbin.macos")
+	if len(got) != 2 || got[1] != "models/a/acca.geometry.data.mbin.pc" {
+		t.Fatalf("mac name: %v", got)
+	}
+	if got = platformNames("models/a/acca.scene.mbin"); len(got) != 1 {
+		t.Fatalf("plain name: %v", got)
+	}
+	for _, in := range []string{`MODELS\A\ACCA.GEOMETRY.MBIN.PC`, "models/a/acca.geometry.mbin.macos", "models/a/acca.geometry.mbin", "models/a/acca.geometry.data.mbin.macos", "models/a/acca"} {
+		if s := geomStem(in); s != "models/a/acca" {
+			t.Fatalf("geomStem(%q) = %q", in, s)
+		}
+	}
+}

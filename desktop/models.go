@@ -66,12 +66,42 @@ func gameFile(path string) ([]byte, error) {
 		return nil, err
 	}
 	path = normGamePath(path)
-	for _, p := range paks {
-		if p.Has(path) {
-			return p.Read(path)
+	for _, name := range platformNames(path) {
+		for _, p := range paks {
+			if p.Has(name) {
+				return p.Read(name)
+			}
 		}
 	}
 	return nil, fmt.Errorf("%s isn't in the game's archives", path)
+}
+
+// platformNames gives the names a game file can go under: the PC's archives end platform files in
+// ".pc" (acca.geometry.mbin.pc), the Mac's in ".macos" (seen in a tester's report, 2026-11-24).
+func platformNames(path string) []string {
+	for _, end := range platformEnds {
+		if stem := strings.TrimSuffix(path, end); stem != path {
+			out := []string{path}
+			for _, other := range platformEnds {
+				if other != end {
+					out = append(out, stem+other)
+				}
+			}
+			return out
+		}
+	}
+	return []string{path}
+}
+
+var platformEnds = []string{".pc", ".macos"}
+
+// geomStem is a geometry path without its ".geometry.mbin" and platform ending.
+func geomStem(path string) string {
+	path = normGamePath(path)
+	for _, end := range platformEnds {
+		path = strings.TrimSuffix(path, end)
+	}
+	return strings.TrimSuffix(strings.TrimSuffix(path, ".geometry.data.mbin"), ".geometry.mbin")
 }
 
 func normGamePath(p string) string { return strings.ToLower(strings.ReplaceAll(p, `\`, "/")) }
@@ -169,8 +199,7 @@ func vertexLayout(hm *mbin, at int) map[int]vtxElem {
 
 // loadGeometry reads every mesh stream of a model's GEOMETRY.DATA.MBIN.PC.
 func loadGeometry(geomPath string) (*geomStreams, error) {
-	base := strings.TrimSuffix(normGamePath(geomPath), ".pc")
-	base = strings.TrimSuffix(base, ".geometry.mbin")
+	base := geomStem(geomPath)
 	sceneMu.Lock()
 	if g, ok := geomCache[base]; ok {
 		sceneMu.Unlock()

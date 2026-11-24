@@ -318,18 +318,43 @@ func reportBanks(o *reportOut, banks string) {
 	lang := find(func(f string) bool { return strings.HasPrefix(f, "language/") && strings.Contains(f, "english") })
 	o.say("  English text: %s", orNone(lang))
 	// geometry and pictures: what the first of each looks like, and whether DryDock's reader takes it
-	for _, kind := range []struct{ what, has, under string }{{"Geometry", ".geometry.", "models/common/spacecraft/fighters/"}, {"Geometry data", ".geometry.data.", "models/common/spacecraft/fighters/"}} {
-		f := find(func(f string) bool { return strings.HasPrefix(f, kind.under) && strings.Contains(f, kind.has) })
+	for _, kind := range []struct {
+		what  string
+		data  bool
+		under string
+	}{{"Geometry", false, "models/common/spacecraft/fighters/"}, {"Geometry data", true, "models/common/spacecraft/fighters/"}} {
+		f := find(func(f string) bool {
+			return strings.HasPrefix(f, kind.under) && strings.Contains(f, ".geometry.") && strings.Contains(f, ".geometry.data.") == kind.data
+		})
 		if f == "" {
 			o.say("  %s: none found under %s", kind.what, kind.under)
 			continue
 		}
 		b, err := read(f)
 		n := len(b)
-		if n > 0x40 {
-			n = 0x40
+		if n > 0x180 {
+			n = 0x180
 		}
 		o.say("  %s: %s, %d bytes, %v, starts %s", kind.what, f, len(b), err, hex.EncodeToString(b[:n]))
+		if !kind.data {
+			if g, err := loadGeometry(f); err != nil {
+				o.say("  Model reader: does NOT take it (%v)", err)
+			} else {
+				o.say("  Model reader: takes it (%d meshes)", len(g.byName)+len(g.byHash))
+			}
+		}
+	}
+	// one whole ship, the way a cover is drawn
+	if _, err := loadScene("models/common/spacecraft/fighters/fighter_proc.scene.mbin"); err != nil {
+		o.say("  Fighter scene: NOT READ (%v)", err)
+	} else {
+		o.say("  Fighter scene: read")
+	}
+	libMu.Lock()
+	lib := libLoaded
+	libMu.Unlock()
+	if lib != nil && len(lib.Missing) > 0 {
+		o.say("  Icons that couldn't be read: %s", strings.Join(lib.Missing, ", "))
 	}
 	pics := 0
 	for _, under := range []string{"textures/ui/frontend/icons/", "textures/common/spacecraft/fighters/", "textures/common/player/"} {
