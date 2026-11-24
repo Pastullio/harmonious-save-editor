@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.24.1403",
+  "date": "2026-11-24",
+  "notes": [
+   "Every Cover Flow now sits on a starfield with a faint glow in its page's colour",
+   "Corvettes no longer show a Choose parts button (they are built from base parts)"
+  ]
+ },
+ {
   "version": "2026.11.23.2228",
   "date": "2026-11-23",
   "notes": [

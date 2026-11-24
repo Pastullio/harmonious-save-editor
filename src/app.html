@@ -1170,7 +1170,7 @@ ol.steps { padding-left: 20px; display: grid; gap: 6px; }
 .cg-chips .cf-chips { margin: 0; max-width: 100%; background: var(--stage); }
 .cg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
 .cg-card[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent), var(--shadow); }
-.cf { position: relative; border-radius: var(--r-lg); overflow: hidden; margin-bottom: 24px; background: var(--stage); box-shadow: var(--shadow); color: #fff; }
+.cf { position: relative; border-radius: var(--r-lg); overflow: hidden; margin-bottom: 24px; background: radial-gradient(62% 85% at 68% 30%, color-mix(in srgb, var(--sec, #36d6c3) 17%, transparent), transparent 72%), var(--stars, none) 0 0 / 1024px 512px, linear-gradient(160deg, #07151c 0%, #030c11 60%, #02080c 100%); box-shadow: var(--shadow); color: #fff; }
 .cf::before { content: ""; position: absolute; inset: 0; background: radial-gradient(80% 50% at 50% 115%, rgba(120, 220, 240, .22), transparent 70%); pointer-events: none; }
 .cf-stage { position: relative; height: calc(var(--cs) * 1.5); perspective: calc(var(--cs) * 4); perspective-origin: 50% 38%; outline: none; touch-action: pan-y; cursor: grab; user-select: none; }
 .cf-stage:focus-visible { box-shadow: inset 0 -2px 0 rgba(200, 245, 255, .55); }
@@ -1292,7 +1292,6 @@ body.has-sec .page-head { position: relative; }
 body.has-sec .page-head::before { content: ""; position: absolute; z-index: -1; inset: -40px 0 -10px -60px;   /* never past the right edge: that made the page scroll sideways */ background: radial-gradient(420px 120px at 0% 30%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%); pointer-events: none; }
 body.has-sec .page-head h1::after { content: ""; display: block; width: 46px; height: 3px; border-radius: 2px; background: var(--accent); margin-top: 12px; }
 body.has-sec .grid { background: color-mix(in srgb, var(--accent) 14%, var(--well)); }
-body.has-sec .cf { background: linear-gradient(180deg, color-mix(in oklab, var(--sec) 62%, #062b37) 0%, color-mix(in oklab, var(--sec) 26%, #04161d) 55%, #03121a 100%); }
 nav button .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot); flex: none; margin-right: 10px; }
 nav button .lbl { flex: 1; }
 .nav-group { padding: 4px; border-radius: 16px; background: color-mix(in srgb, var(--tint) 9%, transparent); margin-bottom: 8px; }
@@ -2867,6 +2866,17 @@ function tc2d(id) {
   return null;
 }
 // the space backgrounds, drawn the same every time (a fixed seed)
+// Cover Flow's backdrop (owner 2026-11-24): the Traveller page's starfield, drawn once as a tile, with a faint glow in the section's colour (CSS on .cf).
+let STAR_TILE = false;
+function starTile() {
+  if (STAR_TILE) return; STAR_TILE = true;
+  try {
+    const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 512; const ctx = cv.getContext('2d');
+    let seed = 11; const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
+    for (let i = 0; i < 300; i++) { ctx.fillStyle = `rgba(225,245,255,${(.12 + rnd() * .6).toFixed(3)})`; ctx.beginPath(); ctx.arc(rnd() * 1024, rnd() * 512, rnd() * 1.1 + .25, 0, 7); ctx.fill(); }
+    document.documentElement.style.setProperty('--stars', `url(${cv.toDataURL('image/png')})`);
+  } catch (e) {}
+}
 function tcSpace(ctx, W, H, kind, c1, c2) {
   const U = Math.min(W, H);
   let seed = 11; const rnd = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
@@ -3429,7 +3439,7 @@ function entityDetails(ed, o, i, kind) {
       <label class="field"><span>Ship shield <i class="dim">(all ships)</i></span><input class="input mono" inputmode="numeric" data-k="sshield" value="${num(g(p, 'ShipShield'))}"></label>` : ''}</div>
     <div class="toolbar details-acts">
       <button class="btn primary" data-k="saveprof">Save as profile</button><button class="btn" data-k="applyprof">Apply a profile</button>
-      ${APP && S.lib && S.lib.game ? '<button class="btn" data-k="parts">Choose parts</button>' : ''}
+      ${APP && S.lib && S.lib.game && !(isShip && isCorvetteEntry(o)) ? '<button class="btn" data-k="parts">Choose parts</button>' : ''}
       ${kind === 'tool' && isStaff(o) && g(o, 'CustomisationData') instanceof Map ? '<button class="btn" data-k="staff">Staff parts and colours</button>' : ''}
       ${kind === 'tool' ? '<button class="btn" data-k="share">Share</button>' : ''}
       <span class="sep"></span>
@@ -4579,6 +4589,7 @@ function CoverGrid(host, items, opts) {
 }
 function CoverFlow(host, items, opts) {
   const size = opts.size || 260, n = items.length;
+  starTile();
   const root = document.createElement('div'); root.className = 'cf'; root.style.setProperty('--cs', size + 'px');
   root.innerHTML = `${opts.chips || ''}<div class="cf-stage" tabindex="0" role="listbox" aria-label="${esc(opts.label || 'Collection')}" aria-roledescription="cover flow"></div>
     <div class="cf-bar"><button class="arrow" data-d="-1" aria-label="Previous">◀</button><input type="range" min="0" max="${Math.max(0, n - 1)}" step="0.001" value="0" aria-label="Scroll the collection"><button class="arrow" data-d="1" aria-label="Next">▶</button><span class="pos"></span><button class="cf-pic" type="button">Change picture</button></div>`;
