@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.24.1657",
+  "version": "2026.11.24.1748",
   "date": "2026-11-24",
-  "size": 15317504,
-  "sha256": "85a85369f7cb020bdf0c948ee8ed96f8120f7e0896ff385ad21552819a21f991",
-  "notes": "Important fix: DryDock no longer writes over a save the game has written since you opened it. If you played with DryDock open, a build arriving from Blender (or Save to game) used to put the older save back; now nothing is written and DryDock offers to open the new save\nWhen your corvette was changed in the game since Blender last sent its build (decals, new parts), DryDock asks before Blender's build replaces it: don't write, update the Blender file, or use Blender's build\nBackups made in the same second no longer share a folder",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.24.1657/HarmoniousSaveEditor.exe",
+  "size": 15321600,
+  "sha256": "64902ea8122805f7cab831abb823fa54b159ca6760c0dc05b064b40eccffb635",
+  "notes": "Mac: ships and multi-tools should now show their real 3D models instead of a hologram (the Mac names its model files differently from the PC)\nMac: the Report now says whether a ship model could be read and which icons couldn't",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.24.1748/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

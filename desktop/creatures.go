@@ -216,7 +216,7 @@ func handleCreatureSample(w http.ResponseWriter, r *http.Request) {
 		var walk func(n *sceneNode)
 		walk = func(n *sceneNode) {
 			if n.Type == "MODEL" && n.Attrs["GEOMETRY"] != "" {
-				g := strings.TrimSuffix(strings.TrimSuffix(normGamePath(n.Attrs["GEOMETRY"]), ".pc"), ".geometry.mbin")
+				g := geomStem(n.Attrs["GEOMETRY"])
 				for _, ext := range []string{".geometry.mbin.pc", ".geometry.data.mbin.pc"} {
 					if _, err := gameFile(g + ext); err == nil {
 						files[g+ext] = true
