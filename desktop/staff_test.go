@@ -57,3 +57,42 @@ func TestStaffNames(t *testing.T) {
 		t.Fatalf("got %v", got)
 	}
 }
+
+// HSE_TEST_MODULAR and HSE_TEST_PLAYERDATA (the folder with charactercustomisationdescriptorgroupsdata.mbin) read the
+// real tables: every ship kind gets its three slots, and the owner's fabricator-built fighter resolves to nodes.
+func TestShipSlots(t *testing.T) {
+	groups := map[string][]string{"W_A": {"_SUB_1", "_HULL_A", "_WINGS_A"}, "W_B": {"_SUB_2", "_HULL_A", "_WINGS_A"}, "W_C": {"_HULL_A", "_WINGS_B"}}
+	if got := groupNames(groups, []string{"^w_a", "bad name", "W_C"}); !reflect.DeepEqual(got, []string{"_SUB_1", "_HULL_A", "_WINGS_A", "_HULL_A", "_WINGS_B"}) {
+		t.Fatalf("names: %v", got)
+	}
+	mf, pd := os.Getenv("HSE_TEST_MODULAR"), os.Getenv("HSE_TEST_PLAYERDATA")
+	if mf == "" || pd == "" {
+		t.Skip("set HSE_TEST_MODULAR and HSE_TEST_PLAYERDATA")
+	}
+	raw, err := os.ReadFile(mf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	graw, err := os.ReadFile(pd + "/charactercustomisationdescriptorgroupsdata.mbin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	tab, err := parseDescriptorGroups(graw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, k := range shipKinds {
+		slots := shipSlotsFrom(raw, tab, k.Slots)
+		if len(slots) != 3 {
+			t.Fatalf("%s: %d slots", name, len(slots))
+		}
+		for _, s := range slots {
+			t.Logf("%s %s (%s): %d parts, first %+v", name, s.ID, s.Label, len(s.Parts), s.Parts[0])
+		}
+	}
+	if got := groupNames(tab, []string{"^FIGHT_COCKAB", "^FIGHT_WINGA", "^FIGHT_ENGIC"}); len(got) < 3 {
+		t.Fatalf("the owner's fighter: %v", got)
+	} else {
+		t.Logf("the owner's fighter: %v", got)
+	}
+}

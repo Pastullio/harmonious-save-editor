@@ -1280,6 +1280,7 @@ func modelGLB(scene, seed, picksJSON, look, name string, place *mat4, only strin
 	if picksJSON != "" {
 		_ = json.Unmarshal([]byte(picksJSON), &picks)
 	}
+	resolvePickGroups(picks)
 	out := &meshOut{only: only, onlyDepth: depth, collect: true}
 	if err := buildMesh(scene, picks, seed, 0, out, identity(), 0); err != nil {
 		return nil, err

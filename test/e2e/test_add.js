@@ -27,13 +27,13 @@ const fails = []; const ok = (n, c) => { console.log((c ? 'PASS ' : 'FAIL ') + n
   await p.evaluate(() => go('ships')); await p.waitForSelector('#addShip');
   ok('Starships has Add a ship and Render corvettes', !!(await p.$('#renderCorv')));
   const before = await shipsNow();
-  await p.click('#addShip'); await p.waitForSelector('#dlg[open]');
+  await p.click('#addShip'); await p.waitForSelector('#dlg[open]'); await p.click('[data-tab="copy"]');
   const corvIdx = await p.evaluate(() => ships().find((x) => isCorvetteEntry(x.s)).i);
   await p.selectOption('#addWhat', String(corvIdx)); const slot = +(await p.$eval('#addSlot', (e) => e.value)); await confirm();
   const after = await shipsNow();
   const dup = await p.evaluate(([src, slot]) => { const a = shipBuild(src), c = shipBuild(slot); return !!c && g(c, 'Objects').length === g(a, 'Objects').length && C.stringifyJSON(g(ps(), 'CharacterCustomisationData')[shipCcdIndex(src)]) === C.stringifyJSON(g(ps(), 'CharacterCustomisationData')[shipCcdIndex(slot)]); }, [corvIdx, slot]);
   ok('a copy of a corvette lands in the free slot with its build and colours', after[slot] === before[corvIdx] + ' copy' && dup);
-  await p.click('#addShip'); await p.waitForSelector('#dlg[open]'); const slot2 = +(await p.$eval('#addSlot', (e) => e.value)); await confirm();
+  await p.click('#addShip'); await p.waitForSelector('#dlg[open]'); await p.click('[data-tab="copy"]'); const slot2 = +(await p.$eval('#addSlot', (e) => e.value)); await confirm();
   ok('a new corvette with a starter build', await p.evaluate((s) => isCorvetteEntry(g(ps(), 'ShipOwnership')[s]) && !!shipBuild(s), slot2));
   ok('no slot problems after adding', (await p.evaluate(() => shipSlotIssues().length)) === 0);
   // ---- archived ships

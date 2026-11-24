@@ -610,7 +610,7 @@ func buildMesh(scenePath string, picks map[string]string, seed string, lod int, 
 					}
 				}
 			}
-			in := out.only != "" && strings.HasPrefix(k.Name, "_") && optionGroup(k.Name) == out.only
+			in := out.only != "" && strings.HasPrefix(k.Name, "_") && strings.EqualFold(optionGroup(k.Name), out.only)
 			if in {
 				out.inside++
 			}
@@ -667,6 +667,7 @@ func handleModelMesh(w http.ResponseWriter, r *http.Request) {
 	if s := r.URL.Query().Get("picks"); s != "" {
 		_ = json.Unmarshal([]byte(s), &picks)
 	}
+	resolvePickGroups(picks)
 	lod, _ := strconv.Atoi(r.URL.Query().Get("lod"))
 	out := &meshOut{only: r.URL.Query().Get("only"), onlyDepth: 1}
 	if d, err := strconv.Atoi(r.URL.Query().Get("depth")); err == nil && d > 1 {
