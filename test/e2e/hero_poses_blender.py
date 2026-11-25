@@ -18,15 +18,15 @@ def ok(name, cond):
         fails.append(name)
 
 
-def build(arms=1.0, legs=1.0, leg_parent="spine_01"):
-    """A stand-in traveller facing -Y, its left at +X; arms and legs can be longer or shorter, and the legs can hang
-    from the lowest spine bone or beside it (from ROOT), as nobody here has the real skeleton to look at."""
+def build(arms=1.0, legs=1.0, leg_parent="ROOT"):
+    """A stand-in laid out like the real traveller (seen in the owner's own model, 2026-11-25): Trajectory > ROOT, the
+    spine and both hips hanging from ROOT, facing -Y with the "l_" side at -X. Arms and legs can be longer or shorter."""
     hip = 0.95 * legs + 0.0
     up0 = hip + 0.05
-    J = {"ROOT": (None, (0, 0, 0)), "spine_01": ("ROOT", (0, 0, up0)), "spine_02": ("spine_01", (0, 0, up0 + 0.15)), "spine_Top": ("spine_02", (0, 0, up0 + 0.32)),
+    J = {"Trajectory": (None, (0, 0, 0)), "ROOT": ("Trajectory", (0, 0, 0.02)), "spine_01": ("ROOT", (0, 0, up0)), "spine_02": ("spine_01", (0, 0, up0 + 0.15)), "spine_Top": ("spine_02", (0, 0, up0 + 0.32)),
          "neck_01_01": ("spine_Top", (0, 0, up0 + 0.5)), "neck_01_02": ("neck_01_01", (0, 0, up0 + 0.56)), "head_Top": ("neck_01_02", (0, 0, up0 + 0.8))}
     sh = up0 + 0.45
-    for s, x in (("l", 1), ("r", -1)):
+    for s, x in (("l", -1), ("r", 1)):
         J.update({s + "_arm_Clavicle": ("spine_Top", (0.04 * x, 0, sh)), s + "_arm_Shoulder": (s + "_arm_Clavicle", (0.2 * x, 0, sh)),
                   s + "_arm_Elbow": (s + "_arm_Shoulder", ((0.2 + 0.28 * arms) * x, 0, sh)), s + "_arm_Wrist": (s + "_arm_Elbow", ((0.2 + 0.54 * arms) * x, 0, sh)),
                   s + "_hand_03_01": (s + "_arm_Wrist", ((0.29 + 0.54 * arms) * x, 0, sh)),
@@ -61,7 +61,7 @@ def build(arms=1.0, legs=1.0, leg_parent="spine_01"):
 arm, J = build()
 
 fwd, left, up = live.body_frame(arm)
-ok("the stand-in faces -Y with its left at +X", fwd.y < -0.99 and left.x > 0.99)
+ok("the stand-in faces -Y with its l_ side at -X, like the real traveller", fwd.y < -0.99 and left.x < -0.99)
 
 
 def at(n):
@@ -84,20 +84,9 @@ new = ["Ground strike", "Hovering", "Fists on hips", "Ready crouch", "Flying"]
 ok("the five poses are in the list, each with a description", all(n in names for n in new) and all(p[1] for p in live.POSES))
 ok("the older poses are still there", all(n in names for n in ("Standing", "Hero", "Kneeling", "T-pose")))
 
-ok("Ground strike applies", pose("Ground strike"))
-low = min(at(n).z for n in J if n != "ROOT")
-ok("…nothing goes under the floor", low > -0.03)
-ok("…the right fist is planted on the floor, in front of the body's middle", abs(at("r_arm_Wrist").z - 0.12) < 0.03
-   and (at("r_arm_Wrist") - at("spine_01")).dot(fwd) > 0.15 and abs((at("r_arm_Wrist") - at("spine_01")).dot(left)) < 0.2)
-ok("…both feet are on or near the floor, the left one planted ahead and wide", at("l_leg_Ball").z < 0.1 and at("r_leg_Ball").z < 0.12
-   and (at("l_leg_Ball") - at("r_leg_Ball")).dot(fwd) > 0.6 and (at("l_leg_Ball") - at("spine_01")).dot(left) > 0.3)
-ok("…low: the hips are under half a metre and the back knee is close to the floor", at("spine_01").z < 0.6 and at("r_leg_Knee").z < 0.2)
-ok("…the left arm is thrown back and up", along("l_arm_Shoulder", "l_arm_Wrist").x < -0.3 and along("l_arm_Shoulder", "l_arm_Wrist").z > 0.3)
-ok("…the hips' own bone stays near upright and the lean is in the chest", along("spine_01", "spine_02").z > 0.88 and along("spine_02", "spine_Top").x > 0.4)
-ok("…the head is up, not folded down", along("neck_01_02", "head_Top").z > 0.95)
-import math
-back = along("r_leg_Hip", "r_leg_Knee")
-ok("…the back thigh reaches no further back than a hip can (about 40°)", math.degrees(math.atan2(-back.x, -back.z)) < 43)
+# Ground strike is the owner's own pose, kept as bone turns for the real skeleton: here only that it goes on
+ok("Ground strike (the owner's, as bone turns) applies", pose("Ground strike") and "bones" in live.POSES[names.index("Ground strike")][2]
+   and len(live.POSE_BONES["Ground strike"]) > 30 and live.POSE_BONES["Ground strike"]["ROOT"]["location"][1] == 0)
 
 ok("Hovering applies", pose("Hovering"))
 ok("…the feet are off the floor, toes pointing down", 0.45 < min(at("l_leg_Toe").z, at("r_leg_Toe").z) < 0.6 and along("l_leg_Ankle", "l_leg_Ball").z < -0.8)
@@ -112,7 +101,7 @@ ok("…both elbows out, hands in by the hips", all(abs((at(s + "_arm_Elbow") - a
 ok("…its hands are fists", live.POSES[names.index("Fists on hips")][4] == {"X": "fist"})
 
 ok("Ready crouch applies", pose("Ready crouch"))
-low = min(at(n).z for n in J if n != "ROOT")
+low = min(at(n).z for n in J if n not in ("ROOT", "Trajectory"))
 ok("…nothing under the floor; the right knee and fist are down", low > -0.03 and at("r_leg_Knee").z < 0.2 and abs(at("r_arm_Wrist").z - 0.12) < 0.03)
 ok("…the left knee is up in front, shin upright", (at("l_leg_Knee") - at("spine_01")).dot(fwd) > 0.3 and along("l_leg_Knee", "l_leg_Ankle").z < -0.9)
 ok("…the head stays up and the hips' own bone near upright", along("neck_01_02", "head_Top").z > 0.95 and along("spine_01", "spine_02").z > 0.88)
@@ -122,7 +111,7 @@ body = along("spine_01", "spine_Top")
 ok("…the whole body leans forward as one piece (about 65°)", 0.85 < body.x < 0.95 and 0.35 < body.z < 0.5)
 ok("…the right arm reaches ahead, the legs trail behind", along("r_arm_Shoulder", "r_arm_Wrist").x > 0.85 and along("l_leg_Hip", "l_leg_Ankle").x < -0.8 and along("r_leg_Hip", "r_leg_Ankle").x < -0.7)
 ok("…the left arm is back at the side, the head looks ahead", along("l_arm_Shoulder", "l_arm_Wrist").x < -0.4 and along("neck_01_02", "head_Top").z > 0.8)
-ok("…well clear of the floor", min(at(n).z for n in J if n != "ROOT") > 0.5 and abs(at("spine_01").z - 1.3) < 0.02)
+ok("…well clear of the floor", min(at(n).z for n in J if n not in ("ROOT", "Trajectory")) > 0.5 and abs(at("spine_01").z - 1.3) < 0.02)
 
 ok("Standing puts the body upright on the floor again", pose("Standing") and along("spine_01", "spine_Top").z > 0.99 and abs(at("l_leg_Ball").z - 0.02) < 0.02)
 
@@ -142,7 +131,7 @@ if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):   # stick-figure pictu
                 ox = 230 + col * 450
                 d.line([(ox - 200, 470), (ox + 200, 470)], fill=(60, 90, 100), width=2)
                 for j, (p, h) in J.items():
-                    if p and p != "ROOT":
+                    if p and p not in ("ROOT", "Trajectory"):
                         a, b = at(p), at(j)
                         d.line([(ox + a.dot(ax) * 200, 470 - a.z * 200), (ox + b.dot(ax) * 200, 470 - b.z * 200)],
                                fill=(255, 120, 150) if j.startswith("r_") else (120, 200, 255) if j.startswith("l_") else (240, 240, 240), width=5)
@@ -155,9 +144,9 @@ if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):   # stick-figure pictu
 
 # other bodies: the fist still finds the floor (or the lean stops at its limit), the feet stay down, the head up
 for label, kw in (("short arms", {"arms": 0.8}), ("long arms", {"arms": 1.15}), ("long legs", {"legs": 1.15}), ("short legs", {"legs": 0.85}),
-                  ("legs hung beside the spine", {"leg_parent": "ROOT"})):
+                  ("legs hung from the lowest spine bone", {"leg_parent": "spine_01"})):
     arm, J = build(**kw)
-    for name in ("Ground strike", "Ready crouch"):
+    for name in ("Ready crouch",):
         pose(name)
         k = arm.get("harmonious_plant", -1)
         fist = at("r_arm_Wrist").z
@@ -165,7 +154,7 @@ for label, kw in (("short arms", {"arms": 0.8}), ("long arms", {"arms": 1.15}), 
         print("   %s, %s: lean %.2f, fist %.2f m, lowest foot or knee %.2f m" % (label, name, k, fist, feet))
         ok("%s on a body with %s: fist down or the lean at its limit, feet down, head up, nothing under the floor" % (name, label),
            (abs(fist - 0.12) < 0.03 or k >= 0.99 or (k == 0 and fist <= 0.15)) and feet < 0.12 and along("neck_01_02", "head_Top").z > 0.9
-           and min(at(n).z for n in J if n != "ROOT") > -0.04)
+           and min(at(n).z for n in J if n not in ("ROOT", "Trajectory")) > -0.04)
 
 print("ALL PASS" if not fails else "FAILED: " + "; ".join(fails))
 sys.exit(1 if fails else 0)
