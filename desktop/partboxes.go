@@ -255,3 +255,20 @@ func handleModelBoxes(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, out)
 }
+
+// partIDsInOrder lists the building table's part IDs in the table's own order (new parts are usually added at the
+// end), for the Report.
+func partIDsInOrder(raw []byte) []string {
+	m, err := openMbinAny(raw, "basebuildingobjectstable.mbin", objectsTableGUIDs...)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	a, n := m.list(0x20 + 0x1C8)
+	for i := 0; i < n; i++ {
+		if id := strings.ToUpper(m.fstr(a+i*0x2B8+0x208, 0x10)); id != "" {
+			out = append(out, id)
+		}
+	}
+	return out
+}

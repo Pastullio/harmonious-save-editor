@@ -408,6 +408,60 @@ func reportBanks(o *reportOut, banks string) {
 	}
 	o.changed = changed
 	o.say("")
+	// corvette parts: does every part in the building table have a name, and which kinds does the game give them
+	if raw, err := read(objectsTableFile); err == nil {
+		libMu.Lock()
+		lib := libLoaded
+		libMu.Unlock()
+		byID := map[string]libItem{}
+		if lib != nil {
+			for _, it := range lib.Items {
+				byID[strings.ToUpper(it.ID)] = it
+			}
+		}
+		var cor, unnamed []string
+		kinds := map[string]int{}
+		for _, id := range partIDsInOrder(raw) {
+			if !strings.HasPrefix(id, "B_") {
+				continue
+			}
+			cor = append(cor, id)
+			if it, ok := byID[id]; !ok || it.Name == "" {
+				unnamed = append(unnamed, id)
+			} else {
+				kinds[it.Sub]++
+			}
+		}
+		o.say("Corvette and build parts (IDs starting B_): %d in the building table, %d without a name in the item library", len(cor), len(unnamed))
+		if lib == nil {
+			o.say("  (the item library isn't built, so no names were checked)")
+		} else {
+			if len(unnamed) > 60 {
+				unnamed = append(unnamed[:60], "…")
+			}
+			if len(unnamed) > 0 {
+				o.say("  Without a name: %s", strings.Join(unnamed, ", "))
+			}
+			var ks []string
+			for k := range kinds {
+				ks = append(ks, k)
+			}
+			sort.Strings(ks)
+			for _, k := range ks {
+				o.say("  %4d  %s", kinds[k], k)
+			}
+			from := len(cor) - 60
+			if from < 0 {
+				from = 0
+			}
+			o.say("  The last parts in the table (new ones are usually added at the end):")
+			for _, id := range cor[from:] {
+				it := byID[id]
+				o.say("    %-16s %s (%s)", id, it.Name, it.Sub)
+			}
+		}
+		o.say("")
+	}
 	pics := 0
 	for _, under := range []string{"textures/ui/frontend/icons/", "textures/common/spacecraft/fighters/", "textures/common/player/"} {
 		f := find(func(f string) bool {
