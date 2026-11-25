@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.25.1713",
+  "date": "2026-11-25",
+  "notes": [
+   "LiveLink add-on 1.32.1: Ground strike reworked: low and wide, fist on the floor, head up; Ready crouch too",
+   "Install the add-on again to get it (Get the LiveLink add-on, then Blender: Edit, Preferences, Add-ons, Install from disk)"
+  ]
+ },
+ {
   "version": "2026.11.25.1704",
   "date": "2026-11-25",
   "notes": [
