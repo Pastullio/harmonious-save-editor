@@ -88,18 +88,14 @@ ok("the older poses are still there", all(n in names for n in ("Standing", "Hero
 ok("Ground strike (the owner's, as bone turns) applies", pose("Ground strike") and "bones" in live.POSES[names.index("Ground strike")][2]
    and len(live.POSE_BONES["Ground strike"]) > 30 and live.POSE_BONES["Ground strike"]["ROOT"]["location"][1] == 0)
 
-ok("Hovering applies", pose("Hovering"))
-ok("…the feet are off the floor, toes pointing down", 0.45 < min(at("l_leg_Toe").z, at("r_leg_Toe").z) < 0.6 and along("l_leg_Ankle", "l_leg_Ball").z < -0.8)
-ok("…upright, arms down and away from the body", along("spine_01", "spine_Top").z > 0.98 and along("r_arm_Shoulder", "r_arm_Wrist").z < -0.8 and along("r_arm_Shoulder", "r_arm_Wrist").y < -0.2)
-ok("…the right knee is bent a little", along("r_leg_Hip", "r_leg_Knee").x > 0.2 and along("r_leg_Knee", "r_leg_Ankle").x < -0.15)
-
-ok("Fists on hips applies", pose("Fists on hips"))
-gap = (at("l_leg_Ball") - at("r_leg_Ball")).dot(left)
-ok("…feet wide apart and on the floor", gap > 0.6 and abs(min(at("l_leg_Ball").z, at("r_leg_Ball").z) - 0.02) < 0.03)
-ok("…both elbows out, hands in by the hips", all(abs((at(s + "_arm_Elbow") - at("spine_02")).dot(left)) > 0.3 for s in "lr")
-   and all((at(s + "_arm_Wrist") - at(s + "_leg_Hip")).length < 0.4 for s in "lr"))
-ok("…its hands are fists", live.POSES[names.index("Fists on hips")][4] == {"X": "fist"})
-
+# Hovering and Fists on hips are the owner's too (his Pose_8.blend): bone turns made for the real skeleton
+for n, lift in (("Hovering", 0.6), ("Fists on hips", 0)):
+    spec = live.POSES[names.index(n)]
+    B = live.POSE_BONES.get(n, {})
+    ok(n + " (the owner's, as bone turns) applies", pose(n) and "bones" in spec[2] and len(B) >= 30)
+    ok("…only ROOT moves, and only up or down", [k for k, v in B.items() if "location" in v] == ["ROOT"] and B["ROOT"]["location"][1:] == (0, 0)
+       and abs(B["ROOT"]["location"][0] - lift) < 0.02)
+    ok("…it carries its own fingers on both hands", any(k.startswith("l_hand_") for k in B) and any(k.startswith("r_hand_") for k in B))
 ok("Ready crouch applies", pose("Ready crouch"))
 low = min(at(n).z for n in J if n not in ("ROOT", "Trajectory"))
 ok("…nothing under the floor; the right knee and fist are down", low > -0.03 and at("r_leg_Knee").z < 0.2 and abs(at("r_arm_Wrist").z - 0.12) < 0.03)

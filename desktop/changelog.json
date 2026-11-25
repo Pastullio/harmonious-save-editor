@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.25.1752",
+  "date": "2026-11-25",
+  "notes": [
+   "LiveLink add-on 1.34.0: Hovering and Fists on hips are now Pastullio's own hand-made poses, like Ground strike",
+   "The add-on changed: get it again from DryDock (LiveLink page or About) and install it over the old one in Blender"
+  ]
+ },
+ {
   "version": "2026.11.25.1730",
   "date": "2026-11-25",
   "notes": [
