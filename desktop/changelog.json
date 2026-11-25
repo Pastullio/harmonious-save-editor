@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.25.1704",
+  "date": "2026-11-25",
+  "notes": [
+   "LiveLink add-on 1.32: five new hero poses: Ground strike, Hovering, Fists on hips, Ready crouch and Flying",
+   "Install the add-on again to get them (Get the LiveLink add-on, then Blender: Edit, Preferences, Add-ons, Install from disk)"
+  ]
+ },
+ {
   "version": "2026.11.25.1626",
   "date": "2026-11-25",
   "notes": [

@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 31, 0),
+    "version": (1, 32, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious DryDock every time you save",
@@ -1890,6 +1890,8 @@ FEET = ("l_leg_Ball", "r_leg_Ball", "l_leg_Toe", "r_leg_Toe", "l_leg_Ankle", "r_
 # name: (description, {bone: (forward, outward, up)}, ground contacts {joint: height above the floor} or None, hands)
 # "X_" applies to both sides, "l_"/"r_" to one; directions needn't be unit length. A wrist can also say which way the
 # palm faces: ((line), (palm)). Hands: {side or "X": a HAND_SHAPES name}; unnamed hands are "relaxed".
+# A sixth item is for the whole body: {"pitch": degrees it leans forward as one piece (flying)}; the pose's directions
+# stay the world's, so they are written for the body as it leans.
 LEGS = {"X_leg_Hip": (0, 0.06, -1), "X_leg_Knee": (-0.02, 0.02, -1), "X_leg_Ankle": (1, 0, -0.6)}
 WIDE = {"X_leg_Hip": (0, 0.3, -1), "X_leg_Knee": (0, 0.22, -1), "X_leg_Ankle": (1, 0.1, -0.6)}
 DOWN = {"X_arm_Shoulder": (0.05, 0.18, -1), "X_arm_Elbow": (0.2, 0.06, -1), "X_arm_Wrist": ((0.1, 0, -1), (0, -1, 0))}
@@ -1954,6 +1956,39 @@ POSES = [
         "l_arm_Shoulder": (0.55, 0.15, -1), "l_arm_Elbow": (1, -0.15, -0.1),
         "l_leg_Hip": (1, 0.12, -0.05), "l_leg_Knee": (0.05, 0, -1), "l_leg_Ankle": (1, 0, -0.5),
         "r_leg_Hip": (0.15, 0.08, -1), "r_leg_Knee": (-1, 0, -0.08), "r_leg_Ankle": (-0.35, 0, -1)}, {"r_leg_Knee": 0.06, "l_leg_Ball": 0.026}),
+    # owner 2026-11-25: more hero poses, from reference pictures he sent
+    ("Ground strike", "A deep lunge, right fist driven into the ground, left arm thrown back", {
+        "spine_01": (1.3, 0, 1), "spine_02": (1.45, 0, 1), "neck_01_02": (0.35, 0, 1),
+        "r_arm_Shoulder": (0.3, 0.05, -1), "r_arm_Elbow": (0.15, 0, -1), "r_arm_Wrist": ((0.05, 0, -1), (-1, 0, 0)),
+        "l_arm_Shoulder": (-0.7, 0.5, 0.45), "l_arm_Elbow": (-0.5, 0.3, 0.9), "l_arm_Wrist": ((-0.5, 0.3, 0.9), (0, -1, 0)),
+        "l_leg_Hip": (1, 0.4, 0.26), "l_leg_Knee": (0.1, 0.02, -1), "l_leg_Ankle": (1, 0.2, -0.45),
+        "r_leg_Hip": (-0.95, 0.2, -0.3), "r_leg_Knee": (-0.96, 0.05, -0.28), "r_leg_Ankle": (0.7, 0.1, -0.7)},
+        {"l_leg_Ball": 0.03, "r_leg_Ball": 0.06, "r_arm_Wrist": 0.1}, {"X": "fist"}),
+    ("Hovering", "Floating upright, toes down, right palm open, left fist", {
+        "spine_01": (-0.05, 0, 1), "neck_01_02": (0.15, 0, 1),
+        "r_arm_Shoulder": (0.1, 0.45, -1), "r_arm_Elbow": (0.25, 0.3, -1), "r_arm_Wrist": ((0.2, 0.2, -1), (1, 0, -0.3)),
+        "l_arm_Shoulder": (0, 0.4, -1), "l_arm_Elbow": (0.3, 0.15, -1), "l_arm_Wrist": ((0.3, 0, -1), (0, -1, 0)),
+        "l_leg_Hip": (0.05, 0.1, -1), "l_leg_Knee": (0, 0.03, -1), "l_leg_Ankle": (0.35, 0, -1),
+        "r_leg_Hip": (0.35, 0.1, -1), "r_leg_Knee": (-0.3, 0, -1), "r_leg_Ankle": (0.2, 0, -1)},
+        {"l_leg_Toe": 0.5, "r_leg_Toe": 0.5}, {"r": "open", "l": "fist"}),
+    ("Fists on hips", "Feet wide, chest out, fists on the hips", {
+        "spine_01": (-0.06, 0, 1), "spine_02": (-0.05, 0, 1), "neck_01_02": (-0.05, 0, 1),
+        **side_of(ON_HIP, "l"), **side_of(ON_HIP, "r"),
+        "X_leg_Hip": (0, 0.36, -1), "X_leg_Knee": (0, 0.26, -1), "X_leg_Ankle": (1, 0.25, -0.6)}, "feet", {"X": "fist"}),
+    ("Ready crouch", "Down on the right knee, right fist on the ground, left arm across the raised knee", {
+        "spine_01": (1.3, 0, 1), "spine_02": (1.45, 0, 1), "neck_01_02": (0.3, 0, 1),
+        "r_arm_Shoulder": (0.3, 0.15, -1), "r_arm_Elbow": (0.1, 0.05, -1), "r_arm_Wrist": ((0, 0, -1), (-1, 0, 0)),
+        "l_arm_Shoulder": (0.8, 0.2, -0.6), "l_arm_Elbow": (0.8, -0.5, -0.2), "l_arm_Wrist": ((0.6, -0.6, -0.5), (0, 0, -1)),
+        "l_leg_Hip": (1, 0.25, 0.5), "l_leg_Knee": (0.05, 0, -1), "l_leg_Ankle": (1, 0.1, -0.45),
+        "r_leg_Hip": (1, 0.2, -1), "r_leg_Knee": (-1, 0, 0.12), "r_leg_Ankle": (-1, 0, -0.4)},
+        {"r_leg_Knee": 0.06, "l_leg_Ball": 0.026, "r_leg_Ball": 0.05, "r_arm_Wrist": 0.1}, {"r": "fist"}),
+    ("Flying", "In flight: body level, right arm reaching ahead, left fist back, legs trailing", {
+        "neck_01_02": (0.5, 0, 1),
+        "r_arm_Shoulder": (1, 0.1, 0.5), "r_arm_Elbow": (1, 0.05, 0.5), "r_arm_Wrist": ((1, 0, 0.5), (0, 0, -1)),
+        "l_arm_Shoulder": (-0.5, 0.8, -0.25), "l_arm_Elbow": (-0.8, 0.4, -0.2), "l_arm_Wrist": ((-0.8, 0.4, -0.2), (0, -1, 0)),
+        "l_leg_Hip": (-0.9, 0.08, -0.45), "l_leg_Knee": (-1, 0.03, -0.35), "l_leg_Ankle": (-1, 0, -0.3),
+        "r_leg_Hip": (-0.75, 0.1, -0.7), "r_leg_Knee": (-1, 0, -0.1), "r_leg_Ankle": (-1, 0, -0.2)},
+        {"spine_01": 1.3}, {"r": "flat", "l": "fist"}, {"pitch": 65}),
     ("T-pose", "Arms straight out to the sides", {
         "X_arm_Shoulder": (0, 1, 0), "X_arm_Elbow": (0, 1, 0), "X_arm_Wrist": ((0, 1, 0), (0, 0, -1)),
         "X_leg_Hip": (0, 0.05, -1), "X_leg_Knee": (0, 0, -1), "X_leg_Ankle": (1, 0, -0.6)}, "feet", {"X": "open"}),
@@ -2086,6 +2121,12 @@ def apply_ready_pose(arm, name):
     bones = arm.pose.bones
     rest_bones = arm.data.bones
     frames = {s: hand_frame(arm, s) for s in ("l", "r")}
+
+    whole = spec[5] if len(spec) > 5 else {}
+    root, hips = bones.get("ROOT"), bones.get("spine_01")
+    if whole.get("pitch") and root is not None and hips is not None:
+        import math
+        _turn(arm, root, left, math.radians(whole["pitch"]), pivot=W @ hips.head)   # round the hips, head forward
 
     def entry(bone):
         side = bone[0] if bone[:2] in ("l_", "r_") else ""
