@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.25.1623",
+  "version": "2026.11.25.1626",
   "date": "2026-11-25",
   "size": 15347712,
-  "sha256": "ef2ec461f94bfb79eff6379d840d32df6b90bee80e4858e10e0d6b23b34212f5",
-  "notes": "Ready for the game's 7.15 patch: corvette holograms show the real part sizes again\nThe Report now checks every game table DryDock reads and says which ones a game update has changed\nThe Report lists the game's corvette parts with their names, so new parts can be checked",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.25.1623/HarmoniousSaveEditor.exe",
+  "sha256": "c0bcf1cf989b33ac0fdb135a97939f216aa29e84e94126ff0efae2c03169bbbf",
+  "notes": "Corvette wing modules are recognised by the game's own description (Flight Stabiliser)",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.25.1626/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

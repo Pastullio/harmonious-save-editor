@@ -7070,7 +7070,7 @@ function tuneOrder() {
 const isDefaultTune = () => tuneOrder().join() === PART_GROUPS.map(([k]) => k).join();
 const groupRank = () => Object.fromEntries(tuneOrder().map((k, i) => [k, i]));
 const GROUP_RANK = new Proxy({}, { get: (_, k) => groupRank()[k] });
-const GROUP_BY_SUB = { 'Corvette Reactor Module': 'reactor', 'Corvette Main Engine': 'engine', 'Corvette Rear Thruster': 'engine', 'Corvette Light Thruster': 'engine', 'Corvette Flight Stabliser': 'engine',
+const GROUP_BY_SUB = { 'Corvette Reactor Module': 'reactor', 'Corvette Main Engine': 'engine', 'Corvette Rear Thruster': 'engine', 'Corvette Light Thruster': 'engine', 'Corvette Flight Stabliser': 'engine', 'Corvette Flight Stabiliser': 'engine',
   'Corvette Weapon System': 'weapon', 'Corvette Shield Generator': 'shield', 'Corvette Landing Gear': 'gear', 'Corvette Cockpit': 'cockpit' };
 function partGroup(id) {
   const raw = str(id).replace(/^\^/, ''), info = dbItem(id), sub = info && info.sub;
