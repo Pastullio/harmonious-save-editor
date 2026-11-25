@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 32, 1),
+    "version": (1, 33, 0),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious DryDock every time you save",
@@ -1905,6 +1905,48 @@ def side_of(part, side):
     return {side + "_" + k: v for k, v in part.items()}
 
 
+# Poses made by hand in Blender and kept as each bone's own turn (what Save my pose writes): every traveller has the
+# same skeleton, so they fit all of them. Ground strike is the owner's (2026-11-25, his ground_strike.blend, made on
+# his traveller with the natural limits on), replacing two attempts worked out from directions.
+POSE_BONES = {"Ground strike": {
+    "ROOT": {"rotation": (1, -0, -0, 0), "location": (-0.2647, 0, 0)},
+    "l_leg_Hip": {"rotation": (0.79637, 0.13378, 0.58243, 0.09315)},
+    "l_leg_Knee": {"rotation": (0.84394, -0.12139, -0.52179, -0.02763)},
+    "l_leg_Ankle": {"rotation": (0.99643, -0.03353, 0.07461, 0.0208)},
+    "l_leg_Ball": {"rotation": (0.99905, -0.04362, -0, -0)},
+    "r_leg_Hip": {"rotation": (0.96499, -0.00651, -0.25933, 0.03869)},
+    "r_leg_Knee": {"rotation": (0.92934, -0.00827, -0.36332, -0.06528)},
+    "r_leg_Ankle": {"rotation": (0.99732, -0.07143, 0.01025, 0.0124)},
+    "r_leg_Ball": {"rotation": (0.93969, 0, -0.34202, 0)},
+    "spine_01": {"rotation": (0.81665, 0, -0, 0.57713)},
+    "spine_02": {"rotation": (0.99967, 0, -0, 0.02562)},
+    "l_arm_Shoulder": {"rotation": (0.81172, 0.37282, -0.39531, 0.21412)},
+    "l_arm_Elbow": {"rotation": (0.57993, 0.57327, 0.43114, -0.38621)},
+    "l_arm_Wrist": {"rotation": (0.97338, -0.01041, -0.207, 0.0978)},
+    "l_hand_03_01": {"rotation": (0.81915, 0, 0, -0.57358)},
+    "l_hand_03_02": {"rotation": (0.73728, -0, 0, -0.67559)},
+    "l_hand_03_03": {"rotation": (0.86603, 0, 0, -0.5)},
+    "l_hand_05_01": {"rotation": (0.96593, -0, -0, -0.25882)},
+    "l_hand_05_02": {"rotation": (0.96593, 0, 0, -0.25882)},
+    "l_hand_05_03": {"rotation": (0.9763, -0, -0, -0.21644)},
+    "l_hand_03b_01": {"rotation": (0.81915, 0, 0, -0.57358)},
+    "l_hand_03b_02": {"rotation": (0.73728, 0, -0, -0.67559)},
+    "l_hand_03b_03": {"rotation": (0.86603, 0, 0, -0.5)},
+    "r_arm_Shoulder": {"rotation": (0.78839, -0.16611, 0.59212, 0.0157)},
+    "r_arm_Elbow": {"rotation": (0.95498, -0.2966, -0.00194, 0.00625)},
+    "r_arm_Wrist": {"rotation": (0.98454, -0.0179, -0.16517, 0.05547)},
+    "r_hand_03_01": {"rotation": (0.81915, 0, -0, -0.57358)},
+    "r_hand_03_02": {"rotation": (0.73728, 0, 0, -0.67559)},
+    "r_hand_03_03": {"rotation": (0.86603, 0, 0, -0.5)},
+    "r_hand_05_01": {"rotation": (0.96593, 0, -0, -0.25882)},
+    "r_hand_05_02": {"rotation": (0.96593, 0, 0, -0.25882)},
+    "r_hand_05_03": {"rotation": (0.9763, 0, 0, -0.21644)},
+    "r_hand_03b_01": {"rotation": (0.81915, 0, -0, -0.57358)},
+    "r_hand_03b_02": {"rotation": (0.73728, 0, 0, -0.67559)},
+    "r_hand_03b_03": {"rotation": (0.86603, -0, 0, -0.5)},
+    "neck_01_02": {"rotation": (0.92388, -0, 0, -0.38268)},
+}}
+
 POSES = [
     ("Standing", "Relaxed, arms by the sides", {**DOWN, **LEGS}, "feet"),
     ("Hands on hips", "Legs apart, elbows out, hands on the hips", {
@@ -1960,15 +2002,8 @@ POSES = [
         "l_leg_Hip": (1, 0.12, -0.05), "l_leg_Knee": (0.05, 0, -1), "l_leg_Ankle": (1, 0, -0.5),
         "r_leg_Hip": (0.15, 0.08, -1), "r_leg_Knee": (-1, 0, -0.08), "r_leg_Ankle": (-0.35, 0, -1)}, {"r_leg_Knee": 0.06, "l_leg_Ball": 0.026}),
     # owner 2026-11-25: more hero poses, from reference pictures he sent
-    ("Ground strike", "A hero's landing: low and wide, right fist driven into the ground, left arm thrown back, head up", {
-        "spine_01": (0.2, 0, 1), "spine_02": (0.6, 0, 1), "spine_Top": (0.8, 0, 1),
-        "neck_01_01": (0.3, 0, 1), "neck_01_02": (-0.05, 0, 1),
-        "r_arm_Shoulder": (0.2, -0.22, -1), "r_arm_Elbow": (0.08, -0.12, -1), "r_arm_Wrist": ((0, -0.05, -1), (-1, 0, 0)),
-        "l_arm_Shoulder": (-0.7, 0.5, 0.45), "l_arm_Elbow": (-0.5, 0.3, 0.9), "l_arm_Wrist": ((-0.5, 0.3, 0.9), (0, -1, 0)),
-        "l_leg_Hip": (0.7, 0.6, 0.42), "l_leg_Knee": (0.1, 0.1, -1), "l_leg_Ankle": (1, 0.35, -0.45),
-        "r_leg_Hip": (-0.55, 0.5, -0.65), "r_leg_Knee": (-1, 0.15, 0.03), "r_leg_Ankle": (-1, 0, -0.3)},
-        {"l_leg_Ball": 0.03, "r_leg_Ball": 0.04, "r_leg_Knee": 0.07, "r_arm_Wrist": 0.12}, {"X": "fist"},
-        {"plant": {"joint": "r_arm_Wrist", "height": 0.12, "lean": {"spine_01": (0.5, 0, 1), "spine_02": (1.7, 0, 1), "spine_Top": (4, 0, 1), "neck_01_01": (1.2, 0, 1)}}}),
+    ("Ground strike", "A hero's landing: one knee low, fist driven down, the other arm thrown back, head bowed",
+     {"bones": POSE_BONES["Ground strike"]}, None),
     ("Hovering", "Floating upright, toes down, right palm open, left fist", {
         "spine_01": (-0.05, 0, 1), "neck_01_02": (0.15, 0, 1),
         "r_arm_Shoulder": (0.1, 0.45, -1), "r_arm_Elbow": (0.25, 0.3, -1), "r_arm_Wrist": ((0.2, 0.2, -1), (1, 0, -0.3)),
@@ -2121,6 +2156,8 @@ def apply_ready_pose(arm, name):
     spec = next((p for p in POSES if p[0] == name), None)
     if spec is None:
         return False
+    if "bones" in spec[2]:   # a hand-made pose
+        return bool(apply_pose_data(arm, {"bones": spec[2]["bones"]}))
     state = {"aims": spec[2]}
     contacts = spec[3]
     opts = spec[5] if len(spec) > 5 else {}
@@ -2214,7 +2251,10 @@ def apply_ready_pose(arm, name):
         clear_pose(arm)
         root, hips = bones.get("ROOT"), bones.get("spine_01")
         if opts.get("pitch") and root is not None and hips is not None:
-            _turn(arm, root, left, math.radians(opts["pitch"]), pivot=W @ hips.head)   # round the hips, head forward
+            # round the hips, head forward. The axis is worked out from up and forward: the real skeleton's "l_" side
+                # is at -X (it is turned to face Blender's front view), so its left is not where a stand-in's was and
+                # the first Flying leaned over backwards (owner 2026-11-25)
+                _turn(arm, root, up.cross(fwd).normalized(), math.radians(opts["pitch"]), pivot=W @ hips.head)
         for key in POSE_ORDER:
             for bone in ([key.replace("X_", s + "_", 1) for s in ("l", "r")] if key.startswith("X_") else [key]):
                 pb, aim_at = bones.get(bone), POSE_AIM.get(key, "").replace("X_", bone[:2], 1)
@@ -2297,6 +2337,27 @@ def touch_down(arm, contacts):
         bpy.context.view_layer.update()
 
 
+def lift_clear(arm):
+    """Raise the traveller until no part of the body is under the floor: joints sit inside the body, so a knee or a
+    boot's sole can be a few centimetres below a joint that touches (seen on the owner's traveller, 2026-11-25)."""
+    import mathutils
+    root = arm.pose.bones.get("ROOT")
+    bodies = [o for o in bpy.data.objects if o.type == "MESH" and o.parent == arm and o.find_armature() == arm]
+    if root is None or not bodies:
+        return
+    dg = bpy.context.evaluated_depsgraph_get()
+    low = None
+    for o in bodies:
+        e = o.evaluated_get(dg)
+        for c in e.bound_box:
+            z = (e.matrix_world @ mathutils.Vector(c)).z
+            low = z if low is None else min(low, z)
+    if low is not None and low < -0.002:
+        W, Wi = arm.matrix_world, arm.matrix_world.inverted()
+        root.matrix = Wi @ (mathutils.Matrix.Translation((0, 0, -low)) @ (W @ root.matrix))
+        bpy.context.view_layer.update()
+
+
 def pose_data(arm):
     out = {"harmonious_pose": 1, "bones": {}}
     for pb in arm.pose.bones:
@@ -2344,6 +2405,7 @@ def pose_traveller(context, key):
             spec = next((p for p in POSES if "ready:" + p[0] == key), None)
             if spec is not None and spec[3]:
                 touch_down(arm, spec[3])
+                lift_clear(arm)
             if reach:
                 set_reach(arm, True)
 
@@ -2370,10 +2432,14 @@ def _pose_traveller(context, key):
         follow_fingers(arm, keep=set((data.get("bones") or {}).keys()))
         apply_natural(arm)
         return ""
+    spec = next((p for p in POSES if p[0] == name), None)
+    if spec is not None and "bones" in spec[2]:   # a hand-made pose brings its own fingers
+        follow_fingers(arm, keep=set(spec[2]["bones"].keys()))
+        apply_natural(arm)
+        return ""
     follow_fingers(arm)
     apply_natural(arm)
     # the hands' shapes go on the fingers' hinges, which apply_natural has just set up
-    spec = next((p for p in POSES if p[0] == name), None)
     hands = spec[4] if spec is not None and len(spec) > 4 else {}
     for side in ("l", "r"):
         shape = hands.get(side, hands.get("X", "relaxed"))

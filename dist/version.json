@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.25.1713",
+  "version": "2026.11.25.1730",
   "date": "2026-11-25",
-  "size": 15354880,
-  "sha256": "f4069bc4f335bdeb7cb3de15a25c7c530772934725413afdf3ba0bd746bd6784",
-  "notes": "LiveLink add-on 1.32.1: Ground strike reworked: low and wide, fist on the floor, head up; Ready crouch too\nInstall the add-on again to get it (Get the LiveLink add-on, then Blender: Edit, Preferences, Add-ons, Install from disk)",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.25.1713/HarmoniousSaveEditor.exe",
+  "size": 15358976,
+  "sha256": "234972fecc8e13f75244276fe38e96dffe562b7416d450eb127267ec3c157b7b",
+  "notes": "LiveLink add-on 1.33: Ground strike is now Pastullio's own hand-made pose\nFlying fixed: it leaned over backwards; the traveller now flies forward, legs trailing\nPoses no longer sink a few centimetres into the floor\nInstall the add-on again to get these (Get the LiveLink add-on, then Blender: Edit, Preferences, Add-ons, Install from disk)",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.25.1730/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

@@ -1,5 +1,15 @@
 [
  {
+  "version": "2026.11.25.1730",
+  "date": "2026-11-25",
+  "notes": [
+   "LiveLink add-on 1.33: Ground strike is now Pastullio's own hand-made pose",
+   "Flying fixed: it leaned over backwards; the traveller now flies forward, legs trailing",
+   "Poses no longer sink a few centimetres into the floor",
+   "Install the add-on again to get these (Get the LiveLink add-on, then Blender: Edit, Preferences, Add-ons, Install from disk)"
+  ]
+ },
+ {
   "version": "2026.11.25.1713",
   "date": "2026-11-25",
   "notes": [
