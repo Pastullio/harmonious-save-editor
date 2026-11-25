@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.25.1704",
+  "version": "2026.11.25.1713",
   "date": "2026-11-25",
-  "size": 15351808,
-  "sha256": "ecd329f3f72c2af9e25819f229b45a30fb302accff86214489aeea3763c67e50",
-  "notes": "LiveLink add-on 1.32: five new hero poses: Ground strike, Hovering, Fists on hips, Ready crouch and Flying\nInstall the add-on again to get them (Get the LiveLink add-on, then Blender: Edit, Preferences, Add-ons, Install from disk)",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.25.1704/HarmoniousSaveEditor.exe",
+  "size": 15354880,
+  "sha256": "f4069bc4f335bdeb7cb3de15a25c7c530772934725413afdf3ba0bd746bd6784",
+  "notes": "LiveLink add-on 1.32.1: Ground strike reworked: low and wide, fist on the floor, head up; Ready crouch too\nInstall the add-on again to get it (Get the LiveLink add-on, then Blender: Edit, Preferences, Add-ons, Install from disk)",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.25.1713/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

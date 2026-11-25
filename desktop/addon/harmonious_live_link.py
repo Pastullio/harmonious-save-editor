@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 32, 0),
+    "version": (1, 32, 1),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious DryDock every time you save",
@@ -1891,7 +1891,10 @@ FEET = ("l_leg_Ball", "r_leg_Ball", "l_leg_Toe", "r_leg_Toe", "l_leg_Ankle", "r_
 # "X_" applies to both sides, "l_"/"r_" to one; directions needn't be unit length. A wrist can also say which way the
 # palm faces: ((line), (palm)). Hands: {side or "X": a HAND_SHAPES name}; unnamed hands are "relaxed".
 # A sixth item is for the whole body: {"pitch": degrees it leans forward as one piece (flying)}; the pose's directions
-# stay the world's, so they are written for the body as it leans.
+# stay the world's, so they are written for the body as it leans. And {"plant": {joint, height, lean: {bone: the
+# furthest it may lean}}}: a hand set on the floor by leaning those bones as far as this traveller needs.
+# Legs hang from the lowest spine bone or beside it, and a hip only reaches 30 degrees back and 135 forward of it,
+# so poses that fold the body keep spine_01 near upright and lean from spine_02 up.
 LEGS = {"X_leg_Hip": (0, 0.06, -1), "X_leg_Knee": (-0.02, 0.02, -1), "X_leg_Ankle": (1, 0, -0.6)}
 WIDE = {"X_leg_Hip": (0, 0.3, -1), "X_leg_Knee": (0, 0.22, -1), "X_leg_Ankle": (1, 0.1, -0.6)}
 DOWN = {"X_arm_Shoulder": (0.05, 0.18, -1), "X_arm_Elbow": (0.2, 0.06, -1), "X_arm_Wrist": ((0.1, 0, -1), (0, -1, 0))}
@@ -1957,13 +1960,15 @@ POSES = [
         "l_leg_Hip": (1, 0.12, -0.05), "l_leg_Knee": (0.05, 0, -1), "l_leg_Ankle": (1, 0, -0.5),
         "r_leg_Hip": (0.15, 0.08, -1), "r_leg_Knee": (-1, 0, -0.08), "r_leg_Ankle": (-0.35, 0, -1)}, {"r_leg_Knee": 0.06, "l_leg_Ball": 0.026}),
     # owner 2026-11-25: more hero poses, from reference pictures he sent
-    ("Ground strike", "A deep lunge, right fist driven into the ground, left arm thrown back", {
-        "spine_01": (1.3, 0, 1), "spine_02": (1.45, 0, 1), "neck_01_02": (0.35, 0, 1),
-        "r_arm_Shoulder": (0.3, 0.05, -1), "r_arm_Elbow": (0.15, 0, -1), "r_arm_Wrist": ((0.05, 0, -1), (-1, 0, 0)),
+    ("Ground strike", "A hero's landing: low and wide, right fist driven into the ground, left arm thrown back, head up", {
+        "spine_01": (0.2, 0, 1), "spine_02": (0.6, 0, 1), "spine_Top": (0.8, 0, 1),
+        "neck_01_01": (0.3, 0, 1), "neck_01_02": (-0.05, 0, 1),
+        "r_arm_Shoulder": (0.2, -0.22, -1), "r_arm_Elbow": (0.08, -0.12, -1), "r_arm_Wrist": ((0, -0.05, -1), (-1, 0, 0)),
         "l_arm_Shoulder": (-0.7, 0.5, 0.45), "l_arm_Elbow": (-0.5, 0.3, 0.9), "l_arm_Wrist": ((-0.5, 0.3, 0.9), (0, -1, 0)),
-        "l_leg_Hip": (1, 0.4, 0.26), "l_leg_Knee": (0.1, 0.02, -1), "l_leg_Ankle": (1, 0.2, -0.45),
-        "r_leg_Hip": (-0.95, 0.2, -0.3), "r_leg_Knee": (-0.96, 0.05, -0.28), "r_leg_Ankle": (0.7, 0.1, -0.7)},
-        {"l_leg_Ball": 0.03, "r_leg_Ball": 0.06, "r_arm_Wrist": 0.1}, {"X": "fist"}),
+        "l_leg_Hip": (0.7, 0.6, 0.42), "l_leg_Knee": (0.1, 0.1, -1), "l_leg_Ankle": (1, 0.35, -0.45),
+        "r_leg_Hip": (-0.55, 0.5, -0.65), "r_leg_Knee": (-1, 0.15, 0.03), "r_leg_Ankle": (-1, 0, -0.3)},
+        {"l_leg_Ball": 0.03, "r_leg_Ball": 0.04, "r_leg_Knee": 0.07, "r_arm_Wrist": 0.12}, {"X": "fist"},
+        {"plant": {"joint": "r_arm_Wrist", "height": 0.12, "lean": {"spine_01": (0.5, 0, 1), "spine_02": (1.7, 0, 1), "spine_Top": (4, 0, 1), "neck_01_01": (1.2, 0, 1)}}}),
     ("Hovering", "Floating upright, toes down, right palm open, left fist", {
         "spine_01": (-0.05, 0, 1), "neck_01_02": (0.15, 0, 1),
         "r_arm_Shoulder": (0.1, 0.45, -1), "r_arm_Elbow": (0.25, 0.3, -1), "r_arm_Wrist": ((0.2, 0.2, -1), (1, 0, -0.3)),
@@ -1976,12 +1981,14 @@ POSES = [
         **side_of(ON_HIP, "l"), **side_of(ON_HIP, "r"),
         "X_leg_Hip": (0, 0.36, -1), "X_leg_Knee": (0, 0.26, -1), "X_leg_Ankle": (1, 0.25, -0.6)}, "feet", {"X": "fist"}),
     ("Ready crouch", "Down on the right knee, right fist on the ground, left arm across the raised knee", {
-        "spine_01": (1.3, 0, 1), "spine_02": (1.45, 0, 1), "neck_01_02": (0.3, 0, 1),
-        "r_arm_Shoulder": (0.3, 0.15, -1), "r_arm_Elbow": (0.1, 0.05, -1), "r_arm_Wrist": ((0, 0, -1), (-1, 0, 0)),
+        "spine_01": (0.2, 0, 1), "spine_02": (0.55, 0, 1), "spine_Top": (0.7, 0, 1),
+        "neck_01_01": (0.3, 0, 1), "neck_01_02": (0, 0, 1),
+        "r_arm_Shoulder": (0.25, 0.1, -1), "r_arm_Elbow": (0.1, 0.05, -1), "r_arm_Wrist": ((0, 0, -1), (-1, 0, 0)),
         "l_arm_Shoulder": (0.8, 0.2, -0.6), "l_arm_Elbow": (0.8, -0.5, -0.2), "l_arm_Wrist": ((0.6, -0.6, -0.5), (0, 0, -1)),
         "l_leg_Hip": (1, 0.25, 0.5), "l_leg_Knee": (0.05, 0, -1), "l_leg_Ankle": (1, 0.1, -0.45),
-        "r_leg_Hip": (1, 0.2, -1), "r_leg_Knee": (-1, 0, 0.12), "r_leg_Ankle": (-1, 0, -0.4)},
-        {"r_leg_Knee": 0.06, "l_leg_Ball": 0.026, "r_leg_Ball": 0.05, "r_arm_Wrist": 0.1}, {"r": "fist"}),
+        "r_leg_Hip": (1, 0.2, -0.8), "r_leg_Knee": (-1, 0, 0.12), "r_leg_Ankle": (-1, 0, -0.4)},
+        {"r_leg_Knee": 0.06, "l_leg_Ball": 0.026, "r_leg_Ball": 0.05, "r_arm_Wrist": 0.12}, {"r": "fist"},
+        {"plant": {"joint": "r_arm_Wrist", "height": 0.12, "lean": {"spine_01": (0.5, 0, 1), "spine_02": (1.7, 0, 1), "spine_Top": (4, 0, 1), "neck_01_01": (1.2, 0, 1)}}}),
     ("Flying", "In flight: body level, right arm reaching ahead, left fist back, legs trailing", {
         "neck_01_02": (0.5, 0, 1),
         "r_arm_Shoulder": (1, 0.1, 0.5), "r_arm_Elbow": (1, 0.05, 0.5), "r_arm_Wrist": ((1, 0, 0.5), (0, 0, -1)),
@@ -2114,7 +2121,9 @@ def apply_ready_pose(arm, name):
     spec = next((p for p in POSES if p[0] == name), None)
     if spec is None:
         return False
-    aims, contacts = spec[2], spec[3]
+    state = {"aims": spec[2]}
+    contacts = spec[3]
+    opts = spec[5] if len(spec) > 5 else {}
     clear_pose(arm)
     fwd, left, up = body_frame(arm)
     W = arm.matrix_world
@@ -2122,16 +2131,10 @@ def apply_ready_pose(arm, name):
     rest_bones = arm.data.bones
     frames = {s: hand_frame(arm, s) for s in ("l", "r")}
 
-    whole = spec[5] if len(spec) > 5 else {}
-    root, hips = bones.get("ROOT"), bones.get("spine_01")
-    if whole.get("pitch") and root is not None and hips is not None:
-        import math
-        _turn(arm, root, left, math.radians(whole["pitch"]), pivot=W @ hips.head)   # round the hips, head forward
-
     def entry(bone):
         side = bone[0] if bone[:2] in ("l_", "r_") else ""
         generic = "X_" + bone[2:] if side else bone
-        return aims.get(bone) or aims.get(generic), side
+        return state["aims"].get(bone) or state["aims"].get(generic), side
 
     def world(t, side):
         out = left if side != "r" else -left
@@ -2204,27 +2207,75 @@ def apply_ready_pose(arm, name):
         if abs(ang) > 1e-4:
             _turn(arm, bones[elbow], line, ang)
 
-    for key in POSE_ORDER:
-        for bone in ([key.replace("X_", s + "_", 1) for s in ("l", "r")] if key.startswith("X_") else [key]):
-            pb, aim_at = bones.get(bone), POSE_AIM.get(key, "").replace("X_", bone[:2], 1)
-            t = target(bone)
-            if pb is None or t is None or bones.get(aim_at) is None:
-                continue
-            aim(bone, aim_at, t)
-            side = bone[0]
-            if bone.endswith("_arm_Shoulder"):
-                bend_twist(bone, "%s_arm_Elbow" % side, "%s_arm_Wrist" % side, False)
-            elif bone.endswith("_leg_Hip"):
-                bend_twist(bone, "%s_leg_Knee" % side, "%s_leg_Ankle" % side, True)
-            elif bone.endswith("_arm_Elbow"):
-                palm_twist(side)
-            elif bone.endswith("_arm_Wrist"):
-                # the wrist's bend moves the palm a little: settle the forearm's twist and the wrist together
-                for _ in range(3):
+    def run(aims, ground):
+        """Puts the whole pose on from rest and stands it on the floor."""
+        import math
+        state["aims"] = aims
+        clear_pose(arm)
+        root, hips = bones.get("ROOT"), bones.get("spine_01")
+        if opts.get("pitch") and root is not None and hips is not None:
+            _turn(arm, root, left, math.radians(opts["pitch"]), pivot=W @ hips.head)   # round the hips, head forward
+        for key in POSE_ORDER:
+            for bone in ([key.replace("X_", s + "_", 1) for s in ("l", "r")] if key.startswith("X_") else [key]):
+                pb, aim_at = bones.get(bone), POSE_AIM.get(key, "").replace("X_", bone[:2], 1)
+                t = target(bone)
+                if pb is None or t is None or bones.get(aim_at) is None:
+                    continue
+                aim(bone, aim_at, t)
+                side = bone[0]
+                if bone.endswith("_arm_Shoulder"):
+                    bend_twist(bone, "%s_arm_Elbow" % side, "%s_arm_Wrist" % side, False)
+                elif bone.endswith("_leg_Hip"):
+                    bend_twist(bone, "%s_leg_Knee" % side, "%s_leg_Ankle" % side, True)
+                elif bone.endswith("_arm_Elbow"):
                     palm_twist(side)
-                    aim(bone, aim_at, t)
-    if contacts:
-        touch_down(arm, contacts)
+                elif bone.endswith("_arm_Wrist"):
+                    # the wrist's bend moves the palm a little: settle the forearm's twist and the wrist together
+                    for _ in range(3):
+                        palm_twist(side)
+                        aim(bone, aim_at, t)
+        if ground:
+            touch_down(arm, ground)
+
+    plant = opts.get("plant")
+    if plant and isinstance(contacts, dict) and bones.get(plant["joint"]) is not None:
+        # A hand on the floor (owner 2026-11-25: the fist hung in the air, the body folded double): how far the
+        # chest must lean depends on the traveller's own arms and legs, so the lean is found, between the pose's own
+        # and the furthest it allows, with the feet kept on the floor. Travellers whose arms are too short stop at
+        # the furthest lean.
+        import math
+        feet = {k: v for k, v in contacts.items() if k != plant["joint"]}
+
+        def leaned(k):
+            aims = dict(spec[2])
+            for bone, far in plant["lean"].items():
+                near = spec[2][bone]
+                a0, a1 = math.atan2(near[0], near[2]), math.atan2(far[0], far[2])
+                a = a0 + (a1 - a0) * k
+                aims[bone] = (math.sin(a), 0, math.cos(a))
+            return aims
+
+        def gap(k):
+            run(leaned(k), feet)
+            return (W @ bones[plant["joint"]].head).z - plant["height"]
+
+        lo, hi = 0.0, 1.0
+        if gap(lo) <= 0:
+            k = lo
+        elif gap(hi) >= 0:
+            k = hi
+        else:
+            for _ in range(5):   # each try poses the whole body again: to about 2 cm
+                k = (lo + hi) / 2
+                if gap(k) > 0:
+                    lo = k
+                else:
+                    hi = k
+            k = hi
+        run(leaned(k), feet)
+        arm["harmonious_plant"] = round(k, 3)
+    else:
+        run(spec[2], contacts)
     for pb in bones:   # bones only turn (the body keeps its proportions)
         if not free_bone(pb):
             pb.location = (0, 0, 0)

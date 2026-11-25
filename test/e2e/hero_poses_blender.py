@@ -18,38 +18,47 @@ def ok(name, cond):
         fails.append(name)
 
 
-# joint: (parent, head) with the traveller facing -Y, left at +X
-J = {"ROOT": (None, (0, 0, 0)), "spine_01": ("ROOT", (0, 0, 1.0)), "spine_02": ("spine_01", (0, 0, 1.15)), "spine_Top": ("spine_02", (0, 0, 1.32)),
-     "neck_01_01": ("spine_Top", (0, 0, 1.5)), "neck_01_02": ("neck_01_01", (0, 0, 1.56)), "head_Top": ("neck_01_02", (0, 0, 1.8))}
-for s, x in (("l", 1), ("r", -1)):
-    J.update({s + "_arm_Clavicle": ("spine_Top", (0.04 * x, 0, 1.45)), s + "_arm_Shoulder": (s + "_arm_Clavicle", (0.2 * x, 0, 1.45)),
-              s + "_arm_Elbow": (s + "_arm_Shoulder", (0.48 * x, 0, 1.45)), s + "_arm_Wrist": (s + "_arm_Elbow", (0.74 * x, 0, 1.45)),
-              s + "_hand_03_01": (s + "_arm_Wrist", (0.83 * x, 0, 1.45)),
-              s + "_leg_Hip": ("spine_01", (0.1 * x, 0, 0.95)), s + "_leg_Knee": (s + "_leg_Hip", (0.1 * x, -0.01, 0.52)),
-              s + "_leg_Ankle": (s + "_leg_Knee", (0.1 * x, 0, 0.09)), s + "_leg_Ball": (s + "_leg_Ankle", (0.1 * x, -0.13, 0.02)),
-              s + "_leg_Toe": (s + "_leg_Ball", (0.1 * x, -0.2, 0.02))})
-for o in list(bpy.data.objects):
-    bpy.data.objects.remove(o, do_unlink=True)
-data = bpy.data.armatures.new("Stand-in")
-arm = bpy.data.objects.new("Stand-in", data)
-bpy.context.scene.collection.objects.link(arm)
-bpy.context.view_layer.objects.active = arm
-bpy.ops.object.mode_set(mode="EDIT")
-kids = {}
-for n, (p, h) in J.items():
-    kids.setdefault(p, []).append(n)
-for n, (p, h) in J.items():
-    b = data.edit_bones.new(n)
-    b.head = h
-    first = kids.get(n, [None])[0]
-    b.tail = J[first][1] if first and (Vector(J[first][1]) - Vector(h)).length > 1e-4 else (h[0], h[1] - 0.05, h[2])
-for n, (p, h) in J.items():
-    if p:
-        data.edit_bones[n].parent = data.edit_bones[p]
-bpy.ops.object.mode_set(mode="OBJECT")
-arm["harmonious_traveller"] = "Stand-in"
-for pb in arm.pose.bones:
-    pb.rotation_mode = "QUATERNION"
+def build(arms=1.0, legs=1.0, leg_parent="spine_01"):
+    """A stand-in traveller facing -Y, its left at +X; arms and legs can be longer or shorter, and the legs can hang
+    from the lowest spine bone or beside it (from ROOT), as nobody here has the real skeleton to look at."""
+    hip = 0.95 * legs + 0.0
+    up0 = hip + 0.05
+    J = {"ROOT": (None, (0, 0, 0)), "spine_01": ("ROOT", (0, 0, up0)), "spine_02": ("spine_01", (0, 0, up0 + 0.15)), "spine_Top": ("spine_02", (0, 0, up0 + 0.32)),
+         "neck_01_01": ("spine_Top", (0, 0, up0 + 0.5)), "neck_01_02": ("neck_01_01", (0, 0, up0 + 0.56)), "head_Top": ("neck_01_02", (0, 0, up0 + 0.8))}
+    sh = up0 + 0.45
+    for s, x in (("l", 1), ("r", -1)):
+        J.update({s + "_arm_Clavicle": ("spine_Top", (0.04 * x, 0, sh)), s + "_arm_Shoulder": (s + "_arm_Clavicle", (0.2 * x, 0, sh)),
+                  s + "_arm_Elbow": (s + "_arm_Shoulder", ((0.2 + 0.28 * arms) * x, 0, sh)), s + "_arm_Wrist": (s + "_arm_Elbow", ((0.2 + 0.54 * arms) * x, 0, sh)),
+                  s + "_hand_03_01": (s + "_arm_Wrist", ((0.29 + 0.54 * arms) * x, 0, sh)),
+                  s + "_leg_Hip": (leg_parent, (0.1 * x, 0, hip)), s + "_leg_Knee": (s + "_leg_Hip", (0.1 * x, -0.01, 0.09 + 0.43 * legs)),
+                  s + "_leg_Ankle": (s + "_leg_Knee", (0.1 * x, 0, 0.09)), s + "_leg_Ball": (s + "_leg_Ankle", (0.1 * x, -0.13, 0.02)),
+                  s + "_leg_Toe": (s + "_leg_Ball", (0.1 * x, -0.2, 0.02))})
+    for o in list(bpy.data.objects):
+        bpy.data.objects.remove(o, do_unlink=True)
+    data = bpy.data.armatures.new("Stand-in")
+    arm = bpy.data.objects.new("Stand-in", data)
+    bpy.context.scene.collection.objects.link(arm)
+    bpy.context.view_layer.objects.active = arm
+    bpy.ops.object.mode_set(mode="EDIT")
+    kids = {}
+    for n, (p, h) in J.items():
+        kids.setdefault(p, []).append(n)
+    for n, (p, h) in J.items():
+        b = data.edit_bones.new(n)
+        b.head = h
+        first = kids.get(n, [None])[0]
+        b.tail = J[first][1] if first and (Vector(J[first][1]) - Vector(h)).length > 1e-4 else (h[0], h[1] - 0.05, h[2])
+    for n, (p, h) in J.items():
+        if p:
+            data.edit_bones[n].parent = data.edit_bones[p]
+    bpy.ops.object.mode_set(mode="OBJECT")
+    arm["harmonious_traveller"] = "Stand-in"
+    for pb in arm.pose.bones:
+        pb.rotation_mode = "QUATERNION"
+    return arm, J
+
+
+arm, J = build()
 
 fwd, left, up = live.body_frame(arm)
 ok("the stand-in faces -Y with its left at +X", fwd.y < -0.99 and left.x > 0.99)
@@ -77,13 +86,18 @@ ok("the older poses are still there", all(n in names for n in ("Standing", "Hero
 
 ok("Ground strike applies", pose("Ground strike"))
 low = min(at(n).z for n in J if n != "ROOT")
-print("   lowest", min((at(n).z, n) for n in J if n != "ROOT"), "feet", round(at("l_leg_Ball").z, 3), round(at("r_leg_Ball").z, 3), "fist", round(at("r_arm_Wrist").z, 3))
-ok("…nothing goes under the floor and something touches it", -0.03 < low < 0.12)
-ok("…the right fist is down by the floor, ahead of the hips", at("r_arm_Wrist").z < 0.3 and (at("r_arm_Wrist") - at("spine_01")).dot(fwd) > 0.15)
-ok("…both feet are on or near the floor", at("l_leg_Ball").z < 0.12 and at("r_leg_Ball").z < 0.12)
+ok("…nothing goes under the floor", low > -0.03)
+ok("…the right fist is planted on the floor, in front of the body's middle", abs(at("r_arm_Wrist").z - 0.12) < 0.03
+   and (at("r_arm_Wrist") - at("spine_01")).dot(fwd) > 0.15 and abs((at("r_arm_Wrist") - at("spine_01")).dot(left)) < 0.2)
+ok("…both feet are on or near the floor, the left one planted ahead and wide", at("l_leg_Ball").z < 0.1 and at("r_leg_Ball").z < 0.12
+   and (at("l_leg_Ball") - at("r_leg_Ball")).dot(fwd) > 0.6 and (at("l_leg_Ball") - at("spine_01")).dot(left) > 0.3)
+ok("…low: the hips are under half a metre and the back knee is close to the floor", at("spine_01").z < 0.6 and at("r_leg_Knee").z < 0.2)
 ok("…the left arm is thrown back and up", along("l_arm_Shoulder", "l_arm_Wrist").x < -0.3 and along("l_arm_Shoulder", "l_arm_Wrist").z > 0.3)
-ok("…the left foot is ahead of the right and the hips are low", (at("l_leg_Ball") - at("r_leg_Ball")).dot(fwd) > 0.6 and at("spine_01").z < 0.6)
-ok("…the body leans forward with the head up", along("spine_01", "spine_Top").x > 0.35 and along("neck_01_02", "head_Top").z > 0.9)
+ok("…the hips' own bone stays near upright and the lean is in the chest", along("spine_01", "spine_02").z > 0.88 and along("spine_02", "spine_Top").x > 0.4)
+ok("…the head is up, not folded down", along("neck_01_02", "head_Top").z > 0.95)
+import math
+back = along("r_leg_Hip", "r_leg_Knee")
+ok("…the back thigh reaches no further back than a hip can (about 40°)", math.degrees(math.atan2(-back.x, -back.z)) < 43)
 
 ok("Hovering applies", pose("Hovering"))
 ok("…the feet are off the floor, toes pointing down", 0.45 < min(at("l_leg_Toe").z, at("r_leg_Toe").z) < 0.6 and along("l_leg_Ankle", "l_leg_Ball").z < -0.8)
@@ -99,10 +113,9 @@ ok("…its hands are fists", live.POSES[names.index("Fists on hips")][4] == {"X"
 
 ok("Ready crouch applies", pose("Ready crouch"))
 low = min(at(n).z for n in J if n != "ROOT")
-print("   lowest", min((at(n).z, n) for n in J if n != "ROOT"), "knee", round(at("r_leg_Knee").z, 3), "fist", round(at("r_arm_Wrist").z, 3), "l foot", round(at("l_leg_Ball").z, 3))
-ok("…nothing under the floor; the right knee and fist are down", -0.03 < low < 0.12 and at("r_leg_Knee").z < 0.2 and at("r_arm_Wrist").z < 0.3)
+ok("…nothing under the floor; the right knee and fist are down", low > -0.03 and at("r_leg_Knee").z < 0.2 and abs(at("r_arm_Wrist").z - 0.12) < 0.03)
 ok("…the left knee is up in front, shin upright", (at("l_leg_Knee") - at("spine_01")).dot(fwd) > 0.3 and along("l_leg_Knee", "l_leg_Ankle").z < -0.9)
-ok("…the head stays up", along("neck_01_02", "head_Top").z > 0.95)
+ok("…the head stays up and the hips' own bone near upright", along("neck_01_02", "head_Top").z > 0.95 and along("spine_01", "spine_02").z > 0.88)
 
 ok("Flying applies", pose("Flying"))
 body = along("spine_01", "spine_Top")
@@ -113,6 +126,9 @@ ok("…well clear of the floor", min(at(n).z for n in J if n != "ROOT") > 0.5 an
 
 ok("Standing puts the body upright on the floor again", pose("Standing") and along("spine_01", "spine_Top").z > 0.99 and abs(at("l_leg_Ball").z - 0.02) < 0.02)
 
+pics = len(sys.argv) > 1 and not sys.argv[1].startswith("-")
+if pics:   # of the standard stand-in, before the others are built
+    pass
 if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):   # stick-figure pictures, side and front, for a look
     out = sys.argv[1]
     os.makedirs(out, exist_ok=True)
@@ -136,6 +152,20 @@ if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):   # stick-figure pictu
             im.save(os.path.join(out, n + ".png"))
     except ImportError:
         print("no PIL: pictures skipped")
+
+# other bodies: the fist still finds the floor (or the lean stops at its limit), the feet stay down, the head up
+for label, kw in (("short arms", {"arms": 0.8}), ("long arms", {"arms": 1.15}), ("long legs", {"legs": 1.15}), ("short legs", {"legs": 0.85}),
+                  ("legs hung beside the spine", {"leg_parent": "ROOT"})):
+    arm, J = build(**kw)
+    for name in ("Ground strike", "Ready crouch"):
+        pose(name)
+        k = arm.get("harmonious_plant", -1)
+        fist = at("r_arm_Wrist").z
+        feet = min(at("l_leg_Ball").z, at("r_leg_Ball").z, at("r_leg_Knee").z)
+        print("   %s, %s: lean %.2f, fist %.2f m, lowest foot or knee %.2f m" % (label, name, k, fist, feet))
+        ok("%s on a body with %s: fist down or the lean at its limit, feet down, head up, nothing under the floor" % (name, label),
+           (abs(fist - 0.12) < 0.03 or k >= 0.99 or (k == 0 and fist <= 0.15)) and feet < 0.12 and along("neck_01_02", "head_Top").z > 0.9
+           and min(at(n).z for n in J if n != "ROOT") > -0.04)
 
 print("ALL PASS" if not fails else "FAILED: " + "; ".join(fails))
 sys.exit(1 if fails else 0)
