@@ -12385,7 +12385,7 @@ async function saveReport(btn) {
   try {
     const r = await api('/api/report', { method: 'POST' }); if (!r.ok) throw new Error((await r.text()).trim());
     const d = await r.json();
-    await dialog('Report saved', `<p>Saved as <b>${esc(d.path.split(/[\\/]/).pop())}</b> and shown in ${IS_MAC ? 'Finder' : 'Explorer'}. Send that zip to the developer.</p><p class="dim">It lists the folders DryDock looked in and what it found, how the game's files are packed, and a few small sample files. Nothing from inside your saves is in it. Folder paths include your user name.</p>
+    await dialog('Report saved', `<p>Saved as <b>${esc(d.path.split(/[\\/]/).pop())}</b> and shown in ${IS_MAC ? 'Finder' : 'Explorer'}. Send that zip to the developer.</p>${d.changed ? `<p data-keep><b>The game has changed ${d.changed === 1 ? 'one table' : d.changed + ' tables'} since this version of DryDock was made.</b> Some names, pictures or sizes may be missing until DryDock is updated; your saves are not affected. The changed ${d.changed === 1 ? 'table is' : 'tables are'} in the zip.</p>` : ''}<p class="dim">It lists the folders DryDock looked in and what it found, how the game's files are packed, and a few small sample files. Nothing from inside your saves is in it. Folder paths include your user name.</p>
       <details class="menu" style="margin-top:10px"><summary>What it says</summary><pre class="report-text">${esc(d.text || '')}</pre></details><p class="dim small-print mono" data-keep>${esc(d.path)}</p>`, [['Close', false]]);
   } catch (e) { toast('The report couldn\'t be made: ' + e.message, true); }
   if (btn) btn.disabled = false;

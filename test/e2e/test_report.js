@@ -33,6 +33,9 @@ const FX = process.argv[2], SP = process.argv[3], PAKS = process.argv[4]; const 
     ok('it found the game inside the app bundle', text.includes('Archives folder used: ' + path.join(app, 'Contents', 'Resources', 'GAMEDATA', 'MACOSBANKS')));
     ok('it names each archive with how it is packed', /NMSARC\.Test\.pak\s+\d+ bytes\s+\d+ files\s+LZ4, Mac, \d+ chunks/.test(text));
     ok('it counts the kinds of file and checks the ones DryDock reads', /\.scene\.mbin\s+\d+/.test(text) && /modularcustomisationdatatable\.mbin: \d+ bytes, starts [0-9a-f]{32}/.test(text) && /gcproducttable\.mbin: NOT READ/.test(text));
+    ok('it checks every table against the layout DryDock knows', /Table layouts/.test(text) && /  ok +metadata\/gamestate\/playerdata\/charactercustomisationdescriptorgroupsdata\.mbin/.test(text) && /NOT FOUND +metadata\/reality\/tables\/nms_reality_gcproducttable\.mbin/.test(text));
+    ok('a table the game changed is named, with what it affects, and goes into the zip', /CHANGED +metadata\/reality\/tables\/frigatetraittable\.mbin: 8877665544332211, DryDock knows 59E8152F3D9078A8; affects frigate traits; \d+ bytes, included in this zip/.test(text) && /1 changed: send this report/.test(text));
+    ok('the dialog says the game has changed a table', /The game has changed one table since this version/.test(await q.textContent('dialog[open]')));
     ok('it covers Steam, Blender and Charon Forge', /== Steam/.test(text) && /Blender found: /.test(text) && /Charon Forge found: /.test(text));
     await q.click('#dlgX');
     // the game's own tables read through the app from the Mac-packed archive: the ship builder's part list

@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.24.1748",
-  "date": "2026-11-24",
-  "size": 15321600,
-  "sha256": "64902ea8122805f7cab831abb823fa54b159ca6760c0dc05b064b40eccffb635",
-  "notes": "Mac: ships and multi-tools should now show their real 3D models instead of a hologram (the Mac names its model files differently from the PC)\nMac: the Report now says whether a ship model could be read and which icons couldn't",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.24.1748/HarmoniousSaveEditor.exe",
+  "version": "2026.11.25.1623",
+  "date": "2026-11-25",
+  "size": 15347712,
+  "sha256": "ef2ec461f94bfb79eff6379d840d32df6b90bee80e4858e10e0d6b23b34212f5",
+  "notes": "Ready for the game's 7.15 patch: corvette holograms show the real part sizes again\nThe Report now checks every game table DryDock reads and says which ones a game update has changed\nThe Report lists the game's corvette parts with their names, so new parts can be checked",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.25.1623/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

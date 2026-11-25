@@ -67,8 +67,16 @@ func partScenes() (map[string]string, error) {
 	return out, nil
 }
 
+// The layouts this reader has been checked against: the game's 7.15 patch (2026-11-25) gave both tables a new stamp
+// but left the fields read here where they were (checked on the owner's 7.15 tables: 2,372 objects, entries still
+// 0x2B8 with the ID at 0x208). Players who haven't updated the game still have the older ones.
+var (
+	objectsTableGUIDs = []uint64{0xD11B49741F5D5BB9, 0xF2A28AF70F065D9A}
+	partsTableGUIDs   = []uint64{0x41411049FD961821, 0xCE06C82FAE566931}
+)
+
 func parsePartScenes(raw, partsRaw []byte) (map[string]string, error) {
-	m, err := openMbin(raw, 0xF2A28AF70F065D9A, "basebuildingobjectstable.mbin")
+	m, err := openMbinAny(raw, "basebuildingobjectstable.mbin", objectsTableGUIDs...)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +97,7 @@ func parsePartScenes(raw, partsRaw []byte) (map[string]string, error) {
 	}
 	if len(single) > 0 && partsRaw != nil {
 		{
-			if p, err := openMbin(partsRaw, 0xCE06C82FAE566931, "basebuildingpartstable.mbin"); err == nil {
+			if p, err := openMbinAny(partsRaw, "basebuildingpartstable.mbin", partsTableGUIDs...); err == nil {
 				model := map[string]string{}
 				a, n := p.list(0x20)
 				for i := 0; i < n; i++ {
@@ -246,4 +254,21 @@ func handleModelBoxes(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, out)
+}
+
+// partIDsInOrder lists the building table's part IDs in the table's own order (new parts are usually added at the
+// end), for the Report.
+func partIDsInOrder(raw []byte) []string {
+	m, err := openMbinAny(raw, "basebuildingobjectstable.mbin", objectsTableGUIDs...)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	a, n := m.list(0x20 + 0x1C8)
+	for i := 0; i < n; i++ {
+		if id := strings.ToUpper(m.fstr(a+i*0x2B8+0x208, 0x10)); id != "" {
+			out = append(out, id)
+		}
+	}
+	return out
 }

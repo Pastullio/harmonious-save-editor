@@ -310,6 +310,19 @@ func openMbin(b []byte, guid uint64, what string) (*mbin, error) {
 	return &mbin{b}, nil
 }
 
+// openMbinAny takes a file in any of the layouts given (a game patch can restamp a table without moving the fields a
+// reader uses; each stamp listed has been checked against a real file).
+func openMbinAny(b []byte, what string, guids ...uint64) (*mbin, error) {
+	var err error
+	for _, g := range guids {
+		var m *mbin
+		if m, err = openMbin(b, g, what); err == nil {
+			return m, nil
+		}
+	}
+	return nil, err
+}
+
 func (m *mbin) ok(p, n int) bool { return p >= 0 && n >= 0 && p+n <= len(m.d) }
 
 // list returns where a dynamic array's elements start and how many there are.

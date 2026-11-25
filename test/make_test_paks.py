@@ -15,6 +15,11 @@ for d,_,fs in os.walk(src):
 os.makedirs(root+'/textures',exist_ok=True)
 open(root+'/textures/noise.dds','wb').write(os.urandom(400000)); names.append('textures/noise.dds')   # won't pack: stored chunks
 open(root+'/textures/zeros.dds','wb').write(bytes(300000)); names.append('textures/zeros.dds')
+# a made-up table with a layout stamp DryDock doesn't know, as after a game update (test_report.js)
+fake='metadata/reality/tables/frigatetraittable.mbin'
+if fake not in names:
+    os.makedirs(os.path.dirname(root+'/'+fake),exist_ok=True)
+    open(root+'/'+fake,'wb').write(bytes([0xCC]*8)+bytes.fromhex('e40c0000')+bytes(4)+bytes.fromhex('1122334455667788')+bytes(0x200)); names.append(fake)
 names.sort()
 man=root+'/nmsarc.test.pak.manifest'  # hgpaktool names the pak from this
 open(man,'w',newline='').write(''.join(n+'\r\n' for n in names))
