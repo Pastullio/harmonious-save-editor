@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.25.1752",
+  "version": "2026.11.25.1842",
   "date": "2026-11-25",
-  "size": 15363072,
-  "sha256": "5c5a78937c459221b518845c43cdc5520dd4bb3bdfa5160115c56289a821112d",
-  "notes": "LiveLink add-on 1.34.0: Hovering and Fists on hips are now Pastullio's own hand-made poses, like Ground strike\nThe add-on changed: get it again from DryDock (LiveLink page or About) and install it over the old one in Blender",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.25.1752/HarmoniousSaveEditor.exe",
+  "size": 15363584,
+  "sha256": "b50f74958d1a9e2fb844626708e755bb8076db67292f8a31073a505839fd6b28",
+  "notes": "Exosuit is now called Traveller, and the picture-card page that was Traveller is now Holograms\nThat sidebar group now runs Traveller, Starships, Multi-tools, Freighter, Exocraft, Companions, Holograms (a sidebar you rearranged yourself keeps your order)\nLiveLink add-on 1.34.1 uses the new page names: get it again from DryDock and install it over the old one",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.25.1842/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

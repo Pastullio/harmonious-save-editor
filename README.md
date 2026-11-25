@@ -145,10 +145,10 @@ Name, type, class, seed and base stats, technology with supercharged slots, and 
 
 <table>
 <tr>
-<td width="58%"><a href="docs/guide/shots/traveller.webp"><img src="docs/guide/shots/traveller.webp" alt="Traveller cards"></a></td>
+<td width="58%"><a href="docs/guide/shots/traveller.webp"><img src="docs/guide/shots/traveller.webp" alt="Holograms"></a></td>
 <td width="42%" valign="top">
 
-### Traveller cards
+### Holograms
 
 Your character in 3D, in the parts and colours you wear. Make a picture card with your pose, ship, multi-tool, portal glyphs and name over a space background, then save or copy it.
 

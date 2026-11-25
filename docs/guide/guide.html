@@ -276,7 +276,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   <h2>3D prints</h2>
   <p>Every STL the green 3D print panel in Blender saved, newest first, each with a grey preview that turns when you hover over it or drag it, its size in millimetres, triangles and file size. <span class="ui">Show in folder</span> opens Explorer on it; <span class="ui">Delete</span> moves it to the Deleted folder inside Exports, so it can come back. The previews are thinned so they turn smoothly; the files keep every triangle.</p>
   <h2>From Blender and In Blender</h2>
-  <p><b>From Blender</b> shows the pose pictures, 3D poses and corvettes in 3D the add-on sent, with a shortcut to the Traveller page and the Exports folder. <b>In Blender</b> says what each panel in Blender's LiveLink tab does: pink for building, blue for your traveller, green for 3D printing.</p>
+  <p><b>From Blender</b> shows the pose pictures, 3D poses and corvettes in 3D the add-on sent, with a shortcut to the Holograms page and the Exports folder. <b>In Blender</b> says what each panel in Blender's LiveLink tab does: pink for building, blue for your traveller, green for 3D printing.</p>
 </section>
 
 <section class="page" id="coordinates" data-group="fleet" data-title="Coordinates" data-c="#3cb6ea">
@@ -360,15 +360,15 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
 </section>
 
 <!-- ================================================================ what you carry and ride -->
-<section class="page" id="exosuit" data-group="carry" data-title="Exosuit" data-c="#7d8bff">
-  <h1>Exosuit</h1>
-  <p class="lede">Your exosuit's technology and cargo, laid out exactly as the game shows them.</p>
+<section class="page" id="exosuit" data-group="carry" data-title="Traveller" data-c="#7d8bff">
+  <h1>Traveller</h1>
+  <p class="lede">Your traveller in 3D, and your exosuit's technology and cargo laid out exactly as the game shows them.</p>
   <figure><img src="shots/exosuit-slot.webp" alt="Exosuit technology grid with a slot selected and its details open" loading="lazy"><figcaption>Click a slot to see and change it.</figcaption></figure>
   <p>The exosuit uses all the <a href="#everywhere">inventory tools</a>: <b>Technology / Cargo / Both</b>, unlocking slots, filling stacks, repairing, resizing and supercharged slots.</p>
   <h2>Your traveller</h2>
   <p>At the top of the page is your traveller, built from your save the way the game builds them: the head, torso, armour, gloves, legs, boots, backpack, cape and cloth you wear. It needs the game on your PC (the editor finds it).</p>
   <ul>
-    <li><span class="ui">Get LiveLink</span> saves the LiveLink add-on and shows how to install it. <span class="ui">Make a picture</span> opens the <a href="#traveller">Traveller</a> page.</li>
+    <li><span class="ui">Get LiveLink</span> saves the LiveLink add-on and shows how to install it. <span class="ui">Make a picture</span> opens the <a href="#traveller">Holograms</a> page.</li>
     <li><span class="ui">Export for Blender (.glb)</span> saves your traveller with their skeleton to <b>Documents\Harmonious Save Editor\Exports</b>. In Blender, use File, Import, glTF 2.0 and pose the bones.</li>
     <li><span class="ui">Share</span> copies your traveller's look as a share code (it starts with <code>HDT1:</code>) and offers a picture to post with it. Paste both into Discord. The code holds the parts, colours and texture choices only.</li>
     <li><span class="ui">Shared travellers</span> keeps travellers other people shared: copy a code from Discord, paste it and press <span class="ui">Add</span>. The traveller is built from your own game files. <span class="ui">Add to Blender</span> puts that traveller into the Blender file you have open (Blender must be open with the LiveLink add-on; it appears within a few seconds, longer the first time), and <span class="ui">Export for Blender (.glb)</span> saves the model. Your save isn't changed.</li>
@@ -386,69 +386,14 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
         <li><b>Camera view</b>: <span class="ui">See what the camera sees</span> looks through the camera; the bright frame is exactly the picture. Turn on <span class="ui">Frame by moving the view</span>, then orbit, zoom and pan to frame your shot. <span class="ui">Clean view</span> hides the lines and boxes of the camera, lights, bones and grid, to see just your traveller.</li>
         <li><b>Rendering</b>: <span class="ui">Quick</span> (EEVEE, seconds) or <span class="ui">Best (Cycles)</span>: real bouncing light, soft shadows and reflections, slower (up to a few minutes on a weaker PC; it uses your graphics card when Blender has it set up).</li>
       </ul></li>
-    <li><b>Make a picture, step by step</b> (a fold-out in Export): pose, add a backdrop if you like, pick a lighting, press <span class="ui">Traveller camera</span> and <span class="ui">See what the camera sees</span> to frame it, choose Best quality, then <span class="ui">Render a picture</span>. It's saved to Exports and shows on the <a href="#traveller">Traveller</a> page.</li>
-    <li><b>Export</b>: <span class="ui">Send the pose to DryDock (3D)</span> sends it in 3D to the <a href="#traveller">Traveller</a> page; <span class="ui">Render a picture</span> renders what the camera sees to a PNG with a transparent background in the Exports folder.</li>
+    <li><b>Make a picture, step by step</b> (a fold-out in Export): pose, add a backdrop if you like, pick a lighting, press <span class="ui">Traveller camera</span> and <span class="ui">See what the camera sees</span> to frame it, choose Best quality, then <span class="ui">Render a picture</span>. It's saved to Exports and shows on the <a href="#traveller">Holograms</a> page.</li>
+    <li><b>Export</b>: <span class="ui">Send the pose to DryDock (3D)</span> sends it in 3D to the <a href="#traveller">Holograms</a> page; <span class="ui">Render a picture</span> renders what the camera sees to a PNG with a transparent background in the Exports folder.</li>
     <li><b>3D print</b> (its own panel, in green): it works in any .blend, with or without a traveller. Under <span class="ui">Print</span> pick your traveller, <b>this file's own build</b> (open your corvette's or base's .blend and it's listed as "<i>name</i> (this file)") or a backdrop. For your traveller, pick a size (tabletop 32 mm, heroic 54 mm, action figure 6 in / 152 mm, collector 12 in / 305 mm, or a custom height), the round base (it fits the figure unless you type a size) and the detail, then press <span class="ui">Export for 3D printing</span>. Detail <span class="ui">Auto</span> gives bigger prints more detail; or pick it yourself: Quick, Normal, High or Ultra (the panel shows roughly how many triangles and megabytes that makes). Your posed traveller, with the multi-tool in their hand, becomes one solid model: thin cloth gets a printable wall and the game's overlapping pieces fuse into one closed surface, saved as an STL in millimetres in the Exports folder. <span class="ui">Game mesh as is</span> writes every triangle of the game's model instead, not fused, for you to sort out in your slicer or a mesh-repair tool. <b>Ships and bases</b>: open the corvette's own .blend, or add a corvette as a backdrop beside your traveller (Lighting &amp; Rendering), then pick it under <span class="ui">Print</span>; choose its length (small 100 mm, medium 150 mm, large 250 mm, the same scale as your traveller, or your own) and <span class="ui">On a stand</span> (a round base with a peg up into the hull, so it flies) or <span class="ui">No stand</span>. A corvette has millions of triangles, so it takes a minute or so. <span class="ui">Preview the print</span> makes the print model and stands it beside what you're printing in plain grey, as it would come off a printer, with its size in millimetres, so you can look it over before exporting (no printer needed; the × takes it away). It doesn't show in your pictures. The models are Hello Games', so this is for your own prints.</li>
   </ul>
   <div class="note"><b>Textures</b>The model comes with the game's own textures: colour, surface detail (normal maps) and which parts are metal or rough, one material per part of the outfit. They show in Blender's Material Preview and Rendered views. Each part is painted in the colours and markings you picked in the game, read from your save.</div>
 </section>
 
-<section class="page" id="traveller" data-group="carry" data-title="Traveller" data-c="#9083ff">
-  <h1>Traveller</h1>
-  <p class="lede">Make a picture of your traveller to share: your pose from Blender on a background, with your ship, multi-tool, portal glyphs, name and logo.</p>
-  <figure><img src="shots/traveller.webp" alt="The Traveller page: a 3D posed traveller on a starfield with a name, a title and portal glyphs, and the options in boxes beside it" loading="lazy"><figcaption>The options sit in boxes you open and close; the picture stays in view while you work.</figcaption></figure>
-  <ol class="steps">
-    <li>Get the Blender add-on (<span class="ui">LiveLink</span> on the save list and in About, <span class="ui">Get LiveLink</span> on Exosuit and on this page) and install it in Blender.</li>
-    <li>In Blender's LiveLink tab, press <span class="ui">Import my traveller</span> and pose them (see <a href="#exosuit">Exosuit</a>).</li>
-    <li>Press <span class="ui">Send the pose to DryDock (3D)</span> (under Export): your posed traveller comes over in 3D, with its textures, and you can turn it here. Or press <span class="ui">Render a picture</span> for a flat picture framed by Blender's camera.</li>
-    <li>Come back here: the newest pose is already on the picture, and one you send while this page is open appears by itself.</li>
-  </ol>
-  <h2>On the picture</h2>
-  <ul>
-    <li><b>Move</b>: drag with the left mouse button, anywhere you like, even right off the picture. <b>Bring back</b> in an object's box (or <b>Bring everything into the picture</b> under Size) puts it back in the middle. <b>Bigger or smaller</b>: scroll over it.</li>
-    <li><b>Turn</b> a 3D pose, ship or multi-tool: drag with the middle mouse button (the scroll wheel). <span class="ui">Shift</span> with the middle button moves it instead, as in Blender. The right mouse button, or <span class="ui">Shift</span> with the left, turns too; the <span class="ui">Turn</span> and <span class="ui">Tilt</span> sliders do the same.</li>
-    <li><b>Click</b> one to select it: the bar under the picture has <span class="ui">Face the front</span>, <span class="ui">Forward</span> and <span class="ui">Back</span> (one layer), and <span class="ui">Remove from the picture</span>. The Delete key removes it too.</li>
-  </ul>
-  <h2>The boxes</h2>
-  <ul>
-    <li><b>Size</b>: portrait (1080 × 1350, for Instagram and Discord), square, wide (1920 × 1080), or <span class="ui">Custom</span> with your own width and height.</li>
-    <li><b>Traveller</b>: the pose (3D poses say so), <span class="ui">Reset</span> to face the front, <span class="ui">Import image</span> to use any picture instead (with <span class="ui">Remove background</span>), <span class="ui">Placement</span> (in front of everything, forward or back one layer, behind everything) and <span class="ui">Delete</span>.</li>
-    <li><b>Ship</b>: any starship or corvette, with the same options. A starship shows its 3D model with the game's textures in its own colours. A corvette turns like your traveller too: when you pick it, the editor makes its 3D model in the background with your Blender and Charon Forge (you don't open Blender; it works out of sight, set up once in Settings, the gear at the bottom of the sidebar). It takes a minute or two the first time and is kept after that. While Blender is working, the Harmonious mark turns over the ship. The 3D model is quick to draw but plainer than a render: turn it to the angle you like and press <span class="ui">Render this angle</span>, and Blender renders it from exactly that angle with all its textures and colours, in the same spot on the picture (a minute or two). The angles you rendered stay in the <span class="ui">Angle</span> list; <span class="ui">3D model</span> lets you turn it again. While it's being made, the corvette shows its Blender renders, with an <span class="ui">Angle</span> list for the front, side, back and top; <span class="ui">Render the angles</span> makes the ones it doesn't have yet (Blender draws them in the background, which can take a few minutes) and then shows the front. When you gave the ship a picture of your own, <span class="ui">3D model</span> (or <span class="ui">Renders</span>) and <span class="ui">Your picture</span> switch between the two. <span class="ui">Import image</span> puts any picture in the ship's place.</li>
-    <li><b>Multi-tool</b>: any of your multi-tools as its 3D model (it needs the game files), with Reset, Placement and Delete.</li>
-    <li><b>Lighting for 3D</b> (in the Background box): Studio, Hero, Sunset or Space, the same setups as LiveLink's, for 3D poses, ships and multi-tools. Glowing lenses and screens sent from Blender glow here too.</li>
-    <li><b>Background</b>: <span class="ui">Space</span> (a starfield in sky colours you pick, or one of five space pictures: Eclipse, Blue nebula, Violet clouds, Meteor storm, Ringed planets), <span class="ui">Plain colour</span> (presets or any colour from the wheel) or <span class="ui">Image</span> (any image, or one of your No Man's Sky screenshots).</li>
-    <li><b>Text</b>: your name in one of several fonts, a title above it and a caption. <span class="ui">Logo</span> takes an image of yours, with <span class="ui">Remove background</span> for one on a plain background.</li>
-    <li><b>Portal glyphs</b>: where you are now, any of your bases and places, or a favourite place.</li>
-  </ul>
-  <h2>Saving and the watermark</h2>
-  <ul>
-    <li><span class="ui">Save picture</span> puts a PNG in <b>Documents\Harmonious Save Editor\Exports</b>; <span class="ui">Copy picture</span> puts it on the clipboard to paste into Discord. The page remembers your layout; <span class="ui">Reset layout</span> puts everything back.</li>
-    <li>Pictures carry a small "Harmonious DryDock" in the bottom-right corner. Patrons can take it off: untick <span class="ui">Watermark</span> and press <span class="ui">Sign in with Patreon</span>. Patreon opens in your browser; once it has checked your pledge, come back and the watermark is off. The editor remembers you for a month, then asks you to sign in again.</li>
-  </ul>
-</section>
-
-<section class="page" id="multitools" data-group="carry" data-title="Multi-tools" data-c="#a37bff">
-  <h1>Multi-tools</h1>
-  <p class="lede">Every multi-tool you own, its looks, stats and technology.</p>
-  <figure><img src="shots/tools.webp" alt="Multi-tools page" loading="lazy"></figure>
-  <ul class="feat">
-    <li><b>Your traveller</b> stands on the card as the game builds them from your save, in your colours (with Blender's model). The gear sets a picture of your own instead.</li>
-    <li><b>Pick a multi-tool</b> from the covers. The equipped one says so.</li>
-    <li><b>Turn models</b>, beside the Cover Flow / Grid switch, makes the 3D models turn on their own. It is off to start with, so models stay still: drag one to turn it, or Shift-drag the centre cover in Cover Flow. The same button is on every page with covers.</li>
-    <li><b>Name, type</b> (standard, royal, sentinel, atlas, staff and the rest), <b>class</b>, and <b>seed</b>, which decides its look. <span class="ui">Generate</span> rolls a new one.</li>
-    <li><b>Use old colours</b>, and <b>base stats</b>: damage, mining and scanning.</li>
-    <li><span class="ui">Save as profile</span> keeps the loadout as a file; <span class="ui">Apply a profile</span> puts one on any multi-tool. Profiles work across saves; share one by sending the file.</li>
-    <li><span class="ui">Choose parts</span> for the cover model, <span class="ui">Export…</span> a <code>.json</code> backup, <span class="ui">Import</span>, and <span class="ui">Delete multi-tool</span>. Deleting works even when all six slots are full: the slot is left empty, the same way the game leaves one.</li>
-    <li><span class="ui">Add a multi-tool</span> on the left, above the covers. It opens a wide window with four tabs: <b>Build a staff</b>, <b>Build a weapon</b>, <b>Copy one of mine</b> and <b>From a share code</b> (paste a code someone posted, press <span class="ui">Add</span>, then <span class="ui">Add to my save</span>: you get that exact tool, with the technology of one of your own). With a share code on your clipboard it opens on that tab.</li>
-    <li><b>Build a staff</b>: pick a head, a core and a pole from the game's parts (seven heads, six cores, six poles), each shown in its real textures. The staff on the left is yours to look round: <b>drag</b> to turn it any way, <b>scroll</b> to zoom, <b>right-drag</b> or <b>Shift-drag</b> to move it, <b>double-click</b> to put it back. Under <b>Colours</b> are the colours that staff shows, named by what they paint (Paint, Glow, Metal, Trim): click a swatch, or the <b>+</b> for any colour. <span class="ui">Random staff</span> and <span class="ui">Random colours</span> roll one for you; <span class="ui">Standard colours</span> puts the colours back. Give it a name and a class, choose which of your multi-tools it copies its technology and size from, and press <span class="ui">Add to my save</span>. <span class="ui">Copy a share code</span> gives the staff to others without adding it. The pictures and the colours need the game files; without them you still pick parts by name.</li>
-    <li><b>Build a weapon</b>: any other type of multi-tool (standard, royal, sentinel, atlas and the rest) with a seed you can <span class="ui">Roll</span>, on a copy of one of your tools. The game chooses the barrel and stock from the seed with a rule that isn't in its files, so the parts can't be picked and the picture is a guess.</li>
-    <li><span class="ui">Staff parts and colours</span> on a staff's own page changes the head, core, pole and colours of a staff you already have. Its technology, class and name stay.</li>
-    <li><span class="ui">Share</span> on a multi-tool copies its share code (it starts with <code>HDM1:</code>): its type, seed, class and name, and for a staff its three parts and colours. Post it in Discord with a screenshot. A seed looks the same in every game, so others get the same tool.</li>
-    <li><span class="ui">Supercharge slots</span> above the multi-tool's technology.</li>
-  </ul>
-</section>
-
-<section class="page" id="starships" data-group="carry" data-title="Starships" data-c="#c77dff">
+<section class="page" id="starships" data-group="carry" data-title="Starships" data-c="#9083ff">
   <h1>Starships</h1>
   <p class="lede">Rename ships, change their looks and class, arrange and repair ship slots, and manage each ship's inventories.</p>
   <figure><img src="shots/ships.webp" alt="Starships page with ship slots, the ship covers and the details" loading="lazy"></figure>
@@ -484,7 +429,28 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   </ul>
 </section>
 
-<section class="page" id="freighter" data-group="carry" data-title="Freighter" data-c="#f06fd0">
+<section class="page" id="multitools" data-group="carry" data-title="Multi-tools" data-c="#a37bff">
+  <h1>Multi-tools</h1>
+  <p class="lede">Every multi-tool you own, its looks, stats and technology.</p>
+  <figure><img src="shots/tools.webp" alt="Multi-tools page" loading="lazy"></figure>
+  <ul class="feat">
+    <li><b>Your traveller</b> stands on the card as the game builds them from your save, in your colours (with Blender's model). The gear sets a picture of your own instead.</li>
+    <li><b>Pick a multi-tool</b> from the covers. The equipped one says so.</li>
+    <li><b>Turn models</b>, beside the Cover Flow / Grid switch, makes the 3D models turn on their own. It is off to start with, so models stay still: drag one to turn it, or Shift-drag the centre cover in Cover Flow. The same button is on every page with covers.</li>
+    <li><b>Name, type</b> (standard, royal, sentinel, atlas, staff and the rest), <b>class</b>, and <b>seed</b>, which decides its look. <span class="ui">Generate</span> rolls a new one.</li>
+    <li><b>Use old colours</b>, and <b>base stats</b>: damage, mining and scanning.</li>
+    <li><span class="ui">Save as profile</span> keeps the loadout as a file; <span class="ui">Apply a profile</span> puts one on any multi-tool. Profiles work across saves; share one by sending the file.</li>
+    <li><span class="ui">Choose parts</span> for the cover model, <span class="ui">Export…</span> a <code>.json</code> backup, <span class="ui">Import</span>, and <span class="ui">Delete multi-tool</span>. Deleting works even when all six slots are full: the slot is left empty, the same way the game leaves one.</li>
+    <li><span class="ui">Add a multi-tool</span> on the left, above the covers. It opens a wide window with four tabs: <b>Build a staff</b>, <b>Build a weapon</b>, <b>Copy one of mine</b> and <b>From a share code</b> (paste a code someone posted, press <span class="ui">Add</span>, then <span class="ui">Add to my save</span>: you get that exact tool, with the technology of one of your own). With a share code on your clipboard it opens on that tab.</li>
+    <li><b>Build a staff</b>: pick a head, a core and a pole from the game's parts (seven heads, six cores, six poles), each shown in its real textures. The staff on the left is yours to look round: <b>drag</b> to turn it any way, <b>scroll</b> to zoom, <b>right-drag</b> or <b>Shift-drag</b> to move it, <b>double-click</b> to put it back. Under <b>Colours</b> are the colours that staff shows, named by what they paint (Paint, Glow, Metal, Trim): click a swatch, or the <b>+</b> for any colour. <span class="ui">Random staff</span> and <span class="ui">Random colours</span> roll one for you; <span class="ui">Standard colours</span> puts the colours back. Give it a name and a class, choose which of your multi-tools it copies its technology and size from, and press <span class="ui">Add to my save</span>. <span class="ui">Copy a share code</span> gives the staff to others without adding it. The pictures and the colours need the game files; without them you still pick parts by name.</li>
+    <li><b>Build a weapon</b>: any other type of multi-tool (standard, royal, sentinel, atlas and the rest) with a seed you can <span class="ui">Roll</span>, on a copy of one of your tools. The game chooses the barrel and stock from the seed with a rule that isn't in its files, so the parts can't be picked and the picture is a guess.</li>
+    <li><span class="ui">Staff parts and colours</span> on a staff's own page changes the head, core, pole and colours of a staff you already have. Its technology, class and name stay.</li>
+    <li><span class="ui">Share</span> on a multi-tool copies its share code (it starts with <code>HDM1:</code>): its type, seed, class and name, and for a staff its three parts and colours. Post it in Discord with a screenshot. A seed looks the same in every game, so others get the same tool.</li>
+    <li><span class="ui">Supercharge slots</span> above the multi-tool's technology.</li>
+  </ul>
+</section>
+
+<section class="page" id="freighter" data-group="carry" data-title="Freighter" data-c="#c77dff">
   <h1>Freighter</h1>
   <p class="lede">Your capital ship, its inventories and its fleet of frigates.</p>
   <figure><img src="shots/freighter.webp" alt="Freighter details" loading="lazy"></figure>
@@ -508,7 +474,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   </ul>
 </section>
 
-<section class="page" id="exocraft" data-group="carry" data-title="Exocraft" data-c="#ff6f9f">
+<section class="page" id="exocraft" data-group="carry" data-title="Exocraft" data-c="#f06fd0">
   <h1>Exocraft</h1>
   <p class="lede">Cargo and technology for each exocraft bay in your save.</p>
   <figure><img src="shots/vehicles.webp" alt="Exocraft page with a model of the Colossus" loading="lazy"></figure>
@@ -520,7 +486,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   </ul>
 </section>
 
-<section class="page" id="companions" data-group="carry" data-title="Companions" data-c="#ff7690">
+<section class="page" id="companions" data-group="carry" data-title="Companions" data-c="#ff6f9f">
   <h1>Companions</h1>
   <p class="lede">Your creature companions: names, size, trust, temperament and mood.</p>
   <figure><img src="shots/companions.webp" alt="Companions page: each companion's model on its picture card and in the list, with its sliders" loading="lazy"></figure>
@@ -534,6 +500,40 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
     <li><span class="ui">Add a companion</span> and <span class="ui">Unlock every slot</span>.</li>
     <li><span class="ui">Export</span> (the button names the companion you're looking at) saves it as a <code>.pet.json</code> file in your Exports folder: its look, size, trust, temperament, mood, battle stats and accessories. Keep it, or share it on Discord.</li>
     <li><span class="ui">Import a companion…</span> puts one of those files into an empty companion slot, or over a companion you pick. Nothing changes in the game until you press <span class="ui">Save to game</span>.</li>
+  </ul>
+</section>
+
+<section class="page" id="traveller" data-group="carry" data-title="Holograms" data-c="#ff7690">
+  <h1>Holograms</h1>
+  <p class="lede">Make a picture of your traveller to share: your pose from Blender on a background, with your ship, multi-tool, portal glyphs, name and logo.</p>
+  <figure><img src="shots/traveller.webp" alt="The Holograms page: a 3D posed traveller on a starfield with a name, a title and portal glyphs, and the options in boxes beside it" loading="lazy"><figcaption>The options sit in boxes you open and close; the picture stays in view while you work.</figcaption></figure>
+  <ol class="steps">
+    <li>Get the Blender add-on (<span class="ui">LiveLink</span> on the save list and in About, <span class="ui">Get LiveLink</span> on Traveller and on this page) and install it in Blender.</li>
+    <li>In Blender's LiveLink tab, press <span class="ui">Import my traveller</span> and pose them (see <a href="#exosuit">Traveller</a>).</li>
+    <li>Press <span class="ui">Send the pose to DryDock (3D)</span> (under Export): your posed traveller comes over in 3D, with its textures, and you can turn it here. Or press <span class="ui">Render a picture</span> for a flat picture framed by Blender's camera.</li>
+    <li>Come back here: the newest pose is already on the picture, and one you send while this page is open appears by itself.</li>
+  </ol>
+  <h2>On the picture</h2>
+  <ul>
+    <li><b>Move</b>: drag with the left mouse button, anywhere you like, even right off the picture. <b>Bring back</b> in an object's box (or <b>Bring everything into the picture</b> under Size) puts it back in the middle. <b>Bigger or smaller</b>: scroll over it.</li>
+    <li><b>Turn</b> a 3D pose, ship or multi-tool: drag with the middle mouse button (the scroll wheel). <span class="ui">Shift</span> with the middle button moves it instead, as in Blender. The right mouse button, or <span class="ui">Shift</span> with the left, turns too; the <span class="ui">Turn</span> and <span class="ui">Tilt</span> sliders do the same.</li>
+    <li><b>Click</b> one to select it: the bar under the picture has <span class="ui">Face the front</span>, <span class="ui">Forward</span> and <span class="ui">Back</span> (one layer), and <span class="ui">Remove from the picture</span>. The Delete key removes it too.</li>
+  </ul>
+  <h2>The boxes</h2>
+  <ul>
+    <li><b>Size</b>: portrait (1080 × 1350, for Instagram and Discord), square, wide (1920 × 1080), or <span class="ui">Custom</span> with your own width and height.</li>
+    <li><b>Traveller</b>: the pose (3D poses say so), <span class="ui">Reset</span> to face the front, <span class="ui">Import image</span> to use any picture instead (with <span class="ui">Remove background</span>), <span class="ui">Placement</span> (in front of everything, forward or back one layer, behind everything) and <span class="ui">Delete</span>.</li>
+    <li><b>Ship</b>: any starship or corvette, with the same options. A starship shows its 3D model with the game's textures in its own colours. A corvette turns like your traveller too: when you pick it, the editor makes its 3D model in the background with your Blender and Charon Forge (you don't open Blender; it works out of sight, set up once in Settings, the gear at the bottom of the sidebar). It takes a minute or two the first time and is kept after that. While Blender is working, the Harmonious mark turns over the ship. The 3D model is quick to draw but plainer than a render: turn it to the angle you like and press <span class="ui">Render this angle</span>, and Blender renders it from exactly that angle with all its textures and colours, in the same spot on the picture (a minute or two). The angles you rendered stay in the <span class="ui">Angle</span> list; <span class="ui">3D model</span> lets you turn it again. While it's being made, the corvette shows its Blender renders, with an <span class="ui">Angle</span> list for the front, side, back and top; <span class="ui">Render the angles</span> makes the ones it doesn't have yet (Blender draws them in the background, which can take a few minutes) and then shows the front. When you gave the ship a picture of your own, <span class="ui">3D model</span> (or <span class="ui">Renders</span>) and <span class="ui">Your picture</span> switch between the two. <span class="ui">Import image</span> puts any picture in the ship's place.</li>
+    <li><b>Multi-tool</b>: any of your multi-tools as its 3D model (it needs the game files), with Reset, Placement and Delete.</li>
+    <li><b>Lighting for 3D</b> (in the Background box): Studio, Hero, Sunset or Space, the same setups as LiveLink's, for 3D poses, ships and multi-tools. Glowing lenses and screens sent from Blender glow here too.</li>
+    <li><b>Background</b>: <span class="ui">Space</span> (a starfield in sky colours you pick, or one of five space pictures: Eclipse, Blue nebula, Violet clouds, Meteor storm, Ringed planets), <span class="ui">Plain colour</span> (presets or any colour from the wheel) or <span class="ui">Image</span> (any image, or one of your No Man's Sky screenshots).</li>
+    <li><b>Text</b>: your name in one of several fonts, a title above it and a caption. <span class="ui">Logo</span> takes an image of yours, with <span class="ui">Remove background</span> for one on a plain background.</li>
+    <li><b>Portal glyphs</b>: where you are now, any of your bases and places, or a favourite place.</li>
+  </ul>
+  <h2>Saving and the watermark</h2>
+  <ul>
+    <li><span class="ui">Save picture</span> puts a PNG in <b>Documents\Harmonious Save Editor\Exports</b>; <span class="ui">Copy picture</span> puts it on the clipboard to paste into Discord. The page remembers your layout; <span class="ui">Reset layout</span> puts everything back.</li>
+    <li>Pictures carry a small "Harmonious DryDock" in the bottom-right corner. Patrons can take it off: untick <span class="ui">Watermark</span> and press <span class="ui">Sign in with Patreon</span>. Patreon opens in your browser; once it has checked your pledge, come back and the watermark is off. The editor remembers you for a month, then asks you to sign in again.</li>
   </ul>
 </section>
 
@@ -709,7 +709,7 @@ dl.faq dd { margin: 6px 0 0; color: var(--ink); max-width: 780px; }
   </ol>
   <div class="note"><b>The wrong corvette guard</b>Each .blend remembers which corvette or base it's for. If a build arrives for a different one, the editor asks before writing it anywhere.</div>
   <p>Close No Man's Sky before LiveLink writes, and reload the save in the game to see the result.</p>
-  <p>LiveLink's tab in Blender's sidebar has a panel for each part, each opening and closing on its own (the build tools have pink icons, posing blue ones): <b>LiveLink</b> (whether the editor is linked), <b>Builds: corvettes and bases</b>, <b>Your traveller</b>, <b>Poses</b>, <b>Body parts</b>, <b>Multi-tool</b>, <b>Lighting &amp; Rendering</b>, <b>Export</b> and <b>Support the creator</b>. See <a href="#exosuit">Exosuit</a> for your traveller.</p>
+  <p>LiveLink's tab in Blender's sidebar has a panel for each part, each opening and closing on its own (the build tools have pink icons, posing blue ones): <b>LiveLink</b> (whether the editor is linked), <b>Builds: corvettes and bases</b>, <b>Your traveller</b>, <b>Poses</b>, <b>Body parts</b>, <b>Multi-tool</b>, <b>Lighting &amp; Rendering</b>, <b>Export</b> and <b>Support the creator</b>. See <a href="#exosuit">Traveller</a> for your traveller.</p>
   <div class="note"><b>Updating the add-on</b>The editor updates itself, but Blender keeps the add-on you installed. When a new add-on comes out (the What's new list says so, and the LiveLink panel in Blender shows "A newer add-on is ready"), press <span class="ui">Get the Blender add-on</span> again and install it over the old one.</div>
 </section>
 

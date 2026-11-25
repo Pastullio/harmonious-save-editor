@@ -2324,7 +2324,7 @@ function download(bytes, name) { const u = URL.createObjectURL(new Blob([bytes])
 // ------------------------------------------------------------------ navigation
 const SECTIONS = [
   ['overview', 'Overview'], ['shipwright', 'Shipwright'], ['livelink', 'LiveLink'], ['coords', 'Coordinates'], ['library', 'Dock Yard'],
-  ['exosuit', 'Exosuit'], ['traveller', 'Traveller'], ['tools', 'Multi-tools'], ['ships', 'Starships'], ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['companions', 'Companions'],
+  ['exosuit', 'Traveller'], ['ships', 'Starships'], ['tools', 'Multi-tools'], ['freighter', 'Freighter'], ['vehicles', 'Exocraft'], ['companions', 'Companions'], ['traveller', 'Holograms'],   // ids are older than the names (owner 2026-11-25: Exosuit became Traveller, Traveller became Holograms)
   ['bases', 'Bases'], ['storage', 'Storage'], ['cargo', 'Cargo'],
   ['knowledge', 'Knowledge'], ['rewards', 'Rewards'], ['standing', 'Standing'], ['difficulty', 'Difficulty'],
   ['items', 'Item names'], ['raw', 'Raw data'],
@@ -2332,7 +2332,7 @@ const SECTIONS = [
 // The sidebar in groups of related pages, each with a faint tint of its own colour behind it.
 const NAV_GROUPS = [
   { tint: '#2fc3d6', ids: ['overview', 'shipwright', 'livelink', 'coords', 'library'] },          // getting around and your fleet
-  { tint: '#a37bff', ids: ['exosuit', 'traveller', 'tools', 'ships', 'freighter', 'vehicles', 'companions'] }, // what you carry and ride
+  { tint: '#a37bff', ids: ['exosuit', 'ships', 'tools', 'freighter', 'vehicles', 'companions', 'traveller'] }, // what you carry and ride
   { tint: '#ff8a70', ids: ['bases', 'storage', 'cargo'] },                                         // where things are kept
   { tint: '#7ba2ff', ids: ['knowledge', 'rewards', 'standing', 'difficulty'] },                   // progress and settings
   { tint: '#8fb3c4', ids: ['items', 'raw'] },                                                      // tools
@@ -2340,7 +2340,7 @@ const NAV_GROUPS = [
 // Spectrum: each section's colour sweeps down the sidebar, teal and aqua through blue, violet, magenta, rose and coral
 // (owner's pick), then sky, periwinkle and steel for progress and settings, mint (item names) and slate (raw data).
 // One bright base per section; light mode darkens it automatically.
-const SECTION_COLORS = { overview: '#2fc3d6', shipwright: '#36d6c3', livelink: '#38c4e2', coords: '#3cb6ea', library: '#6598ff', exosuit: '#7d8bff', traveller: '#9083ff', tools: '#a37bff', ships: '#c77dff', freighter: '#f06fd0', vehicles: '#ff6f9f', companions: '#ff7690', bases: '#ff8079', storage: '#ff8a70', cargo: '#ffa086', knowledge: '#5ab8f0', rewards: '#7ba2ff', standing: '#9a8cff', difficulty: '#a3b3cf', items: '#3fd9a3', raw: '#8fb3c4' };
+const SECTION_COLORS = { overview: '#2fc3d6', shipwright: '#36d6c3', livelink: '#38c4e2', coords: '#3cb6ea', library: '#6598ff', exosuit: '#7d8bff', ships: '#9083ff', tools: '#a37bff', freighter: '#c77dff', vehicles: '#f06fd0', companions: '#ff6f9f', traveller: '#ff7690', bases: '#ff8079', storage: '#ff8a70', cargo: '#ffa086', knowledge: '#5ab8f0', rewards: '#7ba2ff', standing: '#9a8cff', difficulty: '#a3b3cf', items: '#3fd9a3', raw: '#8fb3c4' };
 const secColor = (id) => SECTION_COLORS[id];
 function applySection(id) {
   const c = secColor(id);
@@ -2660,7 +2660,7 @@ function allInvs() {
 
 PAGES.exosuit = (el) => {
   const p = ps();
-  el.innerHTML = `<div class="page-head"><div><h1>Exosuit</h1><p>Technology and cargo, as in the game.</p></div></div>`;
+  el.innerHTML = `<div class="page-head"><div><h1>Traveller</h1><p>Your traveller, and your exosuit's technology and cargo as in the game.</p></div></div>`;
   if (APP && S.lib && S.lib.game && travellerGroups().length) travellerCard(el);
   invGroup(el, standardInvs(p, ''));
 };
@@ -2886,7 +2886,7 @@ function travellerCard(el) {
   card.onPaint = () => setTimeout(stand, 50);
   stand();
   const info = document.createElement('div'); info.className = 'panel trav-info';
-  info.innerHTML = `<h3>Pose ${esc(name)} in Blender</h3><p class="dim">Your traveller as the game builds them from your save, with the skeleton, ready to pose. In Blender: File, Import, glTF. Or press Import my traveller in the LiveLink add-on's panel, pose them, and make a picture of the pose on the Traveller page.</p>
+  info.innerHTML = `<h3>Pose ${esc(name)} in Blender</h3><p class="dim">Your traveller as the game builds them from your save, with the skeleton, ready to pose. In Blender: File, Import, glTF. Or press Import my traveller in the LiveLink add-on's panel, pose them, and make a picture of the pose on the Holograms page.</p>
     <div class="toolbar"><button class="btn primary" type="button" id="travGlb">Export for Blender (.glb)</button><button class="btn addon-btn" type="button">Get LiveLink</button><button class="btn" type="button" id="travPic">Make a picture</button><button class="btn" type="button" id="travShare">Share</button><button class="btn" type="button" id="travPull">Shared travellers</button>${APP ? '<button class="btn ghost" type="button" id="travSample">Save traveller files for the developer</button>' : ''}</div>`;
   wrap.appendChild(info);
   $('#travGlb', info).onclick = (e) => travellerExport(e.currentTarget);
@@ -3447,8 +3447,8 @@ async function tcPatronDialog(after) {
 }
 PAGES.traveller = (el) => {
   const st = tcLoad();
-  el.innerHTML = `<div class="page-head"><div><h1>Traveller</h1><p>Make a picture of your traveller: your pose from Blender, a background, your ship, multi-tool and portal glyphs. Drag things on the picture to move them and scroll over one to make it bigger or smaller. Drag with the middle mouse button to turn a 3D pose, ship or multi-tool (Shift and the middle button moves it, as in Blender). Click one and press Delete to take it off.</p></div></div>
-    <div class="tc-wrap"><div class="tc-stagecol"><div class="tc-stage"><canvas id="tcCanvas" aria-label="Your traveller picture" tabindex="0"></canvas><div class="tc-busy" id="tcBusy" hidden></div></div><div class="tc-selbar" id="tcSel" hidden></div><p class="tc-exp" data-keep>The Traveller page is an experimental feature and still being developed, so some things may not work as they should yet. If you run into a problem or have an idea, tell me on <a href="https://discord.gg/NzTHwmQpy" target="_blank" rel="noopener">Discord</a>.</p></div><div class="tc-side" id="tcSide"></div></div>`;
+  el.innerHTML = `<div class="page-head"><div><h1>Holograms</h1><p>Make a picture of your traveller: your pose from Blender, a background, your ship, multi-tool and portal glyphs. Drag things on the picture to move them and scroll over one to make it bigger or smaller. Drag with the middle mouse button to turn a 3D pose, ship or multi-tool (Shift and the middle button moves it, as in Blender). Click one and press Delete to take it off.</p></div></div>
+    <div class="tc-wrap"><div class="tc-stagecol"><div class="tc-stage"><canvas id="tcCanvas" aria-label="Your traveller picture" tabindex="0"></canvas><div class="tc-busy" id="tcBusy" hidden></div></div><div class="tc-selbar" id="tcSel" hidden></div><p class="tc-exp" data-keep>The Holograms page is an experimental feature and still being developed, so some things may not work as they should yet. If you run into a problem or have an idea, tell me on <a href="https://discord.gg/NzTHwmQpy" target="_blank" rel="noopener">Discord</a>.</p></div><div class="tc-side" id="tcSide"></div></div>`;
   const cv = $('#tcCanvas', el), side = $('#tcSide', el);
   let busy = false, again = false, bgTab = null;
   const BOX_OF = { trav: 'trav', ship: 'ship', tool: 'tool', logo: 'text', text: 'text', glyphs: 'glyphs' };
@@ -10284,13 +10284,13 @@ function llActivityHtml() {
 function llFromBlenderHtml() {
   const pics = ((LL.pics && LL.pics.pictures) || []), poses = pics.filter((x) => /\.png$/i.test(x.name)), p3 = pics.filter((x) => /\.glb$/i.test(x.name)), sh = ((LL.ships && LL.ships.ships) || []);
   const list = (xs, kind) => xs.slice(0, 6).map((x) => `<li><span>${esc(x.name.replace(/\.(png|glb)$/i, ''))}</span><span class="dim small-print">${llWhen(x.mtime)}</span></li>`).join('');
-  return `<section class="panel ll-from"><h3>From Blender ${hint('What the add-on sent or saved: pose pictures, 3D poses and corvettes in 3D. They\'re in the Exports folder, and the Traveller page uses them.')}</h3>
+  return `<section class="panel ll-from"><h3>From Blender ${hint('What the add-on sent or saved: pose pictures, 3D poses and corvettes in 3D. They\'re in the Exports folder, and the Holograms page uses them.')}</h3>
     <div class="ll-from-grid">
       <div><h4>Pose pictures <span class="count">${poses.length}</span></h4>${poses.length ? `<div class="ll-thumbs">${poses.slice(0, 6).map((x) => `<img alt="${esc(x.name)}" title="${esc(x.name)}" loading="lazy" src="/api/exports/file?name=${encodeURIComponent(x.name)}&t=${encodeURIComponent(APP.token)}">`).join('')}</div>` : '<p class="dim small-print">None yet: in Blender, Export, Render a picture.</p>'}</div>
       <div><h4>3D poses <span class="count">${p3.length}</span></h4>${p3.length ? `<ul class="ll-files">${list(p3)}</ul>` : '<p class="dim small-print">None yet: Export, Send the pose to DryDock (3D).</p>'}</div>
       <div><h4>Corvettes in 3D <span class="count">${sh.length}</span></h4>${sh.length ? `<ul class="ll-files">${list(sh)}</ul>` : '<p class="dim small-print">None sent from Blender yet.</p>'}</div>
     </div>
-    <div class="toolbar"><button class="btn small" type="button" data-ll="traveller">Make a picture on the Traveller page</button><button class="btn small ghost" type="button" data-ll="exports">Open the Exports folder</button></div></section>`;
+    <div class="toolbar"><button class="btn small" type="button" data-ll="traveller">Make a picture on the Holograms page</button><button class="btn small ghost" type="button" data-ll="exports">Open the Exports folder</button></div></section>`;
 }
 function llPrintsHtml() {
   const pr = (LL.prints && LL.prints.prints) || [];
@@ -11325,7 +11325,7 @@ const FIND_WORDS = [
   ['companions', 'Companions', 'pets companions creatures eggs trust'], ['bases', 'Bases', 'bases base parts building'], ['bases', 'Settlements', 'settlement settlements overseer'],
   ['cargo', 'Where is everything', 'cargo where find item stacks gather total inventory'], ['cargo', 'Consolidate stacks', 'consolidate merge stacks tidy sort cargo move gather'],
   ['freighter', 'Frigates', 'frigates fleet expeditions'], ['ships', 'Ship slots', 'ship slots arrange reorder swap move order repair broken corvette build'], ['shipwright', 'Corvette builds', 'corvette build optimizer tune'], ['library', 'Dock Yard', 'dock yard ship library garage storage favourites import nmsship'],
-  ['exosuit', 'Exosuit inventory', 'exosuit suit inventory slots supercharge'], ['raw', 'Raw data', 'raw json expert'],
+  ['exosuit', 'Exosuit inventory', 'exosuit suit inventory slots supercharge traveller'], ['raw', 'Raw data', 'raw json expert'],
 ];
 function findIndex() {
   const out = [], p = ps();

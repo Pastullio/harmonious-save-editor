@@ -72,25 +72,11 @@ Every ship you own, build or download, in one place, kept in `Documents\Harmonio
 - **Search** names, tags and notes; filter by type and tag.
 - **Delete** moves files to a Deleted folder, so they can always be brought back.
 
-### Exosuit
+### Traveller
 
 Your exosuit's technology and cargo, laid out as in the game. Everything in [Inventories](#inventories) works here, including supercharged slots.
 
 **Your traveller** sits at the top: your character in 3D, built from your save and your game files, with exactly the parts you wear, in the game's own textures painted in your colours and markings. It turns when you point at it or drag it. The first time takes a little while; after that it's kept on your PC and appears straight away. **Export for Blender (.glb)** saves it with its skeleton, ready to pose (File > Import > glTF), or press **Import my traveller** in Blender's LiveLink panel (see [Blender](#blender-renders-livelink-posing-and-3d-prints)).
-
-### Traveller
-
-Make a picture card of your traveller: your posed picture (or 3D pose) from Blender, a space or plain background, your ship and multi-tool, portal glyphs and your name. Drag and resize anything on the card, turn 3D models to any angle, then **Save picture** or **Copy picture**.
-
-### Multi-tools
-
-Every multi-tool you own.
-
-- **Name, type** (standard, royal, sentinel, atlas, staff and more), **class** and **seed** (with **Generate** for a new look).
-- **Base stats**: damage, mining and scanning.
-- **Profiles**: **Save as profile** keeps a loadout as a file; **Apply a profile** puts it on another multi-tool. Share a profile by sending the file.
-- **Export** a `.json` backup and **Import** it again; **Delete multi-tool** (works even when all six slots are full: the slot is left empty, the way the game leaves one).
-- **Add a multi-tool** (a copy of one you own into an empty slot; then change its type, seed and class) and **Choose parts** for the cover model.
 
 ### Starships
 
@@ -106,6 +92,16 @@ Every ship you own.
 - **Versions in the Dock Yard** opens the ship's card in the Hangar, with every version kept.
 - **To the Dock Yard…** asks whether to **Keep a copy** (the ship stays in your game) or **Move it** (it's stored in Ship storage and its slot is emptied; not for the ship you're flying).
 - **Profiles**, **Export** (`.json`, `.nmsship`, `.so`), **Import** and **Delete ship**, as for multi-tools.
+
+### Multi-tools
+
+Every multi-tool you own.
+
+- **Name, type** (standard, royal, sentinel, atlas, staff and more), **class** and **seed** (with **Generate** for a new look).
+- **Base stats**: damage, mining and scanning.
+- **Profiles**: **Save as profile** keeps a loadout as a file; **Apply a profile** puts it on another multi-tool. Share a profile by sending the file.
+- **Export** a `.json` backup and **Import** it again; **Delete multi-tool** (works even when all six slots are full: the slot is left empty, the way the game leaves one).
+- **Add a multi-tool** (a copy of one you own into an empty slot; then change its type, seed and class) and **Choose parts** for the cover model.
 
 ### Freighter
 
@@ -130,6 +126,9 @@ Your creature companions.
 - **Add a companion** to an empty slot.
 - **Export** saves a companion (with its accessories) as a `.pet.json` file to keep or share; **Import a companion…** puts one into an empty slot or over another.
 
+### Holograms
+
+Make a picture card of your traveller: your posed picture (or 3D pose) from Blender, a space or plain background, your ship and multi-tool, portal glyphs and your name. Drag and resize anything on the card, turn 3D models to any angle, then **Save picture** or **Copy picture**.
 ### Bases
 
 Your bases and settlements.
@@ -222,12 +221,12 @@ The gear at the bottom of the sidebar: where Blender is, and whether new corvett
 
 These need [Blender](https://www.blender.org) (4.2 or newer). Corvettes need [Charon Forge](https://github.com/xX-Charon-Xx/charon_forge), and bases NMS Base Builder. The app finds them on your PC and never includes anything from them. The LiveLink page in the app shows what's set up.
 
-- **The add-on**: press **Get LiveLink** (LiveLink page, About, Exosuit or Shipwright) and install the file in Blender (Edit > Preferences > Add-ons > Install from Disk). Its panels are in the 3D view's sidebar, tab **LiveLink**. Blender keeps the add-on you installed, so when a new one comes out, install it again over the old one.
+- **The add-on**: press **Get LiveLink** (LiveLink page, About, Traveller or Shipwright) and install the file in Blender (Edit > Preferences > Add-ons > Install from Disk). Its panels are in the 3D view's sidebar, tab **LiveLink**. Blender keeps the add-on you installed, so when a new one comes out, install it again over the old one.
 - **LiveLink**: turn it on for a corvette or base, then every time you press Ctrl+S in Blender (or **Send now**), the build goes into your save. The app backs up the save each time. Each `.blend` remembers which corvette or base it's for, and the editor asks before putting a build anywhere else.
 - **Load from a .blend…**: on Shipwright and Bases, read a corvette or base straight from a `.blend` file, without opening Blender yourself.
 - **Corvette renders**: real pictures of your corvettes, made by your Blender in the background and kept so a build is only rendered once. Turn on automatic renders in Settings and new corvettes get a picture a few seconds after a save opens.
 - **Posing your traveller**: **Import my traveller** brings in your character with a skeleton. In Pose Mode, click a part of the body to turn it, or turn on **Move hands and feet** to drag a hand or foot and let the arm or leg follow. Joints and fingers bend the way a person's do, on every race. Pick a ready-made pose (hero, salute, waving, pointing, sitting and more) or save and share your own, and put a multi-tool in your hand.
-- **Lighting and pictures**: ready-made lighting (Studio, Hero, Sunset, Space), a backdrop from any `.blend` (a corvette, a base…), Quick or Best quality, then **Render a picture** saves a PNG to your Exports folder. **Send the pose to DryDock (3D)** sends it to the Traveller page in 3D.
+- **Lighting and pictures**: ready-made lighting (Studio, Hero, Sunset, Space), a backdrop from any `.blend` (a corvette, a base…), Quick or Best quality, then **Render a picture** saves a PNG to your Exports folder. **Send the pose to DryDock (3D)** sends it to the Holograms page in 3D.
 - **3D prints**: your posed traveller as a miniature, heroic figure, action figure or collector's figure, or a corvette on a flight stand, as one solid STL sized in mm and ready for your slicer. **Preview** stands the print beside your model first, so you can check it without a printer.
 
 ## The browser version

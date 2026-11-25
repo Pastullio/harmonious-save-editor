@@ -43,7 +43,7 @@ im.save(${JSON.stringify(file)})`]);
   const d0 = await p.evaluate(() => isDark()); await p.click('.land-theme'); ok('…and switches the look', (await p.evaluate(() => isDark())) !== d0); await p.click('.land-theme');
   await p.screenshot({ path: SP + '/shots/landing-theme.png' });
   await p.click('.slot-row'); await p.waitForSelector('#app:not(.hidden)');
-  ok('Traveller is in the sidebar after Exosuit', await p.evaluate(() => { const ids = [...document.querySelectorAll('nav button[data-s]')].map((x) => x.dataset.s); return ids.indexOf('traveller') === ids.indexOf('exosuit') + 1; }));
+  ok('Holograms (the old Traveller page) is last in its sidebar group, after Companions, and Traveller (the old Exosuit) first', await p.evaluate(() => { const b = [...document.querySelectorAll('nav button[data-s]')], ids = b.map((x) => x.dataset.s), name = (id) => b[ids.indexOf(id)].textContent; return ids.indexOf('traveller') === ids.indexOf('companions') + 1 && ids.indexOf('ships') === ids.indexOf('exosuit') + 1 && ids.indexOf('tools') === ids.indexOf('ships') + 1 && /Holograms/.test(name('traveller')) && /Traveller/.test(name('exosuit')); }));
   await p.click('nav button[data-s="traveller"]'); await p.waitForSelector('#tcCanvas');
   await p.waitForFunction(() => TC.img.trav && TC.pics.length, null, { timeout: 15000 }).catch(() => {});
   const pics = await p.evaluate(() => TC.pics.map((x) => x.name));
