@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.25.1626",
+  "version": "2026.11.25.1704",
   "date": "2026-11-25",
-  "size": 15347712,
-  "sha256": "c0bcf1cf989b33ac0fdb135a97939f216aa29e84e94126ff0efae2c03169bbbf",
-  "notes": "Corvette wing modules are recognised by the game's own description (Flight Stabiliser)",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.25.1626/HarmoniousSaveEditor.exe",
+  "size": 15351808,
+  "sha256": "ecd329f3f72c2af9e25819f229b45a30fb302accff86214489aeea3763c67e50",
+  "notes": "LiveLink add-on 1.32: five new hero poses: Ground strike, Hovering, Fists on hips, Ready crouch and Flying\nInstall the add-on again to get them (Get the LiveLink add-on, then Blender: Edit, Preferences, Add-ons, Install from disk)",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.25.1704/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
