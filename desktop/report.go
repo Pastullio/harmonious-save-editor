@@ -416,7 +416,7 @@ func reportBanks(o *reportOut, banks string) {
 		byID := map[string]libItem{}
 		if lib != nil {
 			for _, it := range lib.Items {
-				byID[strings.ToUpper(it.ID)] = it
+				byID[strings.ToUpper(strings.TrimPrefix(it.ID, "^"))] = it // the library keeps IDs as saves write them, with ^
 			}
 		}
 		var cor, unnamed []string

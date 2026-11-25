@@ -1,5 +1,14 @@
 [
  {
+  "version": "2026.11.25.1623",
+  "date": "2026-11-25",
+  "notes": [
+   "Ready for the game's 7.15 patch: corvette holograms show the real part sizes again",
+   "The Report now checks every game table DryDock reads and says which ones a game update has changed",
+   "The Report lists the game's corvette parts with their names, so new parts can be checked"
+  ]
+ },
+ {
   "version": "2026.11.25.1618",
   "date": "2026-11-25",
   "notes": [
