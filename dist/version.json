@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.25.1553",
+  "version": "2026.11.25.1604",
   "date": "2026-11-25",
-  "size": 15331328,
-  "sha256": "a131b1f1aa35565b2f46784033d149b5257c1970cf3774a7846e93c21962a382",
-  "notes": "The Report now checks every game table DryDock reads and says which ones a game update has changed\nChanged tables are included in the report, so DryDock can be brought up to date quickly",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.25.1553/HarmoniousSaveEditor.exe",
+  "size": 15334400,
+  "sha256": "b5da188c581090f91074e5c85c7947601dd4635fd90a7cd48618f5319e5826da",
+  "notes": "Ready for the game's 7.15 patch: corvette holograms show the real part sizes again\nThe Report now checks every game table DryDock reads and says which ones a game update has changed",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.25.1604/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }

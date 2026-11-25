@@ -384,7 +384,11 @@ func reportBanks(o *reportOut, banks string) {
 			o.say("  NOT READ   %s: %v", f, err)
 			continue
 		}
-		if g := binary.LittleEndian.Uint64(b[0x10:]); g != k.guid {
+		g, known := binary.LittleEndian.Uint64(b[0x10:]), false
+		for _, w := range append([]uint64{k.guid}, k.also...) {
+			known = known || g == w
+		}
+		if !known {
 			changed++
 			kept := "too big to include"
 			if len(b) <= 12<<20 && len(b) <= room {
