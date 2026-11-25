@@ -1,291 +1,338 @@
-<p align="center"><img src="docs/logo.png" alt="Harmonious DryDock" width="560"></p>
+<p align="center"><img src="docs/logo.png" alt="Harmonious DryDock" width="520"></p>
 
-# Harmonious DryDock
+<h1 align="center">Harmonious DryDock</h1>
 
-*Formerly Harmonious Save Editor.* A save editor, ship library and Blender toolkit for No Man's Sky on PC (Steam and GOG, Frontiers 3.60 or newer). Searching for an NMS save editor? This is it. Edit your traveller, ships, corvettes, bases and inventories. Keep a library of every ship you've owned. Find places by portal glyphs and warp there. Build corvettes and bases in Blender and send them straight into your save.
+<p align="center"><b>A save editor, ship library and Blender toolkit for No Man's Sky.</b><br>
+Edit your traveller, ships, corvettes, bases and inventories. Build ships and staffs part by part.<br>
+Pose your traveller in Blender, make pictures and 3D prints. Formerly Harmonious Save Editor.</p>
 
-Nothing is uploaded anywhere. Item names and icons come from your own copy of the game.
+<table align="center">
+<tr>
+<td align="center" width="33%"><a href="https://github.com/Pastullio/harmonious-save-editor/releases/latest/download/HarmoniousSaveEditor.exe"><b>Download for Windows</b></a><br><sub>One program, no installer. Updates itself.</sub></td>
+<td align="center" width="33%"><a href="https://github.com/Pastullio/harmonious-save-editor/releases/latest/download/HarmoniousDryDock-Mac.zip"><b>Download for Mac</b></a><br><sub>Test build, Apple Silicon and Intel. Not signed.</sub></td>
+<td align="center" width="33%"><a href="https://github.com/Pastullio/harmonious-save-editor/releases/latest/download/nms-save-editor-browser.html"><b>Browser version</b></a><br><sub>One web page for Chrome or Edge. Editing only.</sub></td>
+</tr>
+</table>
 
-**New here? Open the [user guide](dist/Harmonious%20Save%20Editor%20Guide.html)** (download it and open it in your browser, or press **Guide** in the app): every page of the editor, with screenshots.
+<p align="center"><a href="https://discord.gg/3PfZfPYDn">Join the Discord</a> · <a href="https://github.com/Pastullio/harmonious-save-editor/releases/latest/download/Harmonious-Save-Editor-Guide.html">User guide</a> · <a href="docs/FEATURES.md">Every feature</a> · <a href="https://github.com/Pastullio/harmonious-save-editor/releases">All releases</a> · <a href="https://www.patreon.com/pastullio">Patreon</a></p>
 
-- [Getting started](#getting-started)
-- [How saving keeps your data safe](#how-saving-keeps-your-data-safe)
-- [The sections](#the-sections)
-  - [Overview](#overview) · [Shipwright](#shipwright) · [LiveLink](#livelink) · [Coordinates](#coordinates) · [Dock Yard](#dock-yard)
-  - [Exosuit](#exosuit) · [Traveller](#traveller) · [Multi-tools](#multi-tools) · [Starships](#starships) · [Freighter](#freighter) · [Exocraft](#exocraft) · [Companions](#companions)
-  - [Bases](#bases) · [Storage](#storage) · [Cargo](#cargo)
-  - [Knowledge](#knowledge) · [Rewards](#rewards) · [Standing](#standing) · [Difficulty](#difficulty)
-  - [Item names](#item-names) · [Raw data](#raw-data)
-- [Things that work everywhere](#things-that-work-everywhere)
-- [Blender: renders, LiveLink, posing and 3D prints](#blender-renders-livelink-posing-and-3d-prints)
-- [The browser version](#the-browser-version)
-- [For developers](#for-developers)
-- [Credits](#credits)
+> [!IMPORTANT]
+> Every save is backed up before it's replaced, and nothing is uploaded anywhere. Item names, icons and 3D models come from your own copy of the game. Close No Man's Sky before you save.
 
-## Getting started
+## Your whole save, in one place
 
-1. **[Download the editor](https://github.com/Pastullio/harmonious-save-editor/releases/latest/download/HarmoniousSaveEditor.exe)** (always the newest version; every version is on the [Releases](https://github.com/Pastullio/harmonious-save-editor/releases) page). It's one small program with no installer. **Mac (test build):** [HarmoniousDryDock-Mac.zip](https://github.com/Pastullio/harmonious-save-editor/releases/latest/download/HarmoniousDryDock-Mac.zip), for Steam's Mac version of the game on Apple Silicon or Intel; it is new and unsigned, so read the READ ME FIRST file in the zip, and please send the **Report** from its first screen. The user guide is attached to each release too; the app also opens it from **Guide** on the save list and **User guide** in the sidebar.
-2. Run it. Windows SmartScreen warns the first time because the exe isn't code-signed: choose **More info**, then **Run anyway**.
-3. The editor finds your saves in `%APPDATA%\HelloGames\NMS` and opens in its own window. Pick a save.
-4. On first start it builds an item library from your No Man's Sky install (about a minute). That's where item names, icons and descriptions come from.
-5. Make your changes, then press **Save to game** at the bottom of the sidebar.
-
-**Leaving with unsaved changes:** closing the window (the X) or the **Exit** button at the bottom of the sidebar asks: **Keep editing**, **Exit without saving** or **Save & exit**. With nothing unsaved it just closes.
-
-**Close No Man's Sky before saving.** The editor warns you if the game is still running. Steam Cloud can also restore an older copy if it syncs before the game starts.
-
-The app updates itself. When a new version is out it offers to install it, checks the download, swaps itself over and restarts, then shows what's new in it. **About** shows which version you have, with **What's new** for the latest changes.
-
-**The editor's own window.** It opens in a window of its own (Windows' built-in WebView2, the same engine as Edge, which comes with Windows 10 and 11), with the editor's icon in the taskbar. If WebView2 is missing it opens an Edge window instead.
-
-**Pin it to the taskbar** from its own taskbar button (right-click, **Pin to taskbar**). If you pinned an older version (from before the editor had its own window), unpin that and pin the new one: they show as separate buttons. You can also right-click the exe in Explorer and choose **Pin to taskbar**.
-
-**Exported files** (ship and multi-tool backups, `.nmsship`, `.so`, place cards…) go to `Documents\Harmonious Save Editor\Exports`, and the folder opens in Explorer with the file selected. Nothing is ever overwritten: a second file with the same name gets `(2)` added.
-
-## How saving keeps your data safe
-
-- **Backups every time.** Before replacing a save, the app copies the current pair to `%LOCALAPPDATA%\HarmoniousSaveEditor\backups\<account>\<time>_saveN`. **Show backups** in the sidebar opens that folder.
-- **Back up all saves** on the save list zips every slot into `Documents\Harmonious Save Editor backups`.
-- **Copy to a new slot** on the save list copies a save into an empty slot. It never overwrites one.
-- **Checked before writing.** The new save is decoded again and compared with what's in the editor; if anything differs, nothing is written.
-- **Nothing changes by accident.** An unedited save re-encodes to exactly the same data: key order, number spelling and special bytes are all kept.
-- **New saves from the game.** While a save is open, the editor notices when the game writes a newer one and offers to open it. It asks first if you have unsaved edits.
-- **Locked to your PC.** The app only listens on 127.0.0.1 with a random token per run, so other web pages can't talk to it. It quits a few seconds after you close its window.
-
-## The sections
-
-The sidebar groups the sections the way you'd use them: getting around and your fleet; what you carry and ride; where things are kept; progress and settings; and tools.
+<table>
+<tr>
+<td width="58%"><a href="docs/guide/shots/overview.webp"><img src="docs/guide/shots/overview.webp" alt="Overview"></a></td>
+<td width="42%" valign="top">
 
 ### Overview
 
-Your traveller at a glance.
+Your traveller, current ship, multi-tool and location at a glance, with portal glyphs, journey milestones and a count of every build part in the save.
 
-- **Traveller cards**: your portrait (pick one of your screenshots or any image), current ship, multi-tool and location, with portal glyphs and galactic address.
-- **Journey**: discoveries and the milestones the game counts.
-- **Build parts**: every part placed in the save (corvettes, planet bases, space stations, freighter) and the total, so you can check before loading a big build.
-- **Save name** as it appears in the game's load menu.
-- **Garage** (click to open): every corvette, starship and multi-tool in this save, grouped, each with its picture, class and whether it's the one you're using. Click one to edit it.
-- **Quick fixes** (click to open) for every inventory in the save at once: **Repair all technology**, **Recharge all technology** and **Fill every stack**, plus units, nanites and quicksilver with +1M, +100M and Max buttons.
+**Quick fixes** repair, recharge and refill every inventory at once, and set units, nanites and quicksilver.
 
-### Shipwright
+</td>
+</tr>
+<tr>
+<td width="58%"><a href="docs/guide/shots/find.webp"><img src="docs/guide/shots/find.webp" alt="Find anything"></a></td>
+<td width="42%" valign="top">
 
-Corvette build tools.
+### Find anything
 
-- **Manage**, beside the corvette's name: rename it, save or apply a profile, put it in the Dock Yard, or **Workbench** to open it on Starships for everything else (class, stats, inventories, colours, seed).
-- **Tune up** puts a corvette's parts in the order the game reads them, so performance parts aren't listed too late and lose stats. The order follows TAZmd's documented priority list; the camera cockpit, boarding cockpit and beam-up bay stay where they are. The gear beside Tune up lets you set your own order of groups (arrows or drag); **Standard order** puts TAZmd's back.
-- **Health check** for each build: no cockpit, no landing bay, a beam-up bay scaled too small to work, parts out of order, or parts stacked exactly on top of an identical part (with a one-click fix).
-- **Copy and paste builds**: copy all parts or just the build, and paste a build from TAZ's tools, another corvette or a file. Pasting replaces only the parts; the corvette keeps its name, class and owner.
-- **Save to a file** and **Save as…** for builds.
-- **Load from a .blend…** reads a Charon Forge corvette file straight from Blender (see [Blender](#blender-renders-livelink-posing-and-3d-prints)).
-- **Add corvette** creates a new corvette in an empty ship slot with a starter build.
-- **LiveLink** from Blender: save your `.blend` and the corvette updates in your save.
+Press **Ctrl+K** and type: any ship, base, frigate, companion, setting or item you carry is one click away.
 
-### LiveLink
+Dark and light mode, a sidebar you can rearrange, and a **?** beside anything that has more to say.
 
-Everything to do with Blender, on one page (desktop app).
+</td>
+</tr>
+</table>
 
-- **Setup**: whether Blender, the LiveLink add-on (and its version) and Charon Forge are found, with first-time steps.
-- **What's linked**: every corvette and base with the `.blend` it was built from. Turn LiveLink on or off, **Open in Blender**, or choose another file.
-- **Activity**: each build Blender sent, and what happened to it.
-- **3D prints**: every miniature and ship print you've exported, as a turning grey preview with its size in mm. Show it in its folder or delete it.
-- **From Blender**: your rendered pose pictures, 3D poses and corvettes sent in 3D.
-- **In Blender**: what each panel of the add-on does.
+<table>
+<tr>
+<td width="33%" valign="top"><b>Fleet</b><br>Starships, corvettes, freighter, frigates and exocraft, each with its real 3D model.</td>
+<td width="33%" valign="top"><b>Inventories</b><br>Every grid as the game lays it out. Add, move, stack, repair and supercharge.</td>
+<td width="33%" valign="top"><b>Builders</b><br>Ships and staffs from chosen parts and colours. Multi-tools by type and seed.</td>
+</tr>
+<tr>
+<td width="33%" valign="top"><b>Coordinates</b><br>Portal glyphs, galactic addresses, system predictions and warping, in all 256 galaxies.</td>
+<td width="33%" valign="top"><b>Blender</b><br>LiveLink for corvettes and bases, renders, traveller posing, pictures and 3D prints.</td>
+<td width="33%" valign="top"><b>Progress</b><br>Knowledge, words, expedition rewards, standing and every difficulty setting.</td>
+</tr>
+</table>
 
-### Coordinates
+## Ships, corvettes and the Dock Yard
 
-Find a place by its portal glyphs or galactic address, see what your save knows about it, and warp there.
-
-- **You are here**: your current system, galaxy, portal glyphs and galactic address. **Start from here** copies it into the destination.
-- **Destination**: type or click portal glyphs, or enter a galactic address. Both stay in step.
-- **Nicknames**: give any system or planet a name of your own, shown only in the editor. It doesn't rename it in the game; for that, rename it in the game and upload it.
-- **Names players gave**: a system or planet renamed by you or another traveller shows that name, with the game's own name beside it.
-- **System prediction**: the system's name, region, star colour and planets, worked out from the address.
-- **What your save knows**: the system and planet names you've discovered, biomes from your discovery records, and your bases there.
-- **Biome odds**: the chances of each biome for every planet, from the game's own table, by star colour and galaxy type (lush, harsh, empty or normal). The bodies the game adds after a system's regular planets use their own odds.
-- **Place card**: a picture of the destination's glyphs and details to share (**Save card**, **Copy card**, **Copy as text**).
-- **Favourite places**: star a base, space station, settlement or system (here or on the Bases page) and it's kept outside your saves. **Go here** loads its glyphs, ready to warp. Export and import to share a list.
-- **Warp here** asks how you arrive: in your ship, aboard your freighter, or on foot at a base in the system (yours or one you've visited). A favourite base goes straight there. **Places here** lists every base and station in the system once, with a star and **Arrive here**.
-- **You are here** shows the planet you're on as a small turning globe in its biome's colours, with its moon when the save shows one.
-
-### Dock Yard
-
-Every ship you own, build or download, in one place, kept in `Documents\Harmonious Save Editor\Dock Yard`.
-
-- **Pick a ship to work on it**: a ship in the open save says **Loaded, slot N** on its cover (loaded ships come first, in slot order), and the bar above the covers shows what you can do. **Edit ship** opens it on Starships (and **Edit build** opens a corvette in Shipwright); a ship that isn't in the save has **Load ship into game…**; **Details** opens its card. In the grid each card shows **Loaded, slot N** with **Edit ship**, or **Load ship into game…** (it goes into the open save; **Save to game** writes it).
-- **Hangar**: fills itself. Every ship in every save you open is copied here, and a ship you replace is copied before it's overwritten, so nothing is lost. Each ship has one card with its versions stacked inside, newest first. A new version is kept only when the ship itself changes (its build, model, name, class, colours or installed tech), not when fuel, charge or cargo do. Copies that only differ in those can be moved to Deleted in one click.
-- **Ship storage**: ships you keep on purpose. **Import files** (`.json`, `.txt`, TAZ's `.nmsship` and `.so`, Base Building App `.nmsprefab`) or **Add this save's ships**.
-- **Favourites**: ships you star, from anywhere in the Dock Yard.
-- **Linked folders**: point the Dock Yard at folders where you already keep ship files. They show up here without being moved or changed. In **Manage folders**, paste a folder's path and press **Add path**, or use **Browse…** (pressing **Add path** with an empty box opens Browse too).
-- **Ship cards** with tags, notes and a link to where you found the ship. **Get art from the link** pulls the artwork, author and description from a listing.
-- **Load ship into game…** drops a ship or corvette into an empty slot or replaces one. Corvettes bring their build. A build on its own goes onto one of your corvettes, and a `.so` gives a corvette its tech and class while it keeps its build.
-- **Export** as `.nmsship` (the whole corvette) or `.so` (the ship entry, as TAZ's tools write it).
-- **Search** names, tags and notes; filter by type and tag.
-- **Delete** moves files to a Deleted folder, so they can always be brought back.
-
-### Exosuit
-
-Your exosuit's technology and cargo, laid out as in the game. Everything in [Inventories](#inventories) works here, including supercharged slots.
-
-**Your traveller** sits at the top: your character in 3D, built from your save and your game files, with exactly the parts you wear, in the game's own textures painted in your colours and markings. It turns when you point at it or drag it. The first time takes a little while; after that it's kept on your PC and appears straight away. **Export for Blender (.glb)** saves it with its skeleton, ready to pose (File > Import > glTF), or press **Import my traveller** in Blender's LiveLink panel (see [Blender](#blender-renders-livelink-posing-and-3d-prints)).
-
-### Traveller
-
-Make a picture card of your traveller: your posed picture (or 3D pose) from Blender, a space or plain background, your ship and multi-tool, portal glyphs and your name. Drag and resize anything on the card, turn 3D models to any angle, then **Save picture** or **Copy picture**.
-
-### Multi-tools
-
-Every multi-tool you own.
-
-- **Name, type** (standard, royal, sentinel, atlas, staff and more), **class** and **seed** (with **Generate** for a new look).
-- **Base stats**: damage, mining and scanning.
-- **Profiles**: **Save as profile** keeps a loadout as a file; **Apply a profile** puts it on another multi-tool. Share a profile by sending the file.
-- **Export** a `.json` backup and **Import** it again; **Delete multi-tool** (works even when all six slots are full: the slot is left empty, the way the game leaves one).
-- **Add a multi-tool** (a copy of one you own into an empty slot; then change its type, seed and class) and **Choose parts** for the cover model.
+<table>
+<tr>
+<td width="58%"><a href="docs/guide/shots/ships.webp"><img src="docs/guide/shots/ships.webp" alt="Starships"></a></td>
+<td width="42%" valign="top">
 
 ### Starships
 
-Every ship you own.
+Every ship you own in Cover Flow or a grid, drawn from your game's files. Change name, type, class, seed and stats, reorder slots, archive and restore, and save loadouts as profiles you can share.
 
-- **Cover Flow** of your ships (scroll, drag or use the arrow keys) or a **Grid**: each ship's 3D model from your game's files, which spins when you point at it and turns when you drag it. **Change picture** drops in an image or one of your screenshots, and **Choose parts** picks the hull, wings and other options the model shows.
-- **Corvettes** show as a hologram of their build, each part a block at its real size coloured by type, with a key under the covers. With Blender and Charon Forge you get real renders instead: **Render corvettes** or **Render with Blender**, and front, side, back and top views under the covers.
-- **Name, type** (hauler, explorer, shuttle, fighter, exotic, living ship, solar, interceptor, corvette and the special ships), **class**, **seed** and **use old colours**.
-- **Base stats**: damage, shields, hyperdrive and maneuverability, plus ship health and shield.
-- **Ship slots** at the top: drag ships into a new order (corvette builds, colours and your current ship move with them), **Close the gaps**, and fixes for problems such as a build that points at the wrong slot.
-- **Add a ship**: a ship you build from chosen parts (fighter, hauler, explorer, shuttle or solar: pick the body, engines and wings, a finish and colours, with the ship turning in 3D; needs the game files), a new corvette, or a copy of one of your ships with its colours and build. A built fighter, hauler, explorer, shuttle or solar ship also has **Parts and colours** on its page.
-- **Archived ships**: see the ships the game keeps in its archive, **Restore** one into a slot, or **Archive a ship**.
-- **Versions in the Dock Yard** opens the ship's card in the Hangar, with every version kept.
-- **To the Dock Yard…** asks whether to **Keep a copy** (the ship stays in your game) or **Move it** (it's stored in Ship storage and its slot is emptied; not for the ship you're flying).
-- **Profiles**, **Export** (`.json`, `.nmsship`, `.so`), **Import** and **Delete ship**, as for multi-tools.
+Corvettes show as a hologram of their build, or as real renders with Blender and Charon Forge.
 
-### Freighter
+</td>
+</tr>
+<tr>
+<td width="58%"><a href="docs/readme/ship-builder.webp"><img src="docs/readme/ship-builder.webp" alt="Build a ship"></a></td>
+<td width="42%" valign="top">
 
-Your capital ship and its fleet.
+### Build a ship
 
-- **Name, type, class and seed** of the freighter, and its base stats (hyperdrive and fleet coordination).
-- **Inventories**: technology and cargo.
-- **Frigates**: each one's name, type, class, expeditions and damage, its stats and its traits. **Repair every frigate** at once.
+Pick a fighter, hauler, explorer, shuttle or solar ship, then its body, engines and wings from the game's own part lists. Choose a finish and colours and watch the ship turn in 3D before it goes into an empty slot.
 
-### Exocraft
+</td>
+</tr>
+<tr>
+<td width="58%"><a href="docs/guide/shots/shipwright.webp"><img src="docs/guide/shots/shipwright.webp" alt="Shipwright"></a></td>
+<td width="42%" valign="top">
 
-Cargo and technology for each exocraft you've summoned, with a model of each. **Add exocraft** learns the geobay blueprints for the ones you don't have yet.
+### Shipwright
 
-### Companions
+Corvette build tools. **Tune up** puts parts in the order the game reads them so nothing loses stats. The build check finds missing cockpits, parts out of order and duplicates stacked on each other.
 
-Your creature companions.
+Copy, paste, load and save builds, including TAZ's files and Charon Forge `.blend` files.
 
-- **A picture of each one**: the desktop app draws each companion's real model from your game files, with the head, wings, tail and other parts it was born with. The model also shows beside its name in the list. **Change picture** uses a screenshot or any image instead.
-- **Name, size, trust, temperament and mood**, as sliders.
-- **Fed, happy and fully trusting** in one click.
-- **Creature battles**: change a companion's type (greyed out for species the game fixes, such as robots, which are always Mechanical) and set its health, agility and combat effectiveness classes, or make them all S class.
-- **Add a companion** to an empty slot.
-- **Export** saves a companion (with its accessories) as a `.pet.json` file to keep or share; **Import a companion…** puts one into an empty slot or over another.
+</td>
+</tr>
+<tr>
+<td width="58%"><a href="docs/guide/shots/dockyard-flow.webp"><img src="docs/guide/shots/dockyard-flow.webp" alt="Dock Yard"></a></td>
+<td width="42%" valign="top">
 
-### Bases
+### Dock Yard
 
-Your bases and settlements.
+A library of every ship you own, build or download. The **Hangar** fills itself: each ship in each save you open is kept, with its versions, so nothing is lost when you replace one.
 
-- **Bases**: name, place and parts. **Copy parts** and **Paste parts** between bases, **Add a prefab** from the Base Building App, **Load from a .blend…** from NMS Base Builder, and **Delete base**. LiveLink works for bases too.
-- **Settlements**: an **Owned** and a **Visited** tab. For settlements you run: name, stats (population, happiness, production, upkeep, sentinels, debt, alerts and bug attacks), perks (**Remove the negative perks**), and **Clear debt, alerts and bug attacks**. Settlements you've only visited belong to other players and are shown read-only.
+Tags, notes, favourites, linked folders, and **Load ship into game** for any of them. Imports and exports `.nmsship`, `.so`, `.json` and `.nmsprefab`.
 
-### Storage
+</td>
+</tr>
+</table>
 
-Base storage containers and the other standalone inventories in the save, each with the full set of [inventory tools](#inventories).
+## Multi-tools and staffs
+
+<table>
+<tr>
+<td width="58%"><a href="docs/readme/staff-builder.webp"><img src="docs/readme/staff-builder.webp" alt="Build a staff"></a></td>
+<td width="42%" valign="top">
+
+### Build a staff
+
+Head, core and pole from every set in the game, in any colours, shown in 3D in its real textures. Restyle a staff you already own the same way.
+
+**Build a weapon** makes any other multi-tool type from a seed.
+
+</td>
+</tr>
+<tr>
+<td width="58%"><a href="docs/guide/shots/tools.webp"><img src="docs/guide/shots/tools.webp" alt="Your multi-tools"></a></td>
+<td width="42%" valign="top">
+
+### Your multi-tools
+
+Name, type, class, seed and base stats, technology with supercharged slots, and profiles.
+
+**Share codes**: a multi-tool or staff as a short line of text to paste into Discord. Someone else pastes it and gets the same tool. Nothing is hosted and no game files change hands.
+
+</td>
+</tr>
+</table>
+
+## Your traveller, Blender and LiveLink
+
+<table>
+<tr>
+<td width="58%"><a href="docs/guide/shots/traveller.webp"><img src="docs/guide/shots/traveller.webp" alt="Traveller cards"></a></td>
+<td width="42%" valign="top">
+
+### Traveller cards
+
+Your character in 3D, in the parts and colours you wear. Make a picture card with your pose, ship, multi-tool, portal glyphs and name over a space background, then save or copy it.
+
+Share your look as a code, and collect other travellers' looks for group pictures.
+
+</td>
+</tr>
+<tr>
+<td width="58%"><a href="docs/readme/poses.webp"><img src="docs/readme/poses.webp" alt="Pose your traveller"></a></td>
+<td width="42%" valign="top">
+
+### Pose your traveller
+
+The LiveLink add-on brings your traveller into Blender with a skeleton that bends the way a person does, on every race. Click a body part to turn it, drag hands and feet, or pick a ready-made pose: hero, salute, ground strike, flying and more.
+
+Ready-made lighting, backdrops from any `.blend`, and **Render a picture**.
+
+</td>
+</tr>
+<tr>
+<td width="58%"><a href="docs/guide/shots/livelink.webp"><img src="docs/guide/shots/livelink.webp" alt="LiveLink"></a></td>
+<td width="42%" valign="top">
+
+### LiveLink
+
+Build a corvette in Charon Forge or a base in NMS Base Builder, press Ctrl+S in Blender, and it's in your save. DryDock backs the save up each time and asks before a build goes anywhere you didn't mean.
+
+**3D prints**: your posed traveller or a corvette as a solid STL sized in mm, with a preview before you export.
+
+</td>
+</tr>
+</table>
+
+## Coordinates
+
+<table>
+<tr>
+<td width="58%"><a href="docs/guide/shots/coords.webp"><img src="docs/guide/shots/coords.webp" alt="Know before you go"></a></td>
+<td width="42%" valign="top">
+
+### Go anywhere
+
+Type or click portal glyphs, or enter a galactic address. **Warp here** arrives in your ship, aboard your freighter or on foot at a base.
+
+Star favourite places, give systems and planets your own nicknames, and share a place card.
+
+</td>
+</tr>
+<tr>
+<td width="58%"><a href="docs/guide/shots/coords-system.webp"><img src="docs/guide/shots/coords-system.webp" alt="Go anywhere"></a></td>
+<td width="42%" valign="top">
+
+### Know before you go
+
+The system's name, star colour and planets predicted from the address, next to what your save has discovered there, with the odds of each biome for every planet from the game's own table.
+
+</td>
+</tr>
+</table>
+
+## Inventories and cargo
+
+<table>
+<tr>
+<td width="58%"><a href="docs/guide/shots/exosuit-slot.webp"><img src="docs/guide/shots/exosuit-slot.webp" alt="Every inventory"></a></td>
+<td width="42%" valign="top">
+
+### Every inventory
+
+Exosuit, ships, multi-tools, freighter, exocraft and storage, laid out as in the game with its icons and names.
+
+Click an empty slot and type to add any item. Right-click for fill, repair, copy, duplicate, supercharge and move. Drag stacks, or drag a box to select many.
+
+</td>
+</tr>
+<tr>
+<td width="58%"><a href="docs/guide/shots/cargo.webp"><img src="docs/guide/shots/cargo.webp" alt="Cargo"></a></td>
+<td width="42%" valign="top">
 
 ### Cargo
 
-Every stack in every inventory, in one place.
+Every stack in every inventory in one list. Find where an item is, gather it into one place, or **Consolidate** partial stacks: you see the plan before anything moves.
 
-- **Find** where an item is, across exosuit, ships, freighter, exocraft and storage.
-- **Gather** one item into a single inventory.
-- **Consolidate**: tidy partial stacks into one inventory. You see the plan (what moves where) before anything happens. Special lockers are left alone unless you include them.
-- **Drag and drop** stacks between slots and inventories. Matching stacks are topped up first. Technology always stays in its own inventory.
+</td>
+</tr>
+</table>
 
-### Knowledge
+## Freighter, companions, bases and settlements
 
-What your traveller has learned.
+<table>
+<tr>
+<td width="58%"><a href="docs/guide/shots/frigates.webp"><img src="docs/guide/shots/frigates.webp" alt="Freighter and frigates"></a></td>
+<td width="42%" valign="top">
 
-- **Technology and base parts**: the blueprints you know. **Learn…** adds one, **Learn all technology** or **Learn all base parts** adds everything your game lists, and you can forget ones you don't want.
-- **Words**: alien words per race. **Learn every word, every race**.
+### Freighter and frigates
 
-### Rewards
+Your capital ship's class, seed and inventories, and each frigate's stats and traits. Max out, copy, duplicate or repair frigates, one or all.
 
-Every expedition reward, past and current, plus Twitch drops and platform rewards.
+</td>
+</tr>
+<tr>
+<td width="58%"><a href="docs/guide/shots/companions.webp"><img src="docs/guide/shots/companions.webp" alt="Companions"></a></td>
+<td width="42%" valign="top">
 
-- **Unlock this expedition's rewards**, single rewards, or everything at once.
-- Rewards live in a separate account file, so they have their own save button. You collect them in the game on the Space Anomaly.
-- **Quit the game before saving rewards.** The game reads them only when it starts and writes its own copy back when it saves. The editor notices if the game takes rewards back and tells you why.
-- Platform rewards (a Switch pre-order, The Game Awards) are checked against the store you play on, and the game removes them on PC, so **Unlock all rewards** leaves them alone.
-- Some unlocked rewards from older expeditions, eggs and multi-tools in particular, may not claim even with free slots. That's the game, not the save: the editor's empty slots are the same as the game's own.
+### Companions
 
-### Standing
+Each companion's real model with the parts it was born with. Trust, mood and temperament as sliders, battle type and stat classes, and export or import a companion as a file.
 
-Your reputation with each race and guild, and the journey milestones the game counts. **Max every standing** in one click, or set each one, with the game's rank names shown.
+</td>
+</tr>
+<tr>
+<td width="58%"><a href="docs/guide/shots/bases.webp"><img src="docs/guide/shots/bases.webp" alt="Bases and settlements"></a></td>
+<td width="42%" valign="top">
 
-### Difficulty
+### Bases and settlements
 
-The game's difficulty settings, the same ones as its options menu, including those it only lets you pick when starting a new game. **Make everything easy** and **Back to normal** set them all at once.
+Rename bases, copy parts between them, add prefabs, or load a base from Blender. For settlements you run: stats, perks, and debt and alerts cleared in one click.
 
-### Item names
+</td>
+</tr>
+</table>
 
-Where item names, icons and descriptions come from.
+## Progress and settings
 
-- **Build item library** reads your game's own files and keeps the names and icons on your PC. It rebuilds itself after a game update. Point it at your No Man's Sky folder if Steam doesn't find it.
-- Goatfungus's `NMSSaveEditor.jar` works as a fallback until your library is built: the app can search your PC for it.
+<table>
+<tr>
+<td width="33%" valign="top"><b>Knowledge</b><br>Learn or forget technology and base part blueprints, and alien words for every race.</td>
+<td width="33%" valign="top"><b>Rewards</b><br>Expedition rewards past and present, plus Twitch drops, to claim on the Space Anomaly.</td>
+<td width="33%" valign="top"><b>Standing</b><br>Reputation with each race and guild, and the journey milestones, with the game's rank names.</td>
+</tr>
+<tr>
+<td width="33%" valign="top"><b>Difficulty</b><br>Every difficulty option, including the ones the game only offers on a new save.</td>
+<td width="33%" valign="top"><b>Item names</b><br>An item library built from your own game files, rebuilt by itself after a game update.</td>
+<td width="33%" valign="top"><b>Raw data</b><br>Every value in the save with readable key names. Search, edit, export and import JSON.</td>
+</tr>
+</table>
 
-### Raw data
+<p align="center"><a href="docs/FEATURES.md"><b>See every feature, page by page</b></a></p>
 
-Every value in the save, translated from the game's short keys (the original key is shown beside each one). Search keys and values, edit any value, and **Export JSON** or **Import JSON**.
+## Built to keep your saves safe
 
-## Things that work everywhere
+<table>
+<tr>
+<td width="50%" valign="top"><b>Backups every time</b><br>The current save is copied before it's replaced. <b>Show backups</b> opens the folder.</td>
+<td width="50%" valign="top"><b>Checked before writing</b><br>The new save is decoded again and compared; if anything differs, nothing is written.</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><b>Nothing changes by accident</b><br>An unedited save re-encodes to exactly the same data, byte for byte.</td>
+<td width="50%" valign="top"><b>Never an older copy over a newer one</b><br>If the game saved since you opened the save, DryDock stops and asks.</td>
+</tr>
+<tr>
+<td width="50%" valign="top"><b>Copy, don't overwrite</b><br>Copying a save only goes into an empty slot. Exports never replace a file.</td>
+<td width="50%" valign="top"><b>Stays on your PC</b><br>It only listens on your own computer, with a new key each run. Nothing is uploaded.</td>
+</tr>
+</table>
 
-### Inventories
+## Getting started
 
-Every inventory grid (exosuit, ships, multi-tools, freighter, exocraft, storage) has the same tools:
+1. **Download** DryDock for your system from the top of this page and run it.
+   - **Windows**: the program isn't code-signed, so SmartScreen warns the first time. Choose **More info**, then **Run anyway**.
+   - **Mac**: unzip, then follow READ ME FIRST.txt to open it past Gatekeeper.
+2. It finds your saves and opens in its own window. Pick a save.
+3. On first start it builds an item library from your No Man's Sky install (about a minute).
+4. Make your changes, then press **Save to game**. Close No Man's Sky first.
 
-- **Technology / Cargo / Both** switch, laid out as the game shows them, with item icons, names and amounts.
-- **Add an item**: click an empty slot, type part of its name (Carbon, Orbital Exocraft Materialiser…) and press Enter or click a result. It goes in as a full stack, sized like the game sizes that inventory. Cargo takes anything; a technology grid only offers technology that fits it (exosuit, multi-tool, freighter, each kind of ship and exocraft), with **Show all technology** to lift that. **Add by item ID** is there too.
-- **Click a filled slot** to see the item, change its amount, fill the stack, replace it or remove it.
-- **Right-click any slot** for a menu: fill or recharge, repair, copy, duplicate, supercharge, move to another inventory, remove; paste or add on empty slots, unlock on locked ones. Right-click inside a selection to act on all of it.
-- **Drag and drop** stacks; drag a box across empty slots to select several and move them together.
-- **Unlock all slots**, **Fill stacks**, **Repair**, and **Size and class** to resize an inventory or change its class.
-- **Supercharge slots** on exosuit, starship, multi-tool, freighter and exocraft technology.
+The Windows app updates itself and shows what's new after each update. Files you export go to `Documents\Harmonious Save Editor\Exports`.
 
-Each page's own buttons (**Add a ship**, **Add a multi-tool**, **Render corvettes**, **Add a companion**…) sit in a row just above what they work on, on the left; on pages with covers the **Cover Flow / Grid** switch is on the right of the same row.
+## Requirements
 
-### Your own sidebar
+No Man's Sky on **Steam** or **GOG** (Frontiers 3.60 or newer, checked on 7.15). Xbox / Game Pass and PlayStation saves aren't supported.
 
-The customise button at the bottom of the sidebar (lines with a pencil) lets you drag pages up and down or into another group, move groups with their arrows, and hide pages you never use with the eye. Hidden pages still turn up in **Find anything**. **Reset to default** puts it back. The layout is kept between sessions, and pages added in later updates show up in their usual group.
+| System | File | Status |
+| --- | --- | --- |
+| Windows 10 / 11 | `HarmoniousSaveEditor.exe` | Tested with real saves and in the game |
+| macOS (Apple Silicon and Intel) | `HarmoniousDryDock-Mac.zip` | Test build. Checked by a tester on an M3 Mac with Steam |
+| Any, in Chrome or Edge | `nms-save-editor-browser.html` | Edits saves; no Dock Yard, models, renders or LiveLink |
 
-### Find
+For the Blender features: [Blender](https://www.blender.org) 4.2 or newer. Corvettes need [Charon Forge](https://github.com/xX-Charon-Xx/charon_forge) and bases need NMS Base Builder. DryDock finds them on your computer and never includes anything from them. Get the LiveLink add-on from inside DryDock (**Get LiveLink**).
 
-Press **Ctrl+K** (or use the box at the top of the sidebar) to jump to any ship, base, frigate, companion, setting or item in your inventories.
+## Feedback
 
-### Look
+Most features have been tried in the game, but not all of them. If something looks wrong, tell us which page and what you did in [Issues](https://github.com/Pastullio/harmonious-save-editor/issues) or on [Discord](https://discord.gg/3PfZfPYDn). **Report** on the save list makes a file that says what DryDock found on your computer (no save contents), which helps a lot.
 
-A dark mode and a light mode (the theme button at the bottom of the sidebar), and a "?" beside anything that has more to say. Cards that fold (Parts on Shipwright, Quick fixes, Favourite places…) start closed and stay the way you leave them, even next time.
-
-### Settings
-
-The gear at the bottom of the sidebar: where Blender is, and whether new corvettes are rendered automatically.
-
-## Blender: renders, LiveLink, posing and 3D prints
-
-These need [Blender](https://www.blender.org) (4.2 or newer). Corvettes need [Charon Forge](https://github.com/xX-Charon-Xx/charon_forge), and bases NMS Base Builder. The app finds them on your PC and never includes anything from them. The LiveLink page in the app shows what's set up.
-
-- **The add-on**: press **Get LiveLink** (LiveLink page, About, Exosuit or Shipwright) and install the file in Blender (Edit > Preferences > Add-ons > Install from Disk). Its panels are in the 3D view's sidebar, tab **LiveLink**. Blender keeps the add-on you installed, so when a new one comes out, install it again over the old one.
-- **LiveLink**: turn it on for a corvette or base, then every time you press Ctrl+S in Blender (or **Send now**), the build goes into your save. The app backs up the save each time. Each `.blend` remembers which corvette or base it's for, and the editor asks before putting a build anywhere else.
-- **Load from a .blend…**: on Shipwright and Bases, read a corvette or base straight from a `.blend` file, without opening Blender yourself.
-- **Corvette renders**: real pictures of your corvettes, made by your Blender in the background and kept so a build is only rendered once. Turn on automatic renders in Settings and new corvettes get a picture a few seconds after a save opens.
-- **Posing your traveller**: **Import my traveller** brings in your character with a skeleton. In Pose Mode, click a part of the body to turn it, or turn on **Move hands and feet** to drag a hand or foot and let the arm or leg follow. Joints and fingers bend the way a person's do, on every race. Pick a ready-made pose (hero, salute, waving, pointing, sitting and more) or save and share your own, and put a multi-tool in your hand.
-- **Lighting and pictures**: ready-made lighting (Studio, Hero, Sunset, Space), a backdrop from any `.blend` (a corvette, a base…), Quick or Best quality, then **Render a picture** saves a PNG to your Exports folder. **Send the pose to DryDock (3D)** sends it to the Traveller page in 3D.
-- **3D prints**: your posed traveller as a miniature, heroic figure, action figure or collector's figure, or a corvette on a flight stand, as one solid STL sized in mm and ready for your slicer. **Preview** stands the print beside your model first, so you can check it without a printer.
-
-## The browser version
-
-`dist/nms-save-editor.html` is the same editor as a single web page for Chrome or Edge. It edits saves but can't do the parts that need your PC: the Dock Yard, renders, LiveLink and reading your game files (it can use Goatfungus's jar for item names instead).
-
-- **Folder mode**: choose `%APPDATA%\HelloGames\NMS` or the `st_…` folder inside it. Chrome blocks AppData for web pages, so you may need to copy the folder somewhere else first, which is why the desktop app is the easier option. Saving copies the current pair into `_editor_backups\<timestamp>_saveN\` first.
-- **File mode**: drop both files (`saveN.hg` and `mf_saveN.hg`); the edited pair downloads and you copy it back.
+Support the project on [Patreon](https://www.patreon.com/pastullio) or [Buy me a coffee](https://buymeacoffee.com/pastullio), and see it in action on [YouTube](https://www.youtube.com/@PastullioTheHarmonious).
 
 ## For developers
 
@@ -326,4 +373,4 @@ Format details are ported from [libNOM.io](https://github.com/zencq/libNOM.io) a
 - [nms_namegen](https://github.com/hadsh/nms_namegen) by Stuart Coyle, hadsh and GoodGuysFree, and its JavaScript port [nms-core](https://github.com/elegra1965-source/nms-core) by elegra1965: system and planet prediction (MIT, in `vendor/nms-core`)
 - Pillow (texture decoding), klauspost/compress (zstd), Jost by indestructible type* (typeface)
 
-Free software under GPL-3.0. Not affiliated with Hello Games.
+<p align="center"><sub>Free software under GPL-3.0. No Man's Sky is a trademark of Hello Games. This is a fan-made tool; it isn't made or endorsed by Hello Games.</sub></p>
