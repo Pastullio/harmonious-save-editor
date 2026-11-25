@@ -10,7 +10,7 @@
 bl_info = {
     "name": "Harmonious LiveLink",
     "author": "Pastullio the Harmonious",
-    "version": (1, 34, 0),
+    "version": (1, 34, 1),
     "blender": (4, 2, 0),
     "location": "3D View > Sidebar > LiveLink",
     "description": "Send your corvette build to Harmonious DryDock every time you save",
@@ -1511,7 +1511,7 @@ class HARMONIOUS_MT_shared(bpy.types.Menu):
 
     def draw(self, context):
         if not LINK["shared"]:
-            self.layout.label(text="None yet: add codes in DryDock (Exosuit, Shared travellers)")
+            self.layout.label(text="None yet: add codes in DryDock (Traveller, Shared travellers)")
         for k, name in enumerate(LINK["shared"]):
             self.layout.operator(HARMONIOUS_OT_traveller.bl_idname, text=name, icon="USER").who = k + 1
 
@@ -2783,7 +2783,7 @@ def build_glb(context):
 class HARMONIOUS_OT_send_ship(bpy.types.Operator):
     bl_idname = "harmonious.send_ship"
     bl_label = "Send the corvette in 3D"
-    bl_description = "Send this corvette's model to the editor's Traveller page, to turn and place on your picture"
+    bl_description = "Send this corvette's model to the editor's Holograms page, to turn and place on your picture"
 
     def execute(self, context):
         addr = editor_address()
@@ -2812,7 +2812,7 @@ class HARMONIOUS_OT_send_ship(bpy.types.Operator):
         except (urllib.error.URLError, OSError, ValueError) as error:
             self.report({"ERROR"}, "Couldn't reach Harmonious DryDock: %s" % error)
             return {"CANCELLED"}
-        set_status("%s sent in 3D (%d parts, %d MB): pick it on the Traveller page" % (name, n, max(1, len(data) // 1048576)))
+        set_status("%s sent in 3D (%d parts, %d MB): pick it on the Holograms page" % (name, n, max(1, len(data) // 1048576)))
         self.report({"INFO"}, "Sent %s in 3D" % name)
         return {"FINISHED"}
 
@@ -2943,7 +2943,7 @@ class HARMONIOUS_OT_drop_tool(bpy.types.Operator):
 class HARMONIOUS_OT_send_pose(bpy.types.Operator):
     bl_idname = "harmonious.send_pose"
     bl_label = "Send the pose to DryDock (3D)"
-    bl_description = "Send your posed traveller to Harmonious DryDock in 3D, to turn and place on the Traveller page"
+    bl_description = "Send your posed traveller to Harmonious DryDock in 3D, to turn and place on the Holograms page"
 
     @classmethod
     def poll(cls, context):
@@ -2973,7 +2973,7 @@ class HARMONIOUS_OT_send_pose(bpy.types.Operator):
         except (urllib.error.URLError, OSError, ValueError) as error:
             self.report({"ERROR"}, "Couldn't reach Harmonious DryDock: %s" % error)
             return {"CANCELLED"}
-        set_status("Sent to the editor in 3D (%d MB): open the Traveller page" % max(1, len(data) // 1048576))
+        set_status("Sent to the editor in 3D (%d MB): open the Holograms page" % max(1, len(data) // 1048576))
         self.report({"INFO"}, "Sent " + out.get("name", "the pose"))
         return {"FINISHED"}
 
@@ -3191,7 +3191,7 @@ class HARMONIOUS_OT_picture(bpy.types.Operator):
     bl_idname = "harmonious.pose_picture"
     bl_label = "Render a picture"
     bl_description = ("Render what the camera sees, with your lights, backdrop and quality, to a PNG with a transparent background in "
-                      "the Exports folder (a camera looking at your traveller is added if there's none). It shows on DryDock's Traveller page")
+                      "the Exports folder (a camera looking at your traveller is added if there's none). It shows on DryDock's Holograms page")
 
     def execute(self, context):
         import datetime
@@ -4440,7 +4440,7 @@ PICTURE_STEPS = (
     "Pick a lighting in Lighting & Rendering.",
     "Press Traveller camera, then See what the camera sees, and move the view to frame the picture.",
     "Rendering: Best for the finished picture (slower), Quick to check.",
-    "Press Render a picture. It's saved to the Exports folder and shows on DryDock's Traveller page, ready for a background, glyphs and text.",
+    "Press Render a picture. It's saved to the Exports folder and shows on DryDock's Holograms page, ready for a background, glyphs and text.",
 )
 
 
@@ -4464,7 +4464,7 @@ class HARMONIOUS_PT_export(LiveLinkPanel, bpy.types.Panel):
         send.operator(HARMONIOUS_OT_send_pose.bl_idname, **ic("send3d", "EXPORT"))
         tip = layout.column(align=True)
         tip.scale_y = 0.8
-        for line in wrap("Render a picture: a finished image of what the camera sees. Send the pose: your traveller in 3D, to turn and place on DryDock's Traveller page.", 40):
+        for line in wrap("Render a picture: a finished image of what the camera sees. Send the pose: your traveller in 3D, to turn and place on DryDock's Holograms page.", 40):
             tip.label(text=line)
         # owner 2026-11-14 (a tester "barely figured out how to get that image to show up"): the whole way, in order
         sc = context.scene

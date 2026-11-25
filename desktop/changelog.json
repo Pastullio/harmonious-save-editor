@@ -1,5 +1,14 @@
 [
  {
+  "version": "2026.11.25.1842",
+  "date": "2026-11-25",
+  "notes": [
+   "Exosuit is now called Traveller, and the picture-card page that was Traveller is now Holograms",
+   "That sidebar group now runs Traveller, Starships, Multi-tools, Freighter, Exocraft, Companions, Holograms (a sidebar you rearranged yourself keeps your order)",
+   "LiveLink add-on 1.34.1 uses the new page names: get it again from DryDock and install it over the old one"
+  ]
+ },
+ {
   "version": "2026.11.25.1752",
   "date": "2026-11-25",
   "notes": [
