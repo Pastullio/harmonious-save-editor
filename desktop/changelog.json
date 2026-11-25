@@ -1,5 +1,13 @@
 [
  {
+  "version": "2026.11.25.1553",
+  "date": "2026-11-25",
+  "notes": [
+   "The Report now checks every game table DryDock reads and says which ones a game update has changed",
+   "Changed tables are included in the report, so DryDock can be brought up to date quickly"
+  ]
+ },
+ {
   "version": "2026.11.24.1748",
   "date": "2026-11-24",
   "notes": [

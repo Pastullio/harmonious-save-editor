@@ -10,6 +10,7 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"net/http"
@@ -26,6 +27,7 @@ import (
 type reportOut struct {
 	lines   []string
 	samples map[string][]byte
+	changed int // tables whose layout this build doesn't know
 }
 
 func (o *reportOut) say(f string, a ...any) { o.lines = append(o.lines, fmt.Sprintf(f, a...)) }
@@ -356,6 +358,52 @@ func reportBanks(o *reportOut, banks string) {
 	if lib != nil && len(lib.Missing) > 0 {
 		o.say("  Icons that couldn't be read: %s", strings.Join(lib.Missing, ", "))
 	}
+	// every table DryDock reads, against the layout its reader was written for; changed ones go into the zip
+	o.say("")
+	o.say("Table layouts (a game update can change these):")
+	changed, room := 0, 40<<20
+	for _, k := range knownLayouts {
+		base := k.file[strings.LastIndex(k.file, "/")+1:]
+		f := find(func(f string) bool {
+			if strings.HasPrefix(k.file, "language/") {
+				return strings.HasPrefix(f, "language/") && strings.Contains(f, "english")
+			}
+			for _, n := range platformNames(f) {
+				if n == k.file+".pc" {
+					return true
+				}
+			}
+			return f == k.file || strings.HasSuffix(f, "/"+base)
+		})
+		if f == "" {
+			o.say("  NOT FOUND  %s (%s)", k.file, k.feeds)
+			continue
+		}
+		b, err := read(f)
+		if err != nil || len(b) < 0x30 {
+			o.say("  NOT READ   %s: %v", f, err)
+			continue
+		}
+		if g := binary.LittleEndian.Uint64(b[0x10:]); g != k.guid {
+			changed++
+			kept := "too big to include"
+			if len(b) <= 12<<20 && len(b) <= room {
+				room -= len(b)
+				o.samples["changed-tables/"+strings.ReplaceAll(f, "/", "__")] = b
+				kept = "included in this zip"
+			}
+			o.say("  CHANGED    %s: %016X, DryDock knows %016X; affects %s; %d bytes, %s", f, g, k.guid, k.feeds, len(b), kept)
+			continue
+		}
+		o.say("  ok         %s", f)
+	}
+	if changed == 0 {
+		o.say("  Every table has the layout DryDock knows.")
+	} else {
+		o.say("  %d changed: send this report to the developer.", changed)
+	}
+	o.changed = changed
+	o.say("")
 	pics := 0
 	for _, under := range []string{"textures/ui/frontend/icons/", "textures/common/spacecraft/fighters/", "textures/common/player/"} {
 		f := find(func(f string) bool {
@@ -426,5 +474,5 @@ func handleReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = revealFile(p)
-	writeJSON(w, map[string]any{"path": p, "size": buf.Len(), "text": strings.Join(o.lines, "\n")})
+	writeJSON(w, map[string]any{"path": p, "size": buf.Len(), "text": strings.Join(o.lines, "\n"), "changed": o.changed})
 }

@@ -1,9 +1,9 @@
 {
-  "version": "2026.11.24.1748",
-  "date": "2026-11-24",
-  "size": 15321600,
-  "sha256": "64902ea8122805f7cab831abb823fa54b159ca6760c0dc05b064b40eccffb635",
-  "notes": "Mac: ships and multi-tools should now show their real 3D models instead of a hologram (the Mac names its model files differently from the PC)\nMac: the Report now says whether a ship model could be read and which icons couldn't",
-  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.24.1748/HarmoniousSaveEditor.exe",
+  "version": "2026.11.25.1553",
+  "date": "2026-11-25",
+  "size": 15331328,
+  "sha256": "a131b1f1aa35565b2f46784033d149b5257c1970cf3774a7846e93c21962a382",
+  "notes": "The Report now checks every game table DryDock reads and says which ones a game update has changed\nChanged tables are included in the report, so DryDock can be brought up to date quickly",
+  "url": "https://github.com/Pastullio/harmonious-save-editor/releases/download/v2026.11.25.1553/HarmoniousSaveEditor.exe",
   "mirror": "https://raw.githubusercontent.com/Pastullio/harmonious-save-editor/main/dist/Harmonious%20Save%20Editor.exe"
 }
